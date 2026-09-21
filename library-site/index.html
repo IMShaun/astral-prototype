@@ -6577,6 +6577,59 @@ button.astral-state {
   grid-template-rows: auto minmax(0, 1fr);
 }
 
+.astral-pack-picks {
+  display: grid;
+  gap: 4px;
+}
+
+.astral-pack-picks button {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #000;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  white-space: normal;
+}
+
+.astral-pack-picks button:hover:not(:disabled) {
+  background: var(--color-background-hover);
+}
+
+.astral-pack-picks button.is-on {
+  background: var(--color-background-subtle);
+}
+
+.astral-pack-picks button:disabled {
+  cursor: default;
+}
+
+.astral-pack-picks button:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
+
+.astral-pack-picks .astral-check {
+  margin-top: 2px;
+}
+
+.astral-pack-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.astral-pack-copy span:first-child {
+  font-weight: 500;
+}
+
 .astral-compare-find {
   position: relative;
   z-index: 6;
@@ -6588,6 +6641,8 @@ button.astral-state {
 .astral-modal-foot {
   position: relative;
   z-index: 2;
+  display: grid;
+  gap: 8px;
   padding: 16px 24px 24px;
   background: #fff;
   border-top: 1px solid var(--color-border-default);
@@ -9601,7 +9656,7 @@ html:has(.lib-root),
           <button type="button" data-lib-page="components">Components</button>
           <button type="button" data-lib-page="access">Access</button>
         </nav>
-        <button type="button" class="lib-download" data-lib-pack>
+        <button type="button" class="lib-download" data-lib-pack aria-haspopup="dialog" aria-controls="lib-pack-dialog">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path
               d="M12 3v12m0 0-4-4m4 4 4-4M5 20h14"
@@ -10320,6 +10375,7 @@ window.AstralUI = {
   filter: protoFilterShell,
   search: protoSearchField,
   modalHead: protoModalHead,
+  check: protoCheck,
 };
 
 </script>
@@ -10500,71 +10556,571 @@ window.ASTRAL_LIB = {"product": "Astral", "lead": "Copy these files into the pro
     );
   }
 
-  function readme(data) {
-    const start = String(data.reactStart || "").trim();
-    return [
-      "# Astral React starter",
-      "",
-      "Put these files in the product repo.",
-      "",
-      "## Theme",
-      "",
-      "- src/theme/tokens.css",
-      "- src/theme/astral.ts",
-      "- src/theme/components.css",
-      "- src/theme/fonts for Roobert Regular, Medium, and Semibold",
-      "",
-      "Import once.",
+  function normalizeParts(parts) {
+    if (!parts || typeof parts !== "object") {
+      return { components: true, tokens: true, prototype: true };
+    }
+    return {
+      components: Boolean(parts.components),
+      tokens: Boolean(parts.tokens),
+      prototype: Boolean(parts.prototype),
+    };
+  }
+
+  function importOnce(data, parts) {
+    const lines = [];
+    if (parts.tokens) {
+      lines.push('import { theme } from "./theme/astral";');
+      lines.push('import "./theme/tokens.css";');
+    }
+    if (parts.components) lines.push('import "./theme/components.css";');
+    if (parts.prototype) lines.push('import { App } from "./prototype/App";');
+    if (lines.length) return lines.join("\n");
+    return String(data.reactStart || "").trim();
+  }
+
+  function readme(data, parts) {
+    const lines = ["# Astral React starter", "", "Put these files in the product repo.", ""];
+    if (parts.tokens) {
+      lines.push(
+        "## Tokens",
+        "",
+        "- src/theme/tokens.css",
+        "- src/theme/astral.ts",
+        "- src/theme/fonts for Roobert Regular, Medium, and Semibold",
+        "",
+        "Aptos is the fallback if a Roobert weight is missing.",
+        ""
+      );
+    }
+    if (parts.components) {
+      lines.push(
+        "## Components",
+        "",
+        "- src/theme/components.css",
+        "",
+        "Icon.tsx is the full file. Other component files hold the snippet for that piece. Copy the snippet into the named file. Pass data through props. Do not fetch inside the component.",
+        ""
+      );
+    }
+    if (parts.prototype) {
+      lines.push(
+        "## Prototype",
+        "",
+        "src/prototype is a React start for the live screens. Flow is Main product, Onboarding, Sign-up, Sign in, Password recovery, and Invite link. Pass flow on App. Do not store a password or a code.",
+        "",
+        "- src/assets/imserv-logomark.svg is the default organisation mark.",
+        "- src/assets/auth-texture.png is the grid overlay on Infra Grey for sign in, sign-up, and password recovery.",
+        ""
+      );
+    }
+    lines.push(
+      "## Import once",
       "",
       "```ts",
-      start,
+      importOnce(data, parts),
       "```",
-      "",
-      "Aptos is the fallback if a Roobert weight is missing.",
-      "",
-      "## Components",
-      "",
-      "Icon.tsx is the full file. Other component files hold the snippet for that piece. Copy the snippet into the named file. Pass data through props. Do not fetch inside the component.",
-      "",
-      "## Assets",
-      "",
-      "- src/assets/imserv-logomark.svg is the default organisation mark on Settings.",
-      "- src/assets/auth-texture.png is the grid overlay on Infra Grey for sign in, sign-up, and password recovery.",
       "",
       "## Look",
       "",
       "Filled primary buttons use white type. Do not put cyan type on white. Quiet outlines are 1px Infra Grey B. Focus is a 2px black edge. Disabled is Infra Grey, not a faded colour. Status colour still waits.",
-      "",
-    ].join("\n");
+      ""
+    );
+    return lines.join("\n");
   }
 
-  function indexTs() {
+  function indexTs(parts) {
+    const lines = [];
+    if (parts.tokens) lines.push('export { theme, typeStyles } from "./theme/astral";');
+    if (parts.components) lines.push('export { Icon } from "./components/Icon";');
+    if (parts.prototype) lines.push('export { App } from "./prototype/App";');
+    lines.push("");
+    return lines.join("\n");
+  }
+
+  function prototypeFiles() {
     return [
-      'export { theme, typeStyles } from "./theme/astral";',
-      'export { Icon } from "./components/Icon";',
-      "",
-    ].join("\n");
+      {
+        name: "src/prototype/App.tsx",
+        text: [
+          'import type { ReactNode } from "react";',
+          'import { InviteLink } from "./screens/InviteLink";',
+          'import { MainProduct } from "./screens/MainProduct";',
+          'import { Onboarding } from "./screens/Onboarding";',
+          'import { PasswordRecovery } from "./screens/PasswordRecovery";',
+          'import { SignIn } from "./screens/SignIn";',
+          'import { SignUp } from "./screens/SignUp";',
+          "",
+          "export type FlowId =",
+          '  | "main"',
+          '  | "onboarding"',
+          '  | "sign-up"',
+          '  | "sign-in"',
+          '  | "password-recovery"',
+          '  | "invite";',
+          "",
+          "const SCREENS: Record<FlowId, () => ReactNode> = {",
+          "  main: () => <MainProduct />,",
+          "  onboarding: () => <Onboarding />,",
+          '  "sign-up": () => <SignUp />,',
+          '  "sign-in": () => <SignIn />,',
+          '  "password-recovery": () => <PasswordRecovery />,',
+          "  invite: () => <InviteLink />,",
+          "};",
+          "",
+          "export function App({ flow = \"main\" }: { flow?: FlowId }) {",
+          "  const Screen = SCREENS[flow] || SCREENS.main;",
+          "  return Screen();",
+          "}",
+          "",
+        ].join("\n"),
+      },
+      {
+        name: "src/prototype/AuthCard.tsx",
+        text: [
+          'import type { ReactNode } from "react";',
+          "",
+          'const mark = new URL("../assets/imserv-logomark.svg", import.meta.url).href;',
+          "",
+          "export function AuthCard({",
+          "  title,",
+          "  lead,",
+          "  children,",
+          "}: {",
+          "  title: string;",
+          "  lead?: string;",
+          "  children: ReactNode;",
+          "}) {",
+          "  return (",
+          '    <div className="astral-app is-auth">',
+          '      <div className="astral-auth-page">',
+          '        <img src={mark} alt="IMSERV" />',
+          '        <section className="astral-card astral-auth">',
+          '          <div className="astral-auth-copy">',
+          "            <h1>{title}</h1>",
+          '            {lead ? <p className="astral-muted">{lead}</p> : null}',
+          "          </div>",
+          "          {children}",
+          "        </section>",
+          "      </div>",
+          "    </div>",
+          "  );",
+          "}",
+          "",
+        ].join("\n"),
+      },
+      {
+        name: "src/prototype/screens/MainProduct.tsx",
+        text: [
+          "export function MainProduct() {",
+          "  return (",
+          '    <div className="astral-app">',
+          "      <header>",
+          "        <p>IMSERV</p>",
+          '        <nav aria-label="Product">',
+          "          <a href=\"#home\">Home</a>",
+          "          <a href=\"#portfolio\">Portfolio</a>",
+          "          <a href=\"#finance\">Finance</a>",
+          "          <a href=\"#alerts\">Alerts</a>",
+          "          <a href=\"#queries\">Queries</a>",
+          "          <a href=\"#reports\">Reports</a>",
+          "        </nav>",
+          "      </header>",
+          "      <main>",
+          "        <h1>Home</h1>",
+          "        <p>Start here. See if the estate is healthy, then open a site that needs a look.</p>",
+          "      </main>",
+          "    </div>",
+          "  );",
+          "}",
+          "",
+        ].join("\n"),
+      },
+      {
+        name: "src/prototype/screens/SignIn.tsx",
+        text: [
+          'import { useMemo, useState, type FormEvent } from "react";',
+          'import { AuthCard } from "../AuthCard";',
+          "",
+          "export function SignIn() {",
+          '  const [email, setEmail] = useState("");',
+          '  const [password, setPassword] = useState("");',
+          "  const can = useMemo(() => Boolean(email && password), [email, password]);",
+          "",
+          "  function onSubmit(event: FormEvent) {",
+          "    event.preventDefault();",
+          "  }",
+          "",
+          "  return (",
+          '    <AuthCard title="Sign in">',
+          '      <form onSubmit={onSubmit}>',
+          '        <label className="astral-field">',
+          "          <span>Email address</span>",
+          "          <input",
+          '            type="email"',
+          '            name="email"',
+          '            autoComplete="username"',
+          "            value={email}",
+          "            onChange={(event) => setEmail(event.target.value)}",
+          "          />",
+          "        </label>",
+          '        <label className="astral-field">',
+          "          <span>Password</span>",
+          "          <input",
+          '            type="password"',
+          '            name="password"',
+          '            autoComplete="current-password"',
+          "            value={password}",
+          "            onChange={(event) => setPassword(event.target.value)}",
+          "          />",
+          "        </label>",
+          '        <p className="astral-auth-links">',
+          '          <button type="button" className="astral-text">',
+          "            Forgot password?",
+          "          </button>",
+          "        </p>",
+          '        <div className="astral-actions">',
+          '          <button type="submit" className="astral-btn" disabled={!can}>',
+          "            Sign in",
+          "          </button>",
+          "        </div>",
+          "      </form>",
+          '      <p className="astral-auth-links">',
+          "        <span>Don't have an account?</span>",
+          '        <button type="button" className="astral-text">',
+          "          Sign-up",
+          "        </button>",
+          "      </p>",
+          "    </AuthCard>",
+          "  );",
+          "}",
+          "",
+        ].join("\n"),
+      },
+      {
+        name: "src/prototype/screens/SignUp.tsx",
+        text: [
+          'import { useMemo, useState, type FormEvent } from "react";',
+          'import { AuthCard } from "../AuthCard";',
+          "",
+          "export function SignUp() {",
+          '  const [name, setName] = useState("");',
+          '  const [email, setEmail] = useState("");',
+          '  const [company, setCompany] = useState("");',
+          '  const [password, setPassword] = useState("");',
+          "  const can = useMemo(",
+          "    () => Boolean(name && email && company && password),",
+          "    [name, email, company, password]",
+          "  );",
+          "",
+          "  function onSubmit(event: FormEvent) {",
+          "    event.preventDefault();",
+          "  }",
+          "",
+          "  return (",
+          '    <AuthCard title="Sign-up">',
+          '      <form onSubmit={onSubmit}>',
+          '        <label className="astral-field">',
+          "          <span>Name</span>",
+          '          <input name="name" autoComplete="name" maxLength={80} value={name} onChange={(event) => setName(event.target.value)} />',
+          "        </label>",
+          '        <label className="astral-field">',
+          "          <span>Email address</span>",
+          '          <input type="email" name="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} />',
+          "        </label>",
+          '        <label className="astral-field">',
+          "          <span>Company</span>",
+          '          <input name="company" autoComplete="organization" maxLength={80} value={company} onChange={(event) => setCompany(event.target.value)} />',
+          "        </label>",
+          '        <label className="astral-field">',
+          "          <span>Password</span>",
+          '          <input type="password" name="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} />',
+          "        </label>",
+          '        <div className="astral-actions">',
+          '          <button type="submit" className="astral-btn" disabled={!can}>',
+          "            Sign-up",
+          "          </button>",
+          "        </div>",
+          "      </form>",
+          "    </AuthCard>",
+          "  );",
+          "}",
+          "",
+        ].join("\n"),
+      },
+      {
+        name: "src/prototype/screens/PasswordRecovery.tsx",
+        text: [
+          'import { useMemo, useState, type FormEvent } from "react";',
+          'import { AuthCard } from "../AuthCard";',
+          "",
+          'type Step = "email" | "code" | "reset" | "done";',
+          "",
+          "export function PasswordRecovery() {",
+          '  const [step, setStep] = useState<Step>("email");',
+          '  const [email, setEmail] = useState("");',
+          '  const [code, setCode] = useState("");',
+          '  const [password, setPassword] = useState("");',
+          '  const [confirm, setConfirm] = useState("");',
+          "  const canEmail = useMemo(() => /.+@.+\..+/.test(email), [email]);",
+          "  const canCode = code.replace(/\\D/g, \"\").length === 6;",
+          "  const match = Boolean(password) && password === confirm;",
+          "",
+          "  function onSubmit(event: FormEvent) {",
+          "    event.preventDefault();",
+          '    if (step === "email" && canEmail) setStep("code");',
+          '    if (step === "code" && canCode) setStep("reset");',
+          '    if (step === "reset" && match) setStep("done");',
+          "  }",
+          "",
+          '  if (step === "done") {',
+          "    return (",
+          '      <AuthCard title="Password updated" lead="Your password has been reset.">',
+          '        <div className="astral-actions">',
+          '          <button type="button" className="astral-btn">',
+          "            Sign in",
+          "          </button>",
+          "        </div>",
+          "      </AuthCard>",
+          "    );",
+          "  }",
+          "",
+          '  if (step === "reset") {',
+          "    return (",
+          '      <AuthCard title="Create a new password">',
+          '        <form onSubmit={onSubmit}>',
+          '          <label className="astral-field">',
+          "            <span>New password</span>",
+          '            <input type="password" name="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} />',
+          "          </label>",
+          '          <label className="astral-field">',
+          "            <span>Confirm password</span>",
+          '            <input type="password" name="confirm" autoComplete="new-password" value={confirm} onChange={(event) => setConfirm(event.target.value)} />',
+          "          </label>",
+          "          <p className={match ? undefined : \"astral-muted\"}>Passwords match</p>",
+          '          <div className="astral-actions">',
+          '            <button type="submit" className="astral-btn" disabled={!match}>',
+          "              Reset password",
+          "            </button>",
+          "          </div>",
+          "        </form>",
+          "      </AuthCard>",
+          "    );",
+          "  }",
+          "",
+          '  if (step === "code") {',
+          "    return (",
+          '      <AuthCard title="Check your email" lead={email ? `If an account exists for ${email}, a code was sent.` : "If an account exists, a code was sent."}>',
+          '        <form onSubmit={onSubmit}>',
+          '          <label className="astral-field">',
+          "            <span>Code</span>",
+          '            <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => setCode(event.target.value)} />',
+          "          </label>",
+          '          <div className="astral-actions">',
+          '            <button type="submit" className="astral-btn" disabled={!canCode}>',
+          "              Verify",
+          "            </button>",
+          "          </div>",
+          "        </form>",
+          '        <p className="astral-auth-links">',
+          "          <span>Didn't get it?</span>",
+          '          <button type="button" className="astral-text">',
+          "            Resend email",
+          "          </button>",
+          "        </p>",
+          "      </AuthCard>",
+          "    );",
+          "  }",
+          "",
+          "  return (",
+          '    <AuthCard title="Reset your password" lead="Enter the email address linked to your account.">',
+          '      <form onSubmit={onSubmit}>',
+          '        <label className="astral-field">',
+          "          <span>Email address</span>",
+          '          <input type="email" name="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} />',
+          "        </label>",
+          '        <div className="astral-actions">',
+          '          <button type="submit" className="astral-btn" disabled={!canEmail}>',
+          "            Send reset link",
+          "          </button>",
+          "        </div>",
+          "      </form>",
+          "    </AuthCard>",
+          "  );",
+          "}",
+          "",
+        ].join("\n"),
+      },
+      {
+        name: "src/prototype/screens/Onboarding.tsx",
+        text: [
+          'import { useMemo, useState, type FormEvent } from "react";',
+          'import { AuthCard } from "../AuthCard";',
+          "",
+          "export function Onboarding() {",
+          '  const [name, setName] = useState("");',
+          '  const [title, setTitle] = useState("");',
+          "  const can = useMemo(() => Boolean(name), [name]);",
+          "",
+          "  function onSubmit(event: FormEvent) {",
+          "    event.preventDefault();",
+          "  }",
+          "",
+          "  return (",
+          '    <AuthCard title="Onboarding">',
+          '      <div className="astral-card astral-profile-mark">',
+          "        <p>Upload picture</p>",
+          "      </div>",
+          '      <form onSubmit={onSubmit}>',
+          '        <label className="astral-field">',
+          "          <span>Name</span>",
+          '          <input name="name" autoComplete="name" maxLength={80} value={name} onChange={(event) => setName(event.target.value)} />',
+          "        </label>",
+          '        <label className="astral-field">',
+          "          <span>Discipline</span>",
+          '          <button type="button" className="astral-select-btn">',
+          "            Pick a discipline",
+          "          </button>",
+          "        </label>",
+          '        <label className="astral-field">',
+          "          <span>Job title</span>",
+          '          <input name="title" autoComplete="organization-title" maxLength={80} value={title} onChange={(event) => setTitle(event.target.value)} />',
+          "        </label>",
+          '        <p className="astral-muted">Contact still waits.</p>',
+          '        <div className="astral-actions">',
+          '          <button type="submit" className="astral-btn" disabled={!can}>',
+          "            Save changes",
+          "          </button>",
+          "        </div>",
+          "      </form>",
+          "    </AuthCard>",
+          "  );",
+          "}",
+          "",
+        ].join("\n"),
+      },
+      {
+        name: "src/prototype/screens/InviteLink.tsx",
+        text: [
+          'import { useState } from "react";',
+          'import { AuthCard } from "../AuthCard";',
+          "",
+          'type Step = "invited" | "review" | "create" | "done";',
+          "",
+          "export function InviteLink() {",
+          '  const [step, setStep] = useState<Step>("invited");',
+          "",
+          '  if (step === "done") {',
+          "    return (",
+          '      <AuthCard title="You\'re in" lead="You\'ve joined the team.">',
+          '        <div className="astral-actions">',
+          '          <button type="button" className="astral-btn">',
+          "            Go to the team",
+          "          </button>",
+          "        </div>",
+          "      </AuthCard>",
+          "    );",
+          "  }",
+          "",
+          '  if (step === "create") {',
+          "    return (",
+          '      <AuthCard title="Create your account">',
+          '        <form onSubmit={(event) => { event.preventDefault(); setStep("done"); }}>',
+          '          <label className="astral-field">',
+          "            <span>First name</span>",
+          '            <input name="first" autoComplete="given-name" />',
+          "          </label>",
+          '          <label className="astral-field">',
+          "            <span>Last name</span>",
+          '            <input name="last" autoComplete="family-name" />',
+          "          </label>",
+          '          <label className="astral-field">',
+          "            <span>Create password</span>",
+          '            <input type="password" name="password" autoComplete="new-password" />',
+          "          </label>",
+          '          <div className="astral-actions">',
+          '            <button type="submit" className="astral-btn">',
+          "              Create your account",
+          "            </button>",
+          "          </div>",
+          "        </form>",
+          "      </AuthCard>",
+          "    );",
+          "  }",
+          "",
+          '  if (step === "review") {',
+          "    return (",
+          '      <AuthCard title="Review the invite">',
+          '        <div className="astral-actions">',
+          '          <button type="button" className="astral-btn" onClick={() => setStep("create")}>',
+          "            Accept invite",
+          "          </button>",
+          "        </div>",
+          '        <p className="astral-auth-links">',
+          "          <span>Already have an account?</span>",
+          '          <button type="button" className="astral-text">',
+          "            Sign in",
+          "          </button>",
+          "        </p>",
+          "      </AuthCard>",
+          "    );",
+          "  }",
+          "",
+          "  return (",
+          '    <AuthCard title="You\'ve been invited">',
+          '      <div className="astral-actions">',
+          '        <button type="button" className="astral-btn" onClick={() => setStep("review")}>',
+          "          Join the team",
+          "        </button>",
+          "      </div>",
+          "    </AuthCard>",
+          "  );",
+          "}",
+          "",
+        ].join("\n"),
+      },
+    ];
   }
 
   function textFile(name, text) {
     return { name: `${ROOT}/${name}`, bytes: utf8(text) };
   }
 
-  async function packFiles(data) {
-    const files = [
-      textFile("README.md", readme(data)),
-      textFile("src/index.ts", indexTs()),
-      textFile("src/theme/tokens.css", data.tokensCss || ""),
-      textFile("src/theme/astral.ts", data.themeTs || ""),
-      textFile("src/theme/components.css", data.lookCss || ""),
-    ];
-    (data.components || []).forEach((item) => {
-      const path = componentPath(item);
-      const body = item.source ? String(item.source) : snippetModule(path, item.snippet);
-      files.push(textFile(path, body));
-    });
+  function isFont(name) {
+    return String(name || "").startsWith("Roobert-");
+  }
+
+  function isPrototypeAsset(name) {
+    return name === "imserv-logomark.svg" || name === "auth-texture.png";
+  }
+
+  async function packFiles(data, parts) {
+    const picked = normalizeParts(parts);
+    if (!picked.components && !picked.tokens && !picked.prototype) {
+      throw new Error("empty");
+    }
+    const files = [textFile("README.md", readme(data, picked)), textFile("src/index.ts", indexTs(picked))];
+    if (picked.tokens) {
+      files.push(textFile("src/theme/tokens.css", data.tokensCss || ""));
+      files.push(textFile("src/theme/astral.ts", data.themeTs || ""));
+    }
+    if (picked.components) {
+      files.push(textFile("src/theme/components.css", data.lookCss || ""));
+      (data.components || []).forEach((item) => {
+        const path = componentPath(item);
+        const body = item.source ? String(item.source) : snippetModule(path, item.snippet);
+        files.push(textFile(path, body));
+      });
+    }
+    if (picked.prototype) {
+      prototypeFiles().forEach((file) => files.push(textFile(file.name, file.text)));
+    }
     for (const file of data.files || []) {
-      const rel = ASSET_PATHS[file.name] || `src/assets/${file.name}`;
+      const name = file.name || "";
+      const wantFont = picked.tokens && isFont(name);
+      const wantAsset = picked.prototype && isPrototypeAsset(name);
+      if (!wantFont && !wantAsset) continue;
+      const rel = ASSET_PATHS[name] || `src/assets/${name}`;
       files.push({ name: `${ROOT}/${rel}`, bytes: await bytesFromHref(file.href) });
     }
     return files.filter((file) => file.bytes && file.bytes.length);
@@ -10584,13 +11140,13 @@ window.ASTRAL_LIB = {"product": "Astral", "lead": "Copy these files into the pro
     return button && button.querySelector("[data-lib-pack-label]");
   }
 
-  async function download(data, button) {
+  async function download(data, button, parts) {
     const label = packLabel(button);
     const previous = label ? label.textContent : "";
     if (button) button.disabled = true;
     if (label) label.textContent = "Downloading";
     try {
-      const files = await packFiles(data);
+      const files = await packFiles(data, parts);
       if (!files.length) throw new Error("empty");
       saveBlob(zipStore(files), "astral-react.zip");
       if (label) label.textContent = "Downloaded";
@@ -10722,7 +11278,7 @@ window.ASTRAL_LIB = {"product": "Astral", "lead": "Copy these files into the pro
       <div class="lib-grid">
         <article class="lib-card">
           <h2>Copy the files</h2>
-          <p>Download on the right of the nav packs the React starter. Copy buttons below still give you one file at a time. Put Roobert in src/theme/fonts. Aptos is the fallback if a weight is missing.</p>
+          <p>Download on the right of the nav opens a modal. Pick Components, Tokens, and Prototype for the React starter. Copy buttons below still give you one file at a time. Put Roobert in src/theme/fonts. Aptos is the fallback if a weight is missing.</p>
         </article>
         <article class="lib-card">
           <h2>Put the snippet in the file</h2>
@@ -11054,14 +11610,191 @@ window.ASTRAL_LIB = {"product": "Astral", "lead": "Copy these files into the pro
     render();
   });
 
+  const PACK_CHOICES = [
+    { id: "components", name: "Components", hint: "Icon and the other React files" },
+    { id: "tokens", name: "Tokens", hint: "Colour, space, type, and Roobert" },
+    { id: "prototype", name: "Prototype", hint: "Screens and the shell" },
+  ];
+
+  let packPicked = {
+    components: true,
+    tokens: true,
+    prototype: true,
+  };
+  let packBusy = false;
+  let packError = "";
+  let packLastFocus = null;
+
+  function packAnyOn() {
+    return PACK_CHOICES.some((item) => packPicked[item.id]);
+  }
+
+  function packCheck(on) {
+    const ui = window.AstralUI;
+    if (ui && ui.check) return ui.check(on);
+    return `<span class="astral-check${on ? " is-on" : ""}" aria-hidden="true"></span>`;
+  }
+
+  function packModalHtml() {
+    const ui = window.AstralUI;
+    if (!ui || !ui.modalHead || !ui.button) return "";
+    const picks = PACK_CHOICES.map((item) => {
+      const on = Boolean(packPicked[item.id]);
+      return `
+        <button
+          type="button"
+          role="checkbox"
+          class="${on ? "is-on" : ""}"
+          aria-checked="${on ? "true" : "false"}"
+          data-lib-pack-part="${esc(item.id)}"
+          ${packBusy ? " disabled" : ""}
+        >
+          ${packCheck(on)}
+          <span class="astral-pack-copy">
+            <span>${esc(item.name)}</span>
+            <span class="astral-muted">${esc(item.hint)}</span>
+          </span>
+        </button>
+      `;
+    }).join("");
+    const go = ui.button("Download", 'data-lib-pack-go', {
+      type: "submit",
+      disabled: packBusy || !packAnyOn(),
+    });
+    const error = packError
+      ? `<p class="astral-muted" data-lib-pack-error role="status">${esc(packError)}</p>`
+      : "";
+    return `
+      <div class="astral-modal-back" data-lib-pack-back>
+        <div
+          id="lib-pack-dialog"
+          class="astral-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="lib-pack-title"
+        >
+          <form data-lib-pack-form>
+            ${ui.modalHead(
+              "lib-pack-title",
+              "Download",
+              "Pick what you need for the React starter.",
+              "pack"
+            )}
+            <div class="astral-modal-body">
+              <div class="astral-pack-picks" role="group" aria-label="React starter">
+                ${picks}
+              </div>
+            </div>
+            <div class="astral-modal-foot">
+              <div class="astral-actions">${go}</div>
+              ${error}
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+  }
+
+  function packHost() {
+    return document.querySelector("[data-lib-pack-back]");
+  }
+
+  function paintPackModal() {
+    const host = packHost();
+    if (!host) return;
+    const html = packModalHtml();
+    if (!html) return;
+    host.outerHTML = html.trim();
+    const go = document.querySelector("[data-lib-pack-go]");
+    if (packBusy && go) go.textContent = "Downloading";
+  }
+
+  function closePackModal() {
+    const host = packHost();
+    if (host) host.remove();
+    packBusy = false;
+    packError = "";
+    if (packBtn) packBtn.setAttribute("aria-expanded", "false");
+    if (packLastFocus && typeof packLastFocus.focus === "function") packLastFocus.focus();
+    packLastFocus = null;
+  }
+
+  function openPackModal() {
+    if (packHost()) return;
+    const html = packModalHtml();
+    if (!html) return;
+    packBusy = false;
+    packError = "";
+    packPicked = { components: true, tokens: true, prototype: true };
+    packLastFocus = document.activeElement;
+    document.body.insertAdjacentHTML("beforeend", html.trim());
+    if (packBtn) packBtn.setAttribute("aria-expanded", "true");
+    const first = document.querySelector("[data-lib-pack-part]");
+    if (first) first.focus();
+  }
+
+  async function runPackDownload() {
+    const pack = window.AstralLibPack;
+    if (!pack || !pack.download || packBusy || !packAnyOn()) return;
+    packBusy = true;
+    packError = "";
+    paintPackModal();
+    try {
+      await pack.download(data, null, packPicked);
+      closePackModal();
+    } catch {
+      packBusy = false;
+      packError = "Could not download the starter. Try again.";
+      paintPackModal();
+      const retry = document.querySelector("[data-lib-pack-go]");
+      if (retry) retry.focus();
+    }
+  }
+
   const packBtn = document.querySelector("[data-lib-pack]");
   if (packBtn) {
+    packBtn.setAttribute("aria-haspopup", "dialog");
+    packBtn.setAttribute("aria-controls", "lib-pack-dialog");
+    packBtn.setAttribute("aria-expanded", "false");
     packBtn.addEventListener("click", () => {
-      const pack = window.AstralLibPack;
-      if (!pack || !pack.download) return;
-      pack.download(data, packBtn).catch(() => {});
+      openPackModal();
     });
   }
+
+  document.addEventListener("click", (event) => {
+    const host = packHost();
+    if (!host) return;
+    const close = event.target.closest('[data-proto-modal-close="pack"]');
+    if (close || event.target === host) {
+      event.preventDefault();
+      closePackModal();
+      return;
+    }
+    const part = event.target.closest("[data-lib-pack-part]");
+    if (part && host.contains(part)) {
+      event.preventDefault();
+      if (packBusy) return;
+      const id = part.dataset.libPackPart;
+      if (!Object.prototype.hasOwnProperty.call(packPicked, id)) return;
+      packPicked[id] = !packPicked[id];
+      paintPackModal();
+      const again = document.querySelector(`[data-lib-pack-part="${id}"]`);
+      if (again) again.focus();
+    }
+  });
+
+  document.addEventListener("submit", (event) => {
+    const form = event.target.closest("[data-lib-pack-form]");
+    if (!form) return;
+    event.preventDefault();
+    runPackDownload();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !packHost()) return;
+    event.preventDefault();
+    closePackModal();
+  });
 
   main.addEventListener("click", (event) => {
     const sw = event.target.closest(".astral-switch");
