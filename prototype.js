@@ -4799,11 +4799,19 @@ function protoChartProfileKey() {
 
 function protoChartWrap(svg, label, dual, empty, extras = {}) {
   const pan = protoChartCanPan(label);
+  const heading = extras.heading || null;
   const titled = protoChartIsGraph(label);
   return `
     <div class="astral-chart-wrap" data-proto-chart="${escapeHtml(label)}">
       ${
-        titled || pan
+        heading
+          ? `<div class="astral-chart-head">
+        <div class="astral-chart-heading">
+          <p class="astral-chart-title">${escapeHtml(heading.title)}</p>
+          ${heading.when ? `<p class="astral-chart-when">${escapeHtml(heading.when)}</p>` : ""}
+        </div>
+      </div>`
+          : titled || pan
           ? `<div class="astral-chart-head">
         ${
           titled
@@ -4820,6 +4828,8 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
       ${
         empty
           ? ""
+          : heading
+          ? `<p class="sr-only">${escapeHtml(label)}. Hover or focus a bar for the reading.</p>`
           : `<p class="sr-only">${titled ? "" : `${escapeHtml(label)}. `}Hover or focus a point for the reading. Click a point to raise a query.</p>`
       }
       ${svg}
@@ -5051,7 +5061,9 @@ function protoChartBox() {
 }
 
 function protoSyncChartSize() {
-  const svg = document.querySelector("#astral-fs .astral-pane-body .astral-chart");
+  const svg = document.querySelector(
+    "#astral-fs .astral-pane-body .astral-chart, #astral-fs .astral-home-chart .astral-chart"
+  );
   if (!svg) {
     if (protoChartWatch) {
       protoChartWatch.disconnect();
@@ -5693,6 +5705,7 @@ function protoBarChart(points, label, options = {}) {
   `;
   return protoChartWrap(svg, label, dual && !options.seriesStack, view.empty, {
     stackKey: !options.seriesStack && protoChartStackSlices().length > 0,
+    heading: options.heading,
   });
 }
 
@@ -8239,16 +8252,71 @@ function protoHomeEstate(facts) {
            </button>`
         : ""
     }
-    <section class="astral-card">
-      <div class="astral-card-head">
-        <h3>Consumption across the estate</h3>
-        <p class="astral-muted">Incoming only. Last day, half-hourly. Missing data stays empty.</p>
-      </div>
-      ${protoAreaChart(protoEstateSeries(), "Estate consumption")}
+    <section class="astral-card astral-home-chart" aria-label="Consumption across the estate">
+      ${protoHomeChart()}
     </section>
   `;
 }
 
+function protoWithStore(patch, fn) {
+  const saved = {};
+  Object.keys(patch).forEach((key) => {
+    saved[key] = store[key];
+    store[key] = patch[key];
+  });
+  try {
+    return fn();
+  } finally {
+    Object.keys(saved).forEach((key) => {
+      store[key] = saved[key];
+    });
+  }
+}
+
+const PROTO_MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const PROTO_HOME_SEASON = [0.96, 1.06, 1.14, 1.22, 1.24, 1.18, 1.08, 0.98, 0.9, 0.84, 0.82, 0.86];
+
+function protoHomeYearSeries() {
+  const meters = protoMeters().filter((item) => {
+    const kind = protoMeterKind(item);
+    return item.direction !== "Export" && (kind === "electricity" || kind === "gas");
+  });
+  const day = protoCombineSeries(meters).reduce((sum, point) => sum + (Number(point.value) || 0), 0);
+  const today = protoToday();
+  return Array.from({ length: 12 }, (_, i) => {
+    const month = new Date(today.getFullYear(), today.getMonth() - 12 + i, 1);
+    const days = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+    const season = PROTO_HOME_SEASON[(month.getMonth() + 4) % 12];
+    const jitter = 1 - ((i * 7) % 5) * 0.012;
+    return {
+      label: `${PROTO_MONTHS_SHORT[month.getMonth()]} ${month.getFullYear()}`,
+      value: Number(((day * days * season * jitter) / 1000).toFixed(1)),
+      quality: "actual",
+      unit: "MWh",
+    };
+  });
+}
+
+function protoHomeChart() {
+  const points = protoHomeYearSeries();
+  const first = points[0]?.label || "";
+  const last = points[points.length - 1]?.label || "";
+  return protoWithStore(
+    {
+      prototypePane: "consumption",
+      prototypePaneFilters: [],
+      prototypeChartSliceOff: [],
+      prototypeChartPoint: null,
+    },
+    () =>
+      protoBarChart(points, "Estate consumption by month", {
+        heading: {
+          title: "Consumption",
+          when: `Last 12 months, ${first} to ${last}`,
+        },
+      })
+  );
+}
 function protoHomeBroker(facts) {
   const { flagged, alerts, reports } = facts;
   const live = reports.filter((item) => item.live).length;

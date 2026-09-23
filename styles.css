@@ -7512,7 +7512,8 @@ button.astral-state {
   width: 100%;
 }
 
-.astral-pane-body > .astral-chart-wrap {
+.astral-pane-body > .astral-chart-wrap,
+.astral-home-chart > .astral-chart-wrap {
   --astral-chart-key-row: 24px;
   --astral-chart-height: 531px;
   flex: none;
@@ -7526,18 +7527,26 @@ button.astral-state {
   padding-block: var(--space-16);
 }
 
-.astral-pane-body .astral-chart-wrap > * {
+.astral-pane-body .astral-chart-wrap > *,
+.astral-home-chart > .astral-chart-wrap > * {
   grid-row: 2;
   grid-column: 1;
 }
 
-.astral-pane-body .astral-chart-wrap > .astral-chart-head {
+.astral-pane-body .astral-chart-wrap > .astral-chart-head,
+.astral-home-chart > .astral-chart-wrap > .astral-chart-head {
   grid-row: 1;
   margin-bottom: 0;
 }
 
+.astral-home-chart > .astral-chart-wrap > .astral-chart-head {
+  min-height: 36px;
+}
+
 .astral-pane-body .astral-chart-wrap > .astral-chart,
-.astral-pane-body .astral-chart-wrap > .astral-chart-mix {
+.astral-pane-body .astral-chart-wrap > .astral-chart-mix,
+.astral-home-chart > .astral-chart-wrap > .astral-chart,
+.astral-home-chart > .astral-chart-wrap > .astral-chart-mix {
   grid-row: 2;
   min-height: 0;
   width: 100%;
@@ -7545,7 +7554,8 @@ button.astral-state {
   align-self: stretch;
 }
 
-.astral-pane-body .astral-chart-wrap > .astral-chart-keys {
+.astral-pane-body .astral-chart-wrap > .astral-chart-keys,
+.astral-home-chart > .astral-chart-wrap > .astral-chart-keys {
   grid-row: 3;
 }
 
