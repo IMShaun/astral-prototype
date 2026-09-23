@@ -3002,16 +3002,15 @@ function protoChartStackSlices() {
   const hours = protoPickedInGroup(picked, "hours");
   const tou = protoPickedInGroup(picked, "tou");
   if (!hours.length && !tou.length) return [];
-  const hourOpts = hours.length ? hours : protoFilterItemIds("hours");
-  const touOpts = tou.length ? tou : protoFilterItemIds("tou");
+  const hourOpts = hours.length ? hours : [null];
+  const touOpts = tou.length ? tou : [null];
   const slices = [];
   hourOpts.forEach((hourId) => {
     touOpts.forEach((touId) => {
-      slices.push({
-        id: `${hourId}|${touId}`,
-        hours: hourId,
-        tou: touId,
-      });
+      const slice = { id: [hourId, touId].filter(Boolean).join("|") };
+      if (hourId) slice.hours = hourId;
+      if (touId) slice.tou = touId;
+      slices.push(slice);
     });
   });
   return slices;
@@ -3051,13 +3050,20 @@ const PROTO_SLICE_FILL = {
   "hours-non|tou-off": "#6929C4",
   "hours-off|tou-on": "#8A3800",
   "hours-off|tou-off": "#737373",
+  "hours-on": "var(--color-brand-primary)",
+  "hours-non": "#6929C4",
+  "hours-off": "#737373",
+  "tou-on": "var(--color-brand-primary)",
+  "tou-off": "#02C2B7",
 };
 
 function protoSliceFill(slice, outgoing) {
   if (slice?.color) return slice.color;
   const id = [slice?.hours, slice?.tou].filter(Boolean).join("|");
   if (outgoing) {
-    return slice?.tou === "tou-on" && protoSliceHoursKind(slice) === "on" ? "#000000" : "#737373";
+    const peak = !slice?.tou || slice.tou === "tou-on";
+    const open = !slice?.hours || protoSliceHoursKind(slice) === "on";
+    return peak && open ? "#000000" : "#737373";
   }
   return PROTO_SLICE_FILL[id] || "var(--color-brand-primary)";
 }
