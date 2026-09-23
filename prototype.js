@@ -8081,7 +8081,120 @@ function protoToggleUserFilterGroup(groupId) {
   protoRestoreFocus(`#astral-user-filter-menu [data-proto-user-filter-all="${CSS.escape(groupId)}"]`);
 }
 
+const PROTO_FILTER_MENU_IDS = {
+  "data-proto-tree-filter": "astral-tree-filter-menu",
+  "data-proto-pane-filter": "astral-pane-filter-menu",
+  "data-proto-compare-filter": "astral-compare-filter-menu",
+  "data-proto-download-filter": "astral-download-filter-menu",
+  "data-proto-user-filter": "astral-user-filter-menu",
+};
+
+let protoFilterSectionOpen = "";
+
+function protoFilterSectionKey(menuId, groupId) {
+  return `${menuId}:${groupId}`;
+}
+
+function protoFilterSectionDom(key) {
+  return [...document.querySelectorAll("[data-proto-filter-section]")].find(
+    (node) => node.dataset.protoFilterSection === key
+  );
+}
+
+function protoFilterSectionSummary(group, attr, picked) {
+  const on = (group?.items || []).filter((item) => protoFilterItemOn(attr, picked, item));
+  if (!on.length) return "None selected";
+  if (on.length === 1) return on[0].name;
+  if (on.length === group.items.length) return "All";
+  return `${on.length} selected`;
+}
+
+function protoFilterSection(key, name, summary, body) {
+  const open = protoFilterSectionOpen === key;
+  const id = `astral-filter-section-${String(key).replace(/[^a-z0-9_-]+/gi, "-")}`;
+  return `
+    <div
+      class="astral-filter-group astral-filter-section${open ? " is-open" : ""}"
+      data-proto-filter-section="${escapeHtml(key)}"
+    >
+      <p id="${escapeHtml(id)}-label">${escapeHtml(name)}</p>
+      <button
+        type="button"
+        class="astral-select-btn astral-filter-section-btn"
+        aria-haspopup="true"
+        aria-expanded="${open ? "true" : "false"}"
+        aria-controls="${escapeHtml(id)}"
+        aria-label="${escapeHtml(`${name}: ${summary}`)}"
+        data-proto-filter-section-toggle="${escapeHtml(key)}"
+      >
+        <span>${escapeHtml(summary)}</span>
+        ${protoChevronMark("menu")}
+      </button>
+      ${protoFoldClip(
+        open,
+        id,
+        `<div class="astral-filter-section-list" role="group" aria-labelledby="${escapeHtml(
+          id
+        )}-label">${body}</div>`
+      )}
+    </div>
+  `;
+}
+
+function protoFilterSectionsLive() {
+  if (!protoFilterSectionOpen) return;
+  const menuId = protoFilterSectionOpen.split(":")[0];
+  if (!protoOpenMenuKeys().includes(menuId)) protoFilterSectionOpen = "";
+}
+
+function protoFilterSectionFollow(menu, until) {
+  const step = () => {
+    protoPlaceFloatMenus();
+    if (performance.now() < until) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+  if (!menu) return;
+  const reveal = () => {
+    const open = menu.querySelector(".astral-filter-section.is-open");
+    if (!open) return;
+    const box = menu.getBoundingClientRect();
+    const row = open.getBoundingClientRect();
+    if (row.bottom > box.bottom - 8) {
+      menu.scrollTop += Math.min(row.bottom - box.bottom + 8, row.top - box.top - 8);
+    } else if (row.top < box.top) {
+      menu.scrollTop -= box.top - row.top + 8;
+    }
+  };
+  const clip = menu.querySelector(".astral-filter-section.is-open > .astral-fold-clip");
+  if (clip) {
+    clip.addEventListener("transitionend", reveal, { once: true });
+    setTimeout(reveal, Math.max(0, until - performance.now()));
+  }
+}
+
+function protoToggleFilterSection(key) {
+  const next = protoFilterSectionOpen === key ? "" : key;
+  const prev = protoFilterSectionOpen;
+  protoFilterSectionOpen = next;
+  [prev, next].filter(Boolean).forEach((item) => {
+    const root = protoFilterSectionDom(item);
+    if (!root) return;
+    const open = item === next;
+    root.classList.toggle("is-open", open);
+    root
+      .querySelector(":scope > .astral-filter-section-btn")
+      ?.setAttribute("aria-expanded", open ? "true" : "false");
+    const clip = root.querySelector(":scope > .astral-fold-clip");
+    clip?.setAttribute("aria-hidden", open ? "false" : "true");
+    clip?.toggleAttribute("inert", !open);
+  });
+  const menu = protoFilterSectionDom(key)?.closest(".astral-filter-menu");
+  const ms = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 420;
+  protoFilterSectionFollow(menu, performance.now() + ms);
+}
+
 function protoFilterTickGroups(picked, attr, groups = PROTO_TREE_FILTERS) {
+  const menuId = PROTO_FILTER_MENU_IDS[attr] || attr;
   return groups.map((group) => {
     const state = protoFilterGroupTickState(group, attr, picked);
     const allOn = state === "on";
@@ -8117,13 +8230,12 @@ function protoFilterTickGroups(picked, attr, groups = PROTO_TREE_FILTERS) {
         `;
       })
       .join("");
-    return `
-      <div class="astral-filter-group">
-        <p>${escapeHtml(group.name)}</p>
-        ${allBtn}
-        ${options}
-      </div>
-    `;
+    return protoFilterSection(
+      protoFilterSectionKey(menuId, group.id),
+      group.name,
+      protoFilterSectionSummary(group, attr, picked),
+      `${allBtn}${options}`
+    );
   }).join("");
 }
 
@@ -8262,10 +8374,12 @@ function protoCompareFilterControl() {
     menuId: "astral-compare-filter-menu",
     extraClass: "astral-compare-filter",
     menu: `${protoFilterTickGroups(picked, "data-proto-compare-filter")}
-      <div class="astral-filter-group">
-        <p>Sort</p>
-        ${sorts}
-      </div>`,
+      ${protoFilterSection(
+        protoFilterSectionKey("astral-compare-filter-menu", "sort"),
+        "Sort",
+        protoCompareSortName(sort),
+        sorts
+      )}`,
   });
 }
 
@@ -15582,6 +15696,7 @@ function renderPrototype() {
   store.activePrototypeView = protoViewId(store.activePrototypeView);
   protoSeedWalkUsers();
   protoSyncMenuEnter();
+  protoFilterSectionsLive();
   root.innerHTML = protoGallery();
   const share = protoShareWalk();
   const libraryOn = protoLibraryOn();
@@ -17943,6 +18058,11 @@ function onPrototype(event) {
     protoPickConsumptionUnit(mixUnit.dataset.protoMixUnit);
     return;
   }
+  const filterSectionBtn = event.target.closest("[data-proto-filter-section-toggle]");
+  if (filterSectionBtn) {
+    protoToggleFilterSection(filterSectionBtn.dataset.protoFilterSectionToggle);
+    return;
+  }
   const paneFilterBtn = event.target.closest("[data-proto-pane-filter], [data-proto-pane-filter-all]");
   if (paneFilterBtn) {
     const groupAll = paneFilterBtn.dataset.protoPaneFilterAll;
@@ -18053,6 +18173,8 @@ function onPrototype(event) {
   if (compareSortBtn) {
     const act = compareSortBtn.dataset.protoCompareSort;
     const fromPill = Boolean(compareSortBtn.closest(".astral-filter-pill"));
+    const sortKey = protoFilterSectionKey("astral-compare-filter-menu", "sort");
+    if (!fromPill && protoFilterSectionOpen === sortKey) protoFilterSectionOpen = "";
     setProto({
       prototypeCompareSort: act === "action" || act === "count" ? act : "name",
       prototypeCompareFilterOpen: fromPill ? Boolean(store.prototypeCompareFilterOpen) : true,
@@ -18061,7 +18183,7 @@ function onPrototype(event) {
     protoRestoreFocus(
       fromPill
         ? "#astral-fs [data-proto-compare-filter='toggle']"
-        : `#astral-fs [data-proto-compare-sort="${CSS.escape(act)}"]`
+        : `#astral-fs [data-proto-filter-section-toggle="${CSS.escape(sortKey)}"]`
     );
     return;
   }
