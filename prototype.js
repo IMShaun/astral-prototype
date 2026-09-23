@@ -10673,6 +10673,97 @@ function protoResetPaneScroll() {
     });
 }
 
+// Filters re-render the whole walk, so carry scroll offsets across the repaint.
+// A new page drops them all; a new pane or selection drops the pane's own.
+let protoScrollPage = "";
+let protoScrollPane = "";
+
+function protoScrollPageKey() {
+  return [
+    protoViewId(store.activePrototypeView),
+    store.prototypeSettingsSection || "",
+    protoLibraryOn() ? "library" : "",
+  ].join("|");
+}
+
+function protoScrollPaneKey() {
+  const scope = store.prototypeScope || "";
+  return [
+    protoPaneId(),
+    scope,
+    scope === "site" ? store.activePrototypeMeter || "" : store.prototypeGroup || "",
+  ].join("|");
+}
+
+function protoScrollIsPane(node) {
+  return (
+    node.matches(".astral-pane-body, .astral-stage, .astral-stage-body") ||
+    Boolean(node.closest(".astral-pane"))
+  );
+}
+
+function protoScrollNodeKey(node, root) {
+  if (node.id) return `#${node.id}`;
+  const parts = [];
+  let cur = node;
+  while (cur && cur !== root) {
+    if (cur.id) {
+      parts.unshift(`#${cur.id}`);
+      break;
+    }
+    const tag = cur.tagName.toLowerCase();
+    const cls = cur.classList[0] || "";
+    const parent = cur.parentElement;
+    const index = parent
+      ? [...parent.children].filter(
+          (child) => child.tagName === cur.tagName && (child.classList[0] || "") === cls
+        ).indexOf(cur)
+      : 0;
+    parts.unshift(`${tag}.${cls}:${index}`);
+    cur = parent;
+  }
+  return parts.join(">");
+}
+
+function protoScrollCapture(root) {
+  const page = protoScrollPage;
+  const pane = protoScrollPane;
+  protoScrollPage = protoScrollPageKey();
+  protoScrollPane = protoScrollPaneKey();
+  if (!root || page !== protoScrollPage) return null;
+  const keepPane = pane === protoScrollPane;
+  const saved = [];
+  root.querySelectorAll("*").forEach((node) => {
+    if (!node.scrollTop && !node.scrollLeft) return;
+    if (!keepPane && protoScrollIsPane(node)) return;
+    saved.push({ key: protoScrollNodeKey(node, root), top: node.scrollTop, left: node.scrollLeft });
+  });
+  return saved.length ? saved : null;
+}
+
+function protoScrollRestore(root, saved) {
+  if (!root || !saved) return;
+  const apply = () => {
+    const nodes = new Map();
+    root.querySelectorAll("*").forEach((node) => {
+      if (node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth) {
+        nodes.set(protoScrollNodeKey(node, root), node);
+      }
+    });
+    saved.forEach((item) => {
+      const node = nodes.get(item.key);
+      if (!node) return;
+      if (node.scrollTop !== item.top) node.scrollTop = item.top;
+      if (node.scrollLeft !== item.left) node.scrollLeft = item.left;
+    });
+  };
+  apply();
+  requestAnimationFrame(() => {
+    apply();
+    requestAnimationFrame(apply);
+  });
+}
+
 function protoPaintPortfolioPane() {
   const pane = document.querySelector("#astral-fs section.astral-pane");
   if (!pane) {
@@ -10680,6 +10771,7 @@ function protoPaintPortfolioPane() {
     return;
   }
   pane.innerHTML = protoPortfolioDetail();
+  protoScrollPane = protoScrollPaneKey();
   protoResetPaneScroll();
   protoBindBreakdown();
   protoMeasurePillsSoon();
@@ -15497,6 +15589,7 @@ function renderPrototype() {
     ? true
     : Boolean(store.prototypeFullscreen) && store.activeSection === "prototype";
   if (fs) {
+    const scroll = protoScrollCapture(full && !libraryOn ? fs : null);
     protoClearIconTipPlace();
     protoClearFloatMenus();
     fs.hidden = !full;
@@ -15506,6 +15599,7 @@ function renderPrototype() {
       protoPaintLibraryFs(fs);
     } else {
       protoPaintWalkFs(fs);
+      protoScrollRestore(fs, scroll);
     }
   }
   document.body.classList.toggle("is-proto-fs", full);
