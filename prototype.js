@@ -11854,6 +11854,7 @@ function protoPaintPortfolioPane() {
   protoScrollPane = protoScrollPaneKey();
   protoResetPaneScroll();
   protoBindBreakdown();
+  protoSyncTableHeadsSoon();
   protoMeasurePillsSoon();
   protoSlideNavPillsSoon();
   protoBindScrollRegions();
@@ -12117,6 +12118,35 @@ function protoPaintBreakdown() {
       ? `<tr class="astral-breakdown-pad" aria-hidden="true"><td colspan="${cols}" style="height:${botH}px"></td></tr>`
       : "",
   ].join("");
+}
+
+function protoSyncTableHeads() {
+  const tables = document.querySelectorAll("#astral-fs table.astral-table");
+  const plan = [...tables].map((table) => {
+    const head = table.tHead;
+    if (!head) return null;
+    const rows = [...table.querySelectorAll(":scope > tbody > tr:not(.astral-breakdown-pad)")].slice(0, 8);
+    const hs = rows.map((row) => row.getBoundingClientRect().height).filter((h) => h > 0);
+    return { head, h: hs.length ? Math.round(Math.min(...hs)) : 0 };
+  });
+  plan.forEach((item) => {
+    if (!item) return;
+    const next = item.h ? `${item.h}px` : "";
+    if (item.head.style.getPropertyValue("--astral-head-h") !== next) {
+      if (next) item.head.style.setProperty("--astral-head-h", next);
+      else item.head.style.removeProperty("--astral-head-h");
+    }
+  });
+}
+
+function protoSyncTableHeadsSoon() {
+  protoSyncTableHeads();
+  requestAnimationFrame(protoSyncTableHeads);
+  if (!protoSyncTableHeads.bound) {
+    protoSyncTableHeads.bound = true;
+    window.addEventListener("resize", () => requestAnimationFrame(protoSyncTableHeads));
+    document.fonts?.ready?.then(() => protoSyncTableHeads());
+  }
 }
 
 function protoBindBreakdown() {
@@ -16891,6 +16921,7 @@ function renderPrototype() {
     protoPlaceQueryPinSoon();
   }
   protoBindBreakdown();
+  protoSyncTableHeadsSoon();
   protoMeasurePillsSoon();
   protoSlideNavPillsSoon();
   protoFitNavSoon();

@@ -8799,10 +8799,10 @@ button.astral-state {
 }
 
 .astral-breakdown-cols.is-meters thead th.astral-breakdown-meter {
-  height: 64px;
+  height: var(--astral-head-h, 45px);
   box-sizing: border-box;
-  padding: 12px 8px;
-  vertical-align: top;
+  padding: 0 8px;
+  vertical-align: middle;
   letter-spacing: 0;
   text-transform: none;
 }
@@ -8845,10 +8845,10 @@ button.astral-state {
 }
 
 .astral-breakdown-cols.is-meters thead th.astral-breakdown-slice {
-  height: 36px;
+  height: var(--astral-head-h, 45px);
   box-sizing: border-box;
-  padding: 0 8px 10px;
-  vertical-align: bottom;
+  padding: 0 8px;
+  vertical-align: middle;
   font-weight: 400;
   letter-spacing: 0;
   text-transform: none;
@@ -9055,7 +9055,7 @@ button.astral-state {
 
 .astral-people .astral-person-copy strong {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
   min-width: 0;
@@ -9070,8 +9070,8 @@ button.astral-state {
 }
 
 .astral-people .astral-people-name {
-  flex: 1 1 6rem;
-  min-width: 6rem;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .astral-people .astral-person-copy .astral-muted {
@@ -10784,4 +10784,11 @@ button.astral-state:focus-visible,
 /* Column headers sit on the subtle grey surface so they read as a band apart from the rows. */
 #astral-fs .astral-table thead th {
   background: var(--color-background-subtle);
+}
+/* Column headers always match the height of the body rows beneath them (synced in protoSyncTableHeads). */
+.astral-table thead[style*="--astral-head-h"] th {
+  height: var(--astral-head-h);
+  box-sizing: border-box;
+  padding-top: 0;
+  padding-bottom: 0;
 }
