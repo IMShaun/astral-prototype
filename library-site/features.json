@@ -1,0 +1,560 @@
+{
+  "lead": "Each story names who, what, and why. Open one for confirmation and the walk.",
+  "items": [
+    {
+      "id": "portfolio",
+      "name": "Portfolio",
+      "status": "working",
+      "statusNote": "The live prototype already walks this.",
+      "screen": "Portfolio",
+      "summary": "See use across the estate, a group, or a site.",
+      "roles": [
+        "Admin",
+        "Manager",
+        "Contributor",
+        "Viewer"
+      ],
+      "who": "A Customer uses Portfolio. Viewer can look. Contributor can work.",
+      "stories": [
+        {
+          "id": "scan-estate",
+          "name": "Scan the estate",
+          "points": 3,
+          "role": "Viewer",
+          "want": "see All and the named groups on the tree",
+          "benefit": "I can start from the collective before I pick a place",
+          "notes": "This is the first look at Portfolio. Tabs other than Consumption wait for their own stories.",
+          "criteria": [
+            {
+              "given": "I am on Portfolio",
+              "when": "the tree loads",
+              "then": "All sits at the top with a grey site count"
+            },
+            {
+              "given": "All is selected",
+              "when": "I look at the pane",
+              "then": "I see the collective overview"
+            },
+            {
+              "given": "I click a group",
+              "when": "it opens",
+              "then": "its sites show and other groups hide"
+            },
+            {
+              "given": "a group is open",
+              "when": "I click it again",
+              "then": "its sites hide"
+            }
+          ],
+          "stages": [
+            {
+              "id": "all",
+              "name": "All on the tree",
+              "caption": "All sits at the top. The pane is the collective overview.",
+              "image": "features/shots/scan-all.png"
+            },
+            {
+              "id": "group-open",
+              "name": "A group open",
+              "caption": "The group shows its sites. Opening one group closes the others.",
+              "image": "features/shots/scan-group.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 3,
+            "effort": 3,
+            "risk": 2,
+            "dependencies": 1,
+            "why": "More than Search. Tree, All, and group accordion."
+          }
+        },
+        {
+          "id": "find-site",
+          "name": "Find a site or meter",
+          "points": 2,
+          "role": "Viewer",
+          "want": "search for a site or meter",
+          "benefit": "I can reach it without walking the whole tree",
+          "notes": "Filter sits to the right. Filter behaviour sits on Filter the tree.",
+          "criteria": [
+            {
+              "given": "I am on the tree",
+              "when": "I look at the search field",
+              "then": "the label is Search site or meter"
+            },
+            {
+              "given": "I type a site name",
+              "when": "hits exist",
+              "then": "matching sites sit in the tree"
+            },
+            {
+              "given": "Search has a query",
+              "when": "I leave Portfolio",
+              "then": "Search starts again"
+            }
+          ],
+          "stages": [
+            {
+              "id": "search",
+              "name": "Search the tree",
+              "caption": "Type a site or meter. Hits sit in the tree.",
+              "image": "features/shots/find-search.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 2,
+            "effort": 2,
+            "risk": 1,
+            "dependencies": 1,
+            "why": "This is the 2. Search, then hits in the tree."
+          }
+        },
+        {
+          "id": "filter-tree",
+          "name": "Filter the tree",
+          "points": 5,
+          "role": "Viewer",
+          "want": "tick ownership, meter, and In or Out",
+          "benefit": "the tree only shows places that match",
+          "notes": "The same ticks sit on the pane Filter, to the right of Compare. Water on is Tick Water.",
+          "criteria": [
+            {
+              "given": "I open Filter on the tree",
+              "when": "the overlay shows",
+              "then": "I can tick Tenant owned, Electricity, Gas, Water, In, and Out"
+            },
+            {
+              "given": "the overlay is open",
+              "when": "I have not ticked Water",
+              "then": "Water is off"
+            },
+            {
+              "given": "a filter is on",
+              "when": "I look under Search",
+              "then": "pills sit there and the Filter count is a cyan circle with no black rim"
+            },
+            {
+              "given": "pills are on",
+              "when": "I use the cross or Clear",
+              "then": "that one goes, or they all go"
+            }
+          ],
+          "stages": [
+            {
+              "id": "overlay",
+              "name": "Filter overlay",
+              "caption": "Ticks for Ownership, Meter, and Incoming and Outgoing.",
+              "image": "features/shots/filter-overlay.png"
+            },
+            {
+              "id": "pills",
+              "name": "Filter pills",
+              "caption": "Pills sit under Search. A cross clears that one.",
+              "image": "features/shots/filter-pills.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 4,
+            "effort": 4,
+            "risk": 3,
+            "dependencies": 1,
+            "why": "Overlay ticks, pills, count, and Clear."
+          }
+        },
+        {
+          "id": "read-group",
+          "name": "Read a group",
+          "points": 5,
+          "role": "Viewer",
+          "want": "see consumption for a group",
+          "benefit": "I can read the collective without opening each site",
+          "notes": "Cost, Carbon, Site profile, Alerts, and Queries are other stories. Pills on the group are sites.",
+          "criteria": [
+            {
+              "given": "I click a group",
+              "when": "the pane opens",
+              "then": "the kicker is the company and the heading is the group"
+            },
+            {
+              "given": "I am on the group",
+              "when": "Consumption is selected",
+              "then": "the graph is the collective for the sites that are on"
+            },
+            {
+              "given": "site pills sit above the tabs",
+              "when": "I click a pill",
+              "then": "that site leaves the graph, and I can take the last one off"
+            }
+          ],
+          "stages": [
+            {
+              "id": "group-pane",
+              "name": "Group pane",
+              "caption": "Collective consumption. Each pill is a site.",
+              "image": "features/shots/read-group.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 4,
+            "effort": 4,
+            "risk": 3,
+            "dependencies": 1,
+            "why": "Collective graph and site pills."
+          }
+        },
+        {
+          "id": "read-site",
+          "name": "Read a site",
+          "points": 5,
+          "role": "Viewer",
+          "want": "see Incoming and Outgoing on a site",
+          "benefit": "import and export share one graph",
+          "notes": "Do not put All, In, or Out chips on the site head. Do not put a meter Select on the site head.",
+          "criteria": [
+            {
+              "given": "I open a site with both channels",
+              "when": "the pane loads",
+              "then": "the title is Incoming and outgoing"
+            },
+            {
+              "given": "Incoming and Outgoing sit together",
+              "when": "I look at the key",
+              "then": "In is cyan with an import mark and Out is black with an export mark"
+            },
+            {
+              "given": "In and Out pills sit under the graph",
+              "when": "I click one",
+              "then": "that series leaves, the name strikes through, and I can take the last one off"
+            },
+            {
+              "given": "the site has meters",
+              "when": "I look above the tabs",
+              "then": "each pill is a meter, even if there is only one"
+            }
+          ],
+          "stages": [
+            {
+              "id": "site-pane",
+              "name": "Site pane",
+              "caption": "Incoming and outgoing. In is cyan. Out is black.",
+              "image": "features/shots/read-site.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 4,
+            "effort": 4,
+            "risk": 3,
+            "dependencies": 1,
+            "why": "Incoming and Outgoing, the key, and meter pills."
+          }
+        },
+        {
+          "id": "change-window",
+          "name": "Change the window",
+          "points": 3,
+          "role": "Viewer",
+          "want": "change the date window",
+          "benefit": "I can read a preset or a custom from and to",
+          "notes": "Gaps stay gaps. Zero is a reading.",
+          "criteria": [
+            {
+              "given": "I am on the graph",
+              "when": "I open the date Select",
+              "then": "I can pick Last 24 hours, Last 7 days, Last month, Last 12 months, or Custom"
+            },
+            {
+              "given": "I pick Custom",
+              "when": "the calendar opens",
+              "then": "I set from and to, and the title uses those dates"
+            },
+            {
+              "given": "a preset is on",
+              "when": "I use the arrows",
+              "then": "the window moves and the filter becomes Custom, then the preset again at the original window"
+            }
+          ],
+          "stages": [
+            {
+              "id": "date",
+              "name": "Date on the graph",
+              "caption": "The preset name sits next to the title. Arrows sit to the right.",
+              "image": "features/shots/change-window.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 3,
+            "effort": 3,
+            "risk": 2,
+            "dependencies": 1,
+            "why": "Date Select, Custom calendar, and arrows."
+          }
+        },
+        {
+          "id": "switch-graph",
+          "name": "Switch the graph",
+          "points": 3,
+          "role": "Viewer",
+          "want": "switch Total or Individual, and Bar or Line",
+          "benefit": "I can add readings up or break them down, and pick a graph style",
+          "notes": "Cost and Carbon are their own stories. Incoming and Outgoing stay cyan and black bars when Total and Bar are on.",
+          "criteria": [
+            {
+              "given": "I am on Consumption",
+              "when": "Total and Bar are selected",
+              "then": "the graph adds the readings up as bars"
+            },
+            {
+              "given": "I pick Individual and Line",
+              "when": "I am on a group",
+              "then": "I see one line per site"
+            },
+            {
+              "given": "I pick Individual and Line",
+              "when": "I am on a site",
+              "then": "I see one line per meter"
+            },
+            {
+              "given": "I pick Total and Line",
+              "when": "I am on a group",
+              "then": "I see one line for the total"
+            }
+          ],
+          "stages": [
+            {
+              "id": "individual",
+              "name": "Individual consumption",
+              "caption": "Lines, one per site on a group, or one per meter on a site.",
+              "image": "features/shots/switch-graph.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 3,
+            "effort": 3,
+            "risk": 2,
+            "dependencies": 1,
+            "why": "Bars or lines, and group vs site."
+          }
+        },
+        {
+          "id": "see-cost",
+          "name": "See Cost",
+          "points": 2,
+          "role": "Viewer",
+          "want": "see Cost for the same window",
+          "benefit": "I can read spend in pounds",
+          "notes": "Rates on Site profile feed the walk numbers. Water uses £.",
+          "criteria": [
+            {
+              "given": "I am on a group or a site",
+              "when": "I pick Cost",
+              "then": "the title is Cost and the unit is £"
+            },
+            {
+              "given": "I am on Cost",
+              "when": "I open the graph Select",
+              "then": "I can pick Total cost or Individual cost"
+            }
+          ],
+          "stages": [
+            {
+              "id": "cost",
+              "name": "Cost on the pane",
+              "caption": "Same window as Consumption. The unit is £.",
+              "image": "features/shots/see-cost.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 2,
+            "effort": 2,
+            "risk": 2,
+            "dependencies": 1,
+            "why": "Same graph as Consumption. The unit is £."
+          }
+        },
+        {
+          "id": "see-carbon",
+          "name": "See Carbon",
+          "points": 2,
+          "role": "Viewer",
+          "want": "see Carbon for the same window",
+          "benefit": "I can read kgCO2e for the same places",
+          "notes": "Water uses the 2026 supply and wastewater factors, combined on the graph.",
+          "criteria": [
+            {
+              "given": "I am on a group or a site",
+              "when": "I pick Carbon",
+              "then": "the title is Carbon and the unit is kgCO2e"
+            },
+            {
+              "given": "I am on Carbon",
+              "when": "I open the graph Select",
+              "then": "I can pick Total carbon or Individual carbon"
+            }
+          ],
+          "stages": [
+            {
+              "id": "carbon",
+              "name": "Carbon on the pane",
+              "caption": "Same window as Consumption. The unit is kgCO2e.",
+              "image": "features/shots/see-carbon.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 2,
+            "effort": 2,
+            "risk": 2,
+            "dependencies": 1,
+            "why": "Same graph as Consumption. The unit is kgCO2e."
+          }
+        },
+        {
+          "id": "compare-others",
+          "name": "Compare others",
+          "points": 8,
+          "role": "Viewer",
+          "want": "compare others at this level",
+          "benefit": "I can add more than one place to the graph",
+          "notes": "On one meter, Compare lists other meters throughout the portfolio. The row is the site and the MPAN.",
+          "criteria": [
+            {
+              "given": "I am on a group or a site",
+              "when": "I open Compare",
+              "then": "a modal lists others at that level"
+            },
+            {
+              "given": "the modal is open",
+              "when": "I search and add",
+              "then": "I can add more than one"
+            },
+            {
+              "given": "I have added others",
+              "when": "I look at Compare",
+              "then": "the count is a cyan circle with no black rim, and the cross clears it"
+            }
+          ],
+          "stages": [
+            {
+              "id": "modal",
+              "name": "Compare modal",
+              "caption": "Search, Filter, and a list of others at that level.",
+              "image": "features/shots/compare-modal.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 5,
+            "effort": 5,
+            "risk": 4,
+            "dependencies": 2,
+            "why": "Modal, more than one place, and lines on the graph."
+          }
+        },
+        {
+          "id": "site-profile",
+          "name": "Open Site profile",
+          "points": 5,
+          "role": "Viewer",
+          "want": "open a meter on Site profile",
+          "benefit": "I can see hours, time of use, attributes, and the map",
+          "notes": "MPAN or MPRN for electricity and gas. Serial for water. Do not invent a SPID. If Country is England, points below a site are MPANs. Brand and install wait. Viewer looks. Admin, Manager, and Contributor can edit.",
+          "criteria": [
+            {
+              "given": "I am on a site",
+              "when": "I pick Site profile",
+              "then": "meters sit in a list with the same lines as the other tables and no box"
+            },
+            {
+              "given": "I click a meter row",
+              "when": "it opens",
+              "then": "the meter fills the pane, and Operational hours, Time of use, and Attributes sit as accordions"
+            },
+            {
+              "given": "a meter is open",
+              "when": "I pick Time of use",
+              "then": "that accordion opens and the others close"
+            },
+            {
+              "given": "a meter is open",
+              "when": "I look at time of use",
+              "then": "it is on peak and off peak"
+            },
+            {
+              "given": "I am on Site profile",
+              "when": "I look at the map",
+              "then": "the map is square and follows the meters on the graph"
+            }
+          ],
+          "stages": [
+            {
+              "id": "meters",
+              "name": "Meter list",
+              "caption": "The list uses the same lines as the other tables. No box around it.",
+              "image": "features/shots/site-profile.png"
+            },
+            {
+              "id": "open-meter",
+              "name": "Open meter",
+              "caption": "Hours, time of use, and attributes sit in the open row. Settings sits as a cog with the word Settings. It opens a page for that meter. Back sits to the left of the heading.",
+              "image": "features/shots/site-profile-open.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 4,
+            "effort": 5,
+            "risk": 2,
+            "dependencies": 1,
+            "why": "Meter list, open row, rates, and a square map."
+          }
+        },
+        {
+          "id": "tick-water",
+          "name": "Tick Water",
+          "points": 3,
+          "role": "Viewer",
+          "want": "tick Water",
+          "benefit": "I can read m³ on a site that holds a water meter",
+          "notes": "Walk sites hold a water meter so the tick has a hit. Dummy site A1 still holds one. Serial then the number. Gas is a flame. Water is a drop. Do not invent a SPID.",
+          "criteria": [
+            {
+              "given": "Water is off",
+              "when": "I tick Water",
+              "then": "sites with water meters are hits, including Dummy site A1"
+            },
+            {
+              "given": "I am on that site with Water on",
+              "when": "I read Consumption",
+              "then": "the unit is m³"
+            },
+            {
+              "given": "I am on Cost or Carbon",
+              "when": "Water is the meter",
+              "then": "Cost is £ and Carbon is kgCO2e"
+            },
+            {
+              "given": "Electricity, Gas, and Water are on from Cost",
+              "when": "I open Consumption",
+              "then": "I see that this combination cannot be shown, and I can View water consumption or View electricity & gas consumption"
+            }
+          ],
+          "stages": [
+            {
+              "id": "water",
+              "name": "Water on Dummy site A1",
+              "caption": "The water mark is a drop. Use is m³.",
+              "image": "features/shots/tick-water.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 3,
+            "effort": 2,
+            "risk": 3,
+            "dependencies": 1,
+            "why": "New unit, Water off until ticked, and Dummy site A1."
+          }
+        }
+      ]
+    }
+  ],
+  "estimate": {
+    "help": "Points are relative size, not days. Find a site or meter is the 2."
+  }
+}

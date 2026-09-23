@@ -1,7 +1,23 @@
 # Astral prototype
 
-A password-gated copy of the Work Desk Astral prototype, published with GitHub Pages and StatiCrypt.
+Live IMSERV Astral prototype source.
 
-The briefing desk stays in the private `work-desk` repo. This site only unlocks the prototype.
+## Walk it in the browser
 
-Ask Shaun for the password.
+https://imshaun.github.io/astral-prototype/
+
+That page is password gated. Ask Shaun for the password.
+
+## Run the code
+
+Download this repository. In the folder:
+
+```
+python3 server.py 5190
+```
+
+Open http://127.0.0.1:5190/
+
+This copy is the prototype and the library. It is not the briefing desk.
+
+Do not commit passwords.

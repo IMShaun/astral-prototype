@@ -1,0 +1,641 @@
+html:has(.lib-root),
+.lib-root {
+  min-height: 100%;
+  background: #fff;
+  color: #000;
+}
+
+.lib-skip {
+  position: absolute;
+  left: -999px;
+  top: 0;
+}
+
+.lib-skip:focus {
+  left: 16px;
+  top: 16px;
+  z-index: 40;
+  padding: 8px 12px;
+  background: #000;
+  color: #fff;
+}
+
+.lib-root .astral-preview-menu {
+  z-index: 40;
+}
+
+.lib-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 16px 24px 12px;
+  background: #fff;
+}
+
+.lib-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 60px;
+  padding: 0 12px 0 30px;
+  border-radius: 999px;
+  background: #00020b;
+  color: #fff;
+}
+
+.lib-brand {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+
+.lib-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.lib-download {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  flex: none;
+}
+
+.lib-download svg {
+  width: 18px;
+  height: 18px;
+}
+
+.lib-download:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.176);
+}
+
+.lib-download:disabled {
+  color: rgba(255, 255, 255, 0.72);
+  cursor: default;
+}
+
+.lib-download:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.lib-nav button {
+  appearance: none;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.lib-nav button:hover {
+  color: #fff;
+}
+
+.lib-nav button.is-on {
+  background: rgba(255, 255, 255, 0.176);
+  color: #fff;
+}
+
+.lib-nav button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.lib-main {
+  width: min(72rem, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 24px 0 80px;
+}
+
+.lib-lead {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 32px;
+}
+
+.lib-lead h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.lib-lead p {
+  margin: 0;
+  max-width: 40rem;
+  color: #737373;
+}
+
+.lib-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.lib-card {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  padding: 20px;
+  border: 1px solid #dfdfdf;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.lib-card h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+
+.lib-card p,
+.lib-card li {
+  margin: 0;
+  color: #000;
+}
+
+.lib-card ol,
+.lib-card ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 6px;
+}
+
+.lib-rules {
+  margin-top: 16px;
+}
+
+.lib-copy-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.lib-copy-row button,
+.lib-list button,
+.lib-comp-list button {
+  appearance: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.lib-ghost {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid #dfdfdf;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+}
+
+.lib-ghost:hover {
+  background: #f7f7f7;
+}
+
+.lib-ghost:focus-visible,
+.lib-token:focus-visible,
+.lib-list button:focus-visible,
+.lib-comp-list button:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
+
+.lib-split {
+  display: grid;
+  grid-template-columns: 14rem minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.lib-list,
+.lib-comp-list {
+  display: grid;
+  gap: 4px;
+  position: sticky;
+  top: 100px;
+}
+
+.lib-list button,
+.lib-comp-list button {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #000;
+  text-align: left;
+}
+
+.lib-list button:hover,
+.lib-comp-list button:hover {
+  background: #f7f7f7;
+}
+
+.lib-list button.is-on,
+.lib-comp-list button.is-on {
+  background: #efefef;
+  color: #000;
+  font-weight: 500;
+}
+
+.lib-pane {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.lib-pane h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+.lib-help {
+  margin: 0;
+  color: #737373;
+}
+
+.lib-token-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.lib-token-table th,
+.lib-token-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #dfdfdf;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.lib-access-table th,
+.lib-access-table td {
+  vertical-align: top;
+}
+
+.lib-access-table td {
+  max-width: 18rem;
+}
+
+.lib-access-grid {
+  grid-template-columns: 1fr;
+}
+
+.lib-token-table th {
+  color: #737373;
+  font-weight: 500;
+}
+
+.lib-token-table code {
+  font-size: 0.8125rem;
+}
+
+.lib-swatch {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid #dfdfdf;
+}
+
+.lib-swatch.is-empty {
+  background: repeating-linear-gradient(
+    135deg,
+    #fff,
+    #fff 4px,
+    #efefef 4px,
+    #efefef 8px
+  );
+}
+
+.lib-type-sample {
+  margin: 0;
+  color: #000;
+}
+
+.lib-token {
+  appearance: none;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lib-code {
+  margin: 0;
+  padding: 16px;
+  overflow: auto;
+  border: 1px solid #dfdfdf;
+  border-radius: 12px;
+  background: #efefef;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.lib-code-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lib-code-head h3,
+.lib-pane h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.lib-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lib-chips li {
+  min-height: 24px;
+  padding: 4px 12px;
+  border: 1px solid #dfdfdf;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.lib-comp-list .lib-help {
+  margin: 12px 0 4px;
+  padding: 0 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.lib-comp-list .lib-help:first-child {
+  margin-top: 0;
+}
+
+.lib-main > .lib-code-head {
+  margin-top: 32px;
+}
+
+.lib-copied {
+  background: #028178 !important;
+  border-color: transparent !important;
+  color: #fff !important;
+}
+
+.lib-root .ds-preview {
+  width: 100%;
+}
+
+.lib-root .astral-btn.is-hover {
+  background: var(--color-action-primary-hover);
+  color: var(--color-text-inverse);
+}
+
+.lib-feature-grid {
+  grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+}
+
+.lib-story-grid,
+.lib-stat-grid {
+  grid-template-columns: 1fr;
+}
+
+.lib-stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  margin: 0 0 16px;
+}
+
+button.lib-feature {
+  appearance: none;
+  width: 100%;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.lib-feature:hover {
+  background: #f7f7f7;
+}
+
+button.lib-feature:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
+
+.lib-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+button.lib-feature .lib-card-top {
+  justify-content: space-between;
+}
+
+.lib-card-top h1,
+.lib-card-top h2 {
+  margin: 0;
+}
+
+.lib-lead .lib-card-top {
+  align-items: center;
+}
+
+.lib-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.lib-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lib-metric span,
+.lib-metric-note {
+  color: #737373;
+  font-size: 0.875rem;
+}
+
+.lib-root .lib-count {
+  width: auto;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--color-border-default, #dfdfdf);
+  color: var(--color-text-primary, #000);
+  font-size: 0.75rem;
+}
+
+.lib-stat {
+  gap: 8px;
+}
+
+.lib-stat-figure {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.lib-stat p {
+  color: #737373;
+}
+
+.lib-feature-who {
+  margin: 0 0 8px;
+}
+
+.lib-role-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 32px;
+}
+
+.lib-block-title {
+  margin: 32px 0 16px;
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+
+.lib-root .text-back {
+  margin: 0 0 16px;
+}
+
+.lib-stages {
+  display: grid;
+  gap: 16px;
+}
+
+.lib-stage {
+  display: grid;
+  gap: 8px;
+}
+
+.lib-stage h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.lib-shot {
+  margin: 0;
+  min-height: 12rem;
+  overflow: hidden;
+  border: 1px solid #dfdfdf;
+  border-radius: 16px;
+  background: #efefef;
+}
+
+.lib-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.lib-shot:has(img) {
+  min-height: 0;
+}
+
+.lib-shot.is-empty {
+  min-height: 12rem;
+  display: grid;
+  place-items: center;
+}
+
+.lib-shot.is-empty::after {
+  content: "Shot still to capture.";
+  color: #737373;
+}
+
+.lib-story-copy,
+.lib-story-card {
+  display: grid;
+  gap: 8px;
+}
+
+.lib-story-card {
+  margin: 0 0 16px;
+}
+
+.lib-story-notes {
+  margin: 0 0 8px;
+}
+
+.lib-scenarios {
+  margin: 0 0 8px;
+}
+
+.lib-gwt {
+  display: inline-block;
+  min-width: 3.25rem;
+  color: #737373;
+  font-size: 0.875rem;
+}
+
+.lib-scenario p {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.lib-factor-grid {
+  margin: 0 0 8px;
+}
+
+.lib-factor .lib-stat-figure {
+  font-size: 1.5rem;
+}
+
+@media (max-width: 800px) {
+  .lib-split {
+    grid-template-columns: 1fr;
+  }
+
+  .lib-list,
+  .lib-comp-list {
+    position: static;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  }
+}

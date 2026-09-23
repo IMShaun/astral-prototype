@@ -1,0 +1,97 @@
+{
+  "updated": "2026-09-23",
+  "activeTeam": "imserv",
+  "activeSection": "prototype",
+  "teams": [
+    {
+      "id": "imserv",
+      "name": "IMSERV"
+    },
+    {
+      "id": "off-axis",
+      "name": "Off Axis"
+    },
+    {
+      "id": "stagerise",
+      "name": "Stagerise"
+    }
+  ],
+  "access": {
+    "company": [],
+    "people": []
+  },
+  "boards": {
+    "imserv": {
+      "headline": "Astral prototype",
+      "situation": "This copy is the live Astral walk. The briefing desk stays off this download.",
+      "can": [
+        "Open a screen and walk the estate.",
+        "Change company type from the preview bar.",
+        "Leave. This copy does not save to a shared file."
+      ],
+      "cannot": [
+        "See the morning board in this copy.",
+        "Change the live product from this page.",
+        "Invite people or restore a tool here."
+      ],
+      "next": [
+        "Pick a company type.",
+        "Open Portfolio.",
+        "Send notes back to Shaun."
+      ],
+      "know": [],
+      "today": [],
+      "done": [],
+      "groups": [],
+      "access": []
+    },
+    "off-axis": {
+      "headline": "Astral prototype",
+      "situation": "This copy is the live Astral walk. The briefing desk stays off this download.",
+      "can": [
+        "Open a screen and walk the estate.",
+        "Change company type from the preview bar.",
+        "Leave. This copy does not save to a shared file."
+      ],
+      "cannot": [
+        "See the morning board in this copy.",
+        "Change the live product from this page.",
+        "Invite people or restore a tool here."
+      ],
+      "next": [
+        "Pick a company type.",
+        "Open Portfolio.",
+        "Send notes back to Shaun."
+      ],
+      "know": [],
+      "today": [],
+      "done": [],
+      "groups": [],
+      "access": []
+    },
+    "stagerise": {
+      "headline": "Astral prototype",
+      "situation": "This copy is the live Astral walk. The briefing desk stays off this download.",
+      "can": [
+        "Open a screen and walk the estate.",
+        "Change company type from the preview bar.",
+        "Leave. This copy does not save to a shared file."
+      ],
+      "cannot": [
+        "See the morning board in this copy.",
+        "Change the live product from this page.",
+        "Invite people or restore a tool here."
+      ],
+      "next": [
+        "Pick a company type.",
+        "Open Portfolio.",
+        "Send notes back to Shaun."
+      ],
+      "know": [],
+      "today": [],
+      "done": [],
+      "groups": [],
+      "access": []
+    }
+  }
+}
