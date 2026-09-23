@@ -17237,7 +17237,14 @@ function protoFloatPlaceBox(menu, host, trigger) {
     const card = host.closest(".astral-query-pin-title");
     if (card) return card.getBoundingClientRect();
   }
-  return trigger.getBoundingClientRect();
+  const t = trigger.getBoundingClientRect();
+  const nav = host.closest(".astral-nav");
+  if (nav) {
+    // Menus opened from the nav bar drop below the bar itself, not the trigger.
+    const n = nav.getBoundingClientRect();
+    return new DOMRect(t.left, n.top, t.width, n.height);
+  }
+  return t;
 }
 
 function protoFloatAlign(menu, host) {
