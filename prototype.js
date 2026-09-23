@@ -5006,7 +5006,7 @@ function protoStarPoints(cx, cy, outer, inner) {
 function protoAlertStar(cx, cy, outer = 5, inner = 2.1, extra = "", fill) {
   const cls = ["astral-alert-mark", extra].filter(Boolean).join(" ");
   const paint = fill
-    ? ` style="color:${escapeHtml(fill)};fill:${escapeHtml(fill)};stroke:${escapeHtml(fill)}"`
+    ? ` style="color:${escapeHtml(fill)};fill:${escapeHtml(fill)}"`
     : "";
   return `<polygon class="${cls}" points="${protoStarPoints(cx, cy, outer, inner)}"${paint} />`;
 }

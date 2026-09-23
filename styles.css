@@ -8528,8 +8528,10 @@ button.astral-state {
 
 .astral-alert-mark.is-line {
   fill: currentColor;
-  stroke: currentColor;
-  stroke-width: 1;
+  stroke: #fff;
+  stroke-width: 3;
+  stroke-linejoin: round;
+  paint-order: stroke;
   vector-effect: non-scaling-stroke;
 }
 
