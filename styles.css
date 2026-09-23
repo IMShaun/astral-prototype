@@ -8316,7 +8316,7 @@ button.astral-state {
   fill: var(--color-flow-in);
   fill-opacity: 0.28;
   stroke: var(--color-flow-in);
-  stroke-width: 1;
+  stroke-width: 2;
   stroke-opacity: 0.4;
   vector-effect: non-scaling-stroke;
 }
@@ -8330,7 +8330,7 @@ button.astral-state {
   fill: var(--color-flow-out);
   fill-opacity: 0.22;
   stroke: var(--color-flow-out);
-  stroke-width: 1;
+  stroke-width: 2;
   stroke-opacity: 0.4;
   vector-effect: non-scaling-stroke;
 }
@@ -8345,11 +8345,21 @@ button.astral-state {
   fill: var(--stack-fill);
   stroke: var(--stack-fill);
   fill-opacity: 0.28;
-  stroke-width: 1;
+  stroke-width: 2;
   stroke-opacity: 0.4;
   vector-effect: non-scaling-stroke;
 }
 
+/* Clip to the bar's own shape so the outline sits inside, flush with neighbouring segments. */
+.astral-bar.is-est,
+.astral-bar-out.is-est {
+  clip-path: inset(0) fill-box;
+}
+
+.astral-bar.is-est[data-g$=",1"],
+.astral-bar-out.is-est[data-g$=",1"] {
+  clip-path: inset(0 round 3px 3px 0 0) fill-box;
+}
 .astral-chart.is-draw .astral-bar,
 .astral-chart.is-draw .astral-bar-out,
 .astral-chart.is-draw .astral-bar-stack,
