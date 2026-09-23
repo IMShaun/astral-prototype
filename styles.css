@@ -8101,6 +8101,18 @@ button.astral-state {
   }
 }
 
+.astral-chart.is-morph .astral-query-mark,
+.astral-chart.is-morph .astral-alert-mark,
+.astral-chart.is-morph .astral-hit-group.is-query .astral-point,
+.astral-chart.is-morph .astral-hit-group.is-picked .astral-point,
+.astral-chart.is-morph .astral-hit-group.is-picked > .astral-hit-focus {
+  animation: astral-bar-mark 0.24s ease 0.34s both;
+}
+
+.astral-morph-ghosts {
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .astral-chart.is-draw .astral-bar,
   .astral-chart.is-draw .astral-bar-out,
@@ -8109,7 +8121,12 @@ button.astral-state {
   .astral-chart.is-draw .astral-query-mark,
   .astral-chart.is-draw .astral-alert-mark,
   .astral-chart.is-draw .astral-hit-group.is-query .astral-point,
-  .astral-chart.is-draw .astral-hit-group.is-picked .astral-point {
+  .astral-chart.is-draw .astral-hit-group.is-picked .astral-point,
+  .astral-chart.is-morph .astral-query-mark,
+  .astral-chart.is-morph .astral-alert-mark,
+  .astral-chart.is-morph .astral-hit-group.is-query .astral-point,
+  .astral-chart.is-morph .astral-hit-group.is-picked .astral-point,
+  .astral-chart.is-morph .astral-hit-group.is-picked > .astral-hit-focus {
     animation: none;
   }
 

@@ -4911,25 +4911,25 @@ function protoChartAxes(points, scale, w, h, pad, xAt) {
     : "kWh";
   const yTicks = protoYTicks(scale.max);
   const grid = yTicks
-    .map((tick) => {
+    .map((tick, n) => {
       const y = scale.y(tick.value);
-      return `<line class="astral-grid" x1="${pad.l}" y1="${y.toFixed(1)}" x2="${(w - pad.r).toFixed(
+      return `<line class="astral-grid" data-m="grid|${n}" x1="${pad.l}" y1="${y.toFixed(1)}" x2="${(w - pad.r).toFixed(
         1
       )}" y2="${y.toFixed(1)}" />`;
     })
     .join("");
   const yLabels = yTicks
-    .map((tick) => {
+    .map((tick, n) => {
       const y = scale.y(tick.value);
-      return `<text class="astral-axis-y" x="${pad.l - 8}" y="${(y + 3).toFixed(
+      return `<text class="astral-axis-y" data-m="yl|${n}" x="${pad.l - 8}" y="${(y + 3).toFixed(
         1
       )}" text-anchor="end">${escapeHtml(tick.label)}</text>`;
     })
     .join("");
   const xLabels = protoXTickIndexes(points)
-    .map((i) => {
+    .map((i, n) => {
       const x = xAt(i);
-      return `<text class="astral-axis-x" x="${x.toFixed(1)}" y="${h - 8}" text-anchor="middle">${escapeHtml(
+      return `<text class="astral-axis-x" data-m="xl|${n}" x="${x.toFixed(1)}" y="${h - 8}" text-anchor="middle">${escapeHtml(
         points[i]?.label || ""
       )}</text>`;
     })
@@ -5111,7 +5111,7 @@ function protoAreaChart(points, label) {
           />
           <circle class="astral-point${p.value == null ? " is-gap" : ""}${
             p.quality === "estimated" ? " is-est" : ""
-          }" cx="${scale
+          }" data-m="pt|${i}" cx="${scale
             .x(i)
             .toFixed(1)}" cy="${cy.toFixed(1)}" r="5" />
         </g>
@@ -5119,15 +5119,15 @@ function protoAreaChart(points, label) {
     })
     .join("");
   const compare = lastLine
-    ? `<polyline class="astral-chart-compare" fill="none" points="${lastLine}" />`
+    ? `<polyline class="astral-chart-compare" data-m="area|compare" fill="none" points="${lastLine}" />`
     : "";
   const svg = `
     <svg class="astral-chart${protoChartDrawClass(label, points)}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMinYMin meet">
       ${protoEstDefs()}
       ${protoChartAxes(points, scale, w, h, pad, scale.x)}
       <g class="astral-chart-grow">
-      <polygon class="astral-chart-fill" points="${linePoints} ${base}" />
-      <polyline class="astral-chart-line" fill="none" points="${linePoints}" />
+      <polygon class="astral-chart-fill" data-m="area|fill" points="${linePoints} ${base}" />
+      <polyline class="astral-chart-line" data-m="area|line" fill="none" points="${linePoints}" />
       ${compare}
       </g>
       ${hits}
@@ -5182,25 +5182,348 @@ function protoChartFinger(label, points) {
   ].join("|");
 }
 
+function protoChartScene(label) {
+  const scope = store.prototypeScope || "";
+  return [
+    protoChartIsGraph(label) ? "graph" : label,
+    protoPaneId(),
+    store.activePrototypeView || "",
+    scope,
+    scope === "site" ? store.activePrototypeMeter || "" : store.prototypeGroup || "",
+    protoChartStyle(),
+  ].join("|");
+}
+
+let protoDrawnScene = "";
+
+function protoChartStartDraw() {
+  protoMorphStop();
+  protoChartPlay = true;
+  window.clearTimeout(protoChartPlayTimer);
+  protoChartPlayTimer = window.setTimeout(() => {
+    protoChartPlay = false;
+    document.querySelectorAll("#astral-fs .astral-chart.is-draw").forEach((node) => {
+      node.classList.remove("is-draw");
+    });
+  }, 1000);
+}
+
+function protoChartStopDraw() {
+  protoChartPlay = false;
+  window.clearTimeout(protoChartPlayTimer);
+}
+
+// Entering the chart or picking another tree item replays the grow-in.
+// Any other change (filters, flows, slices, dates) morphs from the old chart.
 function protoChartDraw(label, points) {
   const key = protoChartFinger(label, points);
+  const scene = protoChartScene(label);
   const changed = protoDrawnChart !== key;
-  if (changed) {
-    protoDrawnChart = key;
-    protoChartPlay = true;
-    window.clearTimeout(protoChartPlayTimer);
-    protoChartPlayTimer = window.setTimeout(() => {
-      protoChartPlay = false;
-      document.querySelectorAll("#astral-fs .astral-chart.is-draw").forEach((node) => {
-        node.classList.remove("is-draw");
-      });
-    }, 1000);
+  const sceneChanged = protoDrawnScene !== scene;
+  protoDrawnChart = key;
+  protoDrawnScene = scene;
+  const old = document.querySelector("#astral-fs .astral-chart");
+  if (!old) {
+    if (changed || sceneChanged || !protoChartPlay) protoChartStartDraw();
+    return protoChartPlay;
   }
-  return protoChartPlay;
+  if (!changed && !sceneChanged) return protoChartPlay;
+  if (sceneChanged) {
+    protoChartStartDraw();
+    return true;
+  }
+  protoChartStopDraw();
+  protoMorphStart(old);
+  return false;
 }
 
 function protoChartDrawClass(label, points) {
   return protoChartDraw(label, points) ? " is-draw" : "";
+}
+
+const PROTO_MORPH_MS = 520;
+const PROTO_MORPH_ATTRS = ["x", "y", "width", "height", "cx", "cy", "x1", "y1", "x2", "y2"];
+const PROTO_MORPH_FADE = new Set(["polyline", "polygon", "text", "line", "rect"]);
+let protoMorph = null;
+
+function protoMorphGeoAttr(x, y, w, h, round) {
+  return `${x.toFixed(1)},${y.toFixed(1)},${Math.max(w, 0).toFixed(1)},${Math.max(h, 0).toFixed(1)},${
+    round ? 1 : 0
+  }`;
+}
+
+function protoMorphEase(t) {
+  return 1 - Math.pow(1 - t, 4);
+}
+
+function protoMorphLerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function protoMorphReadGeo(el) {
+  const bits = String(el.getAttribute("data-g") || "").split(",").map(Number);
+  if (bits.length < 4 || !bits.slice(0, 4).every(Number.isFinite)) return null;
+  return { geo: bits.slice(0, 4), round: bits[4] === 1 };
+}
+
+function protoMorphReadPoints(raw) {
+  return String(raw || "")
+    .trim()
+    .split(/\s+/)
+    .map((pair) => pair.split(",").map(Number))
+    .filter((xy) => xy.length === 2 && xy.every(Number.isFinite));
+}
+
+function protoMorphWritePoints(pts) {
+  return pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+}
+
+function protoMorphResample(pts, n) {
+  if (!pts.length || !n) return null;
+  if (pts.length === n) return pts;
+  if (pts.length === 1 || n === 1) return Array.from({ length: n }, () => pts[0].slice());
+  return Array.from({ length: n }, (_, j) => {
+    const f = (j * (pts.length - 1)) / (n - 1);
+    const a = Math.floor(f);
+    const b = Math.min(pts.length - 1, a + 1);
+    const t = f - a;
+    return [protoMorphLerp(pts[a][0], pts[b][0], t), protoMorphLerp(pts[a][1], pts[b][1], t)];
+  });
+}
+
+function protoMorphFamilyOf(key) {
+  const cut = key.lastIndexOf("|");
+  return { family: key.slice(0, cut), part: key.slice(cut + 1) };
+}
+
+function protoMorphAddFamily(map, key, geo) {
+  const { family, part } = protoMorphFamilyOf(key);
+  const [x, y, w, h] = geo;
+  const cur = map.get(family) || { x, w, top: y, bottom: y + h, total: false };
+  cur.top = Math.min(cur.top, y);
+  cur.bottom = Math.max(cur.bottom, y + h);
+  if (!part) cur.total = true;
+  map.set(family, cur);
+}
+
+function protoMorphSnap(svg) {
+  const items = new Map();
+  const families = new Map();
+  svg.querySelectorAll("[data-m]").forEach((el) => {
+    const key = el.getAttribute("data-m");
+    const tag = el.tagName.toLowerCase();
+    const item = { el, tag };
+    if (el.hasAttribute("data-g")) {
+      const read = protoMorphReadGeo(el);
+      if (!read) return;
+      item.geo = el.__morphGeo ? el.__morphGeo.slice() : read.geo;
+      item.round = read.round;
+      protoMorphAddFamily(families, key, item.geo);
+    } else if (tag === "polyline" || tag === "polygon") {
+      item.pts = protoMorphReadPoints(el.getAttribute("points"));
+    } else {
+      item.attrs = {};
+      PROTO_MORPH_ATTRS.forEach((name) => {
+        if (!el.hasAttribute(name)) return;
+        const v = parseFloat(el.getAttribute(name));
+        if (Number.isFinite(v)) item.attrs[name] = v;
+      });
+    }
+    items.set(key, item);
+  });
+  return { items, families };
+}
+
+function protoMorphStop() {
+  if (!protoMorph) return;
+  cancelAnimationFrame(protoMorph.raf);
+  protoMorph = null;
+}
+
+function protoMorphStart(oldSvg) {
+  const snap = protoMorphSnap(oldSvg);
+  protoMorphStop();
+  if (!snap.items.size) return;
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+  protoMorph = { snap, old: oldSvg, svg: null, start: 0, raf: 0, waits: 0, tracks: [], layer: null };
+  const m = protoMorph;
+  queueMicrotask(() => {
+    if (protoMorph === m) protoMorphTick(performance.now());
+  });
+}
+
+function protoMorphBarPath(geo, round) {
+  const [x, y, w, h] = geo;
+  return round ? protoBarPath(x, y, w, h) : protoBarBlock(x, y, w, h);
+}
+
+function protoMorphBind(m, svg) {
+  m.svg = svg;
+  m.tracks = [];
+  svg.classList.add("is-morph");
+  const { items, families } = m.snap;
+  const live = [...svg.querySelectorAll("[data-m]")];
+  const fresh = new Map();
+  live.forEach((el) => {
+    if (!el.hasAttribute("data-g")) return;
+    const read = protoMorphReadGeo(el);
+    if (read) protoMorphAddFamily(fresh, el.getAttribute("data-m"), read.geo);
+  });
+  const flipped = (family) => {
+    const was = families.get(family);
+    const now = fresh.get(family);
+    return Boolean(was && now && was.total !== now.total);
+  };
+  const seen = new Set();
+  live.forEach((el) => {
+    const key = el.getAttribute("data-m");
+    const tag = el.tagName.toLowerCase();
+    const from = items.get(key);
+    seen.add(key);
+    if (el.hasAttribute("data-g")) {
+      const read = protoMorphReadGeo(el);
+      if (!read) return;
+      const to = read.geo;
+      let start = from?.geo;
+      if (!start) {
+        const { family } = protoMorphFamilyOf(key);
+        const was = families.get(family);
+        const now = fresh.get(family);
+        if (flipped(family) && now.bottom > now.top) {
+          const span = was.bottom - was.top;
+          const k = span / (now.bottom - now.top);
+          start = [was.x, was.top + (to[1] - now.top) * k, was.w, to[3] * k];
+        } else {
+          start = [to[0], to[1] + to[3], to[2], 0];
+        }
+      }
+      m.tracks.push({ el, type: "geo", from: start, to, round: read.round, final: el.getAttribute("d") });
+      return;
+    }
+    if (tag === "polyline" || tag === "polygon") {
+      const final = el.getAttribute("points");
+      const to = protoMorphReadPoints(final);
+      const start = from?.pts ? protoMorphResample(from.pts, to.length) : null;
+      if (start) m.tracks.push({ el, type: "points", from: start, to, final });
+      else m.tracks.push({ el, type: "fade-in" });
+      return;
+    }
+    if (from?.attrs) {
+      const pairs = [];
+      PROTO_MORPH_ATTRS.forEach((name) => {
+        if (!(name in from.attrs) || !el.hasAttribute(name)) return;
+        const raw = el.getAttribute(name);
+        const to = parseFloat(raw);
+        if (Number.isFinite(to) && to !== from.attrs[name]) pairs.push({ name, from: from.attrs[name], to, raw });
+      });
+      if (pairs.length) m.tracks.push({ el, type: "attrs", pairs });
+      return;
+    }
+    if (PROTO_MORPH_FADE.has(tag)) m.tracks.push({ el, type: "fade-in" });
+  });
+  const ghosts = [];
+  items.forEach((item, key) => {
+    if (seen.has(key)) return;
+    if (item.geo) {
+      if (flipped(protoMorphFamilyOf(key).family)) return;
+      const [x, y, w, h] = item.geo;
+      ghosts.push({ item, type: "geo", from: item.geo, to: [x, y + h, w, 0], round: item.round });
+      return;
+    }
+    if (PROTO_MORPH_FADE.has(item.tag)) ghosts.push({ item, type: "fade-out" });
+  });
+  if (!ghosts.length) return;
+  const layer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  layer.setAttribute("class", "astral-morph-ghosts");
+  layer.setAttribute("aria-hidden", "true");
+  const anchor = svg.querySelector(".astral-hit-group, .astral-chart-grow");
+  if (anchor) anchor.parentNode.insertBefore(layer, anchor);
+  else svg.appendChild(layer);
+  m.layer = layer;
+  ghosts.forEach((ghost) => {
+    const el = ghost.item.el.cloneNode(true);
+    el.removeAttribute("data-m");
+    el.removeAttribute("tabindex");
+    el.classList.add("astral-morph-ghost");
+    layer.appendChild(el);
+    m.tracks.push({ ...ghost, el });
+  });
+}
+
+function protoMorphPaint(m, t) {
+  m.tracks.forEach((track) => {
+    const { el } = track;
+    if (track.type === "geo") {
+      const geo = track.from.map((v, i) => protoMorphLerp(v, track.to[i], t));
+      if (!el.classList.contains("astral-morph-ghost")) el.__morphGeo = geo;
+      el.setAttribute("d", protoMorphBarPath(geo, track.round));
+    } else if (track.type === "points") {
+      el.setAttribute(
+        "points",
+        protoMorphWritePoints(
+          track.from.map((xy, i) => [
+            protoMorphLerp(xy[0], track.to[i][0], t),
+            protoMorphLerp(xy[1], track.to[i][1], t),
+          ])
+        )
+      );
+    } else if (track.type === "attrs") {
+      track.pairs.forEach((pair) => {
+        el.setAttribute(pair.name, protoMorphLerp(pair.from, pair.to, t).toFixed(1));
+      });
+    } else if (track.type === "fade-in") {
+      el.style.opacity = String(t);
+    } else if (track.type === "fade-out") {
+      el.style.opacity = String(1 - t);
+    }
+  });
+}
+
+function protoMorphFinish(m) {
+  m.tracks.forEach((track) => {
+    const { el } = track;
+    if (track.type === "geo") {
+      delete el.__morphGeo;
+      if (track.final) el.setAttribute("d", track.final);
+    } else if (track.type === "points") {
+      el.setAttribute("points", track.final);
+    } else if (track.type === "attrs") {
+      track.pairs.forEach((pair) => el.setAttribute(pair.name, pair.raw));
+    } else if (track.type === "fade-in") {
+      el.style.opacity = "";
+    }
+  });
+  m.layer?.remove();
+  m.svg?.classList.remove("is-morph");
+}
+
+function protoMorphTick(now) {
+  const m = protoMorph;
+  if (!m) return;
+  const svg = document.querySelector("#astral-fs .astral-chart");
+  if (!svg) {
+    protoMorph = null;
+    return;
+  }
+  if (svg === m.old) {
+    m.waits += 1;
+    if (m.waits > 4) {
+      protoMorph = null;
+      return;
+    }
+    m.raf = requestAnimationFrame(protoMorphTick);
+    return;
+  }
+  if (svg !== m.svg) protoMorphBind(m, svg);
+  if (!m.start) m.start = now;
+  const raw = Math.min(1, Math.max(0, (now - m.start) / PROTO_MORPH_MS));
+  protoMorphPaint(m, protoMorphEase(raw));
+  if (raw >= 1) {
+    protoMorphFinish(m);
+    protoMorph = null;
+    return;
+  }
+  m.raf = requestAnimationFrame(protoMorphTick);
 }
 
 function protoBarBlock(x, y, w, h) {
@@ -5257,8 +5580,9 @@ function protoBarChart(points, label, options = {}) {
           const mark = queried.has(p.label);
           const flag = alerted.has(p.label);
           const bar = (value, quality, cls, bx) => {
+            const side = bx === x1 ? "in" : "out";
             if (value == null) {
-              return `<rect class="astral-gap" x="${bx.toFixed(1)}" y="${(h - pad.b - 8).toFixed(
+              return `<rect class="astral-gap" data-m="${i}|${side}|gap" x="${bx.toFixed(1)}" y="${(h - pad.b - 8).toFixed(
                 1
               )}" width="${bw.toFixed(1)}" height="8" />`;
             }
@@ -5266,9 +5590,15 @@ function protoBarChart(points, label, options = {}) {
             const y = pad.t + scale.innerH - bh;
             return `<path class="${cls}${
               quality === "estimated" ? " is-est" : ""
-            }" d="${protoBarPath(bx, y, bw, bh)}" />`;
+            }" data-m="${i}|${side}|" data-g="${protoMorphGeoAttr(bx, y, bw, bh, true)}" d="${protoBarPath(
+              bx,
+              y,
+              bw,
+              bh
+            )}" />`;
           };
           const stackBar = (segments, cls, bx, outgoing) => {
+            const side = bx === x1 ? "in" : "out";
             const visible = (segments || []).filter((slice) => slice.value > 0);
             if (!visible.length) return "";
             let yBottom = h - pad.b;
@@ -5282,7 +5612,9 @@ function protoBarChart(points, label, options = {}) {
                 yBottom = y;
                 return `<path class="${cls} is-stack${
                   slice.quality === "estimated" ? " is-est" : ""
-                }" style="--stack-fill:${protoSliceFill(slice, outgoing)}" d="${d}" />`;
+                }" style="--stack-fill:${protoSliceFill(slice, outgoing)}" data-m="${i}|${side}|${escapeHtml(
+                  slice.id || `s${si}`
+                )}" data-g="${protoMorphGeoAttr(bx, y, bw, bh, top)}" d="${d}" />`;
               })
               .join("");
           };
@@ -5381,12 +5713,14 @@ function protoLinePath(track, scale) {
   });
   return runs
     .filter((run) => run.pts.length > 1)
-    .map((run) => {
+    .map((run, k) => {
       const dash = run.est ? PROTO_LINE_EST_DASH : "";
       const dashStyle = dash
         ? `;stroke-dasharray:${escapeHtml(dash)}`
         : ";stroke-dasharray:none";
-      return `<polyline class="astral-chart-line${run.est ? " is-est" : ""}" fill="none" style="stroke:${escapeHtml(
+      return `<polyline class="astral-chart-line${run.est ? " is-est" : ""}" data-m="${escapeHtml(
+        `${track.id || ""}|run|${k}`
+      )}" fill="none" style="stroke:${escapeHtml(
         track.color
       )}${dashStyle}" points="${run.pts.join(" ")}" />`;
     })
@@ -5497,7 +5831,9 @@ function protoLineChart(tracks, label, options = {}) {
           const est = p.quality === "estimated" && !mark && !flag;
           const point = flag
             ? protoAlertStar(cx, cy, 5, 2.1, "is-line", track.color)
-            : `<circle class="astral-point is-line${est ? " is-est" : ""}" cx="${cx.toFixed(
+            : `<circle class="astral-point is-line${est ? " is-est" : ""}" data-m="${escapeHtml(
+                `${track.id || ""}|pt|${i}`
+              )}" cx="${cx.toFixed(
                 1
               )}" cy="${cy.toFixed(1)}" r="4" style="color:${paint};fill:${
                 est ? "#fff" : paint
