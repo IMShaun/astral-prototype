@@ -8592,6 +8592,72 @@ button.astral-state {
   outline-offset: -2px;
 }
 
+.astral-breakdown-scroll {
+  min-width: 0;
+}
+
+.astral-breakdown-scroll:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
+
+.astral-breakdown-cols.is-meters thead tr:first-child > th:first-child,
+.astral-breakdown-cols.is-meters tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 6rem;
+  background: #fff;
+}
+
+.astral-breakdown-cols.is-meters tbody tr[data-proto-hit]:hover th {
+  background: var(--color-background-hover);
+}
+
+.astral-breakdown-cols.is-meters tbody tr[data-proto-hit].is-on th {
+  background: var(--color-background-subtle);
+}
+
+.astral-breakdown-cols.is-meters thead th {
+  vertical-align: bottom;
+  white-space: normal;
+}
+
+.astral-breakdown-meter-ref {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #000;
+  font-size: 0.8125rem;
+  letter-spacing: 0;
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+
+.astral-breakdown-meter-ref .astral-chart-key-mark {
+  flex: none;
+}
+
+.astral-breakdown-meter-note {
+  display: block;
+  margin-top: 2px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.astral-breakdown-cols.is-meters thead th.astral-breakdown-slice {
+  padding-top: 0;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.astral-breakdown-cols.is-meters .is-total {
+  font-weight: 600;
+  border-left: 1px solid var(--color-border-strong);
+}
+
 .astral-table-wrap {
   overflow-x: auto;
 }

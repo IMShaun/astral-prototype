@@ -11458,7 +11458,9 @@ function protoCompareDetail() {
           : ""
       }
       ${
-        rows
+        bundle.level !== "group" && meters.length > 1
+          ? protoMeterCompareTable(meters, allMeters, { chart: protoPaneChartLabel(false), site: true })
+          : rows
           ? protoPaneListTable(
               [
                 bundle.level === "group" ? "Group" : bundle.level === "meter" ? protoBelowSiteNoun(1) : "Site",
@@ -11858,7 +11860,11 @@ function protoPortfolioDetail() {
             : ""
         }
         ${
-          viewMeters.length && !protoChartIsLine() && !protoConsumptionUnitsMixed(viewMeters)
+          viewMeters.length > 1
+            ? protoMeterCompareTable(viewMeters, protoMetersForPane(currentSite.meters), {
+                chart: protoPaneChartLabel(dual),
+              })
+            : viewMeters.length && !protoChartIsLine() && !protoConsumptionUnitsMixed(viewMeters)
             ? protoIntervalTable(
                 protoScalePoints(protoChannelSeries(currentSite, flow.channel), viewMeters),
                 dual
@@ -11951,8 +11957,9 @@ function protoPaintBreakdown() {
   const tbody = document.querySelector("#astral-fs [data-proto-breakdown-rows]");
   const clip = protoBreakdownClip();
   if (!tbody || !clip || !protoBreakdownCache) return;
-  const { points, dual, chart, sliceCols = [] } = protoBreakdownCache;
-  const cols = sliceCols.length ? 1 + sliceCols.length : 3;
+  const { points, dual, chart, sliceCols = [], rowHtml } = protoBreakdownCache;
+  const cols = protoBreakdownCache.cols || (sliceCols.length ? 1 + sliceCols.length : 3);
+  const paintRow = rowHtml || ((point) => protoIntervalRowHtml(point, dual, chart, sliceCols));
   const row = PROTO_BREAKDOWN_ROW;
   const offset = clip.top - tbody.getBoundingClientRect().top;
   const start = Math.max(0, Math.floor(offset / row) - PROTO_BREAKDOWN_OVERSCAN);
@@ -11964,7 +11971,7 @@ function protoPaintBreakdown() {
     topH
       ? `<tr class="astral-breakdown-pad" aria-hidden="true"><td colspan="${cols}" style="height:${topH}px"></td></tr>`
       : "",
-    ...points.slice(start, end).map((point) => protoIntervalRowHtml(point, dual, chart, sliceCols)),
+    ...points.slice(start, end).map(paintRow),
     botH
       ? `<tr class="astral-breakdown-pad" aria-hidden="true"><td colspan="${cols}" style="height:${botH}px"></td></tr>`
       : "",
@@ -12088,6 +12095,124 @@ function protoIntervalTable(points, dual) {
       </thead>
       <tbody data-proto-breakdown-rows></tbody>
     </table>
+  `);
+}
+
+function protoMeterCompareCell(point, slice) {
+  if (!point || point.value == null) return "No reading";
+  return protoFormatAmount(slice ? protoSliceCellAmount(point, slice) : point.value);
+}
+
+function protoMeterCompareTotal(cells) {
+  const present = cells.filter((cell) => cell && cell.value != null);
+  if (!present.length) return "No reading";
+  return protoFormatAmount(protoRoundReading(present.reduce((n, cell) => n + Number(cell.value || 0), 0), 1));
+}
+
+function protoMeterCompareTable(meters, all, options = {}) {
+  const list = meters || [];
+  const tracks = protoScaleTracks(protoMeterTracks(list, all), list);
+  const n = Math.max(0, ...tracks.map((track) => (track.points || []).length));
+  if (!n) return "";
+  const sliceCols = protoBreakdownSliceCols();
+  const per = Math.max(1, sliceCols.length);
+  const unitOf = (track) =>
+    (track.points || []).find((point) => point?.unit)?.unit || protoMeasureUnit([track.meter]);
+  const units = [...new Set(tracks.map(unitOf))];
+  const outIdx = tracks.flatMap((track, i) => (track.meter?.direction === "Export" ? [i] : []));
+  const inIdx = tracks.flatMap((track, i) => (track.meter?.direction === "Export" ? [] : [i]));
+  const totals =
+    units.length !== 1
+      ? []
+      : outIdx.length && inIdx.length
+        ? [
+            { name: "Total in", idx: inIdx },
+            { name: "Total out", idx: outIdx },
+          ].filter((total) => total.idx.length > 1)
+        : [{ name: "Total", idx: tracks.map((_, i) => i) }];
+  const hits = protoTracksToStackPoints(tracks);
+  const chart = options.chart || protoPaneChartLabel(false);
+  const colour = protoPillsNeedColour();
+  const showSite = Boolean(options.site);
+  const rows = Array.from({ length: n }, (_, i) => ({
+    ...(hits[i] || {}),
+    label: hits[i]?.label || tracks.map((track) => track.points[i]?.label).find(Boolean) || "",
+    cells: tracks.map((track) => track.points[i]),
+  }));
+  const rowHtml = (row) => {
+    const picked = protoChartPoint();
+    const on = Boolean(picked && picked.chart === chart && picked.time === row.label);
+    const cells = row.cells
+      .map((cell) =>
+        sliceCols.length
+          ? sliceCols.map((slice) => `<td>${protoMeterCompareCell(cell, slice)}</td>`).join("")
+          : `<td>${protoMeterCompareCell(cell)}</td>`
+      )
+      .join("");
+    const sums = totals
+      .map((total) => `<td class="is-total">${protoMeterCompareTotal(total.idx.map((i) => row.cells[i]))}</td>`)
+      .join("");
+    return `<tr class="${on ? "is-on" : ""}" tabindex="0" aria-pressed="${
+      on ? "true" : "false"
+    }" data-proto-hit data-proto-chart="${escapeHtml(chart)}" ${protoHitAttrs(row)}><th scope="row">${escapeHtml(
+      row.label
+    )}</th>${cells}${sums}</tr>`;
+  };
+  const cols = 1 + tracks.length * per + totals.length;
+  protoBreakdownCache = { points: rows, chart, cols, rowHtml };
+  const twoRows = sliceCols.length > 0;
+  const span = twoRows ? ` rowspan="2"` : "";
+  const meterHeads = tracks
+    .map((track) => {
+      const site = showSite ? protoSiteByMeter(track.meter?.id)?.name || "" : "";
+      const note = [site, unitOf(track)].filter(Boolean).join(" · ");
+      const mark = colour
+        ? `<span class="astral-chart-key-mark" style="background:${escapeHtml(track.color)}" aria-hidden="true"></span>`
+        : "";
+      return `
+        <th scope="col"${twoRows ? ` colspan="${per}"` : ""} class="astral-breakdown-meter">
+          <span class="astral-breakdown-meter-ref">${mark}${escapeHtml(track.ref)}</span>
+          <span class="astral-breakdown-meter-note">${escapeHtml(note)}</span>
+        </th>
+      `;
+    })
+    .join("");
+  const totalHeads = totals
+    .map(
+      (total) => `
+        <th scope="col"${span} class="astral-breakdown-meter is-total">
+          <span class="astral-breakdown-meter-ref">${escapeHtml(total.name)}</span>
+          <span class="astral-breakdown-meter-note">${escapeHtml(units[0] || "")}</span>
+        </th>
+      `
+    )
+    .join("");
+  const sliceHeads = twoRows
+    ? `<tr>${tracks
+        .map(() =>
+          sliceCols
+            .map((slice) => `<th scope="col" class="astral-breakdown-slice">${escapeHtml(protoSliceName(slice))}</th>`)
+            .join("")
+        )
+        .join("")}</tr>`
+    : "";
+  const minWidth = 6 + (tracks.length * per + totals.length) * 8.5;
+  return protoBreakdownPanel(`
+    <div class="astral-table-wrap astral-breakdown-scroll" tabindex="0" role="region" aria-label="${escapeHtml(
+      `${chart} by ${protoBelowSiteNoun(1)}`
+    )}">
+      <table class="astral-table astral-breakdown-cols is-meters" style="min-width:${minWidth}rem">
+        <thead>
+          <tr>
+            <th scope="col"${span}>Time</th>
+            ${meterHeads}
+            ${totalHeads}
+          </tr>
+          ${sliceHeads}
+        </thead>
+        <tbody data-proto-breakdown-rows></tbody>
+      </table>
+    </div>
   `);
 }
 
