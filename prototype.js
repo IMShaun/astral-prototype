@@ -5241,6 +5241,10 @@ function protoChartScene(label) {
 
 let protoDrawnScene = "";
 
+// Bar stagger is squeezed into this window so long series still finish before is-draw is removed.
+const PROTO_DRAW_SPREAD_MS = 560;
+const PROTO_DRAW_TOTAL_MS = 1400;
+
 function protoChartStartDraw() {
   protoMorphStop();
   protoChartPlay = true;
@@ -5250,7 +5254,7 @@ function protoChartStartDraw() {
     document.querySelectorAll("#astral-fs .astral-chart.is-draw").forEach((node) => {
       node.classList.remove("is-draw");
     });
-  }, 1000);
+  }, PROTO_DRAW_TOTAL_MS);
 }
 
 function protoChartStopDraw() {
@@ -5717,8 +5721,9 @@ function protoBarChart(points, label, options = {}) {
       `;
         })
         .join("");
+  const barStep = Math.min(28, Math.round(PROTO_DRAW_SPREAD_MS / Math.max(1, rows.length - 1)));
   const svg = `
-    <svg class="astral-chart${protoChartDrawClass(label, rows)}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMinYMin meet">
+    <svg class="astral-chart${protoChartDrawClass(label, rows)}" style="--bar-step:${barStep}ms" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMinYMin meet">
       ${protoEstDefs()}
       ${protoChartAxes(rows, scale, w, h, pad, scale.xBar)}
       ${bars}

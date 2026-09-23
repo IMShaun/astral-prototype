@@ -8367,7 +8367,7 @@ button.astral-state {
   transform-box: fill-box;
   transform-origin: 50% 100%;
   animation: astral-bar-grow 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(var(--bar-i, 0) * 28ms);
+  animation-delay: calc(var(--bar-i, 0) * var(--bar-step, 28ms));
 }
 
 .astral-chart.is-draw .astral-bar.is-stack,
@@ -8380,7 +8380,7 @@ button.astral-state {
 .astral-chart.is-draw .astral-hit-group.is-query .astral-point,
 .astral-chart.is-draw .astral-hit-group.is-picked .astral-point {
   animation: astral-bar-mark 0.35s ease both;
-  animation-delay: calc(var(--bar-i, 0) * 28ms + 0.28s);
+  animation-delay: calc(var(--bar-i, 0) * var(--bar-step, 28ms) + 0.28s);
 }
 
 @keyframes astral-bar-grow {
