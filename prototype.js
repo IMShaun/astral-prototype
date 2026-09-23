@@ -17440,6 +17440,8 @@ function protoPillsOverflow(row) {
   return row.scrollWidth - row.clientWidth > 1;
 }
 
+const PROTO_PILLS_MAX = 7;
+
 function protoMeasurePills() {
   const row = document.querySelector("#astral-fs .astral-meter-pills");
   if (!row) return;
@@ -17465,19 +17467,22 @@ function protoMeasurePills() {
   pills.forEach((pill) => {
     pill.hidden = false;
   });
-  if (!row.clientWidth) return;
-  if (!protoPillsOverflow(row)) return;
-  let fit = pills.length;
-  do {
-    fit -= 1;
-    if (fit < 1) fit = 1;
+  const max = PROTO_PILLS_MAX;
+  let fit = Math.min(pills.length, max);
+  const apply = () => {
     pills.forEach((pill, i) => {
       pill.hidden = i >= fit;
     });
-    extra.hidden = false;
+    extra.hidden = fit >= pills.length;
     extra.textContent = `Show ${pills.length - fit} more`;
     extra.dataset.protoPills = "more";
-  } while (fit > 1 && protoPillsOverflow(row));
+  };
+  apply();
+  if (!row.clientWidth) return;
+  while (fit > 1 && protoPillsOverflow(row)) {
+    fit -= 1;
+    apply();
+  }
 }
 
 function protoHitAnchorBox(hit) {
