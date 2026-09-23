@@ -8008,13 +8008,12 @@ function protoReportsAreaHead(active) {
           }" aria-controls="astral-report-edit"`
         )
       : "";
-  const actions = addBtn ? `<div class="astral-page-actions">${addBtn}</div>` : "";
   return `
-    <header class="astral-page-head${actions ? " astral-page-tools" : ""}">
+    <header class="astral-page-head astral-page-tools">
       <div>
         <h2>Reports and compliance</h2>
       </div>
-      ${actions}
+      <div class="astral-page-actions">${addBtn}</div>
     </header>
   `;
 }
