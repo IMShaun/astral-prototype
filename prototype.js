@@ -8008,19 +8008,20 @@ function protoReportsAreaHead(active) {
           }" aria-controls="astral-report-edit"`
         )
       : "";
-  const tabs = protoReportsDownloadsTabs(active);
   const actions = addBtn ? `<div class="astral-page-actions">${addBtn}</div>` : "";
   return `
-    <header class="astral-page-head${actions || tabs ? " astral-page-tools" : ""}${
-      tabs ? " has-tabs" : ""
-    }">
+    <header class="astral-page-head${actions ? " astral-page-tools" : ""}">
       <div>
         <h2>Reports and compliance</h2>
       </div>
       ${actions}
-      ${tabs}
     </header>
   `;
+}
+
+function protoReportsCardTabs(active) {
+  const tabs = protoReportsDownloadsTabs(active);
+  return tabs ? `<div class="astral-card-tabs">${tabs}</div>` : "";
 }
 
 function astralWalk(state) {
@@ -10632,6 +10633,7 @@ function protoDownloadsSection() {
     : `<tr><td colspan="6" class="astral-muted">${escapeHtml(empty)}</td></tr>`;
   return `
     <section class="astral-card astral-downloads" id="astral-downloads">
+      ${protoReportsCardTabs("downloads")}
       <div class="astral-downloads-head">
         <div class="astral-downloads-tools">
           ${protoSearchField({
@@ -13207,10 +13209,10 @@ function protoReports() {
     ${protoReportEditModal()}
     ${
       defs.length
-        ? `<section class="astral-card astral-reports-sheet"><div class="astral-report-grid">${defs
+        ? `<section class="astral-card astral-reports-sheet">${protoReportsCardTabs("reports")}<div class="astral-report-grid">${defs
             .map((def) => protoReportCard(def))
             .join("")}</div></section>`
-        : `<section class="astral-card astral-reports-sheet"><div class="astral-empty">${empty}</div></section>`
+        : `<section class="astral-card astral-reports-sheet">${protoReportsCardTabs("reports")}<div class="astral-empty">${empty}</div></section>`
     }
   `);
 }
@@ -17377,7 +17379,7 @@ function protoSlideNavPills(options) {
   const root = document.querySelector("#astral-fs");
   if (!root) return;
   protoSlideHost(
-    root.querySelector(".astral-page-head.has-tabs .astral-tabs"),
+    root.querySelector(".astral-card-tabs .astral-tabs"),
     "button.is-on",
     "reportTabs",
     true
