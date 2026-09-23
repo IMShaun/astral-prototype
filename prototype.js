@@ -16641,6 +16641,8 @@ const PROTO_SKEL_REGIONS = [
   ".astral-profile-mark",
   ".astral-profile-fields",
   ".astral-spend .astral-card-head p",
+  ".astral-card-head",
+  ".astral-stage p.astral-muted",
 ].join(",");
 const PROTO_SKEL_TEXT_SKIP = "svg, script, style, textarea, option, select, .sr-only, .astral-tip, [hidden]";
 
@@ -16713,6 +16715,7 @@ function protoSkelWrapText(region) {
     const span = document.createElement("span");
     span.className = "astral-skel-text";
     span.textContent = raw.trim();
+    if (span.textContent.length <= 4) span.classList.add("is-short");
     const frag = document.createDocumentFragment();
     if (lead) frag.append(lead);
     frag.append(span);

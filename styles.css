@@ -10727,11 +10727,16 @@ button.astral-state:focus-visible,
   color: transparent !important;
 }
 
+.is-skel .astral-skel-text.is-short {
+  display: inline-block;
+  min-width: 2.5em;
+}
+
 .is-skel :is(input, textarea)::placeholder {
   color: transparent;
 }
 
-.is-skel :is(.astral-stat.is-flag, .astral-group.is-on, .astral-count, [class*="astral-badge"]) {
+.is-skel :is(.astral-group.is-on, .astral-count, [class*="astral-badge"]) {
   background: transparent !important;
   border-color: var(--color-border, #e3e5e8) !important;
   box-shadow: none !important;
