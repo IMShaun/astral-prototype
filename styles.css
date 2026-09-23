@@ -6817,6 +6817,24 @@ button.astral-state {
   padding-left: 28px;
 }
 
+.astral-filter-count {
+  margin-left: auto;
+  min-width: 24px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-background-subtle);
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.25;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  box-sizing: border-box;
+}
+
+.astral-filter-menu button.is-on .astral-filter-count {
+  background: #fff;
+}
+
 .astral-filter-menu button.is-disabled,
 .astral-filter-menu button.is-disabled:hover {
   background: none;

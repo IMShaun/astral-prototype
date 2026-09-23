@@ -7987,17 +7987,30 @@ function protoFilterPool(attr) {
   return protoFilterPoolCache.get(attr);
 }
 
-function protoFilterItemAvailable(attr, item) {
+const PROTO_FILTER_COUNTED = new Set(["electricity", "gas", "water", "tenant", "in", "out"]);
+
+function protoFilterMeterHit(id, meter) {
+  if (id === "electricity" || id === "gas" || id === "water") return protoMeterKind(meter) === id;
+  if (id === "tenant") return protoMeterIsTenant(meter);
+  if (id === "out") return meter.direction === "Export";
+  if (id === "in") return meter.direction !== "Export";
+  return null;
+}
+
+function protoFilterItemCount(attr, item) {
   const pool = protoFilterPool(attr);
   const id = item?.id;
-  if (!pool || !id) return true;
-  if (id === "electricity" || id === "gas" || id === "water") {
-    return pool.some((meter) => protoMeterKind(meter) === id);
+  if (!pool || !id || !PROTO_FILTER_COUNTED.has(id)) return null;
+  if (attr === "data-proto-tree-filter") {
+    return protoSites().filter((site) => (site.meters || []).some((meter) => protoFilterMeterHit(id, meter)))
+      .length;
   }
-  if (id === "tenant") return pool.some(protoMeterIsTenant);
-  if (id === "out") return pool.some((meter) => meter.direction === "Export");
-  if (id === "in") return pool.some((meter) => meter.direction !== "Export");
-  return true;
+  return pool.filter((meter) => protoFilterMeterHit(id, meter)).length;
+}
+
+function protoFilterItemAvailable(attr, item) {
+  const n = protoFilterItemCount(attr, item);
+  return n === null || n > 0;
 }
 
 function protoFilterItemOn(attr, picked, item) {
@@ -8291,6 +8304,14 @@ function protoFilterTickGroups(picked, attr, groups = PROTO_TREE_FILTERS) {
       .map((item) => {
         const on = protoFilterItemOn(attr, picked, item);
         const avail = protoFilterItemAvailable(attr, item);
+        const count = protoFilterItemCount(attr, item);
+        const noun = attr === "data-proto-tree-filter" ? "site" : "meter";
+        const countHtml =
+          count === null
+            ? ""
+            : `<span class="astral-filter-count" aria-label="${count} ${noun}${
+                count === 1 ? "" : "s"
+              }">${count}</span>`;
         return `
           <button
             type="button"
@@ -8302,6 +8323,7 @@ function protoFilterTickGroups(picked, attr, groups = PROTO_TREE_FILTERS) {
           >
             <span class="astral-check${on ? " is-on" : ""}" aria-hidden="true"></span>
             ${protoFilterFace(item.id, item.name)}
+            ${countHtml}
           </button>
         `;
       })
@@ -10524,7 +10546,7 @@ function protoGroupDetail(group) {
   const queries = protoQueriesForMeters(viewMeters, viewSites, queryGroups);
   const statusLine = `${paneSites.length} ${
     paneSites.length === 1 ? "site" : "sites"
-  }. ${protoMeterCountWords(meterCount)}.`;
+  }. ${meterCount} ${meterCount === 1 ? "meter point" : "meter points"}.`;
   const pane = protoPaneId();
   const rows = viewSites
     .map((site) => {
