@@ -7427,17 +7427,16 @@ button.astral-state {
 }
 
 .astral-pane-body > .astral-chart-wrap {
-  --astral-pane-head-base: 136px;
   --astral-chart-key-row: 24px;
+  --astral-chart-height: 531px;
   flex: none;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) var(--astral-chart-key-row);
   gap: var(--space-16);
-  height: calc(100% - 45px - var(--space-stack-tight));
-  height: calc(100cqh - var(--astral-pane-head-base) - 45px - var(--space-stack-tight));
-  max-height: calc(100cqh - var(--astral-pane-head-base) - 45px - var(--space-stack-tight));
-  min-height: 16rem;
+  height: var(--astral-chart-height);
+  min-height: var(--astral-chart-height);
+  max-height: var(--astral-chart-height);
   padding-block: var(--space-16);
 }
 
