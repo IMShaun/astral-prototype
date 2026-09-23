@@ -613,7 +613,9 @@ function protoState() {
 }
 
 function setProto(patch) {
+  const before = typeof protoSkelKeys === "function" ? protoSkelKeys() : null;
   protoPatchStay(patch);
+  if (before) protoSkelWatch(before);
   render();
 }
 
@@ -16605,6 +16607,7 @@ function protoPaintWalkFs(fs) {
   tmp.innerHTML = protoApp().trim();
   const next = tmp.querySelector(".astral-app") || tmp.firstElementChild;
   if (next) next.hidden = false;
+  if (next) protoSkelPaint(next);
   const app = fs.querySelector(".astral-app");
   if (app) app.replaceWith(next);
   else {
@@ -16616,6 +16619,200 @@ function protoPaintWalkFs(fs) {
 }
 
 var protoRenderTick = 0;
+
+// Skeleton loading. Entering a screen, or picking another item inside a pane, fakes a
+// fetch: data regions render as shimmering placeholders shaped like the real content,
+// then the real content fades in. Filter changes skip this and morph instead.
+const PROTO_SKEL_REGIONS = [
+  ".astral-hero",
+  ".astral-metrics",
+  ".astral-catch",
+  ".astral-chart-heading",
+  ".astral-chart-keys",
+  "svg.astral-chart",
+  ".astral-pane-body > :not(.astral-chart-wrap)",
+  ".astral-stack",
+  ".astral-table-wrap tbody",
+  ".astral-report-grid",
+  ".astral-split:not(.astral-settings-split) > .astral-list .astral-tree",
+  ".astral-detail-head > div:first-child",
+  ".astral-meter-pills",
+  ".astral-settings-main .astral-pane-body",
+  ".astral-profile-mark",
+  ".astral-profile-fields",
+  ".astral-spend .astral-card-head p",
+].join(",");
+const PROTO_SKEL_TEXT_SKIP = "svg, script, style, textarea, option, select, .sr-only, .astral-tip, [hidden]";
+
+let protoSkel = null;
+let protoSkelFade = "";
+let protoSkelTimer = 0;
+let protoSkelBooted = false;
+let protoSkelSeq = 0;
+
+function protoSkelKeys() {
+  return {
+    screen: [protoViewId(store.activePrototypeView), protoFlowId(), Boolean(store.prototypeFullscreen)].join("|"),
+    pane: [
+      store.prototypeScope || "",
+      store.activePrototypeMeter || "",
+      store.prototypeGroup || "",
+      store.prototypePane || "",
+      store.prototypeSettingsSection || "",
+    ].join("|"),
+  };
+}
+
+function protoSkelStart(scope) {
+  if (protoFlowId() !== "product") return;
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+  const next = protoSkel?.scope === "screen" ? "screen" : scope;
+  const ms = next === "screen" ? 650 + Math.random() * 450 : 380 + Math.random() * 320;
+  window.clearTimeout(protoSkelTimer);
+  protoSkel = { scope: next };
+  protoSkelTimer = window.setTimeout(() => {
+    protoSkelFade = protoSkel?.scope || "";
+    protoSkel = null;
+    protoDrawnScene = "";
+    render();
+    protoSkelFade = "";
+  }, ms);
+}
+
+function protoSkelWatch(before) {
+  const after = protoSkelKeys();
+  if (before.screen !== after.screen) protoSkelStart("screen");
+  else if (before.pane !== after.pane) protoSkelStart("pane");
+}
+
+function protoSkelRegions(app, scope) {
+  const within = scope === "pane" ? app.querySelectorAll(".astral-pane") : [app];
+  const found = [];
+  within.forEach((host) => {
+    host.querySelectorAll(PROTO_SKEL_REGIONS).forEach((el) => {
+      if (el.closest("[hidden]")) return;
+      found.push(el);
+    });
+  });
+  return found.filter((el) => !found.some((other) => other !== el && other.contains(el)));
+}
+
+function protoSkelWrapText(region) {
+  const walker = document.createTreeWalker(region, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (!node.nodeValue.trim()) continue;
+    if (node.parentElement?.closest(PROTO_SKEL_TEXT_SKIP)) continue;
+    nodes.push(node);
+  }
+  nodes.forEach((node) => {
+    const raw = node.nodeValue;
+    const lead = raw.match(/^\s*/)[0];
+    const tail = raw.match(/\s*$/)[0];
+    const span = document.createElement("span");
+    span.className = "astral-skel-text";
+    span.textContent = raw.trim();
+    const frag = document.createDocumentFragment();
+    if (lead) frag.append(lead);
+    frag.append(span);
+    if (tail) frag.append(tail);
+    node.replaceWith(frag);
+  });
+}
+
+function protoSkelChart(svg) {
+  const view = (svg.getAttribute("viewBox") || "0 0 1170 407").split(/\s+/).map(Number);
+  const [, , w, h] = view;
+  const axes = [...svg.querySelectorAll(".astral-axis")];
+  const base = axes.find((line) => line.getAttribute("y1") === line.getAttribute("y2"));
+  const grids = [...svg.querySelectorAll(".astral-grid")].map((line) => Number(line.getAttribute("y1")));
+  const left = Number(base?.getAttribute("x1")) || 52;
+  const right = Number(base?.getAttribute("x2")) || w - 16;
+  const bottom = Number(base?.getAttribute("y1")) || h - 36;
+  const top = grids.length ? Math.min(...grids) : 32;
+  const lineMode = Boolean(svg.querySelector(".astral-chart-line[style]")) && !svg.querySelector(".astral-bar, .astral-bar-out");
+  const n = Math.min(48, Math.max(12, svg.querySelectorAll(".astral-hit-group").length || 24));
+  const gap = (right - left) / n;
+  const span = bottom - top;
+  const heightAt = (i) => {
+    const t = i / Math.max(1, n - 1);
+    const wave = 0.5 + 0.5 * Math.sin(t * Math.PI * 2.2 - 1.3);
+    const wobble = 0.08 * Math.sin(i * 1.7) + 0.05 * Math.cos(i * 3.1);
+    return span * Math.min(0.9, Math.max(0.12, 0.22 + 0.5 * wave + wobble));
+  };
+  const id = `astral-skel-sheen-${(protoSkelSeq += 1)}`;
+  const lines = [...svg.querySelectorAll(".astral-grid, .astral-axis")].map((line) => line.outerHTML).join("");
+  const labels = [...svg.querySelectorAll(".astral-axis-y, .astral-axis-x")]
+    .map((text) => {
+      const x = Number(text.getAttribute("x"));
+      const y = Number(text.getAttribute("y"));
+      const isY = text.classList.contains("astral-axis-y");
+      const bw = isY ? 18 : 30;
+      const bx = isY ? x - bw : x - bw / 2;
+      return `<rect class="astral-skel-shape" x="${bx.toFixed(1)}" y="${(y - 9).toFixed(1)}" width="${bw}" height="9" rx="3" />`;
+    })
+    .join("");
+  let marks = "";
+  if (lineMode) {
+    const pts = Array.from({ length: n }, (_, i) => `${(left + gap * (i + 0.5)).toFixed(1)},${(bottom - heightAt(i)).toFixed(1)}`);
+    marks = `<polygon class="astral-skel-area" points="${left.toFixed(1)},${bottom} ${pts.join(" ")} ${right.toFixed(1)},${bottom}" />`;
+  } else {
+    const bw = gap * 0.64;
+    marks = Array.from({ length: n }, (_, i) => {
+      const bh = heightAt(i);
+      return `<rect class="astral-skel-shape" x="${(left + gap * i + gap * 0.18).toFixed(1)}" y="${(bottom - bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="${Math.min(3, bw / 2).toFixed(1)}" />`;
+    }).join("");
+  }
+  const holder = document.createElement("div");
+  holder.innerHTML = `
+    <svg class="astral-skel-chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="${escapeHtml(
+      svg.getAttribute("preserveAspectRatio") || "xMinYMin meet"
+    )}" aria-hidden="true" style="--skel-sheen:url(#${id})">
+      <defs>
+        <linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${-w * 0.4}" y1="0" x2="0" y2="0">
+          <stop offset="0" stop-color="var(--skel-base)" />
+          <stop offset="0.5" stop-color="var(--skel-sheen-hi)" />
+          <stop offset="1" stop-color="var(--skel-base)" />
+          <animateTransform attributeName="gradientTransform" type="translate" from="0 0" to="${w * 1.4} 0" dur="1.6s" repeatCount="indefinite" />
+        </linearGradient>
+      </defs>
+      ${lines}
+      ${labels}
+      ${marks}
+    </svg>
+  `;
+  return holder.firstElementChild;
+}
+
+function protoSkelPaint(app) {
+  if (!protoSkel && !protoSkelFade) return;
+  const scope = protoSkel?.scope || protoSkelFade;
+  const regions = protoSkelRegions(app, scope);
+  if (!protoSkel) {
+    regions.forEach((el) => el.classList.add("astral-skel-in"));
+    return;
+  }
+  regions.forEach((region) => {
+    if (region.matches("svg.astral-chart")) {
+      region.replaceWith(protoSkelChart(region));
+      return;
+    }
+    region.querySelectorAll("svg.astral-chart").forEach((svg) => svg.replaceWith(protoSkelChart(svg)));
+    protoSkelWrapText(region);
+    region.classList.add("is-skel");
+    region.setAttribute("aria-busy", "true");
+    region.inert = true;
+  });
+  const main = app.querySelector(".astral-stage");
+  if (main && regions.length) {
+    const note = document.createElement("p");
+    note.className = "sr-only";
+    note.setAttribute("role", "status");
+    note.textContent = "Loading";
+    main.prepend(note);
+  }
+}
 
 function renderPrototype() {
   protoRenderTick += 1;
@@ -16659,6 +16856,10 @@ function renderPrototype() {
     } else if (libraryOn) {
       protoPaintLibraryFs(fs);
     } else {
+      if (!protoSkelBooted) {
+        protoSkelBooted = true;
+        protoSkelStart("screen");
+      }
       protoPaintWalkFs(fs);
       protoScrollRestore(fs, scroll);
     }

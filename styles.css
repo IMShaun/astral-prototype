@@ -8762,6 +8762,14 @@ button.astral-state {
 
 .astral-breakdown-scroll {
   min-width: 0;
+  overflow-anchor: none;
+}
+
+/* Horizontal-only scrollers inside a pane must hand vertical wheel/trackpad scrolling
+   back to the pane body, otherwise the gesture dies when it starts over them. */
+.astral-pane-body :is(.astral-table-wrap, .astral-breakdown-scroll, .astral-chart-keys),
+.astral-home-chart .astral-chart-keys {
+  overscroll-behavior-y: auto;
 }
 
 .astral-breakdown-scroll:focus-visible {
@@ -10667,4 +10675,108 @@ button.astral-state:focus-visible,
 
 #astral-fs .astral-modal-body {
   padding-bottom: 32px;
+}
+
+/* Skeleton loading */
+.astral-app {
+  --skel-base: #eceef1;
+  --skel-sheen-hi: #f7f8fa;
+}
+
+@keyframes astral-skel-sheen {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+.is-skel {
+  pointer-events: none;
+  user-select: none;
+}
+
+.is-skel .astral-skel-text {
+  color: transparent !important;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--skel-base) 30%, var(--skel-sheen-hi) 50%, var(--skel-base) 70%) fixed;
+  background-size: 200vw 100%;
+  animation: astral-skel-sheen 1.6s linear infinite;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.is-skel :is(svg:not(.astral-skel-chart), img, .astral-chart-key-mark, .astral-flow-icon) {
+  color: var(--skel-base) !important;
+  fill: var(--skel-base) !important;
+  stroke: var(--skel-base) !important;
+  background: var(--skel-base) !important;
+  border-radius: 4px;
+}
+
+.is-skel :is(svg:not(.astral-skel-chart), img) * {
+  fill: transparent !important;
+  stroke: transparent !important;
+}
+
+.is-skel :is(button, input, select, textarea, .astral-chip, .astral-meter-pill, .astral-chart-key-pill, [style*="--slice"]):not(.astral-card, .astral-stat, .astral-catch, .astral-group) {
+  background: transparent !important;
+  border-color: var(--skel-base) !important;
+  box-shadow: none !important;
+  color: transparent !important;
+}
+
+.is-skel :is(input, textarea)::placeholder {
+  color: transparent;
+}
+
+.is-skel :is(.astral-stat.is-flag, .astral-group.is-on, .astral-count, [class*="astral-badge"]) {
+  background: transparent !important;
+  border-color: var(--color-border, #e3e5e8) !important;
+  box-shadow: none !important;
+}
+
+.is-skel .astral-count {
+  border-color: transparent !important;
+}
+
+.astral-skel-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+.astral-skel-chart .astral-skel-shape {
+  fill: var(--skel-sheen);
+}
+
+.astral-skel-chart .astral-skel-area {
+  fill: var(--skel-sheen);
+  opacity: 0.8;
+}
+
+.astral-skel-in {
+  animation: astral-skel-in 240ms ease-out both;
+}
+
+@keyframes astral-skel-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-skel .astral-skel-text,
+  .astral-skel-in {
+    animation: none;
+  }
+}
+/* Column headers sit on the subtle grey surface so they read as a band apart from the rows. */
+#astral-fs .astral-table thead th {
+  background: var(--color-background-subtle);
 }
