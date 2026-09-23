@@ -50,6 +50,8 @@ const PROTO_ICON_MARKS = {
   home: `<path d="M4.5 11.4 12 4.8l7.5 6.6V20h-5.1v-5.4H9.6V20H4.5v-8.6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />`,
   companies: `<path d="M5.25 20.25V5.25h8.25V20.25M13.5 9.75h5.25V20.25M5.25 20.25h13.5M7.5 8.25h3M7.5 11.75h3M7.5 15.25h3M16.05 13.2h1.2M16.05 16.5h1.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
   report: `<path d="M7 3.75h7.2L19.5 9v11.25H7V3.75z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><path d="M14.2 3.75V9H19.5M9.6 12.6h6.3M9.6 16.2h4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
+  servicing: `<path d="M14.6 6.4a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3-3a5.5 5.5 0 0 1-7.3 7.3l-6.1 6.1a2.05 2.05 0 0 1-2.9-2.9l6.1-6.1a5.5 5.5 0 0 1 7.3-7.3l-3.1 2.9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
+  inbox: `<path d="M3.75 12.75h4.5l1.5 2.25h4.5l1.5-2.25h4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /><path d="M6.4 5.25h11.2l2.65 7.5v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-5.25l2.65-7.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />`,
 };
 
 function protoIconNames() {
@@ -445,6 +447,7 @@ function protoTable(headers, rows, opts) {
       .replace(/^-|-$/g, "")
   );
   const listed = protoSortedRows(tableId, rows || [], (row, key) => {
+    if (row?.sortBy && row.sortBy[key] !== undefined) return row.sortBy[key];
     const index = keys.indexOf(key);
     return index >= 0 ? protoPlainSortText(row[index]) : "";
   });

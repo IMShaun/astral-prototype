@@ -239,7 +239,7 @@ const PROTO_COMPANIES = [
     id: "admin-user",
     name: "IMSERV admin",
     home: "admin",
-    nav: ["home", "companies", "users", "reports"],
+    nav: ["home", "companies", "servicing", "inbox", "users", "reports"],
     access: ["super-admin"],
     see: [],
   },
@@ -305,6 +305,18 @@ const PROTO_LENS_EXTRA = {
     name: "Companies",
     kicker: "Platform",
     blurb: "Pick a company, then see as them.",
+  },
+  servicing: {
+    id: "servicing",
+    name: "Servicing",
+    kicker: "Platform",
+    blurb: "Meter health across every company.",
+  },
+  inbox: {
+    id: "inbox",
+    name: "Inbox",
+    kicker: "Support",
+    blurb: "Support tickets from customers.",
   },
 };
 
@@ -7849,6 +7861,7 @@ function protoRailIcon(id) {
   if (id === "reports" || id === "downloads") return "report";
   if (id === "profile" || id === "settings" || id === "users") return id;
   if (id === "companies") return "companies";
+  if (id === "servicing" || id === "inbox") return id;
   return "home";
 }
 
@@ -7931,13 +7944,16 @@ function astralRailNav(state) {
     .map((view) => {
       const on =
         view.id === state.view || (view.id === "reports" && state.view === "downloads");
+      const count = view.id === "inbox" ? protoInboxUnreadCount() : 0;
       return `
       <button
         type="button"
         class="astral-rail-link"
         data-proto-view="${escapeHtml(view.id)}"
         ${on ? 'aria-current="page"' : ""}
-      >${protoIconMark(protoRailIcon(view.id))}<span>${escapeHtml(view.name)}</span></button>
+      >${protoIconMark(protoRailIcon(view.id))}<span>${escapeHtml(view.name)}</span>${
+        count ? `${protoCountChip(count)}<span class="sr-only">, ${count} unread</span>` : ""
+      }</button>
     `;
     })
     .join("");
@@ -8222,10 +8238,11 @@ function protoCardSub(text) {
 }
 
 function protoStatButton(view, value, label, flag) {
+  const hit = PROTO_HOME_GO[view]
+    ? `data-proto-home-go="${escapeHtml(view)}"`
+    : `data-proto-view="${escapeHtml(view)}"`;
   return `
-    <button type="button" class="astral-stat${flag ? " is-flag" : ""}" data-proto-view="${escapeHtml(
-      view
-    )}">
+    <button type="button" class="astral-stat${flag ? " is-flag" : ""}" ${hit}>
       <span class="astral-stat-value">${value}</span>
       <span>${escapeHtml(protoCardSub(label))}</span>
     </button>
@@ -8253,6 +8270,16 @@ const PROTO_HOME_GO = {
   }),
   stale: () => ({ activePrototypeView: "alerts", activePrototypeFacet: "stale" }),
   gaps: () => ({ activePrototypeView: "alerts", activePrototypeFacet: "gaps" }),
+  "service-faults": () => protoServiceGo("faults"),
+  "service-late": () => ({
+    ...protoServiceGo("faults"),
+    prototypeTableSort: { ...protoTableSortMap(), "service-faults": { key: "due", dir: "asc" } },
+  }),
+  "service-not-sending": () => protoServiceGo("not-sending"),
+  "service-risk": () => protoServiceGo("risk"),
+  "service-companies": () => protoServiceGo("companies"),
+  "inbox-unread": () => protoInboxGo("unread", protoInboxTickets().find((t) => t.unread)?.ref),
+  "inbox-oldest": () => protoInboxGo("open", protoInboxOldestOpen()?.ref),
 };
 
 function protoHomeEstate(facts) {
@@ -8404,8 +8431,15 @@ function protoHomeSupplier(facts) {
 function protoHomeAdmin() {
   const companies = protoTeamCompanyNames().length;
   const people = protoUserPeople().length;
+  const fleet = protoServiceFleet();
+  const faults = protoServiceFaults();
+  const late = faults.filter((item) => item.dueDays < 0).length;
+  const risks = protoServiceRisks().length;
+  const unread = protoInboxTickets().filter((item) => item.unread);
+  const oldest = protoInboxOldestOpen();
+  const newest = unread[0];
   return `
-    ${astralPageHead("Overview", "Companies and people on the platform.")}
+    ${astralPageHead("Overview", "Companies, people, meter health, and support on the platform.")}
     <div class="astral-hero">
       ${protoStatButton(
         "companies",
@@ -8417,11 +8451,589 @@ function protoHomeAdmin() {
         people,
         people === 1 ? "Person on the platform" : "People on the platform"
       )}
+      ${protoStatButton(
+        "service-companies",
+        `${fleet.percent}%`,
+        `Of ${fleet.meters.toLocaleString("en-GB")} meters sending`
+      )}
     </div>
     <div class="astral-metrics">
-      ${protoWaitCard("Brokers", "Brokers sit on the side in live admin. The list still waits.")}
+      ${protoHomeCard(
+        "service-not-sending",
+        "Not sending",
+        fleet.down.toLocaleString("en-GB"),
+        "Meters not sending or with missing data"
+      )}
+      ${protoHomeCard(
+        "service-faults",
+        "Open faults",
+        faults.length,
+        `Across ${protoServiceCompanyCount(faults)} companies`
+      )}
+      ${protoHomeCard("service-late", "Late faults", late, "Past the due date")}
+      ${protoHomeCard("service-risk", "At risk", risks, "Still sending, but likely to stop")}
+      ${protoHomeCard(
+        "inbox-unread",
+        "Unread tickets",
+        unread.length,
+        newest ? `Newest came in ${protoAgo(newest.lastAt).toLowerCase()}` : "Nothing new"
+      )}
+      ${protoHomeCard(
+        "inbox-oldest",
+        "Oldest open ticket",
+        oldest ? escapeHtml(protoAgo(oldest.firstAt).replace(/ ago$/, "")) : "None",
+        oldest ? `${oldest.ref} from ${oldest.company}` : "Nothing open"
+      )}
     </div>
   `;
+}
+
+const PROTO_SERVICE_TABS = [
+  { id: "faults", name: "Faults" },
+  { id: "not-sending", name: "Not sending" },
+  { id: "risk", name: "At risk" },
+  { id: "companies", name: "Companies" },
+];
+
+function protoServiceTab() {
+  const id = String(store.prototypeServiceTab || "");
+  return PROTO_SERVICE_TABS.some((item) => item.id === id) ? id : "faults";
+}
+
+function protoServiceGo(tab) {
+  return {
+    activePrototypeView: "servicing",
+    prototypeServiceTab: tab,
+    prototypeServiceQuery: "",
+    ...protoSeeAsClear(),
+  };
+}
+
+function protoServiceData() {
+  return protoData()?.servicing || {};
+}
+
+function protoServiceDaysAgo(days, fallbackHours) {
+  const ms = Number(days) > 0 ? Number(days) * 86400000 : (fallbackHours || 3) * 3600000;
+  return new Date(Date.now() - ms);
+}
+
+function protoServiceMeters() {
+  const live = protoMeters().map((meter) => ({
+    id: meter.id,
+    company: "Network Rail",
+    site: meter.site,
+    point: meter.mpan || meter.mprn || meter.serial || "",
+    status: meter.status || "online",
+    last: meter.lastReading || "",
+    live: true,
+  }));
+  const extra = (protoServiceData().meters || []).map((meter) => ({
+    ...meter,
+    last: protoAgo(protoServiceDaysAgo(meter.daysAgo, 5)),
+    live: false,
+  }));
+  return [...live, ...extra];
+}
+
+function protoServiceMeterMap() {
+  const map = new Map();
+  protoServiceMeters().forEach((meter) => map.set(meter.id, meter));
+  return map;
+}
+
+function protoServiceFaults() {
+  const map = protoServiceMeterMap();
+  return (protoServiceData().faults || [])
+    .map((fault) => {
+      const meter = map.get(fault.meterId);
+      if (!meter) return null;
+      return { ...fault, meter, company: meter.company, site: meter.site, point: meter.point };
+    })
+    .filter(Boolean);
+}
+
+function protoServiceRisks() {
+  const map = protoServiceMeterMap();
+  return (protoServiceData().risks || [])
+    .map((risk) => {
+      const meter = map.get(risk.meterId) || {
+        id: risk.meterId,
+        company: risk.company,
+        site: risk.site,
+        point: risk.point,
+        status: "online",
+        live: false,
+      };
+      if (!meter.company) return null;
+      return { ...risk, meter, company: meter.company, site: meter.site, point: meter.point };
+    })
+    .filter(Boolean);
+}
+
+function protoServiceCompanyCount(rows) {
+  return new Set((rows || []).map((row) => row.company)).size;
+}
+
+function protoServiceCompanies() {
+  const meters = protoServiceMeters();
+  const listed = protoServiceData().companies || [];
+  const faults = protoServiceFaults();
+  const risks = protoServiceRisks();
+  return protoTeamCompanyNames().map((name) => {
+    const own = meters.filter((meter) => meter.company === name);
+    const total = name === "Network Rail" ? own.length : Number(listed.find((c) => c.name === name)?.meters) || 0;
+    const stale = own.filter((meter) => meter.status === "stale").length;
+    const gaps = own.filter((meter) => meter.status === "gaps").length;
+    const sending = Math.max(0, total - stale - gaps);
+    return {
+      name,
+      meters: total,
+      sending,
+      percent: total ? Math.floor((sending / total) * 100) : null,
+      stale,
+      gaps,
+      faults: faults.filter((item) => item.company === name).length,
+      risks: risks.filter((item) => item.company === name).length,
+    };
+  });
+}
+
+function protoServiceFleet() {
+  const rows = protoServiceCompanies();
+  const meters = rows.reduce((sum, row) => sum + row.meters, 0);
+  const sending = rows.reduce((sum, row) => sum + row.sending, 0);
+  return {
+    meters,
+    sending,
+    down: meters - sending,
+    percent: meters ? Math.floor((sending / meters) * 100) : 0,
+  };
+}
+
+function protoServiceDue(days) {
+  const n = Number(days) || 0;
+  if (n === 0) return "Due today";
+  if (n > 0) return `Due in ${n} ${n === 1 ? "day" : "days"}`;
+  const late = Math.abs(n);
+  return `<strong class="astral-late">${late} ${late === 1 ? "day" : "days"} late</strong>`;
+}
+
+function protoServiceStateWord(status) {
+  if (status === "gaps") return "Missing data";
+  if (status === "stale") return "Not sending";
+  return "Sending";
+}
+
+function protoServiceMatch(row, q) {
+  if (!q) return true;
+  return [row.company, row.site, row.point, row.ref, row.fault, row.why]
+    .filter(Boolean)
+    .some((text) => String(text).toLowerCase().includes(q));
+}
+
+function protoServiceOpenAttr(meter) {
+  return meter?.live
+    ? `data-proto-service-meter="${escapeHtml(meter.id)}"`
+    : `data-proto-see-as-company="${escapeHtml(meter?.company || "")}"`;
+}
+
+function protoServiceRow(cells, sortBy, attr) {
+  const row = [...cells];
+  row.sortBy = sortBy || {};
+  row.attr = attr || "";
+  return row;
+}
+
+function protoServiceTable(tab, q) {
+  const rowAttr = (row) => row.attr;
+  if (tab === "companies") {
+    const rows = protoServiceCompanies()
+      .filter((row) => !q || row.name.toLowerCase().includes(q))
+      .map((row) =>
+        protoServiceRow(
+          [
+            escapeHtml(row.name),
+            row.meters ? row.meters.toLocaleString("en-GB") : `<span class="astral-muted">No meters yet</span>`,
+            row.percent == null ? "" : `${row.percent}%`,
+            row.stale || "0",
+            row.gaps || "0",
+            row.faults || "0",
+            row.risks || "0",
+          ],
+          { meters: row.meters, sending: row.percent == null ? -1 : row.percent },
+          `data-proto-see-as-company="${escapeHtml(row.name)}"`
+        )
+      );
+    return protoTable(
+      ["Company", "Meters", "Sending", "Not sending", "Missing data", "Open faults", "At risk"],
+      rows,
+      { id: "service-companies", empty: "No companies match.", rowAttr }
+    );
+  }
+  if (tab === "not-sending") {
+    const faults = protoServiceFaults();
+    const rows = protoServiceMeters()
+      .filter((meter) => meter.status === "stale" || meter.status === "gaps")
+      .filter((meter) => protoServiceMatch(meter, q))
+      .map((meter) => {
+        const fault = faults.find((item) => item.meterId === meter.id);
+        return protoServiceRow(
+          [
+            escapeHtml(meter.point),
+            escapeHtml(meter.company),
+            escapeHtml(meter.site),
+            protoStatePill(protoServiceStateWord(meter.status)),
+            escapeHtml(meter.last || ""),
+            fault ? escapeHtml(fault.ref) : `<span class="astral-muted">None open</span>`,
+          ],
+          {},
+          protoServiceOpenAttr(meter)
+        );
+      });
+    return protoTable(["Meter point", "Company", "Site", "State", "Last actual", "Fault"], rows, {
+      id: "service-not-sending",
+      empty: "Every meter here is sending.",
+      rowAttr,
+    });
+  }
+  if (tab === "risk") {
+    const rows = protoServiceRisks()
+      .filter((row) => protoServiceMatch(row, q))
+      .map((row) =>
+        protoServiceRow(
+          [
+            escapeHtml(row.point),
+            escapeHtml(row.company),
+            escapeHtml(row.site),
+            protoTag(row.why),
+            escapeHtml(row.detail || ""),
+          ],
+          {},
+          protoServiceOpenAttr(row.meter)
+        )
+      );
+    return protoTable(["Meter point", "Company", "Site", "Why", "Detail"], rows, {
+      id: "service-risk",
+      empty: "No meters at risk match.",
+      rowAttr,
+    });
+  }
+  const rows = protoServiceFaults()
+    .filter((row) => protoServiceMatch(row, q))
+    .map((row) =>
+      protoServiceRow(
+        [
+          escapeHtml(row.ref),
+          escapeHtml(row.fault),
+          escapeHtml(row.point),
+          escapeHtml(row.company),
+          escapeHtml(row.site),
+          protoTag(row.stage),
+          row.engineer ? escapeHtml(row.engineer) : `<span class="astral-muted">Not booked</span>`,
+          escapeHtml(protoAgo(protoServiceDaysAgo(row.raisedDays))),
+          protoServiceDue(row.dueDays),
+        ],
+        { ref: Number(String(row.ref).replace(/\D/g, "")), raised: -row.raisedDays, due: row.dueDays },
+        protoServiceOpenAttr(row.meter)
+      )
+    );
+  return protoTable(
+    ["Ref", "Fault", "Meter point", "Company", "Site", "Stage", "Engineer", "Raised", "Due"],
+    rows,
+    { id: "service-faults", empty: "No faults match.", rowAttr }
+  );
+}
+
+function protoServicing() {
+  const tab = protoServiceTab();
+  const query = String(store.prototypeServiceQuery || "");
+  const q = query.trim().toLowerCase();
+  const fleet = protoServiceFleet();
+  const faults = protoServiceFaults();
+  const late = faults.filter((item) => item.dueDays < 0).length;
+  const risks = protoServiceRisks();
+  const tabs = PROTO_SERVICE_TABS.map((item) => {
+    const n =
+      item.id === "faults"
+        ? faults.length
+        : item.id === "not-sending"
+          ? fleet.down
+          : item.id === "risk"
+            ? risks.length
+            : 0;
+    return { id: item.id, name: n ? `${item.name} · ${n}` : item.name };
+  });
+  return astralShell(`
+    ${astralPageHead("Servicing", protoData()?.servicingLead || "")}
+    <div class="astral-hero is-four">
+      ${protoStatButton(
+        "service-companies",
+        `${fleet.percent}%`,
+        `Of ${fleet.meters.toLocaleString("en-GB")} meters sending`
+      )}
+      ${protoStatButton("service-not-sending", fleet.down, "Not sending or missing data", fleet.down)}
+      ${protoStatButton(
+        "service-faults",
+        faults.length,
+        late ? `Open faults, ${late} late` : "Open faults",
+        late
+      )}
+      ${protoStatButton("service-risk", risks.length, "Meters at risk of a fault")}
+    </div>
+    <section class="astral-card astral-pane astral-service">
+      ${protoPaneShell(
+        `
+          ${protoTabs(tabs, tab, "data-proto-service-tab", "Servicing")}
+          <div class="astral-people-tools">
+            ${protoSearchField({
+              name: "proto-service-query",
+              value: query,
+              placeholder: "Search company, site, or meter point",
+              label: "Search company, site, or meter point",
+            })}
+          </div>
+        `,
+        protoServiceTable(tab, q)
+      )}
+    </section>
+  `);
+}
+
+const PROTO_INBOX_FACETS = [
+  { id: "open", name: "Open" },
+  { id: "unread", name: "Unread" },
+  { id: "resolved", name: "Resolved" },
+];
+
+function protoInboxFacet() {
+  const id = String(store.prototypeInboxFacet || "");
+  return PROTO_INBOX_FACETS.some((item) => item.id === id) ? id : "open";
+}
+
+function protoInboxGo(facet, ref) {
+  return {
+    activePrototypeView: "inbox",
+    prototypeInboxFacet: facet,
+    prototypeInboxQuery: "",
+    prototypeInboxTicket: ref || "",
+    ...(ref ? { prototypeInboxRead: protoInboxReadWith(ref) } : {}),
+    ...protoSeeAsClear(),
+  };
+}
+
+function protoInboxRead() {
+  return Array.isArray(store.prototypeInboxRead) ? store.prototypeInboxRead.map(String) : [];
+}
+
+function protoInboxReadWith(ref) {
+  return [...new Set([...protoInboxRead(), String(ref)])];
+}
+
+function protoInboxResolveMap() {
+  const raw = store.prototypeInboxResolve;
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? { ...raw } : {};
+}
+
+function protoInboxReplyMap() {
+  const raw = store.prototypeInboxReplies;
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? { ...raw } : {};
+}
+
+function protoInboxTickets() {
+  const read = new Set(protoInboxRead());
+  const resolve = protoInboxResolveMap();
+  const replies = protoInboxReplyMap();
+  const now = Date.now();
+  return (protoData()?.inbox || [])
+    .map((ticket) => {
+      const base = (ticket.messages || []).map((note, i) => ({
+        id: `${ticket.ref}-${i}`,
+        from: note.from,
+        name: note.from === "customer" ? ticket.name : note.name || "IMSERV support",
+        text: note.text,
+        at: new Date(now - (Number(note.minsAgo) || 0) * 60000).toISOString(),
+      }));
+      const added = (Array.isArray(replies[ticket.ref]) ? replies[ticket.ref] : []).map((note) => ({
+        ...note,
+        from: "me",
+      }));
+      const messages = [...base, ...added];
+      const stored = resolve[ticket.ref];
+      const reason = stored === undefined ? protoResolveId(ticket.reason) : protoResolveId(stored);
+      return {
+        ...ticket,
+        messages,
+        reason,
+        resolved: Boolean(reason),
+        unread: Boolean(ticket.unread) && !read.has(ticket.ref),
+        firstAt: messages[0]?.at || "",
+        lastAt: messages[messages.length - 1]?.at || "",
+      };
+    })
+    .sort((a, b) => String(b.lastAt).localeCompare(String(a.lastAt)));
+}
+
+function protoInboxUnreadCount() {
+  return protoInboxTickets().filter((item) => item.unread && !item.resolved).length;
+}
+
+function protoInboxOldestOpen() {
+  const open = protoInboxTickets().filter((item) => !item.resolved);
+  return open.sort((a, b) => String(a.firstAt).localeCompare(String(b.firstAt)))[0] || null;
+}
+
+function protoInboxInFacet(ticket, facet) {
+  if (facet === "resolved") return ticket.resolved;
+  if (facet === "unread") return ticket.unread && !ticket.resolved;
+  return !ticket.resolved;
+}
+
+function protoInboxFace(note) {
+  if (note.from === "me") return protoQueryPersonFace({ userId: "me" });
+  return `<span class="astral-person${note.from === "imserv" ? " is-imserv" : ""}"><span class="astral-person-mark" aria-hidden="true">${escapeHtml(
+    protoProfileInitials(note.name || "?")
+  )}</span></span>`;
+}
+
+function protoInboxNoteHtml(note) {
+  const name = note.from === "me" ? "You" : note.name;
+  return `
+    <div class="astral-query-note">
+      <div class="astral-query-note-main">
+        <div class="astral-query-note-head">
+          ${protoInboxFace(note)}
+          <strong>${escapeHtml(name)}</strong>
+          <span class="astral-muted">${escapeHtml(protoAgo(note.at))}</span>
+        </div>
+        <p>${escapeHtml(note.text)}</p>
+      </div>
+    </div>
+  `;
+}
+
+function protoInboxRowHtml(ticket, on) {
+  const first = ticket.messages[0]?.text || "";
+  return `
+    <li>
+      <button
+        type="button"
+        class="astral-ticket${ticket.unread ? " is-unread" : ""}${on ? " is-on" : ""}"
+        data-proto-ticket="${escapeHtml(ticket.ref)}"
+        ${on ? 'aria-current="true"' : ""}
+      >
+        <span class="astral-ticket-top">
+          <span class="astral-ticket-from">${escapeHtml(ticket.name)}${
+            ticket.unread ? '<span class="sr-only">, unread</span>' : ""
+          }</span>
+          <span class="astral-muted">${escapeHtml(protoAgo(ticket.lastAt))}</span>
+        </span>
+        <span class="astral-ticket-subject">${escapeHtml(ticket.subject)}</span>
+        <span class="astral-ticket-line astral-muted">${escapeHtml(ticket.company)} · ${escapeHtml(first)}</span>
+      </button>
+    </li>
+  `;
+}
+
+function protoInboxDetail(ticket) {
+  if (!ticket) {
+    return protoPaneShell(
+      `<div class="astral-detail-head"><div><h3>Inbox</h3></div></div>`,
+      `<div class="astral-empty"><p>Pick a ticket to read it.</p></div>`
+    );
+  }
+  const meter = ticket.meterId ? protoServiceMeterMap().get(ticket.meterId) : null;
+  const tools = ticket.resolved
+    ? `<div class="astral-ack">
+        ${protoTag(protoResolveName(ticket.reason) || "Resolved")}
+        ${protoIconBtn("undo", "Undo", `data-proto-ticket-undo="${escapeHtml(ticket.ref)}"`, {
+          className: "is-plain",
+        })}
+      </div>`
+    : protoAckControl("ticket", ticket.ref, false);
+  const about = meter
+    ? ` · <button type="button" class="astral-text" ${protoServiceOpenAttr(meter)}>${escapeHtml(
+        `${meter.site}, ${meter.point}`
+      )}</button>`
+    : "";
+  return protoPaneShell(
+    `
+      <div class="astral-detail-head">
+        <div>
+          ${protoPaneKicker(`${ticket.ref} · ${ticket.company}`)}
+          <h3>${escapeHtml(ticket.subject)}</h3>
+          <p class="astral-muted astral-ticket-about">${escapeHtml(ticket.name)}, ${escapeHtml(
+            ticket.email
+          )}${about}</p>
+        </div>
+        <div class="astral-detail-tools">${tools}</div>
+      </div>
+    `,
+    `
+      <div class="astral-query-thread">${ticket.messages.map((note) => protoInboxNoteHtml(note)).join("")}</div>
+      ${
+        ticket.resolved || !protoCanAct()
+          ? ""
+          : protoQueryComposer({
+              formAttr: `data-proto-inbox-reply="${escapeHtml(ticket.ref)}"`,
+              name: "proto-inbox-reply",
+              required: true,
+              label: "Reply",
+            })
+      }
+    `
+  );
+}
+
+function protoInbox() {
+  const facet = protoInboxFacet();
+  const query = String(store.prototypeInboxQuery || "");
+  const q = query.trim().toLowerCase();
+  const all = protoInboxTickets();
+  const listed = all
+    .filter((ticket) => protoInboxInFacet(ticket, facet))
+    .filter(
+      (ticket) =>
+        !q ||
+        [ticket.subject, ticket.company, ticket.name, ticket.email, ticket.ref].some((text) =>
+          String(text || "").toLowerCase().includes(q)
+        )
+    );
+  const current = all.find((ticket) => ticket.ref === store.prototypeInboxTicket) || null;
+  const chips = PROTO_INBOX_FACETS.map((item) => {
+    const on = item.id === facet;
+    const n = item.id === "resolved" ? 0 : all.filter((t) => protoInboxInFacet(t, item.id)).length;
+    return `<button type="button" class="astral-chip${on ? " is-on" : ""}" data-proto-inbox-facet="${escapeHtml(
+      item.id
+    )}" aria-pressed="${on ? "true" : "false"}">${escapeHtml(n ? `${item.name} · ${n}` : item.name)}</button>`;
+  }).join("");
+  const rows = listed.map((ticket) => protoInboxRowHtml(ticket, ticket.ref === current?.ref)).join("");
+  const empty =
+    facet === "open" && !q
+      ? "Nothing here. New tickets land in Open."
+      : q
+        ? "No tickets match."
+        : "Nothing here.";
+  return astralShell(`
+    ${astralPageHead("Inbox", protoData()?.inboxLead || "")}
+    <div class="astral-split astral-inbox">
+      <aside class="astral-list">
+        <div class="astral-tree-head">
+          <div class="astral-tree-tools">
+            ${protoSearchField({
+              name: "proto-inbox-query",
+              value: query,
+              placeholder: "Search subject, company, or person",
+              label: "Search subject, company, or person",
+            })}
+          </div>
+          <div class="astral-pills" role="group" aria-label="Filter tickets">${chips}</div>
+        </div>
+        <ul class="astral-tree astral-tickets">${rows || `<li class="astral-muted">${escapeHtml(empty)}</li>`}</ul>
+      </aside>
+      <section class="astral-card astral-pane">${protoInboxDetail(current)}</section>
+    </div>
+  `);
 }
 
 function protoCompanies() {
@@ -10966,17 +11578,18 @@ function protoQueriesForCompare(bundle) {
 
 function protoQueryComposer(config) {
   const required = config.required ? " required" : "";
+  const label = escapeHtml(config.label || "Comment");
   return `
     <form class="astral-query-reply" ${config.formAttr}>
       ${protoQueryPersonFace({ userId: "me" })}
       <label>
-        <span class="sr-only">Comment</span>
-        <textarea name="${escapeHtml(config.name)}" placeholder="Comment" maxlength="400" rows="1" data-proto-grow${required}></textarea>
+        <span class="sr-only">${label}</span>
+        <textarea name="${escapeHtml(config.name)}" placeholder="${label}" maxlength="400" rows="1" data-proto-grow${required}></textarea>
         ${protoIconTip(
-          `<button type="submit" class="astral-send" disabled aria-label="Comment">${protoIconMark(
+          `<button type="submit" class="astral-send" disabled aria-label="${label}">${protoIconMark(
             "send"
           )}</button>`,
-          "Comment"
+          config.label || "Comment"
         )}
       </label>
     </form>
@@ -13848,6 +14461,7 @@ function protoUserPeople() {
       contractName: String(store.prototypeMeContractName || ""),
       you: true,
     },
+    ...protoImservPeople(),
     ...protoInvitedUsers().map((item) => ({
       id: item.id,
       name: item.name || item.email,
@@ -13894,6 +14508,36 @@ function protoCanEditPersonRole(person) {
 }
 
 const PROTO_TEAM_COMPANIES = ["Network Rail", "Scottish Water", "Tesco", "EDF"];
+const PROTO_IMSERV_BUCKET = "c:IMSERV";
+const PROTO_IMSERV_ADMINS = [
+  { id: "u-imserv-nadia", name: "Nadia Brooks", email: "nadia.brooks@imserv.com", lastActive: "Now" },
+  { id: "u-imserv-gareth", name: "Gareth Lloyd", email: "gareth.lloyd@imserv.com", lastActive: "1 hour ago" },
+  { id: "u-imserv-sophie", name: "Sophie Turner", email: "sophie.turner@imserv.com", lastActive: "Yesterday" },
+  { id: "u-imserv-kwame", name: "Kwame Mensah", email: "kwame.mensah@imserv.com", lastActive: "3 days ago" },
+];
+
+function protoShowsImserv() {
+  return (
+    !store.prototypeSeeAsCompany &&
+    !store.prototypeSeeAsUser &&
+    protoCompanyId() === "admin-user" &&
+    protoMeRole() === "super-admin"
+  );
+}
+
+function protoImservPeople() {
+  if (!protoShowsImserv()) return [];
+  return PROTO_IMSERV_ADMINS.map((item) => ({
+    ...item,
+    role: "super-admin",
+    company: "IMSERV",
+    expiresOn: "2028-03-31",
+    expiresFrom: "2026-04-01",
+    contractName: "",
+    imserv: true,
+    you: false,
+  }));
+}
 const PROTO_COMPANY_TYPES = [
   { id: "customer", name: "Customer", lens: "end-customer" },
   { id: "supplier", name: "Supplier", lens: "portfolio-customer" },
@@ -14456,8 +15100,20 @@ function protoTeamBuckets(query) {
     .trim()
     .toLowerCase();
   if (protoSeesCompanies()) {
-    return protoTeamCompanyChoices()
-      .map((choice) => {
+    const imserv = protoShowsImserv()
+      ? [
+          {
+            id: PROTO_IMSERV_BUCKET,
+            name: "IMSERV",
+            teams: [],
+            imserv: true,
+            people: protoUserPeople().filter((person) => person.role === "super-admin"),
+          },
+        ]
+      : [];
+    return [
+      ...imserv,
+      ...protoTeamCompanyChoices().map((choice) => {
         const teams = protoVisibleTeams().filter((item) => item.company === choice.value);
         return {
           id: `c:${choice.value}`,
@@ -14465,8 +15121,8 @@ function protoTeamBuckets(query) {
           teams,
           people: protoPeopleFromTeams(teams),
         };
-      })
-      .filter((item) => !q || item.name.toLowerCase().includes(q));
+      }),
+    ].filter((item) => !q || item.name.toLowerCase().includes(q));
   }
   const map = new Map();
   protoVisibleTeams().forEach((team) => {
@@ -15247,7 +15903,9 @@ function protoUsersList(q, picked) {
       const teamOpen = fold.kind === "team" && fold.parent === item.id;
       const open = bucketOpen || teamOpen;
       let inner = "";
-      if (seesCompanies) {
+      if (item.imserv) {
+        inner = protoUsersTable(filterPeople(item.people), item.people, false);
+      } else if (seesCompanies) {
         const teams = item.teams;
         inner = teams.length
           ? teams
@@ -16417,6 +17075,8 @@ function protoApp() {
   if (view === "settings") return protoSettings();
   if (view === "users") return protoUsers();
   if (view === "companies") return protoCompanies();
+  if (view === "servicing") return protoServicing();
+  if (view === "inbox") return protoInbox();
   return protoHome();
 }
 
@@ -16691,6 +17351,8 @@ function protoSkelKeys() {
       store.prototypeGroup || "",
       store.prototypePane || "",
       store.prototypeSettingsSection || "",
+      store.prototypeServiceTab || "",
+      store.prototypeInboxTicket || "",
     ].join("|"),
   };
 }
@@ -17966,7 +18628,7 @@ function protoGrowComment(area) {
     parseFloat(styles.paddingBottom) +
     parseFloat(styles.borderTopWidth) +
     parseFloat(styles.borderBottomWidth);
-  const minLines = box.closest("[data-proto-query-reply], [data-proto-query-form]") ? 1 : protoCommentOpen(box) ? 2 : 1;
+  const minLines = box.closest("[data-proto-query-reply], [data-proto-query-form], [data-proto-inbox-reply]") ? 1 : protoCommentOpen(box) ? 2 : 1;
   box.style.height = "auto";
   box.style.height = `${Math.max(minLines * line + chrome, box.scrollHeight)}px`;
   if (box.closest(".astral-query-pin")) protoPlaceQueryPin();
@@ -17980,14 +18642,14 @@ function protoOpenComment(area) {
 }
 
 function protoSyncQuerySubmit(area) {
-  const form = area?.closest?.("[data-proto-query-form], [data-proto-query-reply], [data-proto-query-edit]");
+  const form = area?.closest?.("[data-proto-query-form], [data-proto-query-reply], [data-proto-query-edit], [data-proto-inbox-reply]");
   const btn = form?.querySelector("button[type='submit']");
   if (!btn) return;
   btn.disabled = !String(area.value || "");
 }
 
 function protoQueryComposerForm(node) {
-  return node?.closest?.("[data-proto-query-form], [data-proto-query-reply], [data-proto-query-edit]") || null;
+  return node?.closest?.("[data-proto-query-form], [data-proto-query-reply], [data-proto-query-edit], [data-proto-inbox-reply]") || null;
 }
 
 function onPrototypeFocus(event) {
@@ -18060,6 +18722,10 @@ function onPrototype(event) {
           ? { prototypeUserQuery: "" }
           : name === "proto-company-query"
             ? { prototypeCompanyQuery: "" }
+            : name === "proto-service-query"
+            ? { prototypeServiceQuery: "" }
+            : name === "proto-inbox-query"
+            ? { prototypeInboxQuery: "" }
             : name === "proto-team-query"
             ? { prototypeTeamQuery: "" }
             : name === "proto-team-people-query"
@@ -18945,6 +19611,60 @@ function onPrototype(event) {
         prototypeAckOpen: "",
       });
     }
+    if (kind === "ticket") {
+      setProto({
+        prototypeInboxResolve: { ...protoInboxResolveMap(), [id]: reason },
+        prototypeAckOpen: "",
+      });
+    }
+    return;
+  }
+  const ticketUndo = event.target.closest("[data-proto-ticket-undo]");
+  if (ticketUndo) {
+    if (!protoCanAct()) return;
+    setProto({
+      prototypeInboxResolve: { ...protoInboxResolveMap(), [ticketUndo.dataset.protoTicketUndo]: "" },
+    });
+    return;
+  }
+  const ticketBtn = event.target.closest("[data-proto-ticket]");
+  if (ticketBtn) {
+    const ref = ticketBtn.dataset.protoTicket;
+    setProto({
+      prototypeInboxTicket: ref,
+      prototypeInboxRead: protoInboxReadWith(ref),
+      prototypeAckOpen: "",
+    });
+    return;
+  }
+  const inboxFacet = event.target.closest("[data-proto-inbox-facet]");
+  if (inboxFacet) {
+    setProto({ prototypeInboxFacet: inboxFacet.dataset.protoInboxFacet });
+    return;
+  }
+  const serviceTab = event.target.closest("[data-proto-service-tab]");
+  if (serviceTab) {
+    setProto({ prototypeServiceTab: serviceTab.dataset.protoServiceTab });
+    return;
+  }
+  const serviceMeter = event.target.closest("[data-proto-service-meter]");
+  if (serviceMeter) {
+    const id = serviceMeter.dataset.protoServiceMeter;
+    const meter = protoMeter(id);
+    const site = protoSiteByMeter(id);
+    if (!meter) return;
+    setProto({
+      ...protoSeeAsClear(),
+      prototypeSeeAsCompany: "Network Rail",
+      activePrototypeMeter: id,
+      prototypeScope: "site",
+      ...protoSiteMeterPatch([id], site),
+      prototypeChannel: meter.direction === "Export" ? "out" : "in",
+      prototypePane: "consumption",
+      activePrototypeView: "portfolio",
+      prototypeFullscreen: true,
+      ...protoComparePatch("meter", id),
+    });
     return;
   }
   const queryBtn = event.target.closest("[data-proto-query]");
@@ -19782,6 +20502,19 @@ function onPrototypeInput(event) {
     return;
   }
   const companySearch = event.target.closest("input[name='proto-company-query']");
+  const pageSearch = event.target.closest(
+    "input[name='proto-service-query'], input[name='proto-inbox-query']"
+  );
+  if (pageSearch) {
+    const key = pageSearch.name === "proto-service-query" ? "prototypeServiceQuery" : "prototypeInboxQuery";
+    store[key] = pageSearch.value;
+    persistChrome();
+    const active = document.activeElement === pageSearch;
+    const start = pageSearch.selectionStart;
+    render();
+    if (active) protoRestoreFocus(`#astral-fs input[name='${pageSearch.name}']`, start);
+    return;
+  }
   if (companySearch) {
     store.prototypeCompanyQuery = companySearch.value;
     persistChrome();
@@ -20335,6 +21068,23 @@ function onPrototypeSubmit(event) {
       prototypeCompanyDraftName: "",
       prototypeCompanyDraftType: "customer",
       prototypeCompanyNameError: false,
+    });
+    return;
+  }
+  const inboxReply = event.target.closest("[data-proto-inbox-reply]");
+  if (inboxReply) {
+    event.preventDefault();
+    if (!protoCanAct()) return;
+    const ref = inboxReply.dataset.protoInboxReply;
+    const text = String(inboxReply.querySelector("[name='proto-inbox-reply']")?.value || "").trim();
+    if (!text || !ref) return;
+    const map = protoInboxReplyMap();
+    const list = Array.isArray(map[ref]) ? map[ref] : [];
+    setProto({
+      prototypeInboxReplies: {
+        ...map,
+        [ref]: [...list, { id: `${ref}-r${Date.now()}`, text, at: new Date().toISOString() }],
+      },
     });
     return;
   }

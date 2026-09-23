@@ -6468,6 +6468,126 @@
             "avoid": "",
             "note": "The contract on the system sets the from and to. They can only see data between those dates.",
             "from": "Shaun on user groups, 7 Sep"
+          },
+          {
+            "id": "servicing",
+            "kind": "words",
+            "name": "Servicing",
+            "status": "draft",
+            "say": "Servicing",
+            "avoid": "Maintenance, Fleet, Asset health.",
+            "note": "The admin page for meter health across every company. Faults, not sending, and at risk. Customers do not see it.",
+            "from": "Admin servicing and inbox brief, 6 Oct"
+          },
+          {
+            "id": "inbox",
+            "kind": "words",
+            "name": "Inbox",
+            "status": "draft",
+            "say": "Inbox",
+            "avoid": "Helpdesk, Support centre, Tickets.",
+            "note": "Where support tickets land. It reads like email. Unread is bold.",
+            "from": "Admin servicing and inbox brief, 6 Oct"
+          },
+          {
+            "id": "ticket",
+            "kind": "words",
+            "name": "Ticket",
+            "status": "draft",
+            "say": "Ticket",
+            "avoid": "Case, Incident, Request.",
+            "note": "Anything a customer sends to support. Not a query. A ticket has a reference like T-1042.",
+            "from": "Admin servicing and inbox brief, 6 Oct"
+          },
+          {
+            "id": "fault",
+            "kind": "words",
+            "name": "Fault",
+            "status": "draft",
+            "say": "Fault",
+            "avoid": "Incident, Defect, Error.",
+            "note": "Something wrong with a meter that needs work. A fault has a stage, an engineer, and a due date. A reference looks like F-2041.",
+            "from": "Admin servicing and inbox brief, 6 Oct"
+          },
+          {
+            "id": "fault-kinds",
+            "kind": "labels",
+            "name": "Fault kinds",
+            "status": "draft",
+            "say": "No reads, Weak signal, Clock drift, CT ratio, Reverse running, Tamper, Battery low, Zero use",
+            "avoid": "Comms failure, RSSI, NTP skew.",
+            "note": "Name what is wrong in plain words. One kind per fault.",
+            "from": "Admin servicing and inbox brief, 6 Oct"
+          },
+          {
+            "id": "fault-stage",
+            "kind": "labels",
+            "name": "Fault stage",
+            "status": "draft",
+            "say": "New, Booked, On site, Waiting for parts",
+            "avoid": "Triage, Dispatched, Pending.",
+            "note": "Stage sits in a Tag. A fixed fault leaves the list.",
+            "from": "Admin servicing and inbox brief, 6 Oct"
+          },
+          {
+            "id": "due-and-late",
+            "kind": "labels",
+            "name": "Due and late",
+            "status": "draft",
+            "say": "Due today, Due in 2 days, 3 days late",
+            "avoid": "SLA breach, Overdue, Breached.",
+            "note": "Say when in days. Late is bold. No red fill.",
+            "from": "Admin servicing and inbox brief, 6 Oct"
+          },
+          {
+            "id": "at-risk",
+            "kind": "labels",
+            "name": "At risk",
+            "status": "draft",
+            "say": "At risk",
+            "avoid": "Warning, Degraded, Needs a check-up.",
+            "note": "Still sending but likely to stop. Say why in a Tag: 3G modem, Weak signal, Drops out, Recertify, Battery low, or Estimates. Add the detail after.",
+            "from": "Admin servicing and inbox brief, 6 Oct"
+          },
+          {
+            "id": "sending-not-online",
+            "kind": "words",
+            "name": "Sending, not online",
+            "status": "draft",
+            "say": "Sending, Not sending",
+            "avoid": "Online, Offline, Talking, Comms down.",
+            "note": "Meter health uses State words on every page, Servicing too. Say 98% sending, not 98% online.",
+            "from": "Admin servicing and inbox brief, 6 Oct"
+          },
+          {
+            "id": "engineer-visit",
+            "kind": "words",
+            "name": "Engineer visit",
+            "status": "draft",
+            "say": "Engineer visit",
+            "avoid": "Site attendance, Dispatch, Job.",
+            "note": "When someone goes to site. The engineer's name shows on the fault. No name yet says Not booked.",
+            "from": "Admin servicing and inbox brief, 6 Oct"
+          },
+          {
+            "id": "inbox-empty",
+            "kind": "empty",
+            "name": "Inbox empty",
+            "status": "draft",
+            "say": "Nothing here. New tickets land in Open.",
+            "avoid": "Inbox zero!, All caught up!",
+            "note": "Plain. No celebration.",
+            "from": "Admin servicing and inbox brief, 6 Oct"
+          },
+          {
+            "id": "ticket-pick",
+            "kind": "empty",
+            "name": "No ticket open",
+            "status": "draft",
+            "say": "Pick a ticket to read it.",
+            "avoid": "Select an item.",
+            "note": "The reading side before a ticket is open.",
+            "from": "Admin servicing and inbox brief, 6 Oct"
           }
         ]
       },
@@ -6807,7 +6927,7 @@
             "name": "Dashboard cards",
             "status": "waiting",
             "summary": "How many cards, and what area means.",
-            "now": "Home cards open the place they refer to. Sites that need action open Alerts. Use opens Portfolio. Finance is highest spend. Data health opens Portfolio. The card is the hit target. Many extra widgets still show no data.",
+            "now": "Home cards open the place they refer to. Sites that need action open Alerts. Use opens Portfolio. Finance is highest spend. Data health opens Portfolio. The card is the hit target. Many extra widgets still show no data. Admin overview cards open Servicing on the right tab, or Inbox on the right filter.",
             "later": "A snapshot of several views at once, then drill down.",
             "uses": [
               "card"
@@ -6845,8 +6965,8 @@
             "id": "admin-side-map",
             "name": "Admin side map",
             "status": "working",
-            "summary": "Companies, brokers, and users down the left. Open a company for their data.",
-            "now": "IMSERV admin side menu is Overview, Companies, and Users. Overview is companies and people on the platform. Companies is the list. Add a company sits there. Pick a company to see their product. Back to admin returns to Companies. Brokers still wait.",
+            "summary": "Overview, Companies, Servicing, Inbox, and Users down the left. Open a company for their data.",
+            "now": "IMSERV admin side menu is Overview, Companies, Servicing, Inbox, Users, and Reports. Overview is the picture of the platform. Companies is the list. Add a company sits there. Pick a company to see their product. Servicing is meter health across every company. Inbox is support tickets. Inbox shows how many are unread. On Users, IMSERV sits first. It lists every super admin, you too. Companies follow. Back to admin returns to Companies. Brokers still wait.",
             "later": "",
             "uses": [
               "list",
@@ -6854,6 +6974,56 @@
               "card"
             ],
             "note": "Super users get extra buttons a customer never sees."
+          },
+          {
+            "id": "servicing",
+            "name": "Servicing",
+            "status": "draft",
+            "summary": "Meter health across every company. Faults, not sending, and at risk in one place.",
+            "now": "IMSERV admin only. Four numbers sit at the top: Meters sending, Not sending, Open faults, and At risk. Each opens its tab. Tabs are Faults, Not sending, At risk, and Companies. Each tab is one table. Search finds a company, site, or meter point. Faults show the fault, the stage, the engineer, and when it is due. Late says how many days late. Not sending lists meters that are not sending or have missing data, and says if a fault is open. At risk is still sending but likely to stop. Say why: 3G modem, Weak signal, Drops out, Recertify, Battery low, or Estimates. A row opens that meter as the company. A company with no meter data here opens as that company.",
+            "later": "Book an engineer from the row. Due dates per contract. Signal over time. Group by how the meter talks to us.",
+            "uses": [
+              "page-header",
+              "card",
+              "tabs",
+              "table",
+              "state",
+              "tag",
+              "search"
+            ],
+            "note": "Health words stay State words. Do not say online or offline. Customers never see this page. Check settlement timings with Elexon before they set a due date."
+          },
+          {
+            "id": "inbox",
+            "name": "Inbox",
+            "status": "draft",
+            "summary": "Support tickets from customers, read like email.",
+            "now": "IMSERV admin only. The list sits on the left and the ticket on the right. A row shows who sent it, the company, the subject, the first line, and how long ago. Unread is bold with a dot. Opening a ticket marks it read. Chips are Open, Unread, and Resolved. Search finds a subject, company, or person. The ticket shows the subject, who sent it, the company, and the meter it is about. The thread reads top to bottom. Reply sits at the bottom. Send is off until they type. Resolve with a category. Undo puts it back.",
+            "later": "Assign to a person. Attachments. Email in and out. Merge a duplicate.",
+            "uses": [
+              "list",
+              "page-header",
+              "card",
+              "search",
+              "tag",
+              "count",
+              "textarea",
+              "icon-button"
+            ],
+            "note": "A ticket is not a query. A query is a customer question on a graph. A ticket is anything they send to support. The side menu shows how many are unread."
+          },
+          {
+            "id": "admin-overview",
+            "name": "Admin overview",
+            "status": "draft",
+            "summary": "The picture of the platform. Every card opens the place it counts.",
+            "now": "The top row is Companies, People, and Meters sending. Cards are Not sending, Open faults, Late faults, At risk, Unread tickets, and Oldest open ticket. Each card opens Servicing on the right tab, or Inbox on the right filter. The card is the hit target. No Open button.",
+            "later": "Change since last week. Brokers when the list is live.",
+            "uses": [
+              "card",
+              "page-header"
+            ],
+            "note": "Only cards with data. A Wait card does not sit on the admin overview."
           },
           {
             "id": "customer-vs-admin",
@@ -8056,6 +8226,413 @@
             "status": "Waiting",
             "live": false,
             "blurb": "Where usage is heading. Not day one."
+          }
+        ],
+        "servicingLead": "Meter health across every company. Open a row to see it as them.",
+        "inboxLead": "Support tickets from customers. Reply, then resolve.",
+        "servicing": {
+          "companies": [
+            {
+              "name": "Scottish Water",
+              "meters": 486
+            },
+            {
+              "name": "Tesco",
+              "meters": 734
+            },
+            {
+              "name": "EDF",
+              "meters": 142
+            }
+          ],
+          "meters": [
+            {
+              "id": "sw-dalmarnock-in",
+              "company": "Scottish Water",
+              "site": "Dalmarnock works",
+              "point": "1800054829174",
+              "commodity": "electricity",
+              "status": "stale",
+              "daysAgo": 4
+            },
+            {
+              "id": "sw-shieldhall-in",
+              "company": "Scottish Water",
+              "site": "Shieldhall works",
+              "point": "1800061327760",
+              "commodity": "electricity",
+              "status": "stale",
+              "daysAgo": 2
+            },
+            {
+              "id": "sw-seafield-water",
+              "company": "Scottish Water",
+              "site": "Seafield works",
+              "point": "WS-88213",
+              "commodity": "water",
+              "status": "stale",
+              "daysAgo": 9
+            },
+            {
+              "id": "sw-perth-gas",
+              "company": "Scottish Water",
+              "site": "Perth depot",
+              "point": "7719402815",
+              "commodity": "gas",
+              "status": "gaps",
+              "daysAgo": 0
+            },
+            {
+              "id": "tesco-leeds-in",
+              "company": "Tesco",
+              "site": "Leeds Kirkstall",
+              "point": "1200038471926",
+              "commodity": "electricity",
+              "status": "stale",
+              "daysAgo": 3
+            },
+            {
+              "id": "tesco-bristol-in",
+              "company": "Tesco",
+              "site": "Bristol Eastville",
+              "point": "1300021964411",
+              "commodity": "electricity",
+              "status": "stale",
+              "daysAgo": 1
+            },
+            {
+              "id": "tesco-dc-daventry-in",
+              "company": "Tesco",
+              "site": "Daventry distribution centre",
+              "point": "1100049920315",
+              "commodity": "electricity",
+              "status": "stale",
+              "daysAgo": 6
+            },
+            {
+              "id": "tesco-york-gas",
+              "company": "Tesco",
+              "site": "York Clifton Moor",
+              "point": "4411803926",
+              "commodity": "gas",
+              "status": "stale",
+              "daysAgo": 2
+            },
+            {
+              "id": "tesco-cardiff-in",
+              "company": "Tesco",
+              "site": "Cardiff Western Avenue",
+              "point": "2100017742380",
+              "commodity": "electricity",
+              "status": "gaps",
+              "daysAgo": 0
+            },
+            {
+              "id": "edf-heysham-in",
+              "company": "EDF",
+              "site": "Heysham offices",
+              "point": "1600044180027",
+              "commodity": "electricity",
+              "status": "stale",
+              "daysAgo": 5
+            },
+            {
+              "id": "edf-barnwood-water",
+              "company": "EDF",
+              "site": "Barnwood",
+              "point": "WS-40177",
+              "commodity": "water",
+              "status": "gaps",
+              "daysAgo": 0
+            }
+          ],
+          "faults": [
+            {
+              "ref": "F-2041",
+              "meterId": "nr-euston-in",
+              "fault": "No reads",
+              "stage": "Booked",
+              "engineer": "Dan Hughes",
+              "raisedDays": 6,
+              "dueDays": -2
+            },
+            {
+              "ref": "F-2043",
+              "meterId": "nr-motherwell-depot-in",
+              "fault": "No reads",
+              "stage": "Waiting for parts",
+              "engineer": "Craig Muir",
+              "raisedDays": 5,
+              "dueDays": -1
+            },
+            {
+              "ref": "F-2044",
+              "meterId": "nr-reading-water",
+              "fault": "Battery low",
+              "stage": "On site",
+              "engineer": "Leah Patel",
+              "raisedDays": 3,
+              "dueDays": 0
+            },
+            {
+              "ref": "F-2046",
+              "meterId": "nr-crewe-in",
+              "fault": "Clock drift",
+              "stage": "New",
+              "engineer": "",
+              "raisedDays": 1,
+              "dueDays": 4
+            },
+            {
+              "ref": "F-2047",
+              "meterId": "sw-seafield-water",
+              "fault": "No reads",
+              "stage": "Booked",
+              "engineer": "Craig Muir",
+              "raisedDays": 8,
+              "dueDays": -3
+            },
+            {
+              "ref": "F-2048",
+              "meterId": "tesco-dc-daventry-in",
+              "fault": "Weak signal",
+              "stage": "Booked",
+              "engineer": "Ravi Kumar",
+              "raisedDays": 4,
+              "dueDays": 1
+            },
+            {
+              "ref": "F-2049",
+              "meterId": "tesco-cardiff-in",
+              "fault": "CT ratio",
+              "stage": "New",
+              "engineer": "",
+              "raisedDays": 1,
+              "dueDays": 6
+            },
+            {
+              "ref": "F-2050",
+              "meterId": "edf-heysham-in",
+              "fault": "Tamper",
+              "stage": "On site",
+              "engineer": "Dan Hughes",
+              "raisedDays": 2,
+              "dueDays": 2
+            },
+            {
+              "ref": "F-2051",
+              "meterId": "tesco-leeds-in",
+              "fault": "No reads",
+              "stage": "New",
+              "engineer": "",
+              "raisedDays": 0,
+              "dueDays": 5
+            }
+          ],
+          "risks": [
+            {
+              "meterId": "nr-stafford-in",
+              "why": "3G modem",
+              "detail": "Swap before the network closes"
+            },
+            {
+              "meterId": "nr-preston-in",
+              "why": "Drops out",
+              "detail": "Missed 6 reads this week"
+            },
+            {
+              "meterId": "nr-manchester-piccadilly-in",
+              "why": "Recertify",
+              "detail": "CT recertify by 14 Nov"
+            },
+            {
+              "meterId": "sw-inverness-water",
+              "company": "Scottish Water",
+              "site": "Inverness works",
+              "point": "WS-61024",
+              "commodity": "water",
+              "why": "Battery low",
+              "detail": "About 3 weeks left"
+            },
+            {
+              "meterId": "sw-dundee-in",
+              "company": "Scottish Water",
+              "site": "Dundee Hatton",
+              "point": "1800092213875",
+              "commodity": "electricity",
+              "why": "Weak signal",
+              "detail": "Signal falling for 10 days"
+            },
+            {
+              "meterId": "tesco-milton-keynes-in",
+              "company": "Tesco",
+              "site": "Milton Keynes Kingston",
+              "point": "1100062271043",
+              "commodity": "electricity",
+              "why": "3G modem",
+              "detail": "Swap before the network closes"
+            },
+            {
+              "meterId": "tesco-norwich-in",
+              "company": "Tesco",
+              "site": "Norwich Blue Boar",
+              "point": "1000035588201",
+              "commodity": "electricity",
+              "why": "Estimates",
+              "detail": "3 estimated reads in a row"
+            },
+            {
+              "meterId": "edf-hinkley-in",
+              "company": "EDF",
+              "site": "Hinkley visitor centre",
+              "point": "2200041106653",
+              "commodity": "electricity",
+              "why": "Recertify",
+              "detail": "CT recertify by 2 Dec"
+            }
+          ]
+        },
+        "inbox": [
+          {
+            "ref": "T-1048",
+            "company": "Network Rail",
+            "name": "Priya Shah",
+            "email": "priya.shah@networkrail.co.uk",
+            "subject": "Crewe incoming has gaps overnight",
+            "meterId": "nr-crewe-in",
+            "unread": true,
+            "messages": [
+              {
+                "from": "customer",
+                "minsAgo": 25,
+                "text": "The incoming supply at Crewe depot has gaps from 01.00 to 04.00 last night. Is the meter all right? We need the full day for our tenant bill."
+              }
+            ]
+          },
+          {
+            "ref": "T-1047",
+            "company": "Tesco",
+            "name": "Tom Reid",
+            "email": "tom.reid@tesco.com",
+            "subject": "Cannot download the September tenant bill",
+            "unread": true,
+            "messages": [
+              {
+                "from": "customer",
+                "minsAgo": 130,
+                "text": "The September tenant bill for Leeds Kirkstall says it is ready, but the download does nothing. Can you send it over?"
+              }
+            ]
+          },
+          {
+            "ref": "T-1046",
+            "company": "Scottish Water",
+            "name": "Fiona Grant",
+            "email": "fiona.grant@scottishwater.co.uk",
+            "subject": "New site to add: Dalmarnock works",
+            "unread": true,
+            "messages": [
+              {
+                "from": "customer",
+                "minsAgo": 320,
+                "text": "We have taken on Dalmarnock works. Please add the site and its two meters to our account. Meter points are attached to the email I sent on Monday."
+              }
+            ]
+          },
+          {
+            "ref": "T-1045",
+            "company": "Network Rail",
+            "name": "Mark Dawson",
+            "email": "mark.dawson@networkrail.co.uk",
+            "subject": "Reading water meter not sending since Friday",
+            "meterId": "nr-reading-water",
+            "unread": false,
+            "messages": [
+              {
+                "from": "customer",
+                "minsAgo": 1560,
+                "text": "The water meter at Reading has not sent anything since Friday. Can someone take a look?"
+              },
+              {
+                "from": "imserv",
+                "name": "Leah Patel",
+                "minsAgo": 1480,
+                "text": "Thanks Mark. The battery is low. An engineer visit is booked for tomorrow morning."
+              },
+              {
+                "from": "customer",
+                "minsAgo": 1400,
+                "text": "Great, thank you. Can you send the job number for our site team?"
+              }
+            ]
+          },
+          {
+            "ref": "T-1044",
+            "company": "EDF",
+            "name": "Sam Cole",
+            "email": "sam.cole@edfenergy.com",
+            "subject": "Invite link has expired",
+            "unread": false,
+            "messages": [
+              {
+                "from": "customer",
+                "minsAgo": 2900,
+                "text": "A new starter's invite link has expired before they could use it. Can you send a fresh one to jo.hart@edfenergy.com?"
+              }
+            ]
+          },
+          {
+            "ref": "T-1043",
+            "company": "Tesco",
+            "name": "Ana Lopes",
+            "email": "ana.lopes@tesco.com",
+            "subject": "Half-hourly data looks doubled on 12 Sep",
+            "unread": false,
+            "messages": [
+              {
+                "from": "customer",
+                "minsAgo": 4400,
+                "text": "On 12 Sep the Bristol Eastville half-hourly use is about double every other day. Nothing changed on site."
+              }
+            ]
+          },
+          {
+            "ref": "T-1042",
+            "company": "Scottish Water",
+            "name": "Iain Ross",
+            "email": "iain.ross@scottishwater.co.uk",
+            "subject": "Report emails going to junk",
+            "unread": false,
+            "reason": "fixed",
+            "messages": [
+              {
+                "from": "customer",
+                "minsAgo": 8700,
+                "text": "Our weekly data extract email is going to junk for the whole team."
+              },
+              {
+                "from": "imserv",
+                "name": "IMSERV support",
+                "minsAgo": 8500,
+                "text": "We have updated the sender record. Your IT team can also add reports@imserv.com as a safe sender."
+              }
+            ]
+          },
+          {
+            "ref": "T-1041",
+            "company": "Network Rail",
+            "name": "Priya Shah",
+            "email": "priya.shah@networkrail.co.uk",
+            "subject": "Motherwell depot gas reading",
+            "unread": false,
+            "reason": "duplicate",
+            "messages": [
+              {
+                "from": "customer",
+                "minsAgo": 13000,
+                "text": "The gas meter at Motherwell depot looks stuck. Same as the other ticket, sorry."
+              }
+            ]
           }
         ]
       }

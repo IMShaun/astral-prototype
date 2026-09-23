@@ -10792,3 +10792,131 @@ button.astral-state:focus-visible,
   padding-top: 0;
   padding-bottom: 0;
 }
+
+.astral-hero.is-four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.astral-service .astral-pane-head {
+  display: grid;
+  gap: 12px;
+}
+
+.astral-service .astral-table tbody tr,
+.astral-service .astral-table tbody tr th {
+  cursor: pointer;
+}
+
+.astral-late {
+  font-weight: 600;
+}
+
+.astral-rail-link .astral-count {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.astral-tickets {
+  display: grid;
+  gap: 2px;
+  padding: 0;
+  list-style: none;
+}
+
+.astral-ticket {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #000;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.astral-ticket:hover {
+  background: var(--color-background-hover);
+}
+
+.astral-ticket.is-on {
+  background: var(--color-background-subtle);
+}
+
+.astral-ticket:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000;
+}
+
+.astral-ticket-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.astral-ticket-from {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.astral-ticket-top > .astral-muted {
+  flex: none;
+  font-size: 0.875rem;
+}
+
+.astral-ticket-subject,
+.astral-ticket-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.astral-ticket-line {
+  font-size: 0.875rem;
+}
+
+.astral-ticket.is-unread .astral-ticket-from,
+.astral-ticket.is-unread .astral-ticket-subject {
+  font-weight: 600;
+}
+
+.astral-ticket.is-unread .astral-ticket-from::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-brand-primary);
+}
+
+.astral-ticket-about {
+  margin: 4px 0 0;
+}
+
+.astral-ticket-about .astral-text {
+  font-size: inherit;
+}
+
+.astral-inbox .astral-pane-body .astral-query-reply {
+  margin-top: auto;
+}
+
+.astral-person.is-imserv .astral-person-mark {
+  background: #000;
+  color: #fff;
+}
