@@ -40,7 +40,7 @@ const PROTO_TREE_FILTERS = [
   },
 ];
 const PROTO_PANE_FILTERS = [
-  ...PROTO_TREE_FILTERS,
+  ...PROTO_TREE_FILTERS.filter((group) => group.id !== "owned"),
   {
     id: "hours",
     name: "Hours",
@@ -7944,7 +7944,7 @@ function protoGroupPassesFilter(group, picked) {
 }
 
 function protoTreeFilterName(id) {
-  for (const group of PROTO_PANE_FILTERS) {
+  for (const group of [...PROTO_TREE_FILTERS, ...PROTO_PANE_FILTERS]) {
     const item = group.items.find((row) => row.id === id);
     if (item) return item.name;
   }
