@@ -2157,6 +2157,9 @@ function protoMeterAttrDefaults(meter) {
       ...base,
       standingWater: "1.20",
       unitWater: String(PROTO_WATER_PENCE),
+      emissionsWater: String(
+        Number((PROTO_WATER_SUPPLY_KG + PROTO_WATER_WASTE_KG * PROTO_WATER_RETURN).toFixed(3))
+      ),
     };
   }
   if (kind === "gas") {
@@ -2195,12 +2198,17 @@ function protoCloneProfile(profile) {
 function protoMeterProfile(id) {
   const meter = protoMeter(id);
   const saved = protoMeterProfiles()[id];
-  return protoCloneProfile(saved || protoMeterProfileDefault(meter));
+  const profile = protoCloneProfile(saved || protoMeterProfileDefault(meter));
+  profile.attrs = { ...protoMeterAttrDefaults(meter), ...(profile.attrs || {}) };
+  return profile;
 }
 
 function protoMeterDraft(id) {
   const draft = protoMeterDrafts()[id];
-  return protoCloneProfile(draft || protoMeterProfile(id));
+  if (!draft) return protoMeterProfile(id);
+  const next = protoCloneProfile(draft);
+  next.attrs = { ...protoMeterAttrDefaults(protoMeter(id)), ...(next.attrs || {}) };
+  return next;
 }
 
 function protoMeterDirty(id) {
@@ -9654,21 +9662,12 @@ function protoMeterClockField(name, value, label) {
   `;
 }
 
-function protoMeterAttrField(name, label, value, unit, unitKind) {
-  const unitHtml =
-    unitKind === "select"
-      ? protoSelect({
-          id: `meter-attr-unit-${name}`,
-          label: `${label} unit`,
-          value: "people",
-          options: [{ value: "people", label: unit }],
-          disabled: true,
-        })
-      : `<span class="astral-field-unit">${escapeHtml(unit)}</span>`;
+function protoMeterAttrField(name, label, value, unit) {
+  const unitId = `astral-meter-attr-unit-${name}`;
   return `
     <label class="astral-field astral-meter-attr">
       <span>${escapeHtml(label)}</span>
-      <span class="astral-meter-attr-row">
+      <span class="astral-input-unit">
         <input
           type="text"
           name="${escapeHtml(name)}"
@@ -9676,51 +9675,56 @@ function protoMeterAttrField(name, label, value, unit, unitKind) {
           inputmode="decimal"
           autocomplete="off"
           spellcheck="false"
+          aria-describedby="${escapeHtml(unitId)}"
         />
-        ${unitHtml}
+        <span class="astral-field-unit" id="${escapeHtml(unitId)}">${escapeHtml(unit)}</span>
       </span>
     </label>
   `;
 }
 
+function protoMeterAttrGroup(name, fields) {
+  return `
+    <fieldset class="astral-meter-attr-group">
+      <legend>${escapeHtml(name)}</legend>
+      <div class="astral-meter-attr-grid">${fields.join("")}</div>
+    </fieldset>
+  `;
+}
+
 function protoMeterAttrFields(meter, attrs) {
   const kind = protoMeterKind(meter);
-  const rows = [protoMeterAttrField("area", "Area", attrs.area, "m²")];
-  if (kind === "electricity") {
-    rows.push(
-      protoMeterAttrField("capacity", "Capacity", attrs.capacity, "kVA"),
-      protoMeterAttrField(
-        "standingElec",
-        "Daily standing charge, electricity",
-        attrs.standingElec,
-        "GBP"
-      ),
-      protoMeterAttrField(
-        "emissionsElec",
-        "Emissions factor, electricity",
-        attrs.emissionsElec,
-        "kgCO2e per kWh"
-      ),
-      protoMeterAttrField("onElec", "On-peak unit cost, electricity", attrs.onElec, "pence per kWh"),
-      protoMeterAttrField("offElec", "Off-peak unit cost, electricity", attrs.offElec, "pence per kWh")
-    );
-  } else if (kind === "gas") {
-    rows.push(
-      protoMeterAttrField("standingGas", "Daily standing charge, gas", attrs.standingGas, "GBP"),
-      protoMeterAttrField("emissionsGas", "Emissions factor, gas", attrs.emissionsGas, "kgCO2e per kWh"),
-      protoMeterAttrField("onGas", "On-peak unit cost, gas", attrs.onGas, "pence per kWh"),
-      protoMeterAttrField("offGas", "Off-peak unit cost, gas", attrs.offGas, "pence per kWh")
-    );
-  } else {
-    rows.push(
-      protoMeterAttrField("standingWater", "Daily standing charge, water", attrs.standingWater, "GBP"),
-      protoMeterAttrField("unitWater", "Unit cost, water", attrs.unitWater, "pence per m³")
-    );
-  }
-  rows.push(
-    protoMeterAttrField("employees", "Number of employees", attrs.employees, "People", "select")
-  );
-  return rows.join("");
+  const key = kind === "water" ? "Water" : kind === "gas" ? "Gas" : "Elec";
+  const useUnit = kind === "water" ? "m³" : "kWh";
+  const site = [
+    protoMeterAttrField("area", "Floor area", attrs.area, "m²"),
+    protoMeterAttrField("employees", "Number of employees", attrs.employees, "people"),
+  ];
+  const supply = [
+    ...(kind === "electricity"
+      ? [protoMeterAttrField("capacity", "Supply capacity", attrs.capacity, "kVA")]
+      : []),
+    protoMeterAttrField(
+      `emissions${key}`,
+      "Emissions factor",
+      attrs[`emissions${key}`],
+      `kgCO2e/${useUnit}`
+    ),
+  ];
+  const rates = [
+    protoMeterAttrField(`standing${key}`, "Daily standing charge", attrs[`standing${key}`], "£/day"),
+    ...(kind === "water"
+      ? [protoMeterAttrField("unitWater", "Unit rate", attrs.unitWater, "p/m³")]
+      : [
+          protoMeterAttrField(`on${key}`, "On-peak unit rate", attrs[`on${key}`], "p/kWh"),
+          protoMeterAttrField(`off${key}`, "Off-peak unit rate", attrs[`off${key}`], "p/kWh"),
+        ]),
+  ];
+  return [
+    protoMeterAttrGroup("Site", site),
+    protoMeterAttrGroup(kind === "electricity" ? "Supply and carbon" : "Carbon", supply),
+    protoMeterAttrGroup("Rates", rates),
+  ].join("");
 }
 
 function protoMeterFoldId() {
@@ -9920,7 +9924,7 @@ function protoMeterProfileForm(meter) {
           "rates",
           "Attributes",
           "rates",
-          `<div class="astral-profile-fields astral-meter-attrs">${protoMeterAttrFields(meter, draft.attrs)}</div>`
+          `<div class="astral-meter-attrs">${protoMeterAttrFields(meter, draft.attrs)}</div>`
         )}
       </div>
       <div class="astral-actions">
