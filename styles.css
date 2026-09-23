@@ -4775,8 +4775,30 @@ body.is-proto-fs .stage {
 }
 
 .astral-stat:hover,
+.astral-home-card:hover,
+.astral-home-chart[data-proto-home-go]:hover,
 .astral-catch:hover {
   background: var(--color-background-hover);
+}
+
+.astral-home-card {
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  align-content: start;
+  cursor: pointer;
+}
+
+.astral-home-card > span {
+  display: block;
+}
+
+.astral-home-chart[data-proto-home-go],
+.astral-home-chart[data-proto-home-go] * {
+  cursor: pointer;
 }
 
 .astral-stat.is-flag {
@@ -10508,6 +10530,8 @@ button.astral-state:focus-visible,
 .astral-cal-day:focus-visible,
 .astral-text:focus-visible,
 .astral-stat:focus-visible,
+.astral-home-card:focus-visible,
+.astral-home-chart[data-proto-home-go]:focus-visible,
 .astral-catch:focus-visible,
 .astral-site:focus-visible,
 .astral-group:focus-visible,
@@ -10585,4 +10609,24 @@ button.astral-state:focus-visible,
     margin-left: 12px;
     margin-right: 12px;
   }
+}
+
+/* Scroll areas never end flush: leave white space after the last item so the end reads as the end. */
+:root {
+  --astral-scroll-end: 48px;
+}
+
+#astral-fs .astral-pane-body,
+#astral-fs .astral-list > .astral-tree,
+#astral-fs .astral-compare-list,
+#astral-fs .astral-settings-main > .astral-card:not(.astral-pane),
+#astral-fs .astral-stage-body > .astral-reports-sheet > .astral-report-grid,
+#astral-fs .astral-stage-body > .astral-card:only-child > .astral-table-wrap,
+#astral-fs .astral-stage-body > .astral-card:only-child:not(:has(> .astral-table-wrap)):not(.astral-reports-sheet),
+#astral-fs #astral-downloads .astral-table-wrap {
+  padding-bottom: var(--astral-scroll-end);
+}
+
+#astral-fs .astral-modal-body {
+  padding-bottom: 32px;
 }

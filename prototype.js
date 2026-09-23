@@ -8201,10 +8201,32 @@ function protoStatButton(view, value, label, flag) {
     )}">
       <span class="astral-stat-value">${value}</span>
       <span>${escapeHtml(protoCardSub(label))}</span>
-      <span class="astral-stat-go">Open</span>
     </button>
   `;
 }
+
+function protoHomeCard(go, title, metric, line) {
+  const attr = PROTO_HOME_GO[go] ? `data-proto-home-go="${escapeHtml(go)}"` : `data-proto-view="${escapeHtml(go)}"`;
+  return `
+    <button type="button" class="astral-card astral-home-card" ${attr}>
+      <span class="astral-muted">${escapeHtml(title)}</span>
+      <span class="astral-metric">${metric}</span>
+      <span class="astral-home-card-line">${escapeHtml(line || "")}</span>
+    </button>
+  `;
+}
+
+const PROTO_HOME_GO = {
+  estate: () => ({
+    activePrototypeView: "portfolio",
+    prototypeScope: "group",
+    prototypeGroup: "all",
+    prototypePane: "consumption",
+    prototypeChartPoint: null,
+  }),
+  stale: () => ({ activePrototypeView: "alerts", activePrototypeFacet: "stale" }),
+  gaps: () => ({ activePrototypeView: "alerts", activePrototypeFacet: "gaps" }),
+};
 
 function protoHomeEstate(facts) {
   const { data, sites, flagged, reporting, meters, health, catchItem } = facts;
@@ -8224,21 +8246,9 @@ function protoHomeEstate(facts) {
       ${protoStatButton("portfolio", `${health}%`, `Data health across ${sites.length} sites`)}
     </div>
     <div class="astral-metrics">
-      <article class="astral-card">
-        <p class="astral-muted">Reporting</p>
-        <p class="astral-metric">${reporting} of ${meters.length}</p>
-        <p>Meters still sending actuals</p>
-      </article>
-      <article class="astral-card">
-        <p class="astral-muted">Peak</p>
-        <p class="astral-metric">${escapeHtml(data.kpis?.peak || "None")}</p>
-        <p>${escapeHtml(data.kpis?.peakHint || "")}</p>
-      </article>
-      <article class="astral-card">
-        <p class="astral-muted">Complete</p>
-        <p class="astral-metric">${escapeHtml(data.kpis?.complete || "None")}</p>
-        <p>${escapeHtml(data.kpis?.coverHint || "")}</p>
-      </article>
+      ${protoHomeCard("stale", "Reporting", `${reporting} of ${meters.length}`, "Meters still sending actuals")}
+      ${protoHomeCard("estate", "Peak", escapeHtml(data.kpis?.peak || "None"), data.kpis?.peakHint || "")}
+      ${protoHomeCard("gaps", "Complete", escapeHtml(data.kpis?.complete || "None"), data.kpis?.coverHint || "")}
     </div>
     ${
       catchItem
@@ -8249,11 +8259,10 @@ function protoHomeEstate(facts) {
                <span class="astral-kicker">Astral catch</span>
                <span><strong>${escapeHtml(catchItem.meter)}</strong> ${escapeHtml(catchItem.summary)}</span>
              </span>
-             <span class="astral-stat-go">See how Astral caught it</span>
            </button>`
         : ""
     }
-    <section class="astral-card astral-home-chart" aria-label="Consumption across the estate">
+    <section class="astral-card astral-home-chart" data-proto-home-go="estate" role="link" tabindex="0" aria-label="Consumption across the estate, last 12 months. Open in Portfolio">
       ${protoHomeChart()}
     </section>
   `;
@@ -8315,7 +8324,7 @@ function protoHomeChart() {
           title: "Consumption",
           when: `Last 12 months, ${first} to ${last}`,
         },
-      })
+      }).replace(/\stabindex="0"/g, ' tabindex="-1"')
   );
 }
 function protoHomeBroker(facts) {
@@ -8336,16 +8345,11 @@ function protoHomeBroker(facts) {
         <span class="astral-kicker">Network Rail</span>
         <span>Your letter of authority for this company expires in 6 weeks.</span>
       </span>
-      <span class="astral-stat-go">Open</span>
     </button>
     <div class="astral-metrics">
       ${protoWaitCard("New access", "A list of letters that started or ended still waits.")}
       ${protoWaitCard("Failed deliveries", "Scheduled pushes still wait. Clockwork email stays on Reports.")}
-      <article class="astral-card">
-        <p class="astral-muted">Flags</p>
-        <p class="astral-metric">${alerts.length}</p>
-        <p>Odd use, missing data, and not sending on this letter.</p>
-      </article>
+      ${protoHomeCard("alerts", "Flags", alerts.length, "Odd use, missing data, and not sending on this letter.")}
     </div>
   `;
 }
@@ -8363,11 +8367,7 @@ function protoHomeSupplier(facts) {
       ${protoStatButton("queries", queries, queries === 1 ? "Open query" : "Open queries")}
     </div>
     <div class="astral-metrics">
-      <article class="astral-card">
-        <p class="astral-muted">Sending</p>
-        <p class="astral-metric">${reporting} of ${meters.length}</p>
-        <p>Meters still sending actuals</p>
-      </article>
+      ${protoHomeCard("stale", "Sending", `${reporting} of ${meters.length}`, "Meters still sending actuals")}
       ${protoWaitCard("Customers", "A combined supplier portfolio still waits. You still open one customer at a time.")}
       ${protoWaitCard("Scheduled exports", "Clockwork email stays on Reports. Failed pushes still wait.")}
     </div>
@@ -8450,16 +8450,8 @@ function protoHomeOwner(facts) {
       ${protoStatButton("users", protoUserPeople().length, "People you can see")}
     </div>
     <div class="astral-metrics">
-      <article class="astral-card">
-        <p class="astral-muted">Queries</p>
-        <p class="astral-metric">${queries}</p>
-        <p>Open queries.</p>
-      </article>
-      <article class="astral-card">
-        <p class="astral-muted">Reports</p>
-        <p class="astral-metric">${live}</p>
-        <p>Reports switched on.</p>
-      </article>
+      ${protoHomeCard("queries", "Queries", queries, "Open queries.")}
+      ${protoHomeCard("reports", "Reports", live, "Reports switched on.")}
       ${protoWaitCard("Jobs", "Fault jobs still wait. Odd use sits on Alerts.")}
     </div>
   `;
@@ -8561,11 +8553,7 @@ function protoHomeExceptions(facts) {
       ${protoStatButton("queries", queries, queries === 1 ? "Open query" : "Open queries")}
     </div>
     <div class="astral-metrics">
-      <article class="astral-card">
-        <p class="astral-muted">Missing or stale</p>
-        <p class="astral-metric">${missing}</p>
-        <p>Alerts that are missing data or not sending.</p>
-      </article>
+      ${protoHomeCard("stale", "Missing or stale", missing, "Alerts that are missing data or not sending.")}
       ${protoWaitCard("Overdue jobs", "Job age still waits.")}
       ${protoWaitCard("Unusual use", "Odd use sits on Alerts. A dedicated exception list still waits.")}
     </div>
@@ -17750,6 +17738,15 @@ function onPrototypeBeforeInput(event) {
 }
 
 function onPrototype(event) {
+  const homeGo = event.target.closest("[data-proto-home-go]");
+  if (homeGo && PROTO_HOME_GO[homeGo.dataset.protoHomeGo]) {
+    setProto({
+      ...PROTO_HOME_GO[homeGo.dataset.protoHomeGo](),
+      prototypeFullscreen: true,
+      ...protoClosePersonPatch(),
+    });
+    return;
+  }
   const dateField = protoUkDateField(event.target);
   if (dateField) {
     if (dateField.name === "proto-report-start") protoOpenReportCal();
@@ -20158,6 +20155,12 @@ function onPrototypeKey(event) {
   if (breakdownHit && (event.key === "Enter" || event.key === " ")) {
     event.preventDefault();
     breakdownHit.click();
+    return;
+  }
+  const homeLink = event.target.closest("[data-proto-home-go][role='link']");
+  if (homeLink && homeLink === event.target && event.key === "Enter") {
+    event.preventDefault();
+    homeLink.click();
     return;
   }
   const codeInput = event.target.closest("[data-proto-code]");
