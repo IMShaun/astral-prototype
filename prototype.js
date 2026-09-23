@@ -16474,7 +16474,10 @@ function protoPaintWalkFs(fs) {
   protoPaintPreviewMenu(fs);
 }
 
+var protoRenderTick = 0;
+
 function renderPrototype() {
+  protoRenderTick += 1;
   const root = els.prototypeRoot;
   const fs = els.astralFs;
   if (!root) return;
@@ -19202,84 +19205,120 @@ function onPrototype(event) {
     reportSubmit.form?.requestSubmit();
     return;
   }
-  if (store.prototypeUserMenu && !event.target.closest(".astral-people-more, .astral-people-menu")) {
-    setProto({ prototypeUserMenu: "" });
+}
+
+function protoOutsideClosePatch(target) {
+  const inside = (sel) => Boolean(target?.closest?.(sel));
+  const patch = {};
+  if (store.prototypeUserMenu && !inside(".astral-people-more, .astral-people-menu")) {
+    patch.prototypeUserMenu = "";
   }
-  if (store.prototypeAccountOpen && !event.target.closest(".astral-account, .astral-account-menu")) {
-    setProto({ prototypeAccountOpen: false });
+  if (store.prototypeAccountOpen && !inside(".astral-account, .astral-account-menu")) {
+    patch.prototypeAccountOpen = false;
   }
-  if (store.prototypeNoticeOpen && !event.target.closest(".astral-notice, .astral-notice-menu")) {
-    setProto({ prototypeNoticeOpen: false });
+  if (store.prototypeNoticeOpen && !inside(".astral-notice, .astral-notice-menu")) {
+    patch.prototypeNoticeOpen = false;
   }
   if (
     store.prototypeDateOpen &&
     !store.prototypeDateCustomOpen &&
-    !event.target.closest(".astral-date, .astral-date-menu")
+    !inside(".astral-date, .astral-date-menu")
   ) {
-    setProto({ prototypeDateOpen: false });
+    patch.prototypeDateOpen = false;
   }
-  if (store.prototypeSelectOpen && !event.target.closest(".astral-select, .astral-select-menu")) {
-    setProto({ prototypeSelectOpen: "" });
+  if (store.prototypeSelectOpen && !inside(".astral-select, .astral-select-menu")) {
+    patch.prototypeSelectOpen = "";
   }
-  if (
-    store.prototypeReportCalOpen &&
-    !event.target.closest(".astral-day-cal, .astral-day-cal-menu")
-  ) {
-    setProto({ prototypeReportCalOpen: false });
+  if (store.prototypeReportCalOpen && !inside(".astral-day-cal, .astral-day-cal-menu")) {
+    patch.prototypeReportCalOpen = false;
   }
-  if (store.prototypeExportOpen && !event.target.closest(".astral-export, .astral-export-menu")) {
-    setProto({ prototypeExportOpen: false });
+  if (store.prototypeExportOpen && !inside(".astral-export, .astral-export-menu")) {
+    patch.prototypeExportOpen = false;
   }
   if (
     store.prototypeTreeFilterOpen &&
-    !event.target.closest(".astral-tree-tools .astral-filter, .astral-filter-menu")
+    !inside(".astral-tree-tools .astral-filter, .astral-filter-menu")
   ) {
-    setProto({ prototypeTreeFilterOpen: false });
+    patch.prototypeTreeFilterOpen = false;
   }
   if (
     store.prototypePaneFilterOpen &&
-    !event.target.closest(".astral-detail-tools .astral-filter") &&
-    !event.target.closest(".astral-pane-head > .astral-filter-pills") &&
-    !event.target.closest(".astral-filter-menu")
+    !inside(".astral-detail-tools .astral-filter") &&
+    !inside(".astral-pane-head > .astral-filter-pills") &&
+    !inside(".astral-filter-menu")
   ) {
-    setProto({ prototypePaneFilterOpen: false });
+    patch.prototypePaneFilterOpen = false;
   }
   if (
     store.prototypeCompareFilterOpen &&
-    !event.target.closest(".astral-compare-tools .astral-filter, .astral-filter-menu")
+    !inside(".astral-compare-tools .astral-filter, .astral-filter-menu")
   ) {
-    setProto({ prototypeCompareFilterOpen: false });
+    patch.prototypeCompareFilterOpen = false;
   }
   if (
     store.prototypeDownloadFilterOpen &&
-    !event.target.closest(".astral-downloads .astral-filter, .astral-filter-menu")
+    !inside(".astral-downloads .astral-filter, .astral-filter-menu")
   ) {
-    setProto({ prototypeDownloadFilterOpen: false });
+    patch.prototypeDownloadFilterOpen = false;
   }
   if (
     store.prototypeUserRoleFilterOpen &&
-    !event.target.closest(".astral-people-tools .astral-filter") &&
-    !event.target.closest(".astral-pane-head > .astral-filter-pills") &&
-    !event.target.closest(".astral-filter-menu")
+    !inside(".astral-people-tools .astral-filter") &&
+    !inside(".astral-pane-head > .astral-filter-pills") &&
+    !inside(".astral-filter-menu")
   ) {
-    setProto({ prototypeUserRoleFilterOpen: false });
+    patch.prototypeUserRoleFilterOpen = false;
   }
-  if (store.prototypeAckOpen && !event.target.closest(".astral-ack, .astral-ack-menu")) {
-    setProto({ prototypeAckOpen: "" });
+  if (store.prototypeAckOpen && !inside(".astral-ack, .astral-ack-menu")) {
+    patch.prototypeAckOpen = "";
   }
-  if (store.prototypeQueryMore && !event.target.closest(".astral-query-more, .astral-ack-menu")) {
-    setProto({ prototypeQueryMore: "" });
+  if (store.prototypeQueryMore && !inside(".astral-query-more, .astral-ack-menu")) {
+    patch.prototypeQueryMore = "";
   }
-  if (store.prototypePointTagOpen && !event.target.closest(".astral-point-tags, .astral-point-tag-menu")) {
-    setProto(protoPointTagClear());
+  if (store.prototypePointTagOpen && !inside(".astral-point-tags, .astral-point-tag-menu")) {
+    Object.assign(patch, protoPointTagClear());
   }
   if (
     store.prototypeColourOpen &&
-    !event.target.closest(".astral-brand-row.is-open") &&
-    !event.target.closest(".astral-picker")
+    !inside(".astral-brand-row.is-open") &&
+    !inside(".astral-picker")
   ) {
-    setProto({ prototypeColourOpen: "" });
+    patch.prototypeColourOpen = "";
   }
+  return patch;
+}
+
+let protoPressTarget = null;
+
+function protoOutsidePress(event) {
+  if (event.button !== 0) return;
+  protoPressTarget = event.target instanceof Element ? event.target : null;
+}
+
+function protoOutsideClick(event) {
+  if (event.button !== 0) return;
+  const target = event.target instanceof Element ? event.target : null;
+  if (!target) return;
+  const press = protoPressTarget;
+  protoPressTarget = null;
+  if (target.classList.contains("astral-modal-back") && press && press !== target) {
+    event.stopPropagation();
+    return;
+  }
+  const patch = protoOutsideClosePatch(target);
+  if (press && press !== target && press.isConnected) {
+    const pressPatch = protoOutsideClosePatch(press);
+    Object.keys(patch).forEach((key) => {
+      if (!(key in pressPatch)) delete patch[key];
+    });
+  }
+  if (!Object.keys(patch).length) return;
+  Object.assign(store, patch);
+  persistChrome();
+  const tick = protoRenderTick;
+  setTimeout(() => {
+    if (protoRenderTick === tick) render();
+  }, 0);
 }
 
 function onPrototypeInput(event) {
@@ -20242,6 +20281,8 @@ function onPrototypePointerUp(event) {
   protoPinDrag = null;
 }
 
+document.addEventListener("pointerdown", protoOutsidePress, true);
+document.addEventListener("click", protoOutsideClick, true);
 document.addEventListener("pointerdown", onPrototypePointerDown);
 document.addEventListener("pointermove", onPrototypePointerMove);
 document.addEventListener("pointerup", onPrototypePointerUp);
