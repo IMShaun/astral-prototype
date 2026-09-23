@@ -1699,6 +1699,8 @@ function protoSkinStyle() {
     `--color-nav:${brand.primary}`,
     `--color-on-nav:${onNav}`,
     `--color-brand-primary:${brand.secondary}`,
+    `--color-flow-in:${brand.secondary}`,
+    `--color-flow-out:${brand.primary}`,
     `--color-action-primary:${brand.secondary}`,
     `--color-action-on-primary:${onFill}`,
     `--color-action-primary-hover:color-mix(in srgb, ${brand.secondary} 78%, #000)`,
@@ -3090,7 +3092,7 @@ function protoSliceFill(slice, outgoing) {
   if (outgoing) {
     const peak = !slice?.tou || slice.tou === "tou-on";
     const open = !slice?.hours || protoSliceHoursKind(slice) === "on";
-    return peak && open ? "#000000" : "#737373";
+    return peak && open ? protoOutgoingInk() : "#737373";
   }
   return PROTO_SLICE_FILL[id] || "var(--color-brand-primary)";
 }
@@ -3501,13 +3503,11 @@ function protoIncomingInk() {
 }
 
 function protoOutgoingInk() {
-  return "#000";
+  return protoHex(protoBrand().primary) || PROTO_BRAND_PRIMARY;
 }
 
 function protoChartFlowFill(kind) {
-  const withHours = protoChartStackSlices().length > 0;
-  if (kind === "out") return withHours ? "#002D9C" : "#000000";
-  return withHours ? "#1192E8" : protoIncomingInk() || "var(--color-brand-primary)";
+  return kind === "out" ? protoOutgoingInk() : protoIncomingInk();
 }
 
 function protoMeterSwatch(meter, index, view) {

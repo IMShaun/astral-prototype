@@ -39,6 +39,8 @@
   --color-action-primary-hover: color-mix(in srgb, #028178 78%, #000);
   --color-action-primary-border: #000000;
   --color-brand-primary: #028178;
+  --color-flow-in: #028178;
+  --color-flow-out: #00020b;
   --color-brand-cyan: #03f4e8;
   --color-nav: #00020b;
   --color-on-nav: #ffffff;
@@ -6141,12 +6143,12 @@ button.astral-flow-pill {
 
 .astral-flow-mark.is-in .astral-flow-icon,
 .astral-flow-pill.is-in > .astral-flow-icon {
-  color: var(--color-brand-primary);
+  color: var(--color-flow-in);
 }
 
 .astral-flow-mark.is-out .astral-flow-icon,
 .astral-flow-pill.is-out > .astral-flow-icon {
-  color: #000;
+  color: var(--color-flow-out);
 }
 
 .astral-flow-pill {
@@ -7764,11 +7766,11 @@ button.astral-state {
 }
 
 .astral-chart-key-mark.is-in {
-  background: var(--color-brand-primary);
+  background: var(--color-flow-in);
 }
 
 .astral-chart-key-mark.is-out {
-  background: #000;
+  background: var(--color-flow-out);
 }
 
 .astral-chart-key-mark.is-query {
@@ -8283,12 +8285,12 @@ button.astral-state {
 }
 
 .astral-chart-fill {
-  fill: var(--color-brand-primary);
+  fill: var(--color-flow-in);
   opacity: 0.85;
 }
 
 .astral-chart-line {
-  stroke: #000;
+  stroke: var(--color-flow-in);
   stroke-width: 2;
   stroke-dasharray: none;
 }
@@ -8300,34 +8302,36 @@ button.astral-state {
 }
 
 .astral-chart-compare {
-  stroke: #000;
+  stroke: var(--color-flow-out);
   stroke-width: 2;
   stroke-dasharray: 5 4;
 }
 
 .astral-bar {
-  fill: var(--color-brand-primary);
+  fill: var(--color-flow-in);
   fill-opacity: 1;
 }
 
 .astral-bar.is-est {
-  fill: var(--color-brand-primary);
+  fill: var(--color-flow-in);
   fill-opacity: 0.28;
-  stroke: var(--color-brand-primary);
-  stroke-width: 1.5;
+  stroke: var(--color-flow-in);
+  stroke-width: 1;
+  stroke-opacity: 0.4;
   vector-effect: non-scaling-stroke;
 }
 
 .astral-bar-out {
-  fill: #000;
+  fill: var(--color-flow-out);
   fill-opacity: 1;
 }
 
 .astral-bar-out.is-est {
-  fill: #000;
+  fill: var(--color-flow-out);
   fill-opacity: 0.22;
-  stroke: #000;
-  stroke-width: 1.5;
+  stroke: var(--color-flow-out);
+  stroke-width: 1;
+  stroke-opacity: 0.4;
   vector-effect: non-scaling-stroke;
 }
 
@@ -8341,7 +8345,8 @@ button.astral-state {
   fill: var(--stack-fill);
   stroke: var(--stack-fill);
   fill-opacity: 0.28;
-  stroke-width: 1.5;
+  stroke-width: 1;
+  stroke-opacity: 0.4;
   vector-effect: non-scaling-stroke;
 }
 
@@ -8479,7 +8484,8 @@ button.astral-state {
 .astral-point.is-est {
   fill: #fff;
   stroke: currentColor;
-  stroke-width: 2;
+  stroke-width: 1.5;
+  stroke-opacity: 0.55;
   opacity: 1;
 }
 
@@ -8492,7 +8498,8 @@ button.astral-state {
 .astral-point.is-line.is-est {
   fill: #fff;
   stroke: currentColor;
-  stroke-width: 2;
+  stroke-width: 1.5;
+  stroke-opacity: 0.55;
   opacity: 0;
 }
 
