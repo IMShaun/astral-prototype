@@ -23,7 +23,7 @@ const PROTO_TREE_FILTERS = [
   },
   {
     id: "meter",
-    name: "Meter",
+    name: "Utility type",
     items: [
       { id: "electricity", name: "Electricity" },
       { id: "gas", name: "Gas" },
@@ -8101,15 +8101,33 @@ function protoFilterSectionDom(key) {
   );
 }
 
-function protoFilterSectionSummary(group, attr, picked) {
-  const on = (group?.items || []).filter((item) => protoFilterItemOn(attr, picked, item));
-  if (!on.length) return "None selected";
-  if (on.length === 1) return on[0].name;
-  if (on.length === group.items.length) return "All";
-  return `${on.length} selected`;
+function protoFilterSectionOnItems(group, attr, picked) {
+  return (group?.items || []).filter((item) => protoFilterItemOn(attr, picked, item));
 }
 
-function protoFilterSection(key, name, summary, body) {
+function protoFilterSectionSummary(group, attr, picked) {
+  const on = protoFilterSectionOnItems(group, attr, picked);
+  if (!on.length) return "None selected";
+  if (on.length > 1 && on.length === group.items.length) return "All";
+  return on.map((item) => item.name).join(", ");
+}
+
+function protoFilterSectionPills(group, attr, picked) {
+  const on = protoFilterSectionOnItems(group, attr, picked);
+  if (!on.length || (on.length > 1 && on.length === group.items.length)) return "";
+  const pills = on
+    .map(
+      (item) =>
+        `<span class="astral-filter-pill astral-filter-section-pill">${protoFilterFace(
+          item.id,
+          item.name
+        )}</span>`
+    )
+    .join("");
+  return `<span class="astral-filter-section-pills">${pills}</span>`;
+}
+
+function protoFilterSection(key, name, summary, body, face = "") {
   const open = protoFilterSectionOpen === key;
   const id = `astral-filter-section-${String(key).replace(/[^a-z0-9_-]+/gi, "-")}`;
   return `
@@ -8127,7 +8145,7 @@ function protoFilterSection(key, name, summary, body) {
         aria-label="${escapeHtml(`${name}: ${summary}`)}"
         data-proto-filter-section-toggle="${escapeHtml(key)}"
       >
-        <span>${escapeHtml(summary)}</span>
+        ${face || `<span>${escapeHtml(summary)}</span>`}
         ${protoChevronMark("menu")}
       </button>
       ${protoFoldClip(
@@ -8234,7 +8252,8 @@ function protoFilterTickGroups(picked, attr, groups = PROTO_TREE_FILTERS) {
       protoFilterSectionKey(menuId, group.id),
       group.name,
       protoFilterSectionSummary(group, attr, picked),
-      `${allBtn}${options}`
+      `${allBtn}${options}`,
+      protoFilterSectionPills(group, attr, picked)
     );
   }).join("");
 }

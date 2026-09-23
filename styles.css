@@ -6761,6 +6761,51 @@ button.astral-state {
   padding-top: 4px;
 }
 
+.astral-filter-menu .astral-filter-section-btn:has(.astral-filter-section-pills) {
+  min-height: var(--control-height-sm);
+  padding: 5px 12px 5px 5px;
+  border-radius: 18px;
+  white-space: normal;
+}
+
+.astral-filter-section-btn .astral-filter-section-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+  contain: inline-size;
+  overflow: visible;
+  white-space: normal;
+}
+
+.astral-filter-section-btn .astral-filter-section-pill {
+  flex: none;
+  max-width: 100%;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--color-background-subtle);
+  border-color: var(--color-border-default);
+}
+
+.astral-filter-section-btn .astral-filter-section-pill span {
+  flex: none;
+  min-width: 0;
+  overflow: visible;
+}
+
+.astral-filter-section-btn .astral-filter-section-pill .astral-filter-face {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.astral-filter-section-btn .astral-filter-section-pill svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
 .astral-filter-menu .astral-filter-section .astral-filter-child {
   padding-left: 28px;
 }
