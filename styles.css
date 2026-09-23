@@ -6706,7 +6706,7 @@ button.astral-state {
   );
   overflow: auto;
   overflow-x: clip;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
 }
 
 .astral-select.is-multi .astral-select-menu {
@@ -6772,7 +6772,7 @@ button.astral-state {
   max-height: min(28rem, 50vh);
   overflow: auto;
   overflow-x: clip;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
   overscroll-behavior: contain;
 }
 
