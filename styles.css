@@ -7292,7 +7292,7 @@ button.astral-state {
 
 .astral-pane-body > .astral-chart-wrap {
   --astral-pane-head-base: 136px;
-  --astral-chart-key-row: 36px;
+  --astral-chart-key-row: 24px;
   flex: none;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -7302,7 +7302,7 @@ button.astral-state {
   height: calc(100cqh - var(--astral-pane-head-base) - 45px - var(--space-stack-tight));
   max-height: calc(100cqh - var(--astral-pane-head-base) - 45px - var(--space-stack-tight));
   min-height: 16rem;
-  padding-bottom: var(--space-16);
+  padding-block: var(--space-16);
 }
 
 .astral-pane-body .astral-chart-wrap > * {
@@ -7312,6 +7312,7 @@ button.astral-state {
 
 .astral-pane-body .astral-chart-wrap > .astral-chart-head {
   grid-row: 1;
+  margin-bottom: 0;
 }
 
 .astral-pane-body .astral-chart-wrap > .astral-chart,
@@ -7424,47 +7425,10 @@ button.astral-state {
   margin-top: 0;
 }
 
-.astral-chart-key .astral-flow-pill {
-  cursor: pointer;
-  gap: 8px;
-  padding: 8px;
-}
-
-.astral-chart-key .astral-flow-pill.is-in.is-on {
-  background: var(--color-brand-primary);
-  border-color: var(--color-brand-primary);
-  color: #fff;
-}
-
-.astral-chart-key .astral-flow-pill.is-out.is-on {
-  background: #000;
-  border-color: #000;
-  color: #fff;
-}
-
-.astral-chart-key .astral-flow-pill.is-on .astral-flow-icon {
-  color: #fff;
-}
-
-.astral-chart-key .astral-flow-pill:not(.is-on) {
-  color: var(--color-text-secondary);
-  background: var(--color-background-subtle);
-}
-
-.astral-chart-key .astral-flow-pill:not(.is-on) > span,
-.astral-chart-key .astral-flow-pill:not(.is-on) .astral-flow-mark > span {
-  text-decoration: line-through;
-}
-
-.astral-chart-key .astral-flow-pill:not(.is-on) .astral-flow-icon {
-  color: var(--color-text-secondary);
-}
-
 .astral-chart-key .astral-meter-pill {
   min-height: 0;
   cursor: pointer;
-  gap: 8px;
-  padding: 8px;
+  padding: 2px 8px;
 }
 
 .astral-chart-key .astral-meter-pill.is-on {
@@ -10044,7 +10008,6 @@ button.astral-state {
 .astral-link:focus-visible,
 .astral-chip:focus-visible,
 .astral-meter-pill:focus-visible,
-.astral-chart-key .astral-flow-pill:focus-visible,
 .astral-switch:focus-visible,
 .astral-btn:focus-visible,
 .astral-ghost:focus-visible,

@@ -3471,6 +3471,12 @@ function protoOutgoingInk() {
   return "#000";
 }
 
+function protoChartFlowFill(kind) {
+  const withHours = protoChartStackSlices().length > 0;
+  if (kind === "out") return withHours ? "#002D9C" : "#000000";
+  return withHours ? "#1192E8" : protoIncomingInk() || "var(--color-brand-primary)";
+}
+
 function protoMeterSwatch(meter, index, view) {
   if (protoPillsNeedColour()) return protoLineStyle(index).color;
   if (meter?.direction === "Export") return protoOutgoingInk();
@@ -4719,22 +4725,37 @@ function protoChartKeyStar() {
   )}" /></svg>`;
 }
 
+function protoChartKeyPill({ on, label, spoken, hit, fill, ink }) {
+  return `
+    <button
+      type="button"
+      class="astral-meter-pill${on ? " is-on" : ""}"
+      role="listitem"
+      aria-pressed="${on ? "true" : "false"}"
+      aria-label="${escapeHtml(spoken || label)}"
+      ${hit}
+      style="--slice:${escapeHtml(fill)};--slice-ink:${escapeHtml(ink)}"
+    >
+      <span class="astral-meter-pill-label">${escapeHtml(label)}</span>
+    </button>
+  `;
+}
+
 function protoChartKey(dual) {
   if (!dual) return "";
   const item = (kind) => {
     const on = protoChartFlowOn(kind);
     const short = kind === "out" ? "Out" : "In";
     const full = kind === "out" ? "Outgoing" : "Incoming";
-    return `
-      <button
-        type="button"
-        class="astral-flow-pill is-${kind}${on ? " is-on" : ""}"
-        role="listitem"
-        aria-pressed="${on ? "true" : "false"}"
-        aria-label="${full}"
-        data-proto-chart-flow="${kind}"
-      >${protoFlowIcon(kind)}<span aria-hidden="true">${short}</span></button>
-    `;
+    const fill = protoChartFlowFill(kind);
+    return protoChartKeyPill({
+      on,
+      label: short,
+      spoken: full,
+      hit: `data-proto-chart-flow="${kind}"`,
+      fill,
+      ink: protoSliceInk(fill),
+    });
   };
   return `
     <div class="astral-chart-key" role="list" aria-label="Incoming and outgoing">
@@ -4750,23 +4771,15 @@ function protoChartProfileKey() {
   const items = slices
     .map((slice) => {
       const name = protoSliceName(slice);
-      const on = protoChartSliceOn(slice.id);
       const fill = protoSliceFill(slice, false);
-      const ink = protoSliceInk(fill);
-      return `
-        <button
-          type="button"
-          class="astral-meter-pill${on ? " is-on" : ""}"
-          role="listitem"
-          aria-pressed="${on ? "true" : "false"}"
-          aria-label="${escapeHtml(name)}"
-          data-proto-chart-slice="${escapeHtml(slice.id)}"
-          style="--slice:${escapeHtml(fill)};--slice-ink:${ink}"
-        >
-          <span class="astral-chart-key-mark" aria-hidden="true"></span>
-          <span class="astral-meter-pill-label">${escapeHtml(name)}</span>
-        </button>
-      `;
+      return protoChartKeyPill({
+        on: protoChartSliceOn(slice.id),
+        label: name,
+        spoken: name,
+        hit: `data-proto-chart-slice="${escapeHtml(slice.id)}"`,
+        fill,
+        ink: protoSliceInk(fill),
+      });
     })
     .join("");
   return `<div class="astral-chart-key is-profile" role="list" aria-label="Operating state and tariff">${items}</div>`;
@@ -5995,11 +6008,13 @@ function protoToggleGroupSite(value) {
 function protoToggleSiteMeter(value) {
   if (protoCompareOn()) {
     const all = protoCompareBundle().meters || [];
-    const cur = protoCompareViewMeters(all).map((item) => item.id);
-    let next = cur.includes(value) ? cur.filter((id) => id !== value) : [...cur, value];
-    next = all.map((item) => item.id).filter((id) => next.includes(id));
-    const same = next.length === cur.length && next.every((id) => cur.includes(id));
-    if (same) return;
+    const ids = all.map((item) => item.id);
+    const next = protoToggleSiteSet(
+      value,
+      ids,
+      protoCompareViewMeters(all).map((item) => item.id)
+    );
+    if (!next) return;
     setProto({
       prototypeCompareMeters: protoStoreGraphIds(next),
       prototypeChartPoint: null,
@@ -6008,22 +6023,17 @@ function protoToggleSiteMeter(value) {
     return;
   }
   const site = protoSiteByMeter(store.activePrototypeMeter);
-  const meters = site?.meters || [];
-  const cur = protoSiteMeterIds(site);
-  let next = cur.includes(value) ? cur.filter((id) => id !== value) : [...cur, value];
-  next = meters.map((item) => item.id).filter((id) => next.includes(id));
-  const same = next.length === cur.length && next.every((id) => cur.includes(id));
-  if (same) return;
-  const meter = meters.find((item) => item.id === (next.length === 1 ? next[0] : ""));
-  const level = next.length === 1 ? "meter" : "site";
-  const nextId = next.length === 1 ? next[0] : protoSiteId(site);
+  const ids = protoMetersForPane(site?.meters || []).map((item) => item.id);
+  if (!ids.includes(value)) return;
+  const next = protoToggleSiteSet(
+    value,
+    ids,
+    protoSiteMeterIds(site).filter((id) => ids.includes(id))
+  );
+  if (!next) return;
   setProto({
     ...protoSiteMeterPatch(next, site, { empty: true }),
-    activePrototypeMeter:
-      next.length === 1 ? next[0] : site?.meters?.[0]?.id || store.activePrototypeMeter,
-    prototypeChannel: next.length === 1 ? (meter?.direction === "Export" ? "out" : "in") : "all",
     prototypeChartPoint: null,
-    ...protoComparePatch(level, nextId),
   });
   protoRestoreFocus(`#astral-fs [data-proto-meter-pill="${CSS.escape(value)}"]`);
 }
@@ -7836,7 +7846,7 @@ function protoTreeFilterPills() {
 }
 
 function protoPaneFilterPills() {
-  return protoFilterPills(protoPaneFilterIds(), "data-proto-pane-filter");
+  return "";
 }
 
 function protoCompareFilterIds() {
