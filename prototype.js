@@ -9210,7 +9210,7 @@ function protoCompareSortChoices() {
     { id: "action", name: "Needs action" },
   ];
   if (level !== "meter") {
-    items.push({ id: "count", name: level === "group" ? "Sites" : protoBelowSiteNoun(2) });
+    items.push({ id: "count", name: level === "group" ? "Sites" : protoBelowSiteHeading(2) });
   }
   return items;
 }
@@ -9326,24 +9326,21 @@ function protoEnglandOrg() {
 function protoBelowSiteNoun(count) {
   const n = Number(count);
   const plural = !Number.isFinite(n) || n !== 1;
-  if (protoEnglandOrg()) return plural ? "MPANs" : "MPAN";
-  return plural ? "meters" : "meter";
+  return plural ? "meter points" : "meter point";
+}
+
+function protoBelowSiteHeading(count) {
+  const noun = protoBelowSiteNoun(count);
+  return noun.charAt(0).toUpperCase() + noun.slice(1);
 }
 
 function protoMeterCountWords(n, meters) {
   const count = Number(n) || 0;
-  const noun = meters ? protoSiteMeterNoun(meters) : protoBelowSiteNoun(count);
-  return `${count} ${noun}`;
+  return `${count} ${protoBelowSiteNoun(count)}`;
 }
 
 function protoSiteMeterNoun(meters) {
-  const list = meters || [];
-  const n = list.length;
-  if (protoEnglandOrg()) return protoBelowSiteNoun(n);
-  if (!n) return "meters";
-  if (list.every((item) => protoMeterKind(item) === "electricity")) return n === 1 ? "MPAN" : "MPANs";
-  if (list.every((item) => protoMeterKind(item) === "gas")) return n === 1 ? "MPRN" : "MPRNs";
-  return n === 1 ? "meter" : "meters";
+  return protoBelowSiteNoun((meters || []).length);
 }
 
 function protoSiteButton(site, on) {
@@ -11449,7 +11446,7 @@ function protoGroupDetail(group) {
           ? `<p class="astral-banner">No reading in ${missing} intervals. That is missing data, not zero use.</p>`
           : ""
       }
-      ${rows ? protoPaneListTable(["Site", protoBelowSiteNoun(2), "State"], rows) : ""}
+      ${rows ? protoPaneListTable(["Site", protoBelowSiteHeading(2), "State"], rows) : ""}
           `
   );
 }
@@ -11592,8 +11589,8 @@ function protoCompareDetail() {
           : rows
           ? protoPaneListTable(
               [
-                bundle.level === "group" ? "Group" : bundle.level === "meter" ? protoBelowSiteNoun(1) : "Site",
-                bundle.level === "group" ? "Sites" : bundle.level === "meter" ? "Site" : protoBelowSiteNoun(2),
+                bundle.level === "group" ? "Group" : bundle.level === "meter" ? protoBelowSiteHeading(1) : "Site",
+                bundle.level === "group" ? "Sites" : bundle.level === "meter" ? "Site" : protoBelowSiteHeading(2),
                 "State",
               ],
               rows
@@ -12238,6 +12235,21 @@ function protoMeterCompareTotal(cells) {
   return protoFormatAmount(protoRoundReading(present.reduce((n, cell) => n + Number(cell.value || 0), 0), 1));
 }
 
+function protoBreakdownMeterHead(ref, note, options = {}) {
+  const cls = ["astral-breakdown-meter", options.total ? "is-total" : "", options.time ? "is-time" : ""]
+    .filter(Boolean)
+    .join(" ");
+  const title = [ref, note].filter(Boolean).join(", ");
+  return `
+    <th scope="col"${options.attrs || ""} class="${cls}" title="${escapeHtml(title)}">
+      <span class="astral-breakdown-meter-ref">${options.mark || ""}<span class="astral-breakdown-meter-text">${escapeHtml(
+        ref
+      )}</span></span>
+      <span class="astral-breakdown-meter-note">${note ? escapeHtml(note) : "&nbsp;"}</span>
+    </th>
+  `;
+}
+
 function protoMeterCompareTable(meters, all, options = {}) {
   const list = meters || [];
   const tracks = protoScaleTracks(protoMeterTracks(list, all), list);
@@ -12298,23 +12310,14 @@ function protoMeterCompareTable(meters, all, options = {}) {
       const mark = colour
         ? `<span class="astral-chart-key-mark" style="background:${escapeHtml(track.color)}" aria-hidden="true"></span>`
         : "";
-      return `
-        <th scope="col"${twoRows ? ` colspan="${per}"` : ""} class="astral-breakdown-meter">
-          <span class="astral-breakdown-meter-ref">${mark}${escapeHtml(track.ref)}</span>
-          <span class="astral-breakdown-meter-note">${escapeHtml(note)}</span>
-        </th>
-      `;
+      return protoBreakdownMeterHead(track.ref, note, {
+        attrs: twoRows ? ` colspan="${per}"` : "",
+        mark,
+      });
     })
     .join("");
   const totalHeads = totals
-    .map(
-      (total) => `
-        <th scope="col"${span} class="astral-breakdown-meter is-total">
-          <span class="astral-breakdown-meter-ref">${escapeHtml(total.name)}</span>
-          <span class="astral-breakdown-meter-note">${escapeHtml(units[0] || "")}</span>
-        </th>
-      `
-    )
+    .map((total) => protoBreakdownMeterHead(total.name, units[0] || "", { attrs: span, total: true }))
     .join("");
   const sliceHeads = twoRows
     ? `<tr>${tracks
@@ -12333,7 +12336,7 @@ function protoMeterCompareTable(meters, all, options = {}) {
       <table class="astral-table astral-breakdown-cols is-meters" style="min-width:${minWidth}rem">
         <thead>
           <tr>
-            <th scope="col"${span}>Time</th>
+            ${protoBreakdownMeterHead("Time", "", { attrs: span, time: true })}
             ${meterHeads}
             ${totalHeads}
           </tr>

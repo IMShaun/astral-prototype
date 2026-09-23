@@ -1656,7 +1656,7 @@ button.chip {
 .ds-preview .ds-count.is-compare .astral-count {
   width: 22px;
   height: 22px;
-  padding: 2px 0 0;
+  padding: 0;
   font-size: 0.8rem;
 }
 
@@ -4921,8 +4921,10 @@ button.astral-catch {
   font-variant-numeric: tabular-nums;
   line-height: 1;
   text-align: center;
-  display: grid;
-  place-items: center;
+  text-box: trim-both cap alphabetic;
+  display: block;
+  align-content: center;
+  white-space: nowrap;
 }
 
 .astral-filter .astral-count {
@@ -5500,7 +5502,7 @@ button.astral-catch {
 .astral-compare .astral-count {
   width: 22px;
   height: 22px;
-  padding: 2px 0 0;
+  padding: 0;
   font-size: 0.8rem;
 }
 
@@ -8725,19 +8727,38 @@ button.astral-state {
 }
 
 .astral-breakdown-cols.is-meters thead th {
-  vertical-align: bottom;
   white-space: normal;
+}
+
+.astral-breakdown-cols.is-meters thead th.astral-breakdown-meter {
+  height: 64px;
+  box-sizing: border-box;
+  padding: 12px 8px;
+  vertical-align: top;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .astral-breakdown-meter-ref {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  height: 20px;
   color: #000;
   font-size: 0.8125rem;
+  line-height: 20px;
+  font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
-  overflow-wrap: anywhere;
+}
+
+.astral-breakdown-meter-text,
+.astral-breakdown-meter-note {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .astral-breakdown-meter-ref .astral-chart-key-mark {
@@ -8746,17 +8767,26 @@ button.astral-state {
 
 .astral-breakdown-meter-note {
   display: block;
+  height: 18px;
   margin-top: 2px;
+  font-size: 0.75rem;
+  line-height: 18px;
   font-weight: 400;
   letter-spacing: 0;
   text-transform: none;
 }
 
 .astral-breakdown-cols.is-meters thead th.astral-breakdown-slice {
-  padding-top: 0;
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 8px 10px;
+  vertical-align: bottom;
   font-weight: 400;
   letter-spacing: 0;
   text-transform: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .astral-breakdown-cols.is-meters .is-total {
