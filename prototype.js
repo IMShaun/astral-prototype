@@ -596,7 +596,6 @@ function protoState() {
     account: Boolean(store.prototypeAccountOpen),
     notice: Boolean(store.prototypeNoticeOpen),
     signedOut: protoFlowId() !== "product",
-    reportForm: Boolean(store.prototypeReportForm),
     queryForm: Boolean(store.prototypeQueryForm),
     userForm: Boolean(store.prototypeUserForm),
     userQuery: store.prototypeUserQuery || "",
@@ -655,12 +654,11 @@ function protoPageFilterReset() {
     prototypeCompanyDraftType: "customer",
     prototypeCompanyNameError: false,
     prototypeExportOpen: false,
-    prototypeReportForm: false,
-    prototypeReportPeopleForm: "",
-    prototypeReportDraftPeople: [],
-    prototypeReportDraftOccurrence: "",
+    prototypeReportEdit: "",
+    prototypeReportDraft: null,
     prototypeReportDraftStart: "",
     prototypeReportPeopleQuery: "",
+    prototypeReportSiteQuery: "",
     prototypeReportCalOpen: false,
     prototypeReportCal: "",
     prototypeColourOpen: "",
@@ -6036,19 +6034,7 @@ function protoPinClose() {
 
 function protoCloseModal(kind) {
   if (kind === "report") {
-    setProto({ prototypeReportForm: false });
-    return;
-  }
-  if (kind === "report-people") {
-    setProto({
-      prototypeReportPeopleForm: "",
-      prototypeReportDraftPeople: [],
-      prototypeReportDraftOccurrence: "",
-      prototypeReportDraftStart: "",
-      prototypeReportPeopleQuery: "",
-      prototypeReportCalOpen: false,
-      prototypeReportCal: "",
-    });
+    setProto(protoReportEditClear());
     return;
   }
   if (kind === "invite") {
@@ -6451,14 +6437,9 @@ function protoPickSelect(id, value) {
     return;
   }
   if (id === "report-people") {
-    if (!protoCanPickReportPeople()) return;
-    const cur = protoReportDraftPeople();
-    const next = cur.includes(value) ? cur.filter((item) => item !== value) : [...cur, value];
-    setProto({
-      prototypeSelectOpen: "report-people",
-      prototypeReportPeopleForm: protoReportPeopleFormId(),
-      prototypeReportDraftPeople: next,
-    });
+    const draft = protoReportDraft();
+    if (!draft) return;
+    protoReportPatchDraft({ people: protoReportToggleIn(draft.people, value) }, "report-people");
     protoRestoreFocus(
       `#astral-fs [data-proto-select-option="report-people"][data-proto-select-value="${CSS.escape(
         value
@@ -6466,14 +6447,20 @@ function protoPickSelect(id, value) {
     );
     return;
   }
-  if (id === "report-occurrence") {
-    if (!protoCanPickReportPeople()) return;
-    setProto({
-      prototypeSelectOpen: "",
-      prototypeReportPeopleForm: protoReportPeopleFormId(),
-      prototypeReportDraftOccurrence: protoReportOccurrenceId(value),
-    });
-    protoRestoreFocus('#astral-fs [data-proto-select="report-occurrence"] .astral-select-btn');
+  if (id === "report-sites" || id === "report-delivery") {
+    const draft = protoReportDraft();
+    if (!draft) return;
+    const key = id === "report-sites" ? "sites" : "delivery";
+    protoReportPatchDraft({ [key]: protoReportToggleIn(draft[key], value) }, id);
+    protoRestoreFocus(
+      `#astral-fs [data-proto-select-option="${id}"][data-proto-select-value="${CSS.escape(value)}"]`
+    );
+    return;
+  }
+  if (id === "report-site" || id === "report-period" || id === "report-basis" || id === "report-silence") {
+    const key = { "report-site": "site", "report-period": "period", "report-basis": "basis", "report-silence": "hours" }[id];
+    protoReportPatchDraft({ [key]: id === "report-silence" ? Number(value) : value });
+    protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
     return;
   }
   if (id === "org-country") {
@@ -6648,98 +6635,392 @@ function protoDateModal() {
   `;
 }
 
-function protoReportPeopleStore() {
-  const raw = store.prototypeReportPeople;
-  return raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
-}
-
-function protoReportPeople(id) {
-  const saved = protoReportPeopleStore()[id];
-  return Array.isArray(saved) ? saved.map(String).filter(Boolean) : [];
-}
-
-const PROTO_REPORT_OCCURRENCE = [
-  { id: "weekly", name: "Weekly" },
-  { id: "monthly", name: "Monthly" },
-  { id: "quarterly", name: "Quarterly" },
+const PROTO_REPORT_TYPES = [
+  {
+    id: "extract",
+    name: "Scheduled data extract",
+    short: "Data extract",
+    blurb: "All interval data for the sites you pick, sent as a CSV on a schedule.",
+  },
+  {
+    id: "billing",
+    name: "Tenant billing",
+    short: "Tenant billing",
+    blurb: "The projected cost of a site and the share a tenant pays.",
+  },
+  {
+    id: "alert",
+    name: "Data alert",
+    short: "Data alert",
+    blurb: "Tell people when a site goes over a threshold you set.",
+  },
+  {
+    id: "missing",
+    name: "Missing data",
+    short: "Missing data",
+    blurb: "Tell people when a site stops sending data.",
+  },
 ];
 
-function protoReportOccurrenceId(raw) {
-  const id = String(raw || "").toLowerCase();
-  return PROTO_REPORT_OCCURRENCE.some((item) => item.id === id) ? id : "weekly";
+const PROTO_REPORT_PERIODS = [
+  { id: "day", name: "Last day", every: "Daily", word: "daily", days: 1 },
+  { id: "week", name: "Last week", every: "Weekly", word: "weekly", days: 7 },
+  { id: "month", name: "Last month", every: "Monthly", word: "monthly", days: 30 },
+  { id: "quarter", name: "Last quarter", every: "Quarterly", word: "quarterly", days: 91 },
+];
+
+const PROTO_REPORT_SILENCE = [1, 3, 6, 12, 24, 48];
+
+const PROTO_REPORT_BASIS = [
+  { id: "absolute", name: "Absolute amount", note: "A fixed daily use in kWh" },
+  { id: "average", name: "Portfolio average", note: "A share above the average site" },
+];
+
+const PROTO_REPORT_DELIVERY = [
+  { id: "email", name: "Email" },
+  { id: "sftp", name: "SFTP" },
+];
+
+function protoReportTypeId(raw) {
+  const id = String(raw || "");
+  return PROTO_REPORT_TYPES.some((item) => item.id === id) ? id : "extract";
 }
 
-function protoReportOccurrenceName(raw) {
-  const id = protoReportOccurrenceId(raw);
-  return PROTO_REPORT_OCCURRENCE.find((item) => item.id === id)?.name || "Weekly";
+function protoReportType(raw) {
+  const id = protoReportTypeId(raw);
+  return PROTO_REPORT_TYPES.find((item) => item.id === id);
 }
 
-function protoReportScheduleStore() {
-  const raw = store.prototypeReportSchedule;
+function protoReportPeriods(type) {
+  return type === "billing"
+    ? PROTO_REPORT_PERIODS
+    : PROTO_REPORT_PERIODS.filter((item) => item.id !== "quarter");
+}
+
+function protoReportPeriod(type, raw) {
+  const list = protoReportPeriods(type);
+  return list.find((item) => item.id === raw) || list.find((item) => item.id === (type === "billing" ? "month" : "week"));
+}
+
+function protoReportSilenceName(hours) {
+  if (hours >= 24) {
+    const days = Math.round(hours / 24);
+    return `${days} ${days === 1 ? "day" : "days"}`;
+  }
+  return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+}
+
+function protoReportDefaultName(type) {
+  if (type === "billing") return "Tenant billing";
+  if (type === "alert") return "Data alert";
+  if (type === "missing") return "Missing data alert";
+  return "Interval data extract";
+}
+
+function protoCanEditReports() {
+  return protoCanAct();
+}
+
+function protoReportDefsStore() {
+  const raw = store.prototypeReportDefs;
   return raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
 }
 
-function protoReportSchedule(id) {
-  const saved = protoReportScheduleStore()[id] || {};
-  const start = protoMaskUkDate(saved.start || "");
+function protoReportDefsKey() {
+  return String(protoCompanyId() || "company");
+}
+
+function protoReportSiteIds() {
+  return protoEstateSites()
+    .map((site) => protoSiteId(site))
+    .filter(Boolean);
+}
+
+function protoReportSiteById(id) {
+  return protoEstateSites().find((site) => protoSiteId(site) === id) || null;
+}
+
+function protoReportEmails(raw) {
+  const list = Array.isArray(raw) ? raw : String(raw || "").split(/[\s,;]+/);
+  return [
+    ...new Set(
+      list
+        .map((item) => String(item || "").trim())
+        .filter((item) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(item))
+    ),
+  ].slice(0, 20);
+}
+
+function protoReportNumber(raw, fallback, min, max) {
+  const n = Number(raw);
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+}
+
+function protoReportNormalize(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const type = protoReportTypeId(raw.type);
+  const ids = protoReportSiteIds();
+  const known = new Set(ids);
+  const sites = [...new Set((Array.isArray(raw.sites) ? raw.sites : []).map(String))].filter((id) =>
+    known.has(id)
+  );
+  const start = protoMaskUkDate(raw.start || "");
+  const delivery = PROTO_REPORT_DELIVERY.map((item) => item.id).filter((id) =>
+    (Array.isArray(raw.delivery) ? raw.delivery : ["email"]).includes(id)
+  );
   return {
-    occurrence: protoReportOccurrenceId(saved.occurrence),
+    id: String(raw.id || `report-${Date.now()}`),
+    type,
+    name: String(raw.name || "").replace(/\s+/g, " ").trim().slice(0, 80) || protoReportDefaultName(type),
+    on: raw.on !== false,
     start: protoFromUkDate(start) ? start : protoFormatUkDate(protoToday()),
+    people: [...new Set((Array.isArray(raw.people) ? raw.people : []).map(String).filter(Boolean))],
+    emails: protoReportEmails(raw.emails),
+    sites,
+    period: protoReportPeriod(type, raw.period).id,
+    delivery: delivery.length ? delivery : ["email"],
+    sftpHost: String(raw.sftpHost || "").trim().slice(0, 120),
+    sftpPath: String(raw.sftpPath || "").trim().slice(0, 160),
+    site: known.has(String(raw.site || "")) ? String(raw.site) : ids[0] || "",
+    tenant: String(raw.tenant || "").replace(/\s+/g, " ").trim().slice(0, 80),
+    tenantEmail: protoReportEmails([raw.tenantEmail])[0] || "",
+    share: protoReportNumber(raw.share, 50, 0, 100),
+    basis: raw.basis === "absolute" ? "absolute" : "average",
+    amount: protoReportNumber(raw.amount, 2000, 0, 10000000),
+    percent: protoReportNumber(raw.percent, 25, 0, 1000),
+    hours: PROTO_REPORT_SILENCE.includes(Number(raw.hours)) ? Number(raw.hours) : 3,
+    owner: String(raw.owner || protoProfileEmail()),
   };
 }
 
-function protoReportStepDate(date, occurrence) {
-  if (occurrence === "weekly") return protoAddDays(date, 7);
-  if (occurrence === "quarterly") return protoAddMonths(date, 3);
+function protoReportSeed() {
+  const ids = protoReportSiteIds();
+  const first = protoReportSiteById(ids[0]);
+  const today = protoFormatUkDate(protoToday());
+  return [
+    {
+      id: "seed-extract",
+      type: "extract",
+      name: "Weekly interval data",
+      sites: ids.slice(0, 2),
+      period: "week",
+      delivery: ["email"],
+      people: ["me"],
+      start: today,
+    },
+    {
+      id: "seed-billing",
+      type: "billing",
+      name: first ? `Tenant recharge, ${first.name}` : "Tenant recharge",
+      site: ids[0] || "",
+      period: "month",
+      tenant: "Northgate Retail",
+      tenantEmail: "accounts@northgate-retail.co.uk",
+      share: 35,
+      start: today,
+    },
+    {
+      id: "seed-alert",
+      type: "alert",
+      name: "Use above portfolio average",
+      sites: [],
+      basis: "average",
+      percent: 50,
+      people: ["me"],
+    },
+    {
+      id: "seed-missing",
+      type: "missing",
+      name: "Sites not sending data",
+      hours: 3,
+      people: ["me"],
+    },
+  ];
+}
+
+function protoReportDefs() {
+  const saved = protoReportDefsStore()[protoReportDefsKey()];
+  const order = PROTO_REPORT_TYPES.map((item) => item.id);
+  return (Array.isArray(saved) ? saved : protoReportSeed())
+    .map(protoReportNormalize)
+    .filter(Boolean)
+    .map((def, i) => ({ def, i }))
+    .sort((a, b) => order.indexOf(a.def.type) - order.indexOf(b.def.type) || a.i - b.i)
+    .map((row) => row.def);
+}
+
+function protoReportDefsPatch(list) {
+  return {
+    prototypeReportDefs: { ...protoReportDefsStore(), [protoReportDefsKey()]: list },
+  };
+}
+
+function protoReportDef(id) {
+  return protoReportDefs().find((def) => def.id === id) || null;
+}
+
+function protoReportKwh(n) {
+  return `${Math.round(n).toLocaleString("en-GB")} kWh`;
+}
+
+function protoReportJoin(names) {
+  const list = names.filter(Boolean);
+  if (!list.length) return "";
+  if (list.length <= 2) return list.join(" and ");
+  return `${list[0]} and ${list.length - 1} more`;
+}
+
+function protoReportSiteDayKwh(site) {
+  return (site?.meters || [])
+    .filter((meter) => meter.direction !== "Export" && protoMeterKind(meter) !== "water")
+    .reduce((n, meter) => n + protoDayKwh(meter), 0);
+}
+
+function protoReportPortfolioAverage() {
+  const sites = protoEstateSites();
+  if (!sites.length) return 0;
+  return sites.reduce((n, site) => n + protoReportSiteDayKwh(site), 0) / sites.length;
+}
+
+function protoReportScopeSites(def) {
+  const all = protoEstateSites();
+  if (!def.sites.length) return def.type === "extract" ? [] : all;
+  const picked = new Set(def.sites);
+  return all.filter((site) => picked.has(protoSiteId(site)));
+}
+
+function protoReportAlertLimit(def) {
+  return def.basis === "absolute"
+    ? def.amount
+    : protoReportPortfolioAverage() * (1 + def.percent / 100);
+}
+
+function protoReportAlertHits(def) {
+  const limit = protoReportAlertLimit(def);
+  return protoReportScopeSites(def).filter((site) => protoReportSiteDayKwh(site) > limit);
+}
+
+function protoMeterSilentHours(meter) {
+  const raw = String(meter?.lastReading || "").toLowerCase();
+  const n = parseFloat(raw);
+  if (!Number.isFinite(n)) return meter?.status === "stale" ? 24 : 0;
+  if (/day/.test(raw)) return n * 24;
+  if (/min/.test(raw)) return n / 60;
+  if (/\bh\b|hour/.test(raw)) return n;
+  return 0;
+}
+
+function protoReportMissingHits(def) {
+  return protoEstateSites().filter((site) =>
+    (site.meters || []).some((meter) => protoMeterSilentHours(meter) >= def.hours)
+  );
+}
+
+function protoReportBill(def) {
+  const site = protoReportSiteById(def.site);
+  const period = protoReportPeriod("billing", def.period);
+  const cost = site ? protoSiteSpendGbp(site) * period.days : 0;
+  return { site, period, cost, due: (cost * def.share) / 100 };
+}
+
+function protoReportStepDate(date, period) {
+  if (period === "day") return protoAddDays(date, 1);
+  if (period === "week") return protoAddDays(date, 7);
+  if (period === "quarter") return protoAddMonths(date, 3);
   return protoAddMonths(date, 1);
 }
 
-function protoReportNextSend(id) {
-  const schedule = protoReportSchedule(id);
-  const start = protoFromUkDate(schedule.start);
+function protoReportNextSend(def) {
+  const start = protoFromUkDate(def.start);
   if (!start) return null;
   const todayStamp = protoDayStamp(protoToday());
   let next = new Date(start.getFullYear(), start.getMonth(), start.getDate());
   let guard = 0;
-  while (protoDayStamp(next) <= todayStamp && guard < 400) {
-    next = protoReportStepDate(next, schedule.occurrence);
+  while (protoDayStamp(next) <= todayStamp && guard < 800) {
+    next = protoReportStepDate(next, def.period);
     guard += 1;
   }
   return next;
 }
 
-function protoReportSendLabel(id) {
-  const next = protoReportNextSend(id);
+function protoReportSendLabel(next) {
   if (!next) return "";
   const today = protoToday();
   const days = Math.round((protoDayStamp(next) - protoDayStamp(today)) / 86400000);
   let months =
     (next.getFullYear() - today.getFullYear()) * 12 + (next.getMonth() - today.getMonth());
   if (next.getDate() < today.getDate()) months -= 1;
-  if (months >= 1) {
-    const unit = months === 1 ? "month" : "months";
-    return `Sent in ${months} ${unit}`;
-  }
+  if (months >= 1) return `Sent in ${months} ${months === 1 ? "month" : "months"}`;
   const weeks = Math.floor(Math.max(days, 0) / 7);
-  if (weeks >= 1) {
-    const unit = weeks === 1 ? "week" : "weeks";
-    return `Sent in ${weeks} ${unit}`;
-  }
+  if (weeks >= 1) return `Sent in ${weeks} ${weeks === 1 ? "week" : "weeks"}`;
   const wait = Math.max(days, 1);
-  const unit = wait === 1 ? "day" : "days";
-  return `Sent in ${wait} ${unit}`;
+  return wait === 1 ? "Sent tomorrow" : `Sent in ${wait} days`;
 }
 
-function protoReportSendLine(item) {
-  const label = protoReportSendLabel(item.id);
-  if (!label) return "";
-  return `<span class="astral-report-wait"><span class="astral-muted">${escapeHtml(
-    label
-  )}</span></span>`;
+function protoReportPeopleNames(ids) {
+  const people = protoUserPeople();
+  return ids
+    .map((id) => people.find((person) => person.id === id))
+    .filter(Boolean)
+    .map((person) => (person.you ? "you" : person.name));
 }
 
-function protoReportDraftOccurrence() {
-  return protoReportOccurrenceId(store.prototypeReportDraftOccurrence);
+function protoReportToLine(def) {
+  if (def.type === "billing") {
+    return `Email to you and ${def.tenant || def.tenantEmail || "the tenant"}`;
+  }
+  const names = [...protoReportPeopleNames(def.people), ...def.emails];
+  const email = names.length ? `Email to ${protoReportJoin(names)}` : "No one gets this yet";
+  if (def.type !== "extract") return email;
+  const parts = [];
+  if (def.delivery.includes("email")) parts.push(email);
+  if (def.delivery.includes("sftp")) {
+    const path = def.sftpPath ? `/${def.sftpPath.replace(/^\/+/, "")}` : "";
+    parts.push(`SFTP to ${def.sftpHost || "a server"}${path}`);
+  }
+  return parts.join(". ");
+}
+
+function protoReportSummary(def) {
+  if (def.type === "extract") {
+    const names = protoReportScopeSites(def).map((site) => site.name);
+    const period = protoReportPeriod("extract", def.period);
+    return `${period.name} of interval data for ${protoReportJoin(names) || "no sites yet"}, as a CSV.`;
+  }
+  if (def.type === "billing") {
+    const bill = protoReportBill(def);
+    if (!bill.site) return "Pick a site to project its cost.";
+    return `${bill.site.name}. Projected ${bill.period.word} cost ${protoSpendMoney(
+      bill.cost
+    )}. ${def.tenant || "The tenant"} pays ${def.share}%: ${protoSpendMoney(bill.due)}.`;
+  }
+  if (def.type === "alert") {
+    const scope = def.sites.length
+      ? protoReportJoin(protoReportScopeSites(def).map((site) => site.name))
+      : "any site";
+    if (def.basis === "absolute") {
+      return `When ${scope} uses more than ${protoReportKwh(def.amount)} in a day.`;
+    }
+    return `When ${scope} uses ${def.percent}% more than the portfolio average, ${protoReportKwh(
+      protoReportAlertLimit(def)
+    )} a day.`;
+  }
+  return `When any site in ${protoHomeCompany() || "the portfolio"} sends no data for ${protoReportSilenceName(
+    def.hours
+  )}.`;
+}
+
+function protoReportStatusLine(def) {
+  if (!def.on) return "Paused";
+  if (def.type === "alert") {
+    const n = protoReportAlertHits(def).length;
+    return n ? `${n} ${n === 1 ? "site" : "sites"} over now` : "No site over now";
+  }
+  if (def.type === "missing") {
+    const n = protoReportMissingHits(def).length;
+    return n ? `${n} ${n === 1 ? "site" : "sites"} silent now` : "Every site sending";
+  }
+  return protoReportSendLabel(protoReportNextSend(def));
 }
 
 function protoReportDraftStart() {
@@ -6757,7 +7038,7 @@ function protoReportCalOpen() {
 }
 
 function protoOpenReportCal() {
-  if (!protoCanPickReportPeople()) return;
+  if (!protoCanEditReports()) return;
   const picked = protoFromUkDate(protoReportDraftStart()) || protoToday();
   const cal = store.prototypeReportCal || protoIso(picked).slice(0, 7);
   if (protoReportCalOpen()) {
@@ -6772,7 +7053,7 @@ function protoOpenReportCal() {
   protoRestoreFocus('#astral-fs input[name="proto-report-start"]');
 }
 
-function protoReportDayCalHtml(start) {
+function protoReportDayCalHtml(start, label = "First send on") {
   const open = protoReportCalOpen();
   const { year, month } = protoReportCalMonth();
   const picked = protoFromUkDate(start);
@@ -6787,7 +7068,7 @@ function protoReportDayCalHtml(start) {
   return `
     <div class="astral-day-cal${open ? protoMenuEnterClass("report-cal") : ""}">
       <label class="astral-field">
-        <span>Starts on</span>
+        <span>${escapeHtml(label)}</span>
         <input
           class="astral-date-input"
           type="text"
@@ -6798,7 +7079,7 @@ function protoReportDayCalHtml(start) {
           spellcheck="false"
           maxlength="10"
           placeholder="dd/mm/yyyy"
-          aria-label="Starts on"
+          aria-label="${escapeHtml(label)}"
           aria-haspopup="dialog"
           aria-expanded="${open ? "true" : "false"}"
           aria-controls="astral-day-cal-menu"
@@ -6808,7 +7089,7 @@ function protoReportDayCalHtml(start) {
         id="astral-day-cal-menu"
         class="astral-day-cal-menu${open ? protoMenuEnterClass("report-cal") : ""}"
         role="dialog"
-        aria-label="Starts on"
+        aria-label="${escapeHtml(label)}"
         ${open ? "" : "hidden"}
       >
         <div class="astral-cal-head">
@@ -6825,149 +7106,583 @@ function protoReportDayCalHtml(start) {
   `;
 }
 
-function protoReportDraftPeople() {
-  return Array.isArray(store.prototypeReportDraftPeople)
-    ? store.prototypeReportDraftPeople.map(String).filter(Boolean)
-    : [];
+function protoReportEditId() {
+  return String(store.prototypeReportEdit || "");
 }
 
-function protoReportPeopleFormId() {
-  return String(store.prototypeReportPeopleForm || "");
+function protoReportDraft() {
+  const raw = store.prototypeReportDraft;
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? raw : null;
 }
 
-function protoReportPeopleModal() {
-  const id = protoReportPeopleFormId();
-  if (!id || !protoCanPickReportPeople()) return "";
-  const report = protoReportList().find((item) => item.id === id);
-  if (!report) return "";
-  const picked = protoReportDraftPeople();
-  const saved = protoReportPeople(id);
-  const schedule = protoReportSchedule(id);
-  const occurrence = protoReportDraftOccurrence();
-  const start = protoReportDraftStart();
-  const peopleDirty =
-    picked.length !== saved.length || picked.some((value) => !saved.includes(value));
-  const scheduleDirty = occurrence !== schedule.occurrence || start !== schedule.start;
-  const dateOk = Boolean(protoFromUkDate(start));
-  const dirty = (peopleDirty || scheduleDirty) && dateOk;
+function protoReportDraftFrom(def) {
+  return {
+    ...def,
+    emails: def.emails.join(", "),
+    share: String(def.share),
+    amount: String(def.amount),
+    percent: String(def.percent),
+  };
+}
+
+function protoReportNewDraft(type) {
+  const def = protoReportNormalize({ type, people: ["me"] });
+  return { ...protoReportDraftFrom(def), name: "" };
+}
+
+function protoReportDraftDef(draft) {
+  const id = protoReportEditId();
+  const saved = id && id !== "new" ? protoReportDef(id) : null;
+  const def = protoReportNormalize({
+    ...draft,
+    id: saved?.id || `report-${Date.now()}`,
+    on: saved ? saved.on : true,
+    owner: saved?.owner || protoProfileEmail(),
+    start: protoReportDraftStart(),
+  });
+  if (!String(draft.name || "").trim()) def.name = protoReportAutoName(def);
+  return def;
+}
+
+function protoReportAutoName(def) {
+  if (def.type === "extract") return `${protoReportPeriod("extract", def.period).every} interval data`;
+  if (def.type === "billing") {
+    const site = protoReportSiteById(def.site);
+    return `${def.tenant || "Tenant"} billing${site ? `, ${site.name}` : ""}`;
+  }
+  if (def.type === "alert") {
+    return def.basis === "absolute"
+      ? `Daily use over ${protoReportKwh(def.amount)}`
+      : `Use ${def.percent}% above average`;
+  }
+  return `No data for ${protoReportSilenceName(def.hours)}`;
+}
+
+function protoReportDraftIssue(draft) {
+  if (!draft) return "Pick a report type.";
+  const people =
+    (Array.isArray(draft.people) ? draft.people.length : 0) + protoReportEmails(draft.emails).length;
+  const startOk = Boolean(protoFromUkDate(protoReportDraftStart()));
+  if (draft.type === "extract") {
+    if (!draft.sites?.length) return "Pick at least one site.";
+    if (!draft.delivery?.length) return "Pick how to send it.";
+    if (draft.delivery.includes("email") && !people) return "Add at least one person or email.";
+    if (draft.delivery.includes("sftp") && !String(draft.sftpHost || "").trim()) {
+      return "Add the SFTP host.";
+    }
+    if (!startOk) return "Enter the first send date.";
+    return "";
+  }
+  if (draft.type === "billing") {
+    if (!draft.site) return "Pick a site.";
+    if (!String(draft.tenant || "").trim()) return "Add the tenant's name.";
+    if (!protoReportEmails([draft.tenantEmail]).length) return "Add the tenant's email.";
+    const share = Number(draft.share);
+    if (!(share > 0 && share <= 100)) return "Tenant share must be between 1 and 100%.";
+    if (!startOk) return "Enter the first send date.";
+    return "";
+  }
+  if (draft.type === "alert") {
+    const value = Number(draft.basis === "absolute" ? draft.amount : draft.percent);
+    if (!(value > 0)) return "Enter a threshold above zero.";
+  }
+  if (!people) return "Add at least one person or email.";
+  return "";
+}
+
+function protoReportDraftPreview(draft) {
+  if (!draft) return "";
+  const def = protoReportDraftDef(draft);
+  if (def.type === "extract") {
+    const next = protoReportNextSend(def);
+    const period = protoReportPeriod("extract", def.period);
+    return next
+      ? `${period.every}, first sent on ${protoFormatUkDate(next)}.`
+      : `${period.every}.`;
+  }
+  if (def.type === "billing") {
+    const bill = protoReportBill(def);
+    if (!bill.site) return "";
+    return `Projected ${bill.period.word} cost ${protoSpendMoney(bill.cost)}. Tenant pays ${protoSpendMoney(
+      bill.due
+    )}.`;
+  }
+  if (def.type === "alert") {
+    const hits = protoReportAlertHits(def);
+    const limit = `Limit ${protoReportKwh(protoReportAlertLimit(def))} a day.`;
+    if (!hits.length) return `${limit} No site is over right now.`;
+    return `${limit} Over right now: ${protoReportJoin(hits.map((site) => site.name))}.`;
+  }
+  const hits = protoReportMissingHits(def);
+  if (!hits.length) return "Every site is sending right now.";
+  return `Silent right now: ${protoReportJoin(hits.map((site) => site.name))}.`;
+}
+
+function protoReportField(label, inner) {
+  return `<div class="astral-team-field"><p>${escapeHtml(label)}</p>${inner}</div>`;
+}
+
+function protoReportInput(label, field, value, attrs = "") {
+  return `
+    <label>
+      ${escapeHtml(label)}
+      <input
+        type="text"
+        name="proto-report-${escapeHtml(field)}"
+        data-proto-report-field="${escapeHtml(field)}"
+        value="${escapeHtml(value ?? "")}"
+        autocomplete="off"
+        ${attrs}
+      />
+    </label>
+  `;
+}
+
+function protoReportSitesSelect(draft) {
+  const sites = protoEstateSites();
+  const alert = draft.type === "alert";
+  return protoReportField(
+    "Sites",
+    protoSelect({
+      id: "report-sites",
+      label: "Sites",
+      multi: true,
+      wide: true,
+      values: draft.sites || [],
+      placeholder: alert ? "All sites" : "Pick sites",
+      countLabel: "sites",
+      allLabel: "All sites",
+      empty: sites.length ? "No sites match." : "No sites in this company.",
+      search: sites.length
+        ? {
+            name: "proto-report-site-query",
+            value: String(store.prototypeReportSiteQuery || ""),
+            placeholder: "Search sites",
+            label: "Search sites",
+          }
+        : null,
+      options: sites.map((site) => {
+        const n = (site.meters || []).length;
+        return {
+          value: protoSiteId(site),
+          label: site.name,
+          note: `${n} ${n === 1 ? "meter" : "meters"}`,
+        };
+      }),
+    })
+  );
+}
+
+function protoReportPeriodSelect(draft, label) {
+  return protoReportField(
+    label,
+    protoSelect({
+      id: "report-period",
+      label,
+      wide: true,
+      value: protoReportPeriod(draft.type, draft.period).id,
+      options: protoReportPeriods(draft.type).map((item) => ({
+        value: item.id,
+        label: item.name,
+        note: `Sent ${item.word}`,
+      })),
+    })
+  );
+}
+
+function protoReportRecipientsHtml(draft) {
   const people = protoUserPeople();
   return `
-    <div class="astral-modal-back" data-proto-modal="report-people">
-      <div
-        class="astral-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="astral-report-people-title"
-        data-proto-report-people-form
-      >
-        ${protoModalHead(
-          "astral-report-people-title",
-          "Clockwork email",
-          "Who gets this report, how often, and when it starts.",
-          "report-people"
-        )}
-        <form data-proto-report-people-form>
-          <div class="astral-modal-body">
-            <div class="astral-team-field">
-              <p>People</p>
-              ${protoSelect({
-                id: "report-people",
-                label: "People",
-                multi: true,
-                wide: true,
-                values: picked,
-                placeholder: "Pick people",
-                countLabel: "people",
-                empty: people.length
-                  ? "No people match."
-                  : "Invite someone first, then add them here.",
-                search: people.length
-                  ? {
-                      name: "proto-report-people-query",
-                      value: String(store.prototypeReportPeopleQuery || ""),
-                      placeholder: "Search people",
-                      label: "Search people",
-                    }
-                  : null,
-                options: people.map((person) => ({
-                  value: person.id,
-                  label: person.name,
-                  search: `${person.name} ${person.email || ""} ${protoUserRoleName(person.role)}`,
-                  html: `<span class="astral-select-person"><span>${escapeHtml(
-                    person.name
-                  )}</span><span class="astral-muted">${escapeHtml(
-                    protoUserRoleName(person.role)
-                  )}</span></span>`,
-                })),
-              })}
-            </div>
-            <div class="astral-team-field">
-              <p>Occurrence</p>
-              ${protoSelect({
-                id: "report-occurrence",
-                label: "Occurrence",
-                wide: true,
-                value: occurrence,
-                options: PROTO_REPORT_OCCURRENCE.map((item) => ({
-                  value: item.id,
-                  label: item.name,
-                })),
-              })}
-            </div>
-            ${protoReportDayCalHtml(start)}
-          </div>
-          <div class="astral-modal-foot">
-            <div class="astral-actions">
-              ${protoBtn("Save changes", `${dirty ? "" : " disabled"}`, { type: "submit" })}
-              ${protoGhost("Cancel", "data-proto-report-people=\"cancel\"")}
-            </div>
-          </div>
-        </form>
+    ${protoReportField(
+      "People",
+      protoSelect({
+        id: "report-people",
+        label: "People",
+        multi: true,
+        wide: true,
+        values: draft.people || [],
+        placeholder: "Pick people",
+        countLabel: "people",
+        empty: people.length ? "No people match." : "Invite someone first, then add them here.",
+        search: people.length
+          ? {
+              name: "proto-report-people-query",
+              value: String(store.prototypeReportPeopleQuery || ""),
+              placeholder: "Search people",
+              label: "Search people",
+            }
+          : null,
+        options: people.map((person) => ({
+          value: person.id,
+          label: person.you && person.name !== "You" ? `${person.name} (you)` : person.name,
+          search: `${person.name} ${person.email || ""} ${protoUserRoleName(person.role)}`,
+          html: `<span class="astral-select-person"><span>${escapeHtml(
+            person.you && person.name !== "You" ? `${person.name} (you)` : person.name
+          )}</span><span class="astral-muted">${escapeHtml(
+            protoUserRoleName(person.role)
+          )}</span></span>`,
+        })),
+      })
+    )}
+    ${protoReportInput(
+      "Other emails",
+      "emails",
+      draft.emails,
+      'placeholder="name@company.com, name@company.com" inputmode="email"'
+    )}
+  `;
+}
+
+function protoReportTypeFields(draft) {
+  if (draft.type === "extract") {
+    const email = (draft.delivery || []).includes("email");
+    const sftp = (draft.delivery || []).includes("sftp");
+    return `
+      ${protoReportSitesSelect(draft)}
+      <div class="astral-report-pair">
+        ${protoReportPeriodSelect(draft, "Data period")}
+        ${protoReportDayCalHtml(protoReportDraftStart())}
       </div>
+      ${protoReportField(
+        "Send by",
+        protoSelect({
+          id: "report-delivery",
+          label: "Send by",
+          multi: true,
+          wide: true,
+          values: draft.delivery || [],
+          placeholder: "Pick how to send it",
+          countLabel: "ways",
+          allLabel: "Email and SFTP",
+          options: PROTO_REPORT_DELIVERY.map((item) => ({ value: item.id, label: item.name })),
+        })
+      )}
+      ${email ? protoReportRecipientsHtml(draft) : ""}
+      ${
+        sftp
+          ? `<div class="astral-report-pair">
+              ${protoReportInput("SFTP host", "sftpHost", draft.sftpHost, 'placeholder="sftp.company.com"')}
+              ${protoReportInput("Folder", "sftpPath", draft.sftpPath, 'placeholder="astral/interval"')}
+            </div>`
+          : ""
+      }
+    `;
+  }
+  if (draft.type === "billing") {
+    const sites = protoEstateSites();
+    return `
+      ${protoReportField(
+        "Site",
+        protoSelect({
+          id: "report-site",
+          label: "Site",
+          wide: true,
+          value: draft.site || "",
+          placeholder: "Pick a site",
+          empty: sites.length ? "No sites match." : "No sites in this company.",
+          search: sites.length
+            ? {
+                name: "proto-report-site-query",
+                value: String(store.prototypeReportSiteQuery || ""),
+                placeholder: "Search sites",
+                label: "Search sites",
+              }
+            : null,
+          options: sites.map((site) => ({
+            value: protoSiteId(site),
+            label: site.name,
+            note: `${protoSpendMoney(protoSiteSpendGbp(site))} a day`,
+          })),
+        })
+      )}
+      <div class="astral-report-pair">
+        ${protoReportPeriodSelect(draft, "Cost period")}
+        ${protoReportDayCalHtml(protoReportDraftStart())}
+      </div>
+      <div class="astral-report-pair">
+        ${protoReportInput("Tenant", "tenant", draft.tenant, 'maxlength="80" placeholder="Tenant name"')}
+        ${protoReportInput("Tenant share (%)", "share", draft.share, 'inputmode="decimal" placeholder="50"')}
+      </div>
+      ${protoReportInput(
+        "Tenant email",
+        "tenantEmail",
+        draft.tenantEmail,
+        'inputmode="email" placeholder="accounts@tenant.com"'
+      )}
+      <p class="astral-muted">Sent by email to you and the tenant.</p>
+    `;
+  }
+  if (draft.type === "alert") {
+    const absolute = draft.basis === "absolute";
+    return `
+      ${protoReportSitesSelect(draft)}
+      <div class="astral-report-pair">
+        ${protoReportField(
+          "Threshold",
+          protoSelect({
+            id: "report-basis",
+            label: "Threshold",
+            wide: true,
+            value: absolute ? "absolute" : "average",
+            options: PROTO_REPORT_BASIS.map((item) => ({
+              value: item.id,
+              label: item.name,
+              note: item.note,
+            })),
+          })
+        )}
+        ${
+          absolute
+            ? protoReportInput("Daily use over (kWh)", "amount", draft.amount, 'inputmode="decimal"')
+            : protoReportInput("Above the average by (%)", "percent", draft.percent, 'inputmode="decimal"')
+        }
+      </div>
+      ${protoReportRecipientsHtml(draft)}
+    `;
+  }
+  return `
+    ${protoReportField(
+      "No data for",
+      protoSelect({
+        id: "report-silence",
+        label: "No data for",
+        wide: true,
+        value: String(draft.hours || 3),
+        options: PROTO_REPORT_SILENCE.map((hours) => ({
+          value: String(hours),
+          label: protoReportSilenceName(hours),
+        })),
+      })
+    )}
+    <p class="astral-muted">Checks every site in ${escapeHtml(
+      protoHomeCompany() || "the portfolio"
+    )}.</p>
+    ${protoReportRecipientsHtml(draft)}
+  `;
+}
+
+function protoReportTypePicker(draft) {
+  return `
+    <div class="astral-report-types" role="radiogroup" aria-label="Report type">
+      ${PROTO_REPORT_TYPES.map((item) => {
+        const on = draft?.type === item.id;
+        return `
+          <button
+            type="button"
+            role="radio"
+            class="astral-report-type${on ? " is-on" : ""}"
+            aria-checked="${on ? "true" : "false"}"
+            data-proto-report-type="${escapeHtml(item.id)}"
+          >
+            <span>${escapeHtml(item.name)}</span>
+            <span class="astral-muted">${escapeHtml(item.blurb)}</span>
+          </button>
+        `;
+      }).join("")}
     </div>
   `;
 }
 
-function protoReportAddModal() {
-  if (!protoState().reportForm) return "";
+function protoReportEditModal() {
+  const id = protoReportEditId();
+  if (!id || !protoCanEditReports()) return "";
+  const isNew = id === "new";
+  if (!isNew && !protoReportDef(id)) return "";
+  const draft = protoReportDraft();
+  const type = draft ? protoReportType(draft.type) : null;
+  const issue = protoReportDraftIssue(draft);
+  const preview = protoReportDraftPreview(draft);
+  const lead = isNew
+    ? "Pick a type, then say what it covers and who gets it."
+    : `${type?.name || "Report"}. ${type?.blurb || ""}`;
   return `
     <div class="astral-modal-back" data-proto-modal="report">
       <div
-        id="astral-report-add"
-        class="astral-modal"
+        id="astral-report-edit"
+        class="astral-modal astral-report-modal"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="astral-report-title"
+        aria-labelledby="astral-report-edit-title"
+        data-proto-report-edit-form
       >
         ${protoModalHead(
-          "astral-report-title",
-          "Add a custom report",
-          "A name only. You cannot run it yet.",
+          "astral-report-edit-title",
+          isNew ? "Add a report" : "Edit report",
+          lead,
           "report"
         )}
-        <form data-proto-report-form>
+        <form data-proto-report-edit-form novalidate>
           <div class="astral-modal-body">
-            <label>
-              Report name
-              <input
-                type="text"
-                name="proto-report-name"
-                maxlength="80"
-                required
-                autocomplete="off"
-              />
-            </label>
+            ${isNew ? protoReportTypePicker(draft) : ""}
+            ${
+              draft
+                ? `
+                  ${protoReportInput(
+                    "Report name",
+                    "name",
+                    draft.name,
+                    `maxlength="80" placeholder="${escapeHtml(protoReportAutoName(protoReportDraftDef(draft)))}"`
+                  )}
+                  ${protoReportTypeFields(draft)}
+                  <p class="astral-report-preview" data-proto-report-preview${
+                    preview ? "" : " hidden"
+                  }>${escapeHtml(preview)}</p>
+                `
+                : ""
+            }
           </div>
           <div class="astral-modal-foot">
+            <p class="astral-muted astral-report-issue" data-proto-report-issue${
+              issue && draft ? "" : " hidden"
+            }>${escapeHtml(issue)}</p>
             <div class="astral-actions">
-              ${protoBtn("Add", "", { type: "submit" })}
-              ${protoGhost("Cancel", "data-proto-report=\"cancel\"")}
+              ${protoBtn(isNew ? "Add report" : "Save changes", "", {
+                type: "submit",
+                disabled: Boolean(issue),
+              })}
+              ${protoGhost("Cancel", 'data-proto-report-edit="cancel"')}
+              ${
+                isNew
+                  ? ""
+                  : protoTextBtn("Delete report", `data-proto-report-delete="${escapeHtml(id)}"`, {
+                      className: "astral-report-delete",
+                    })
+              }
             </div>
           </div>
         </form>
       </div>
     </div>
   `;
+}
+
+function protoReportRefreshForm() {
+  const modal = document.querySelector("#astral-fs [data-proto-report-edit-form].astral-modal");
+  const draft = protoReportDraft();
+  if (!modal || !draft) return;
+  const issue = protoReportDraftIssue(draft);
+  const submit = modal.querySelector('button[type="submit"]');
+  if (submit) submit.disabled = Boolean(issue);
+  const issueEl = modal.querySelector("[data-proto-report-issue]");
+  if (issueEl) {
+    issueEl.textContent = issue;
+    issueEl.hidden = !issue;
+  }
+  const previewEl = modal.querySelector("[data-proto-report-preview]");
+  if (previewEl) {
+    const preview = protoReportDraftPreview(draft);
+    previewEl.textContent = preview;
+    previewEl.hidden = !preview;
+  }
+}
+
+function protoReportOpenEdit(id) {
+  if (!protoCanEditReports()) return;
+  const def = id === "new" ? null : protoReportDef(id);
+  if (id !== "new" && !def) return;
+  setProto({
+    prototypeReportEdit: id,
+    prototypeReportDraft: def ? protoReportDraftFrom(def) : null,
+    prototypeReportDraftStart: def ? def.start : protoFormatUkDate(protoToday()),
+    prototypeReportPeopleQuery: "",
+    prototypeReportSiteQuery: "",
+    prototypeReportCal: "",
+    prototypeSelectOpen: "",
+  });
+  protoRestoreFocus(
+    def
+      ? '#astral-fs input[name="proto-report-name"]'
+      : '#astral-fs [data-proto-report-type="extract"]'
+  );
+}
+
+function protoReportEditClear() {
+  return {
+    prototypeReportEdit: "",
+    prototypeReportDraft: null,
+    prototypeReportDraftStart: "",
+    prototypeReportPeopleQuery: "",
+    prototypeReportSiteQuery: "",
+    prototypeReportCalOpen: false,
+    prototypeReportCal: "",
+  };
+}
+
+function protoReportPatchDraft(patch, keepOpen) {
+  const draft = protoReportDraft();
+  if (!draft || !protoCanEditReports()) return;
+  setProto({
+    prototypeReportEdit: protoReportEditId(),
+    prototypeReportDraft: { ...draft, ...patch },
+    prototypeSelectOpen: keepOpen || "",
+  });
+}
+
+function protoReportToggleIn(list, value) {
+  const cur = Array.isArray(list) ? list.map(String) : [];
+  return cur.includes(value) ? cur.filter((item) => item !== value) : [...cur, value];
+}
+
+function protoReportCsv(def) {
+  const q = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+  const today = protoToday();
+  if (def.type === "billing") {
+    const bill = protoReportBill(def);
+    const from = protoAddDays(today, -bill.period.days);
+    const to = protoAddDays(today, -1);
+    const lines = [
+      ["site", "period", "from", "to", "projected cost (GBP)", "tenant", "tenant share (%)", "amount payable (GBP)"]
+        .map(q)
+        .join(","),
+      [
+        bill.site?.name || "",
+        bill.period.name,
+        protoFormatUkDate(from),
+        protoFormatUkDate(to),
+        bill.cost.toFixed(2),
+        def.tenant,
+        def.share,
+        bill.due.toFixed(2),
+      ]
+        .map(q)
+        .join(","),
+      "",
+      ["meter", "utility", "projected cost (GBP)", "tenant pays (GBP)"].map(q).join(","),
+      ...(bill.site?.meters || []).map((meter) => {
+        const cost = protoMeterSpendGbp(meter) * bill.period.days;
+        return [meter.name, meter.commodity, cost.toFixed(2), ((cost * def.share) / 100).toFixed(2)]
+          .map(q)
+          .join(",");
+      }),
+    ];
+    return lines;
+  }
+  const period = protoReportPeriod("extract", def.period);
+  const lines = [["site", "meter", "mpan", "date", "time", "value", "unit", "quality"].map(q).join(",")];
+  protoReportScopeSites(def).forEach((site) => {
+    (site.meters || []).forEach((meter) => {
+      for (let back = period.days; back >= 1; back -= 1) {
+        const day = protoAddDays(today, -back);
+        protoSeries(meter, "day", day).forEach((point) => {
+          lines.push(
+            [
+              site.name,
+              meter.name,
+              meter.mpan || "",
+              protoFormatUkDate(day),
+              point.label,
+              point.value == null ? "" : point.value,
+              point.unit || "kWh",
+              protoCsvQuality(point.quality, point.value),
+            ]
+              .map(q)
+              .join(",")
+          );
+        });
+      }
+    });
+  });
+  return lines;
 }
 
 function protoUnreadFrom(alerts) {
@@ -7264,12 +7979,12 @@ function protoReportsDownloadsTabs(active) {
 
 function protoReportsAreaHead(active) {
   const addBtn =
-    active === "reports" && protoCanSetupReports()
+    active === "reports" && protoCanEditReports()
       ? protoBtn(
-          "Add a custom report",
-          `data-proto-report="add" aria-haspopup="dialog" aria-expanded="${
-            protoState().reportForm ? "true" : "false"
-          }" aria-controls="astral-report-add"`
+          "Add a report",
+          `data-proto-report-edit="new" aria-haspopup="dialog" aria-expanded="${
+            protoReportEditId() === "new" ? "true" : "false"
+          }" aria-controls="astral-report-edit"`
         )
       : "";
   const tabs = protoReportsDownloadsTabs(active);
@@ -7537,7 +8252,7 @@ function protoHomeBroker(facts) {
     <div class="astral-hero">
       ${protoStatButton("portfolio", 1, "Customer with a live letter")}
       ${protoStatButton("alerts", flagged.length, flagged.length === 1 ? "Site needs action" : "Sites need action", flagged.length)}
-      ${protoStatButton("reports", live, live === 1 ? "Live report you can run" : "Live reports you can run")}
+      ${protoStatButton("reports", live, live === 1 ? "Report switched on" : "Reports switched on")}
     </div>
     <button type="button" class="astral-catch" data-proto-view="portfolio">
       <span class="astral-catch-copy">
@@ -7666,7 +8381,7 @@ function protoHomeOwner(facts) {
       <article class="astral-card">
         <p class="astral-muted">Reports</p>
         <p class="astral-metric">${live}</p>
-        <p>Live reports you can run now.</p>
+        <p>Reports switched on.</p>
       </article>
       ${protoWaitCard("Jobs", "Fault jobs still wait. Odd use sits on Alerts.")}
     </div>
@@ -7701,7 +8416,7 @@ function protoHomeFinance(facts) {
       "Find the bill, download it, and spot what is missing."
     )}
     <div class="astral-hero">
-      ${protoStatButton("reports", live, "Live reports you can run")}
+      ${protoStatButton("reports", live, "Reports switched on")}
       ${protoStatButton("alerts", facts.flagged.length, "Sites that may hit a bill", facts.flagged.length)}
       ${protoStatButton("queries", facts.queries, "Open queries")}
     </div>
@@ -7734,23 +8449,23 @@ function protoHomeAsset(facts) {
 }
 
 function protoHomeData(facts) {
-  const reports = facts.reports;
-  const live = reports.filter((item) => item.live).length;
-  const waiting = reports.filter((item) => !item.live && !item.custom).length;
+  const reports = facts.reports.filter((item) => item.on);
+  const sending = reports.filter((item) => item.file).length;
+  const watching = reports.length - sending;
   return `
     ${astralPageHead(
       "Reports",
-      "Get the file. Run a live report, or wait on what is not in yet."
+      "Scheduled extracts and tenant bills, plus alerts when data looks wrong."
     )}
     <div class="astral-hero">
-      ${protoStatButton("reports", live, live === 1 ? "Live report you can run" : "Live reports you can run")}
-      ${protoStatButton("reports", waiting, waiting === 1 ? "Report still waiting" : "Reports still waiting")}
+      ${protoStatButton("reports", sending, sending === 1 ? "Report sent on a schedule" : "Reports sent on a schedule")}
+      ${protoStatButton("reports", watching, watching === 1 ? "Alert watching your data" : "Alerts watching your data")}
       ${protoStatButton("portfolio", `${facts.health}%`, "Data health")}
     </div>
     <div class="astral-metrics">
-      ${protoWaitCard("Scheduled reports", "Clockwork email stays on Reports. Recipients still wait.")}
-      ${protoWaitCard("Failed exports", "A failed run list still waits.")}
-      ${protoWaitCard("Saved reports", "Custom is a name only. You cannot run it yet.")}
+      ${protoWaitCard("Sent history", "A list of past sends still waits.")}
+      ${protoWaitCard("Failed sends", "A failed email or SFTP list still waits.")}
+      ${protoWaitCard("Alert history", "A list of past alerts still waits.")}
     </div>
   `;
 }
@@ -9531,7 +10246,7 @@ function protoDownloads() {
   const queued = protoDownloadsFrom(store.prototypeDownloads);
   if (protoAdminRail()) return queued;
   const clockwork = protoReportList()
-    .filter((item) => item.live)
+    .filter((item) => item.live && item.file)
     .map((item) => ({
       id: `clockwork-${item.id}`,
       kind: "csv",
@@ -9759,14 +10474,17 @@ function protoDownloadsSection() {
           const wait = ready
             ? `<span class="astral-tag">Complete</span>`
             : protoDownloadWaitCell(item);
-          const settings =
-            protoCanPickReportPeople() && protoDownloadType(item) === "report"
-              ? protoIconBtn(
-                  "settings",
-                  "Settings",
-                  `data-proto-report-people="${escapeHtml(item.fileId)}"`
-                )
-              : "";
+          const report =
+            protoDownloadType(item) === "report" && protoCanEditReports()
+              ? protoReportDef(item.fileId)
+              : null;
+          const settings = report
+            ? protoIconBtn(
+                "settings",
+                "Edit report",
+                `data-proto-report-edit="${escapeHtml(item.fileId)}"`
+              )
+            : "";
           const get =
             ready && protoCanAct()
               ? protoIconBtn("export", "Download", `data-proto-download="${escapeHtml(item.id)}"`)
@@ -9821,7 +10539,7 @@ function protoDownloadsSection() {
 function protoDownloadsPage() {
   return astralShell(`
     ${protoReportsAreaHead("downloads")}
-    ${protoReportPeopleModal()}
+    ${protoReportEditModal()}
     ${protoDownloadsSection()}
   `);
 }
@@ -11439,7 +12157,7 @@ function protoFinance() {
       </button>`
           : protoStatButton("portfolio", "None", "Highest spend in 24 hours")
       }
-      ${protoStatButton("reports", live, live === 1 ? "Live report you can run" : "Live reports you can run")}
+      ${protoStatButton("reports", live, live === 1 ? "Report switched on" : "Reports switched on")}
       ${protoStatButton(
         "alerts",
         facts.flagged.length,
@@ -12179,76 +12897,46 @@ function protoQueries() {
   `);
 }
 
-function protoReportOff() {
-  return Array.isArray(store.prototypeReportOff) ? store.prototypeReportOff : [];
-}
-
-function protoCustomReports() {
-  return Array.isArray(store.prototypeCustomReports) ? store.prototypeCustomReports : [];
-}
-
 function protoReportList() {
-  const catalog = (protoData()?.reports || []).map((item, i) => ({
-    ...item,
-    id: item.id || `report-${i}`,
-    custom: false,
+  return protoReportDefs().map((def) => ({
+    ...def,
+    status: protoReportType(def.type).short,
+    blurb: protoReportSummary(def),
+    live: def.on,
+    file: def.type === "extract" || def.type === "billing",
   }));
-  const custom = protoCustomReports().map((item) => ({
-    id: item.id,
-    name: item.name,
-    blurb: item.blurb || "A report you named. The run still waits.",
-    status: "Custom",
-    live: false,
-    custom: true,
-  }));
-  return [...catalog, ...custom];
 }
 
-function protoReportStatusTip(item) {
-  if (item?.custom) return "A name only. You cannot run it yet.";
-  if (item?.live) return "People are sent this report.";
-  return "This report is not in yet. You cannot run it.";
-}
-
-function protoReportCard(item, on) {
-  const canPeople = protoCanEditReportPeople();
-  const live = Boolean(item.live);
-  const canToggle = protoCanAct() && live;
-  const switchOn = live && on;
+function protoReportCard(def) {
+  const canEdit = protoCanEditReports();
+  const type = protoReportType(def.type);
+  const id = escapeHtml(def.id);
   return `
-    <article class="astral-card${live && !switchOn ? " is-off" : ""}">
+    <article class="astral-card astral-report-card${def.on ? "" : " is-off"}" data-proto-report-card="${id}">
       <div class="astral-card-head">
-        <h3>${escapeHtml(item.name)}</h3>
+        <h3>${escapeHtml(def.name)}</h3>
         ${protoIconTip(
-          `<span class="astral-tag${live ? "" : " is-quiet"}" tabindex="0">${escapeHtml(
-            item.status
-          )}</span>`,
-          protoReportStatusTip(item)
+          `<span class="astral-tag is-${escapeHtml(def.type)}" tabindex="0">${escapeHtml(type.short)}</span>`,
+          type.blurb
         )}
       </div>
-      <p>${escapeHtml(item.blurb)}</p>
-      <div class="astral-actions"${
-        canToggle ? ` data-proto-report-toggle="${escapeHtml(item.id)}"` : ""
-      }>
-        ${live ? protoReportSendLine(item) : ""}
+      <p>${escapeHtml(protoReportSummary(def))}</p>
+      <p class="astral-report-to">${protoIconMark("mail")}<span>${escapeHtml(
+        protoReportToLine(def)
+      )}</span></p>
+      <div class="astral-actions"${canEdit ? ` data-proto-report-toggle="${id}"` : ""}>
+        <span class="astral-report-wait"><span class="astral-muted">${escapeHtml(
+          protoReportStatusLine(def)
+        )}</span></span>
+        ${canEdit ? protoIconBtn("settings", "Edit report", `data-proto-report-edit="${id}"`) : ""}
         ${
-          canPeople
-            ? protoIconBtn(
-                "settings",
-                "Settings",
-                `data-proto-report-people="${escapeHtml(item.id)}"`
-              )
-            : ""
-        }
-        ${
-          protoCanAct()
+          canEdit
             ? `<button
           type="button"
-          class="astral-switch${switchOn ? " is-on" : ""}"
+          class="astral-switch${def.on ? " is-on" : ""}"
           role="switch"
-          aria-checked="${switchOn ? "true" : "false"}"
-          aria-label="${escapeHtml(item.name)}"
-          ${live ? "" : " disabled"}
+          aria-checked="${def.on ? "true" : "false"}"
+          aria-label="${escapeHtml(def.name)}"
         ></button>`
             : ""
         }
@@ -12257,123 +12945,18 @@ function protoReportCard(item, on) {
   `;
 }
 
-function protoReportResult(id) {
-  if (!id) return "";
-  const report = protoReportList().find((item) => item.id === id);
-  if (!report?.live) return "";
-  let rows = [];
-  let note = "UTC. Export values stay positive.";
-  if (id === "cost") {
-    rows = protoMeters()
-      .filter((item) => item.direction !== "Export")
-      .map((item) => [item.site, item.use24h || "None", item.commodity]);
-    note = `${protoData()?.kpis?.use || "None"} across the estate. Spend still waits.`;
-  } else if (id === "day-type") {
-    const meter = protoMeter(protoState().meter);
-    const points = protoSeries(meter, "day");
-    const hours = protoSiteHours(meter);
-    let inside = 0;
-    let outside = 0;
-    points.forEach((point, i) => {
-      if (point.value == null) return;
-      const hour = i / 2;
-      if (hour >= hours.start && hour < hours.end) inside += point.value;
-      else outside += point.value;
-    });
-    rows = [
-      [meter?.site || "Site", "In hours", `${inside.toFixed(1)} kWh`],
-      [meter?.site || "Site", "Out of hours", `${outside.toFixed(1)} kWh`],
-    ];
-    note = `Hours ${meter?.hours || "unknown"}. Out-of-hours base still sits on the site hours.`;
-  } else if (id === "completeness") {
-    const meters = protoMeters();
-    const missing = meters.filter((item) => item.status === "gaps").length;
-    const stale = meters.filter((item) => item.status === "stale").length;
-    const estimated = meters.filter((item) => (item.estimated || []).length).length;
-    rows = [
-      ["Missing data", String(missing), "Meters with a hole in the interval"],
-      ["Not sending", String(stale), "Last actual is old"],
-      ["Estimated", String(estimated), "A guessed reading today"],
-    ];
-    note = "Missing data is not zero use.";
-  }
-  const head =
-    id === "cost"
-      ? ["Site", "Use", "Utility"]
-      : id === "day-type"
-      ? ["Site", "Window", "kWh"]
-      : ["Kind", "Count", "Note"];
-  const listed = protoSortedRows(
-    id === "cost" ? "report-cost" : id === "day-type" ? "report-day" : "report-complete",
-    rows,
-    (row, key) => {
-      const keys = head.map((col) =>
-        String(col)
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-|-$/g, "")
-      );
-      const index = keys.indexOf(key);
-      return index >= 0 ? row[index] : "";
-    }
-  );
-  return `
-    <section class="astral-card">
-      <div class="astral-card-head">
-        <h3>${escapeHtml(report.name)}</h3>
-        ${protoTextBtn("Hide result", "data-proto-report-run=\"\"")}
-      </div>
-      <p class="astral-muted">${escapeHtml(note)}</p>
-      <div class="astral-table-wrap">
-        <table class="astral-table">
-          <thead>
-            <tr>${head
-              .map((col) =>
-                protoSortHead(
-                  id === "cost" ? "report-cost" : id === "day-type" ? "report-day" : "report-complete",
-                  String(col)
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]+/g, "-")
-                    .replace(/^-|-$/g, ""),
-                  col
-                )
-              )
-              .join("")}</tr>
-          </thead>
-          <tbody>
-            ${listed
-              .map(
-                (row) =>
-                  `<tr>${row
-                    .map((cell, i) =>
-                      i === 0
-                        ? `<th scope="row">${escapeHtml(cell)}</th>`
-                        : `<td>${escapeHtml(cell)}</td>`
-                    )
-                    .join("")}</tr>`
-              )
-              .join("")}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  `;
-}
-
 function protoReports() {
-  const off = new Set(protoReportOff());
-  const items = protoReportList();
-  const empty = protoCanSetupReports()
-    ? `<h3>No reports yet</h3><p class="astral-muted">Add a custom report to start the list.</p>`
-    : `<h3>No reports yet</h3><p class="astral-muted">IMSERV sets these up. They land in Downloads.</p>`;
+  const defs = protoReportDefs();
+  const empty = protoCanEditReports()
+    ? `<h3>No reports yet</h3><p class="astral-muted">Add a data extract, tenant bill, data alert or missing data alert.</p>`
+    : `<h3>No reports yet</h3><p class="astral-muted">Reports your team sets up show here.</p>`;
   return astralShell(`
     ${protoReportsAreaHead("reports")}
-    ${protoReportAddModal()}
-    ${protoReportPeopleModal()}
+    ${protoReportEditModal()}
     ${
-      items.length
-        ? `<section class="astral-card astral-reports-sheet"><div class="astral-report-grid">${items
-            .map((item) => protoReportCard(item, !off.has(item.id)))
+      defs.length
+        ? `<section class="astral-card astral-reports-sheet"><div class="astral-report-grid">${defs
+            .map((def) => protoReportCard(def))
             .join("")}</div></section>`
         : `<section class="astral-card astral-reports-sheet"><div class="astral-empty">${empty}</div></section>`
     }
@@ -12701,25 +13284,10 @@ function protoCanAct() {
   return protoMeRole() !== "viewer";
 }
 
-function protoCanSetupReports() {
-  return protoAdminRail() && protoMeRole() === "super-admin";
-}
-
 function protoCanLoginAsUser() {
   return protoMeRole() === "super-admin";
 }
 
-function protoCanEditReportPeople() {
-  return protoCanManagePeople() && !protoAdminRail();
-}
-
-function protoCanDownloadReportSettings() {
-  return protoCompanyId() === "admin-user" && !protoSeeAsPerson();
-}
-
-function protoCanPickReportPeople() {
-  return protoCanEditReportPeople() || protoCanDownloadReportSettings();
-}
 
 function protoRenewClear() {
   return {
@@ -15832,9 +16400,6 @@ function renderPrototype() {
     }
     return;
   }
-  if (store.prototypeReportForm) {
-    protoRestoreFocus("#astral-fs input[name='proto-report-name']");
-  }
   if (store.prototypeQueryEdit) {
     protoPlaceQueryPinSoon();
     protoRestoreFocus("#astral-fs [name='proto-query-edit']");
@@ -16016,15 +16581,10 @@ function protoCsv(id) {
     protoCsvDownload(lines, "users.csv");
     return;
   }
-  const report = protoReportList().find((item) => item.id === id);
-  if (report) {
-    protoCsvDownload(
-      [
-        "name,status",
-        `"${String(report.name).replace(/"/g, '""')}","${String(report.status).replace(/"/g, '""')}"`,
-      ],
-      `${report.id}.csv`
-    );
+  const report = protoReportDef(id);
+  if (report && (report.type === "extract" || report.type === "billing")) {
+    const slug = report.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "report";
+    protoCsvDownload(protoReportCsv(report), `${slug}.csv`);
     return;
   }
   const pack = protoIntervalPack(id);
@@ -16962,6 +17522,8 @@ function onPrototype(event) {
               ? { prototypeTeamPeopleQuery: "", prototypeSelectOpen: "team-people" }
               : name === "proto-report-people-query"
                 ? { prototypeReportPeopleQuery: "", prototypeSelectOpen: "report-people" }
+              : name === "proto-report-site-query"
+                ? { prototypeReportSiteQuery: "", prototypeSelectOpen: store.prototypeSelectOpen || "" }
               : name === "proto-point-tag-query"
                 ? { prototypePointTagQuery: "", prototypePointTagOpen: true }
               : name === "proto-compare-query"
@@ -17465,53 +18027,63 @@ function onPrototype(event) {
     );
     return;
   }
-  const reportBtn = event.target.closest("[data-proto-report]");
-  if (reportBtn) {
-    if (!protoCanSetupReports()) return;
-    setProto({ prototypeReportForm: reportBtn.dataset.protoReport === "add" });
+  const reportTypeBtn = event.target.closest("[data-proto-report-type]");
+  if (reportTypeBtn) {
+    if (!protoCanEditReports() || protoReportEditId() !== "new") return;
+    const type = protoReportTypeId(reportTypeBtn.dataset.protoReportType);
+    const cur = protoReportDraft();
+    if (cur?.type === type) return;
+    const next = protoReportNewDraft(type);
+    if (cur) {
+      next.name = cur.name;
+      next.people = cur.people;
+      next.emails = cur.emails;
+    }
+    setProto({
+      prototypeReportEdit: "new",
+      prototypeReportDraft: next,
+      prototypeReportSiteQuery: "",
+    });
+    protoRestoreFocus(`#astral-fs [data-proto-report-type="${type}"]`);
     return;
   }
-  const reportPeopleBtn = event.target.closest("[data-proto-report-people]");
-  if (reportPeopleBtn) {
-    if (reportPeopleBtn.dataset.protoReportPeople === "cancel") {
-      protoCloseModal("report-people");
+  const reportDeleteBtn = event.target.closest("[data-proto-report-delete]");
+  if (reportDeleteBtn) {
+    if (!protoCanEditReports()) return;
+    const id = reportDeleteBtn.dataset.protoReportDelete;
+    setProto({
+      ...protoReportEditClear(),
+      ...protoReportDefsPatch(protoReportDefs().filter((def) => def.id !== id)),
+    });
+    return;
+  }
+  const reportEditBtn = event.target.closest("[data-proto-report-edit]");
+  if (reportEditBtn) {
+    const id = reportEditBtn.dataset.protoReportEdit;
+    if (id === "cancel") {
+      protoCloseModal("report");
       return;
     }
-    if (!protoCanPickReportPeople()) return;
-    const id = reportPeopleBtn.dataset.protoReportPeople;
-    const schedule = protoReportSchedule(id);
-    setProto({
-      prototypeReportPeopleForm: id,
-      prototypeReportDraftPeople: protoReportPeople(id),
-      prototypeReportDraftOccurrence: schedule.occurrence,
-      prototypeReportDraftStart: schedule.start,
-      prototypeReportPeopleQuery: "",
-      prototypeSelectOpen: "",
-    });
-    protoRestoreFocus("#astral-fs [data-proto-select=\"report-people\"] .astral-select-btn");
+    protoReportOpenEdit(id);
     return;
   }
   const toggleHost = event.target.closest("[data-proto-report-toggle]");
-  if (
-    toggleHost &&
-    !event.target.closest("[data-proto-report-run]") &&
-    !event.target.closest("[data-proto-report-help]") &&
-    !event.target.closest("[data-proto-report-people]")
-  ) {
-    if (!protoCanAct()) return;
+  if (toggleHost && !event.target.closest("[data-proto-report-edit]")) {
+    if (!protoCanEditReports()) return;
     const id = toggleHost.dataset.protoReportToggle;
-    const switchEl = toggleHost.classList.contains("astral-switch")
-      ? toggleHost
-      : toggleHost.querySelector(".astral-switch");
-    if (switchEl?.disabled) return;
-    const off = new Set(protoReportOff());
-    const nextOn = off.has(id);
-    if (nextOn) off.delete(id);
-    else off.add(id);
+    const defs = protoReportDefs();
+    const def = defs.find((item) => item.id === id);
+    if (!def) return;
+    const nextOn = !def.on;
+    const next = defs.map((item) => (item.id === id ? { ...item, on: nextOn } : item));
+    const switchEl = toggleHost.querySelector(".astral-switch");
     switchEl?.classList.toggle("is-on", nextOn);
     switchEl?.setAttribute("aria-checked", nextOn ? "true" : "false");
-    (switchEl || toggleHost).closest(".astral-card")?.classList.toggle("is-off", !nextOn);
-    store.prototypeReportOff = [...off];
+    const card = toggleHost.closest(".astral-card");
+    card?.classList.toggle("is-off", !nextOn);
+    const wait = card?.querySelector(".astral-report-wait .astral-muted");
+    if (wait) wait.textContent = protoReportStatusLine({ ...def, on: nextOn });
+    Object.assign(store, protoReportDefsPatch(next));
     persistChrome();
     return;
   }
@@ -18493,6 +19065,14 @@ function onPrototype(event) {
     protoCsv(csvBtn.dataset.protoCsv);
     return;
   }
+  const reportSubmit = event.target.closest("[data-proto-report-edit-form] button[type='submit']");
+  if (reportSubmit && (store.prototypeSelectOpen || store.prototypeReportCalOpen)) {
+    event.preventDefault();
+    store.prototypeSelectOpen = "";
+    store.prototypeReportCalOpen = false;
+    reportSubmit.form?.requestSubmit();
+    return;
+  }
   if (store.prototypeUserMenu && !event.target.closest(".astral-people-more, .astral-people-menu")) {
     setProto({ prototypeUserMenu: "" });
   }
@@ -18692,6 +19272,24 @@ function onPrototypeInput(event) {
     if (active) protoRestoreFocus("#astral-fs input[name='proto-report-people-query']", start);
     return;
   }
+  const reportSiteSearch = event.target.closest("input[name='proto-report-site-query']");
+  if (reportSiteSearch) {
+    store.prototypeReportSiteQuery = reportSiteSearch.value.slice(0, 120);
+    const active = document.activeElement === reportSiteSearch;
+    const start = reportSiteSearch.selectionStart;
+    render();
+    if (active) protoRestoreFocus("#astral-fs input[name='proto-report-site-query']", start);
+    return;
+  }
+  const reportField = event.target.closest("input[data-proto-report-field]");
+  if (reportField) {
+    const draft = protoReportDraft();
+    if (!draft || !protoCanEditReports()) return;
+    const key = reportField.dataset.protoReportField;
+    store.prototypeReportDraft = { ...draft, [key]: reportField.value.slice(0, 400) };
+    protoReportRefreshForm();
+    return;
+  }
   const pointTagSearch = event.target.closest("input[name='proto-point-tag-query']");
   if (pointTagSearch) {
     store.prototypePointTagQuery = pointTagSearch.value.slice(0, 32);
@@ -18746,7 +19344,7 @@ function onPrototypeInput(event) {
   if (dateField) {
     const key = protoUkDateStoreKey(dateField);
     if (!key) return;
-    if (dateField.name === "proto-report-start" && !protoCanPickReportPeople()) return;
+    if (dateField.name === "proto-report-start" && !protoCanEditReports()) return;
     if (
       (dateField.name === "proto-renew-from" || dateField.name === "proto-renew-to") &&
       !protoCanAdminCompany()
@@ -19240,53 +19838,23 @@ function onPrototypeSubmit(event) {
     if (point) protoPlaceQueryPin();
     return;
   }
-  const form = event.target.closest("[data-proto-report-form]");
-  if (form) {
+  const reportForm = event.target.closest("[data-proto-report-edit-form]");
+  if (reportForm) {
     event.preventDefault();
-    if (!protoCanSetupReports()) return;
-    const name = String(form.querySelector("[name='proto-report-name']")?.value || "").trim();
-    if (!name) return;
-    setProto({
-      prototypeCustomReports: [
-        ...protoCustomReports(),
-        {
-          id: `custom-${Date.now()}`,
-          name,
-          blurb: "A report you named. The run still waits.",
-        },
-      ],
-      prototypeReportForm: false,
-    });
-    return;
-  }
-  const peopleForm = event.target.closest("[data-proto-report-people-form]");
-  if (peopleForm) {
-    event.preventDefault();
-    if (!protoCanPickReportPeople()) return;
-    const id = protoReportPeopleFormId();
-    if (!id) return;
-    const start = protoReportDraftStart();
-    if (!protoFromUkDate(start)) return;
-    setProto({
-      prototypeReportPeople: { ...protoReportPeopleStore(), [id]: protoReportDraftPeople() },
-      prototypeReportSchedule: {
-        ...protoReportScheduleStore(),
-        [id]: {
-          occurrence: protoReportDraftOccurrence(),
-          start,
-        },
-      },
-      prototypeReportPeopleForm: "",
-      prototypeReportDraftPeople: [],
-      prototypeReportDraftOccurrence: "",
-      prototypeReportDraftStart: "",
-      prototypeReportPeopleQuery: "",
-    });
+    if (!protoCanEditReports()) return;
+    const draft = protoReportDraft();
+    if (!draft || protoReportDraftIssue(draft)) return;
+    const def = protoReportDraftDef(draft);
+    const defs = protoReportDefs();
+    const next = defs.some((item) => item.id === def.id)
+      ? defs.map((item) => (item.id === def.id ? def : item))
+      : [...defs, def];
+    setProto({ ...protoReportEditClear(), ...protoReportDefsPatch(next) });
   }
 }
 
 function onPrototypeKey(event) {
-  if (event.key === "Enter" && event.target.closest("input[name='proto-team-people-query'], input[name='proto-report-people-query'], input[name='proto-person-team-query'], input[name='proto-person-sites-query']")) {
+  if (event.key === "Enter" && event.target.closest("input[name='proto-team-people-query'], input[name='proto-report-people-query'], input[name='proto-report-site-query'], input[name='proto-person-team-query'], input[name='proto-person-sites-query']")) {
     event.preventDefault();
     return;
   }
@@ -19395,18 +19963,8 @@ function onPrototypeKey(event) {
       setProto({ prototypeNoticeOpen: false });
       return;
     }
-    if (store.prototypeReportForm) {
-      setProto({ prototypeReportForm: false });
-      return;
-    }
-    if (store.prototypeReportPeopleForm) {
-      setProto({
-        prototypeReportPeopleForm: "",
-        prototypeReportDraftPeople: [],
-        prototypeReportDraftOccurrence: "",
-        prototypeReportDraftStart: "",
-        prototypeReportPeopleQuery: "",
-      });
+    if (store.prototypeReportEdit) {
+      protoCloseModal("report");
       return;
     }
     if (store.prototypeColourOpen) {

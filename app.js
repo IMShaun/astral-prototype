@@ -3702,6 +3702,7 @@ const CHROME_FIELDS = [
   "prototypeCustomReports",
   "prototypeReportPeople",
   "prototypeReportSchedule",
+  "prototypeReportDefs",
   "prototypeQueryForm",
   "prototypeQuerySite",
   "prototypeOpenQuery",
@@ -3934,6 +3935,12 @@ function applyChrome() {
     typeof store.prototypeReportSchedule === "object" &&
     !Array.isArray(store.prototypeReportSchedule)
       ? store.prototypeReportSchedule
+      : {};
+  store.prototypeReportDefs =
+    store.prototypeReportDefs &&
+    typeof store.prototypeReportDefs === "object" &&
+    !Array.isArray(store.prototypeReportDefs)
+      ? store.prototypeReportDefs
       : {};
   store.prototypeDownloads = protoDownloadsFrom(store.prototypeDownloads);
   store.prototypeDownloadQuery = String(store.prototypeDownloadQuery || "").slice(0, 120);
