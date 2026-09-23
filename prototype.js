@@ -722,6 +722,13 @@ function protoShouldResetPageFilters(patch) {
 }
 
 function protoPatchStay(patch) {
+  if (
+    patch.activePrototypeView === "portfolio" &&
+    store.activePrototypeView !== "portfolio" &&
+    !Object.prototype.hasOwnProperty.call(patch, "prototypeDatePreset")
+  ) {
+    Object.assign(patch, protoDefaultDatePatch());
+  }
   if (protoShouldResetPageFilters(patch)) {
     const reset = protoPageFilterReset();
     Object.keys(reset).forEach((key) => {
@@ -2483,8 +2490,22 @@ function protoFromUkDate(text) {
 }
 
 function protoDatePreset() {
-  const id = store.prototypeDatePreset || "7d";
-  return PROTO_DATE_PRESETS.some((item) => item.id === id) ? id : "7d";
+  const id = store.prototypeDatePreset || "24h";
+  return PROTO_DATE_PRESETS.some((item) => item.id === id) ? id : "24h";
+}
+
+function protoDefaultDatePatch() {
+  return {
+    prototypeDatePreset: "24h",
+    prototypeDateFrom: "",
+    prototypeDateTo: "",
+    prototypeDateHome: "",
+    prototypeDateHomeFrom: "",
+    prototypeDateHomeTo: "",
+    prototypeDateOpen: false,
+    prototypeDateCustomOpen: false,
+    prototypeChartPoint: null,
+  };
 }
 
 function protoSpanFromDates(from, to) {
@@ -17372,10 +17393,10 @@ function protoSlideNavPills(options) {
     root.querySelector(".astral-card-tabs .astral-tabs"),
     "button.is-on",
     "reportTabs",
-    true
+    snap
   );
   protoSlideHost(
-    root.querySelector(".astral-detail-head .astral-tabs"),
+    root.querySelector(".astral-pane-head > .astral-tabs, .astral-detail-head .astral-tabs"),
     "button.is-on",
     "tabs",
     snap
@@ -17414,7 +17435,7 @@ function protoSlideHost(host, currentSel, key, snap) {
   protoSlideMemory[key] = next;
   const place = (pos, animate) => {
     pill.style.transition = animate
-      ? "transform var(--motion-panel) ease, width var(--motion-panel) ease, height var(--motion-panel) ease"
+      ? "transform var(--motion-slide) var(--ease-slide), width var(--motion-slide) var(--ease-slide), height var(--motion-slide) var(--ease-slide)"
       : "none";
     pill.style.width = `${pos.w}px`;
     pill.style.height = `${pos.h}px`;
@@ -17431,8 +17452,23 @@ function protoSlideHost(host, currentSel, key, snap) {
     return;
   }
   place(prev, false);
+  // Labels start in their old colours, then cross-fade alongside the pill.
+  const items = [...host.querySelectorAll(":scope > button, :scope > .astral-link")];
+  const was = items.find(
+    (item) => item !== current && Math.abs(item.offsetLeft - prev.x) < 1 && Math.abs(item.offsetTop - prev.y) < 1
+  );
+  const swap = [was, current].filter(Boolean);
+  swap.forEach((item) => {
+    item.style.transition = "none";
+    item.classList.add(item === current ? "is-slide-from" : "is-slide-to");
+  });
+  void pill.offsetWidth;
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => place(next, true));
+    swap.forEach((item) => {
+      item.style.transition = "";
+      item.classList.remove("is-slide-from", "is-slide-to");
+    });
+    place(next, true);
   });
 }
 

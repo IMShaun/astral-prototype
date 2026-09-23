@@ -1173,9 +1173,9 @@ function normalize(data) {
       ? data.prototypeCompareIds
       : [];
     data.prototypeCompareLevel = protoCompareLevelId(data.prototypeCompareLevel);
-    data.prototypeDatePreset = data.prototypeDatePreset || "7d";
-    data.prototypeDateFrom = data.prototypeDateFrom || "";
-    data.prototypeDateTo = data.prototypeDateTo || "";
+    data.prototypeDatePreset = "24h";
+    data.prototypeDateFrom = "";
+    data.prototypeDateTo = "";
     data.prototypeDateDraftFrom = data.prototypeDateDraftFrom || "";
     data.prototypeDateDraftTo = data.prototypeDateDraftTo || "";
     data.prototypeDateCal = data.prototypeDateCal || "";
@@ -1183,9 +1183,9 @@ function normalize(data) {
     data.prototypeDateCustomOpen = Boolean(data.prototypeDateCustomOpen);
     data.prototypeReportCalOpen = Boolean(data.prototypeReportCalOpen);
     data.prototypeReportCal = data.prototypeReportCal || "";
-    data.prototypeDateHome = data.prototypeDateHome || "";
-    data.prototypeDateHomeFrom = data.prototypeDateHomeFrom || "";
-    data.prototypeDateHomeTo = data.prototypeDateHomeTo || "";
+    data.prototypeDateHome = "";
+    data.prototypeDateHomeFrom = "";
+    data.prototypeDateHomeTo = "";
     data.prototypeExportOpen = Boolean(data.prototypeExportOpen);
     data.prototypeDownloads = protoDownloadsFrom(data.prototypeDownloads);
     data.prototypeDownloadQuery = String(data.prototypeDownloadQuery || "").slice(0, 120);
