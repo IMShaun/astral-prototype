@@ -5282,6 +5282,9 @@ button.astral-catch {
   overflow: auto;
   overflow-x: clip;
   padding-inline-end: var(--scrollbar-size);
+  /* Room for focus rings on controls flush with the left edge. */
+  padding-inline-start: 6px;
+  margin-inline-start: -6px;
   overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
@@ -6478,6 +6481,8 @@ button.astral-state {
 }
 
 .astral-input-unit:focus-within {
+  position: relative;
+  z-index: 2;
   border-color: #000;
   box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000;
 }
@@ -9110,6 +9115,12 @@ button.astral-state {
   overflow: visible;
 }
 
+.astral-people-fold.is-open > .astral-fold-clip:focus-within,
+.astral-meter-row.is-open > .astral-fold-clip:focus-within,
+.astral-meter-fold.is-open > .astral-fold-clip:focus-within {
+  overflow: visible;
+}
+
 .astral-people-fold.is-nested > .astral-people-fold-head {
   padding-left: 44px;
 }
@@ -9758,6 +9769,8 @@ button.astral-state {
 
 .astral-field input:focus,
 .astral-field input:focus-visible {
+  position: relative;
+  z-index: 2;
   border-color: #000;
   outline: none;
   box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000;
