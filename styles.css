@@ -6719,6 +6719,13 @@ button.astral-state {
   gap: 0;
 }
 
+.astral-filter-menu:has(> .astral-filter-section) {
+  width: 20rem;
+  min-width: 20rem;
+  max-width: calc(100vw - 16px);
+  box-sizing: border-box;
+}
+
 .astral-filter-section + .astral-filter-section {
   margin-top: 0;
   padding-top: 8px;
