@@ -7967,9 +7967,43 @@ function protoFilterFace(id, label) {
   return `<span>${escapeHtml(name)}</span>`;
 }
 
+let protoFilterPoolCache = null;
+
+function protoFilterPool(attr) {
+  if (attr !== "data-proto-pane-filter" && attr !== "data-proto-tree-filter") return null;
+  if (!protoFilterPoolCache) {
+    protoFilterPoolCache = new Map();
+    queueMicrotask(() => {
+      protoFilterPoolCache = null;
+    });
+  }
+  if (!protoFilterPoolCache.has(attr)) {
+    const meters =
+      attr === "data-proto-pane-filter"
+        ? protoPanePoolMeters() || []
+        : protoSites().flatMap((site) => site.meters || []);
+    protoFilterPoolCache.set(attr, meters);
+  }
+  return protoFilterPoolCache.get(attr);
+}
+
+function protoFilterItemAvailable(attr, item) {
+  const pool = protoFilterPool(attr);
+  const id = item?.id;
+  if (!pool || !id) return true;
+  if (id === "electricity" || id === "gas" || id === "water") {
+    return pool.some((meter) => protoMeterKind(meter) === id);
+  }
+  if (id === "tenant") return pool.some(protoMeterIsTenant);
+  if (id === "out") return pool.some((meter) => meter.direction === "Export");
+  if (id === "in") return pool.some((meter) => meter.direction !== "Export");
+  return true;
+}
+
 function protoFilterItemOn(attr, picked, item) {
   const id = item?.id;
   if (!id) return false;
+  if (!protoFilterItemAvailable(attr, item)) return false;
   if (attr === "data-proto-pane-filter" && (id === "in" || id === "out")) return protoChartFlowOn(id);
   if (attr === "data-proto-pane-filter" && (id === "electricity" || id === "gas" || id === "water")) {
     return protoGraphMeterKinds().includes(id);
@@ -7978,7 +8012,7 @@ function protoFilterItemOn(attr, picked, item) {
 }
 
 function protoFilterGroupTickState(group, attr, picked) {
-  const items = group?.items || [];
+  const items = (group?.items || []).filter((item) => protoFilterItemAvailable(attr, item));
   if (!items.length) return "off";
   let n = 0;
   items.forEach((item) => {
@@ -7989,8 +8023,10 @@ function protoFilterGroupTickState(group, attr, picked) {
   return "mix";
 }
 
-function protoFilterGroupSelectNext(picked, group, allOn) {
-  const ids = (group?.items || []).map((item) => item.id);
+function protoFilterGroupSelectNext(picked, group, allOn, attr) {
+  const ids = (group?.items || [])
+    .filter((item) => !attr || protoFilterItemAvailable(attr, item))
+    .map((item) => item.id);
   const cur = Array.isArray(picked) ? picked : [];
   if (allOn) return cur.filter((id) => !ids.includes(id));
   return [...cur.filter((id) => !ids.includes(id)), ...ids];
@@ -8016,7 +8052,12 @@ function protoTogglePaneFilterGroup(groupId) {
   } else if (groupId === "flow") {
     patch.prototypeChartFlows = selectAll ? ["in", "out"] : [];
   } else {
-    patch.prototypePaneFilters = protoFilterGroupSelectNext(picked, group, !selectAll).filter((id) =>
+    patch.prototypePaneFilters = protoFilterGroupSelectNext(
+      picked,
+      group,
+      !selectAll,
+      "data-proto-pane-filter"
+    ).filter((id) =>
       PROTO_PANE_FILTER_IDS.includes(id)
     );
     if (groupId === "hours" || groupId === "tou") patch.prototypeChartSliceOff = [];
@@ -8032,7 +8073,12 @@ function protoToggleTreeFilterGroup(groupId) {
   const selectAll = protoFilterGroupTickState(group, "data-proto-tree-filter", picked) !== "on";
   setProto({
     prototypeTreeFilterOpen: true,
-    prototypeTreeFilters: protoFilterGroupSelectNext(picked, group, !selectAll).filter((id) =>
+    prototypeTreeFilters: protoFilterGroupSelectNext(
+      picked,
+      group,
+      !selectAll,
+      "data-proto-tree-filter"
+    ).filter((id) =>
       PROTO_TREE_FILTER_IDS.includes(id)
     ),
   });
@@ -8105,16 +8151,24 @@ function protoFilterSectionOnItems(group, attr, picked) {
   return (group?.items || []).filter((item) => protoFilterItemOn(attr, picked, item));
 }
 
+function protoFilterSectionAllOn(group, attr, on) {
+  const avail = (group?.items || []).filter((item) => protoFilterItemAvailable(attr, item));
+  return on.length > 1 && on.length === avail.length;
+}
+
 function protoFilterSectionSummary(group, attr, picked) {
+  if (!(group?.items || []).some((item) => protoFilterItemAvailable(attr, item))) {
+    return "None in this view";
+  }
   const on = protoFilterSectionOnItems(group, attr, picked);
   if (!on.length) return "None selected";
-  if (on.length > 1 && on.length === group.items.length) return "All";
+  if (protoFilterSectionAllOn(group, attr, on)) return "All";
   return on.map((item) => item.name).join(", ");
 }
 
 function protoFilterSectionPills(group, attr, picked) {
   const on = protoFilterSectionOnItems(group, attr, picked);
-  if (!on.length || (on.length > 1 && on.length === group.items.length)) return "";
+  if (!on.length || protoFilterSectionAllOn(group, attr, on)) return "";
   const pills = on
     .map(
       (item) =>
@@ -8218,13 +8272,15 @@ function protoFilterTickGroups(picked, attr, groups = PROTO_TREE_FILTERS) {
     const allOn = state === "on";
     const mix = state === "mix";
     const checked = allOn ? "true" : mix ? "mixed" : "false";
+    const usable = group.items.some((item) => protoFilterItemAvailable(attr, item));
     const allBtn = `
       <button
         type="button"
         role="menuitemcheckbox"
-        class="astral-filter-all${allOn ? " is-on" : ""}${mix ? " is-mix" : ""}"
+        class="astral-filter-all${allOn ? " is-on" : ""}${mix ? " is-mix" : ""}${usable ? "" : " is-disabled"}"
         aria-checked="${checked}"
         aria-label="Select all ${escapeHtml(group.name)}"
+        ${usable ? "" : `disabled aria-disabled="true"`}
         ${attr}-all="${escapeHtml(group.id)}"
       >
         <span class="astral-check${allOn ? " is-on" : ""}${mix ? " is-mix" : ""}" aria-hidden="true"></span>
@@ -8234,12 +8290,14 @@ function protoFilterTickGroups(picked, attr, groups = PROTO_TREE_FILTERS) {
     const options = group.items
       .map((item) => {
         const on = protoFilterItemOn(attr, picked, item);
+        const avail = protoFilterItemAvailable(attr, item);
         return `
           <button
             type="button"
             role="menuitemcheckbox"
-            class="astral-filter-child${on ? " is-on" : ""}"
+            class="astral-filter-child${on ? " is-on" : ""}${avail ? "" : " is-disabled"}"
             aria-checked="${on ? "true" : "false"}"
+            ${avail ? "" : `disabled aria-disabled="true" title="None in this view"`}
             ${attr}="${escapeHtml(item.id)}"
           >
             <span class="astral-check${on ? " is-on" : ""}" aria-hidden="true"></span>

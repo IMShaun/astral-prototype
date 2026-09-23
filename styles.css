@@ -6817,6 +6817,14 @@ button.astral-state {
   padding-left: 28px;
 }
 
+.astral-filter-menu button.is-disabled,
+.astral-filter-menu button.is-disabled:hover {
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .astral-filter-section > .astral-fold-clip,
   .astral-filter-section-btn > .astral-select-chevron {
