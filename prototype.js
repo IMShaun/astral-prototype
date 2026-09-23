@@ -10128,6 +10128,58 @@ function protoDownloadReady(item) {
   return protoDownloadLeftMs(item) <= 0;
 }
 
+function protoDownloadMadeAt(item) {
+  if (protoDownloadType(item) === "report" && String(item?.id || "").startsWith("clockwork-")) {
+    const def = protoReportDef(item.fileId);
+    const start = def ? protoFromUkDate(def.start) : null;
+    if (!start) return 0;
+    const todayStamp = protoDayStamp(protoToday());
+    let last = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    if (protoDayStamp(last) > todayStamp) return 0;
+    let guard = 0;
+    while (guard < 800) {
+      const next = protoReportStepDate(last, def.period);
+      if (protoDayStamp(next) > todayStamp) break;
+      last = next;
+      guard += 1;
+    }
+    last.setHours(6, 0, 0, 0);
+    return last.getTime();
+  }
+  const added = Number(item?.added) || 0;
+  return added > 1 ? added : 0;
+}
+
+function protoDownloadMadeCell(item) {
+  const at = protoDownloadMadeAt(item);
+  if (!at) return `<span class="astral-muted">Not made yet</span>`;
+  const date = new Date(at);
+  const time = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  const now = new Date();
+  const dayGap = Math.round((protoDayStamp(now) - protoDayStamp(date)) / 86400000);
+  const day =
+    dayGap === 0
+      ? "Today"
+      : dayGap === 1
+        ? "Yesterday"
+        : date.toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            ...(date.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }),
+          });
+  const full = date.toLocaleString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `<time datetime="${date.toISOString()}" title="${escapeHtml(full)}">${escapeHtml(
+    `${day}, ${time}`
+  )}</time>`;
+}
+
 const PROTO_DOWNLOAD_FILTERS = [
   {
     id: "kind",
@@ -10463,6 +10515,7 @@ function protoDownloadsSection() {
       if (key === "name") return item.name;
       if (key === "type") return protoDownloadTypeName(item);
       if (key === "kind") return item.kind === "pdf" ? "PDF" : "CSV";
+      if (key === "made") return protoDownloadMadeAt(item);
       if (key === "status") return protoDownloadReady(item) ? 0 : protoDownloadLeftMs(item);
       return "";
     }
@@ -10501,13 +10554,14 @@ function protoDownloadsSection() {
               <th scope="row">${escapeHtml(item.name)}</th>
               <td>${protoDownloadTypeTag(item)}</td>
               <td><span class="astral-tag">${kind}</span></td>
+              <td>${protoDownloadMadeCell(item)}</td>
               <td>${wait}</td>
               <td class="astral-downloads-get">${acts}</td>
             </tr>
           `;
         })
         .join("")
-    : `<tr><td colspan="5" class="astral-muted">${escapeHtml(empty)}</td></tr>`;
+    : `<tr><td colspan="6" class="astral-muted">${escapeHtml(empty)}</td></tr>`;
   return `
     <section class="astral-card astral-downloads" id="astral-downloads">
       <div class="astral-downloads-head">
@@ -10529,6 +10583,7 @@ function protoDownloadsSection() {
             ${protoSortHead("downloads", "name", "Name")}
             ${protoSortHead("downloads", "type", "Type")}
             ${protoSortHead("downloads", "kind", "Kind")}
+            ${protoSortHead("downloads", "made", "Created")}
             ${protoSortHead("downloads", "status", "Status")}
             <th scope="col"><span class="sr-only">Download</span></th>
             </tr>
