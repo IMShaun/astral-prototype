@@ -5170,7 +5170,8 @@ button.astral-catch {
   white-space: nowrap;
 }
 
-.astral-site .astral-count {
+.astral-site .astral-count,
+.astral-compare-copy .astral-count {
   width: auto;
   min-width: 22px;
   height: 22px;
@@ -9776,6 +9777,11 @@ button.astral-state {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.astral-compare-copy .astral-count:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
 }
 
 .astral-modal .astral-select,
