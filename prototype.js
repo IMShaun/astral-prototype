@@ -9418,11 +9418,11 @@ function protoAlertsCardTabs(active) {
   return `<div class="astral-card-tabs">${protoTabs(
     [
       { id: "alerts", name: "Activity" },
-      { id: PROTO_ALERT_RULES_VIEW, name: "Configuration" },
+      { id: PROTO_ALERT_RULES_VIEW, name: "Settings" },
     ],
     active,
     "data-proto-view",
-    "Activity or configuration"
+    "Activity or settings"
   )}</div>`;
 }
 
