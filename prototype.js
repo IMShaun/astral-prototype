@@ -6900,8 +6900,8 @@ const PROTO_REPORT_CHANNEL = [
 ];
 
 const PROTO_REPORT_FORMAT = [
-  { id: "csv", name: "CSV" },
-  { id: "xls", name: "XLS" },
+  { id: "csv", name: "CSV", note: "For a system to read in" },
+  { id: "xlsx", name: "XLSX", note: "For a spreadsheet" },
 ];
 
 const PROTO_REPORT_TIME = [
@@ -7064,7 +7064,7 @@ function protoReportNormalize(raw) {
     content: protoReportPick(PROTO_REPORT_CONTENT, raw.content),
     utility: protoReportPick(PROTO_REPORT_UTILITY, raw.utility),
     channel: protoReportPick(PROTO_REPORT_CHANNEL, raw.channel),
-    format: protoReportPick(PROTO_REPORT_FORMAT, raw.format),
+    format: protoReportPick(PROTO_REPORT_FORMAT, raw.format === "xls" ? "xlsx" : raw.format),
     time: protoReportPick(PROTO_REPORT_TIME, raw.time),
     sendAt: PROTO_REPORT_SEND_AT.includes(String(raw.sendAt)) ? String(raw.sendAt) : "09:00",
     sftpHost: String(raw.sftpHost || "").trim().slice(0, 120),
@@ -7105,7 +7105,7 @@ function protoReportSeed() {
       from: protoFormatUkDate(new Date(protoToday().getFullYear() - 2, protoToday().getMonth(), 1)),
       to: protoFormatUkDate(protoAddDays(protoToday(), -1)),
       delivery: ["email"],
-      format: "xls",
+      format: "xlsx",
       people: ["me"],
       start: protoFormatUkDate(protoAddDays(protoToday(), 7)),
     },
@@ -7116,7 +7116,7 @@ function protoReportSeed() {
       sites: ids,
       period: "month",
       delivery: ["sftp"],
-      format: "xls",
+      format: "xlsx",
       sftpHost: "sftp.imserv.com",
       sftpPath: "dcda/monthly",
       start: today,
@@ -8510,26 +8510,111 @@ function protoReportCsv(def) {
   return protoReportRows(def).map((row) => (row.length ? row.map(q).join(",") : ""));
 }
 
-function protoXlsBody(rows, sheet) {
+const PROTO_CRC_TABLE = Array.from({ length: 256 }, (_, i) => {
+  let c = i;
+  for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  return c >>> 0;
+});
+
+function protoCrc32(bytes) {
+  let crc = 0xffffffff;
+  for (let i = 0; i < bytes.length; i += 1) crc = PROTO_CRC_TABLE[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+// A stored (uncompressed) zip. Enough for an XLSX file.
+function protoZip(files) {
+  const enc = new TextEncoder();
+  const parts = [];
+  const central = [];
+  let offset = 0;
+  files.forEach(({ name, text }) => {
+    const nameBytes = enc.encode(name);
+    const data = enc.encode(text);
+    const crc = protoCrc32(data);
+    const head = new DataView(new ArrayBuffer(30));
+    [0x04034b50, 20, 0x0800, 0, 0, 0x21, crc, data.length, data.length, nameBytes.length, 0].forEach((v, i) => {
+      const at = [0, 4, 6, 8, 10, 12, 14, 18, 22, 26, 28][i];
+      if ([0, 6, 7, 8].includes(i)) head.setUint32(at, v, true);
+      else head.setUint16(at, v, true);
+    });
+    const dir = new DataView(new ArrayBuffer(46));
+    dir.setUint32(0, 0x02014b50, true);
+    dir.setUint16(4, 20, true);
+    dir.setUint16(6, 20, true);
+    dir.setUint16(8, 0x0800, true);
+    dir.setUint16(14, 0x21, true);
+    dir.setUint32(16, crc, true);
+    dir.setUint32(20, data.length, true);
+    dir.setUint32(24, data.length, true);
+    dir.setUint16(28, nameBytes.length, true);
+    dir.setUint32(42, offset, true);
+    parts.push(new Uint8Array(head.buffer), nameBytes, data);
+    central.push(new Uint8Array(dir.buffer), nameBytes);
+    offset += 30 + nameBytes.length + data.length;
+  });
+  const size = central.reduce((n, part) => n + part.length, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true);
+  end.setUint16(8, files.length, true);
+  end.setUint16(10, files.length, true);
+  end.setUint32(12, size, true);
+  end.setUint32(16, offset, true);
+  const all = [...parts, ...central, new Uint8Array(end.buffer)];
+  const out = new Uint8Array(all.reduce((n, part) => n + part.length, 0));
+  let at = 0;
+  all.forEach((part) => {
+    out.set(part, at);
+    at += part.length;
+  });
+  return out;
+}
+
+function protoXlsxBytes(rows, sheet) {
   const x = (value) =>
     String(value ?? "")
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
-  const cell = (value) => {
-    const text = String(value ?? "");
-    const num = /^-?\d+(\.\d+)?$/.test(text);
-    return `<Cell><Data ss:Type="${num ? "Number" : "String"}">${x(text)}</Data></Cell>`;
+  const col = (i) => {
+    let s = "";
+    for (let n = i + 1; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + ((n - 1) % 26)) + s;
+    return s;
   };
-  return [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    '<?mso-application progid="Excel.Sheet"?>',
-    '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">',
-    `<Worksheet ss:Name="${x(String(sheet || "Report").slice(0, 31))}"><Table>`,
-    ...rows.map((row) => `<Row>${row.map(cell).join("")}</Row>`),
-    "</Table></Worksheet></Workbook>",
-  ].join("\n");
+  const cell = (value, c, r) => {
+    const text = String(value ?? "");
+    const ref = `${col(c)}${r}`;
+    if (/^-?\d+(\.\d+)?$/.test(text)) return `<c r="${ref}"><v>${text}</v></c>`;
+    return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${x(text)}</t></is></c>`;
+  };
+  const name = String(sheet || "Report").replace(/[[\]:*?/\\]/g, " ").slice(0, 31).trim() || "Report";
+  const main = "http://schemas.openxmlformats.org";
+  const sheetXml = [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    `<worksheet xmlns="${main}/spreadsheetml/2006/main"><sheetData>`,
+    ...rows.map((row, r) => `<row r="${r + 1}">${row.map((value, c) => cell(value, c, r + 1)).join("")}</row>`),
+    "</sheetData></worksheet>",
+  ].join("");
+  return protoZip([
+    {
+      name: "[Content_Types].xml",
+      text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="${main}/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`,
+    },
+    {
+      name: "_rels/.rels",
+      text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${main}/package/2006/relationships"><Relationship Id="rId1" Type="${main}/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
+    },
+    {
+      name: "xl/workbook.xml",
+      text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="${main}/spreadsheetml/2006/main" xmlns:r="${main}/officeDocument/2006/relationships"><sheets><sheet name="${x(name)}" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+    },
+    {
+      name: "xl/_rels/workbook.xml.rels",
+      text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${main}/package/2006/relationships"><Relationship Id="rId1" Type="${main}/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`,
+    },
+    { name: "xl/worksheets/sheet1.xml", text: sheetXml },
+  ]);
 }
 
 function protoUnreadFrom(alerts) {
@@ -11593,7 +11678,8 @@ function protoDownloadsFrom(raw) {
   return raw
     .map((item) => {
       if (!item || typeof item !== "object") return null;
-      const kind = ["pdf", "csv", "xls"].includes(item.kind) ? item.kind : "";
+      const raw = item.kind === "xls" ? "xlsx" : item.kind;
+      const kind = ["pdf", "csv", "xlsx"].includes(raw) ? raw : "";
       const id = String(item.id || "");
       const fileId = String(item.fileId || "");
       if (!kind || !id || !fileId) return null;
@@ -11736,7 +11822,7 @@ const PROTO_DOWNLOAD_FILTERS = [
     name: "Kind",
     items: [
       { id: "csv", name: "CSV" },
-      { id: "xls", name: "XLS" },
+      { id: "xlsx", name: "XLSX" },
       { id: "pdf", name: "PDF" },
     ],
   },
@@ -11789,7 +11875,7 @@ function protoDownloadMatches(item, q, picked) {
     if (!hay.includes(query)) return false;
   }
   const ids = Array.isArray(picked) ? picked : protoDownloadFilterIds();
-  const kinds = ids.filter((id) => id === "csv" || id === "pdf" || id === "xls");
+  const kinds = ids.filter((id) => id === "csv" || id === "pdf" || id === "xlsx");
   if (kinds.length && !kinds.includes(item.kind)) return false;
   const types = ids.filter((id) => id === "report" || id === "export" || id === "document");
   if (types.length && !types.includes(protoDownloadType(item))) return false;
@@ -11988,7 +12074,7 @@ function protoFlushDownloadTake() {
   if (!item || !protoDownloadReady(item)) return;
   protoDownloadTakeId = "";
   if (item.kind === "pdf") protoPdf(item.fileId);
-  else if (item.kind === "xls") protoXls(item.fileId);
+  else if (item.kind === "xlsx") protoXlsx(item.fileId);
   else protoCsv(item.fileId);
 }
 
@@ -18639,16 +18725,16 @@ function protoReportSlug(report) {
   return report.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "report";
 }
 
-function protoXls(id) {
+function protoXlsx(id) {
   const report = protoReportDef(id);
   if (!report || !protoReportIsFile(report.type)) {
     protoCsv(id);
     return;
   }
   protoFileDownload(
-    protoXlsBody(protoReportRows(report), report.name),
-    `${protoReportSlug(report)}.xls`,
-    "application/vnd.ms-excel"
+    protoXlsxBytes(protoReportRows(report), report.name),
+    `${protoReportSlug(report)}.xlsx`,
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   );
 }
 

@@ -6047,8 +6047,8 @@
             "name": "Report",
             "status": "working",
             "say": "Report",
-            "avoid": "Excel. Say XLS. Add a custom report on the customer side.",
-            "note": "Reports sit under Reports and compliance. Tabs are Reports and Downloads. Types are Data extract, DC and DA, Tenant billing, Data alert, and Missing data. A Data extract holds Interval data, Meter reads, or Missing data. Pick the sites, or All sites for the portfolio. Utility is All utilities, Electricity, Gas, or Water. Channel is Import and export, Import, or Export. Format is CSV or XLS. Times are UTC or UK time. Send at picks the hour, 06:00 to 22:00. It starts at 09:00. Meter data comes in through the day, so a later send holds more of it. The card shows the next date and hour. UTC is the default. Send by Email, SFTP, or FTP. More than one person can get it. Each email has an opt-out link. Four cards a row on a wide screen. Three below that. Fewer only on a narrow screen. The card is the name, the type Tag, one line on what it sends, and the next send. Who gets it and where it goes sit in Settings, not on the card. Settings is the cog. It sits on the report card, and next to Download on a Report in Downloads. First send on is dd/mm/yyyy. A calendar overlay picks the day. Files sit on Downloads. The card shows a Scheduled Tag, then the date of the next send, as Wed 1 Oct. Add the year if it is not this year. Not a countdown. Off shows a Paused Tag and no date. Data alert and Missing data cards show a Tag for how long ago the alert went off, then the count, as 3 hours ago, 3 sites flagged. The Tag reads Just now under an hour, then hours, days, weeks or months. With nothing flagged, no Tag. No sites flagged. Coming soon cards have no status line. Coming soon cards sit at the end. You cannot open them.",
+            "avoid": "Excel. Say XLSX. Add a custom report on the customer side.",
+            "note": "Reports sit under Reports and compliance. Tabs are Reports and Downloads. Types are Data extract, DC and DA, Tenant billing, Data alert, and Missing data. A Data extract holds Interval data, Meter reads, or Missing data. Pick the sites, or All sites for the portfolio. Utility is All utilities, Electricity, Gas, or Water. Channel is Import and export, Import, or Export. Format is CSV or XLSX, one or the other. CSV is for a system to read in. XLSX is for a spreadsheet. Export from a graph gives CSV or PDF. Times are UTC or UK time. Send at picks the hour, 06:00 to 22:00. It starts at 09:00. Meter data comes in through the day, so a later send holds more of it. The card shows the next date and hour. UTC is the default. Send by Email, SFTP, or FTP. More than one person can get it. Each email has an opt-out link. Four cards a row on a wide screen. Three below that. Fewer only on a narrow screen. The card is the name, the type Tag, one line on what it sends, and the next send. Who gets it and where it goes sit in Settings, not on the card. Settings is the cog. It sits on the report card, and next to Download on a Report in Downloads. First send on is dd/mm/yyyy. A calendar overlay picks the day. Files sit on Downloads. The card shows a Scheduled Tag, then the date of the next send, as Wed 1 Oct. Add the year if it is not this year. Not a countdown. Off shows a Paused Tag and no date. Data alert and Missing data cards show a Tag for how long ago the alert went off, then the count, as 3 hours ago, 3 sites flagged. The Tag reads Just now under an hour, then hours, days, weeks or months. With nothing flagged, no Tag. No sites flagged. Coming soon cards have no status line. Coming soon cards sit at the end. You cannot open them.",
             "from": "Shaun on Reports, 22 Sep, and version one scope register, 24 Sep"
           },
           {
@@ -6108,7 +6108,7 @@
             "status": "working",
             "say": "Downloads",
             "avoid": "Using Downloads as the name of Report. A separate My Documents tab.",
-            "note": "A subpage from Reports. CSV and PDF from Export wait here. A scheduled report sends CSV or XLS here. Documents IMSERV publishes sit here too.",
+            "note": "A subpage from Reports. CSV and PDF from Export wait here. A scheduled report sends CSV or XLSX here. Documents IMSERV publishes sit here too.",
             "from": "Shaun on export processing, 8 Sep, and handoff model, 22 Sep"
           },
           {
@@ -6618,17 +6618,17 @@
             "status": "working",
             "say": "DC and DA",
             "avoid": "Spelling out data collector and data aggregator on the tag. Flow numbers on the card.",
-            "note": "A scheduled report of the reads your data collector and data aggregator send. The tag is DC/DA. It sends by Email, SFTP, or FTP, as CSV or XLS.",
+            "note": "A scheduled report of the reads your data collector and data aggregator send. The tag is DC/DA. It sends by Email, SFTP, or FTP, as CSV or XLSX.",
             "from": "Version one scope register, 24 Sep"
           },
           {
             "id": "xls",
             "kind": "labels",
-            "name": "XLS",
+            "name": "XLSX",
             "status": "working",
-            "say": "XLS",
-            "avoid": "Excel. Spreadsheet.",
-            "note": "A format for a scheduled report. Export on a graph stays CSV or PDF.",
+            "say": "XLSX",
+            "avoid": "XLS. Excel. Spreadsheet.",
+            "note": "A format for a scheduled report. It is a real XLSX file. Pick CSV or XLSX, not both. Export on a graph stays CSV or PDF.",
             "from": "Version one scope register, 24 Sep"
           },
           {
@@ -7168,7 +7168,7 @@
             "name": "Reports in version one",
             "status": "working",
             "summary": "Reports covers the version one scheduled and delivered reports. Later work sits as Coming soon.",
-            "now": "Customers add, name, edit, and pause their own reports. Many reports can share a type. Each has its own name, sites, and recipients. Add a report opens the type cards in a modal. Edit report opens a page for that report, not a modal. Settings sits on the left. Recipients sits on the right. Save changes, Cancel, and Delete report sit in the bar under both. Back to reports goes back without saving. Data extract, DC and DA, Tenant billing, Data alert, and Missing data. A Data extract holds Interval data, Meter reads, or Missing data. Pick sites or All sites. Select all sits at the top of the Sites list. It ticks every site that matches the search. Click it again to clear them. Some ticked shows a dash. Filter by utility and by channel. How often is Once, Daily, Weekly, or Monthly. Tenant billing has Quarterly and no Once. Once sends one file for a custom range. Data from and Data to go up to today. Send on is the day it goes. After that the card shows a Sent tag and the date. A name says what it holds, not how often, so rename it freely. Format is CSV or XLS. Times are UTC or UK time. Send at picks the hour, 06:00 to 22:00. It starts at 09:00. Meter data comes in through the day, so a later send holds more of it. The card shows the next date and hour. Send by Email, SFTP, or FTP. Many people can get one report. Every report page has Recipients on the right. It is one long list, like Users with no teams. One search box finds people in your company. Picking one adds them and clears the search. Remove takes one off. On Tenant billing, the tenant sits at the top of the list. Change them in Settings. When Email is off in Send by, adding someone turns it on. Each email has an opt-out link. The file also sits on Downloads. Power BI reports sit on Downloads as Documents. Export from a graph sits on Downloads. Analysis reports sit on Portfolio. Dashboard widgets sit on Overview.",
+            "now": "Customers add, name, edit, and pause their own reports. Many reports can share a type. Each has its own name, sites, and recipients. Add a report opens the type cards in a modal. Edit report opens a page for that report, not a modal. Settings sits on the left. Recipients sits on the right. Save changes, Cancel, and Delete report sit in the bar under both. Back to reports goes back without saving. Data extract, DC and DA, Tenant billing, Data alert, and Missing data. A Data extract holds Interval data, Meter reads, or Missing data. Pick sites or All sites. Select all sits at the top of the Sites list. It ticks every site that matches the search. Click it again to clear them. Some ticked shows a dash. Filter by utility and by channel. How often is Once, Daily, Weekly, or Monthly. Tenant billing has Quarterly and no Once. Once sends one file for a custom range. Data from and Data to go up to today. Send on is the day it goes. After that the card shows a Sent tag and the date. A name says what it holds, not how often, so rename it freely. Format is CSV or XLSX, one or the other. CSV is for a system to read in. XLSX is for a spreadsheet. Export from a graph gives CSV or PDF. Times are UTC or UK time. Send at picks the hour, 06:00 to 22:00. It starts at 09:00. Meter data comes in through the day, so a later send holds more of it. The card shows the next date and hour. Send by Email, SFTP, or FTP. Many people can get one report. Every report page has Recipients on the right. It is one long list, like Users with no teams. One search box finds people in your company. Picking one adds them and clears the search. Remove takes one off. On Tenant billing, the tenant sits at the top of the list. Change them in Settings. When Email is off in Send by, adding someone turns it on. Each email has an opt-out link. The file also sits on Downloads. Power BI reports sit on Downloads as Documents. Export from a graph sits on Downloads. Analysis reports sit on Portfolio. Dashboard widgets sit on Overview.",
             "later": "Coming soon cards: Data health. Capacity and kVA. League tables across sites. Alerts with LOA status. Reports by meter class, non-HH, HH, and sub-metering. Export and sub-meter channels for an Ofgem claim-back. The what3words overlay and the company map sit on Portfolio later.",
             "uses": [
               "card",
@@ -7186,7 +7186,7 @@
             "name": "Downloads",
             "status": "working",
             "summary": "Reports, data exports, and documents wait on one page.",
-            "now": "Downloads is a subpage from Reports. Reports and Downloads sit as Tabs under Reports and compliance. The selected tab is a black pill. The pill slides. Do not put a ghost Downloads or Reports button in the page actions. View downloads opens it. Search downloads sits in the card. Filter sits to the right. Overlay uses ticks. Kind is CSV, XLS, and PDF. Type is Report, Data export, and Document. Status is Processing. When a filter is on, pills sit under Search and Filter. A cross clears that one. Clear takes them all off. Leave a page and Search and Filter start again. An open person, overlay, or menu starts again. The Filter button shows how many are on. The count is a cyan circle. No black rim. The row is the name, Type, Kind, and Status. Type is Report, Data export, or Document. Document is a Power BI file IMSERV publishes. Report is black on cyan. Data export is white on black. Customer Admin and Manager get Settings on a Report, next to Download. Same Clockwork email as Reports. Complete sits in Tag when it is ready. A cyan bar sits above that line while it processes. Minutes if a minute or more. Seconds if under a minute. The cyan bar fills while it waits. Download waits until it is ready. Then it sits as an Icon button. Hover for Download. In this walk, Download plays a short dummy of the bar, then the file. The white card fills to the bottom. Rounded corners stay on. Only that card scrolls. The list fits the card. No sideways scroll. Empty is No downloads yet. Search or Filter with no hit is No downloads match.",
+            "now": "Downloads is a subpage from Reports. Reports and Downloads sit as Tabs under Reports and compliance. The selected tab is a black pill. The pill slides. Do not put a ghost Downloads or Reports button in the page actions. View downloads opens it. Search downloads sits in the card. Filter sits to the right. Overlay uses ticks. Kind is CSV, XLSX, and PDF. Type is Report, Data export, and Document. Status is Processing. When a filter is on, pills sit under Search and Filter. A cross clears that one. Clear takes them all off. Leave a page and Search and Filter start again. An open person, overlay, or menu starts again. The Filter button shows how many are on. The count is a cyan circle. No black rim. The row is the name, Type, Kind, and Status. Type is Report, Data export, or Document. Document is a Power BI file IMSERV publishes. Report is black on cyan. Data export is white on black. Customer Admin and Manager get Settings on a Report, next to Download. Same Clockwork email as Reports. Complete sits in Tag when it is ready. A cyan bar sits above that line while it processes. Minutes if a minute or more. Seconds if under a minute. The cyan bar fills while it waits. Download waits until it is ready. Then it sits as an Icon button. Hover for Download. In this walk, Download plays a short dummy of the bar, then the file. The white card fills to the bottom. Rounded corners stay on. Only that card scrolls. The list fits the card. No sideways scroll. Empty is No downloads yet. Search or Filter with no hit is No downloads match.",
             "later": "",
             "uses": [
               "search",
@@ -7196,7 +7196,7 @@
               "banner",
               "button"
             ],
-            "note": "Clockwork email stays on Reports. Say XLS, not Excel. Do not invent Ready as a status colour."
+            "note": "Clockwork email stays on Reports. Say XLSX, not Excel. Do not invent Ready as a status colour."
           },
           {
             "id": "query-from-graph",
