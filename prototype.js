@@ -10300,23 +10300,24 @@ function protoPaneDefaultMeterKinds() {
   }
 }
 
-function protoPaneGroupCount(group, picked) {
+function protoPaneGroupTicks(group, picked) {
   const attr = "data-proto-pane-filter";
   const items = group.items.filter((item) => protoFilterItemAvailable(attr, item));
   const on = items.filter((item) => protoFilterItemOn(attr, picked, item)).map((item) => item.id);
-  if (group.id === "hours" || group.id === "tou") return on.length;
+  if (group.id === "hours" || group.id === "tou") return { on, changed: on.length > 0 };
   const base =
     group.id === "meter"
       ? protoPaneDefaultMeterKinds().filter((id) => items.some((item) => item.id === id))
       : items.map((item) => item.id);
   const same = on.length === base.length && on.every((id) => base.includes(id));
-  if (same) return 0;
-  return Math.max(1, on.length);
+  return { on, changed: !same };
 }
 
 function protoPaneFilterCount() {
   const picked = protoPaneFilterIds();
-  return PROTO_PANE_FILTERS.reduce((sum, group) => sum + protoPaneGroupCount(group, picked), 0);
+  const groups = PROTO_PANE_FILTERS.map((group) => protoPaneGroupTicks(group, picked));
+  if (!groups.some((group) => group.changed)) return 0;
+  return groups.reduce((sum, group) => sum + group.on.length, 0);
 }
 
 function protoPaneFilterControl() {
