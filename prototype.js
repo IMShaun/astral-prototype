@@ -6959,9 +6959,15 @@ const PROTO_REPORT_SOON = [
   { id: "health", name: "Data health", blurb: "How complete and on time each site's data is." },
   { id: "capacity", name: "Capacity and kVA", blurb: "Peak demand in kVA against each site's agreed capacity." },
   { id: "league", name: "League tables", blurb: "Rank sites against each other by use, cost or carbon." },
-  { id: "loa", name: "Alerts with LOA status", blurb: "Threshold alerts that show where each letter of authority stands." },
+  { id: "loa", name: "LOA renewal dates", blurb: "Every letter of authority and the date it needs renewing." },
   { id: "class", name: "Reports by meter class", blurb: "Split a report into non-HH, HH and sub-metering." },
   { id: "claim", name: "Export and sub-meter channels", blurb: "Export and sub-meter data for an Ofgem claim-back." },
+  {
+    id: "loa-renew",
+    name: "LOA renewal",
+    blurb: "Warns people before a letter of authority runs out, such as three months ahead.",
+    tab: "alerts",
+  },
 ];
 
 function protoReportSends(type) {
