@@ -2978,7 +2978,7 @@
           "file": "src/components/Count.tsx",
           "family": "indicators",
           "summary": "A cyan circle with black type. No black rim. Filter uses 18px on the icon. Compare uses 22px inside the ghost button.",
-          "usage": "Show how many filters or compared items are on. Hide it at zero. Do not put a black rim on the circle. In Compare, the meter count sits to the right of the site name, as in the tree. Hover for the meter points.",
+          "usage": "Show how many filters or compared items are on. Hide it at zero. Do not put a black rim on the circle. In Compare, the meter count sits to the right of the site name, as in the tree. Hover for the meter points. In a Select option, the meter count sits on the right in the grey pill. No sub text.",
           "variants": [
             "filter",
             "compare"

@@ -6249,6 +6249,12 @@ function protoSelect(config) {
       const box = multi
         ? `<span class="astral-check${on ? " is-on" : ""}" aria-hidden="true"></span>`
         : "";
+      const count =
+        item.count == null
+          ? ""
+          : `<span class="astral-count" aria-label="${escapeHtml(
+              item.countLabel || String(item.count)
+            )}">${escapeHtml(String(item.count))}</span>`;
       return `
         <button
           type="button"
@@ -6257,7 +6263,7 @@ function protoSelect(config) {
           aria-selected="${on ? "true" : "false"}"
           data-proto-select-option="${escapeHtml(id)}"
           data-proto-select-value="${escapeHtml(item.value)}"
-        >${box}${inner}</button>
+        >${box}${inner}${count}</button>
       `;
     })
     .join("");
@@ -7457,7 +7463,8 @@ function protoReportSitesSelect(draft) {
         return {
           value: protoSiteId(site),
           label: site.name,
-          note: `${n} ${n === 1 ? "meter" : "meters"}`,
+          count: n,
+          countLabel: `${n} ${n === 1 ? "meter" : "meters"}`,
         };
       }),
     })

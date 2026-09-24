@@ -5171,7 +5171,8 @@ button.astral-catch {
 }
 
 .astral-site .astral-count,
-.astral-compare-copy .astral-count {
+.astral-compare-copy .astral-count,
+.astral-select-options .astral-count {
   width: auto;
   min-width: 22px;
   height: 22px;
@@ -11125,3 +11126,8 @@ html.is-classic-scroll #astral-fs .is-scroll-near {
   width: 100%;
 }
 
+
+.astral-select-options .astral-count {
+  flex: none;
+  margin-inline-start: auto;
+}
