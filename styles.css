@@ -9624,6 +9624,41 @@ button.astral-state {
   font-size: 0.875rem;
 }
 
+.astral-report-test {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.astral-report-test .astral-ghost {
+  flex: none;
+}
+
+.astral-report-test-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.astral-report-test-line.is-ok,
+.astral-report-test-line.is-fail {
+  color: var(--color-text-primary);
+}
+
+.astral-report-test-line svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.astral-report-fields input[readonly] {
+  color: var(--color-text-secondary);
+  background: var(--color-background-subtle);
+}
+
 .astral-report-modal .astral-modal-foot .astral-actions {
   align-items: center;
 }

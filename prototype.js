@@ -6637,6 +6637,7 @@ function protoPickSelect(id, value) {
     "report-format": "format",
     "report-time": "time",
     "report-send-at": "sendAt",
+    "report-sftp-auth": "sftpAuth",
   };
   if (PROTO_REPORT_SELECT_KEYS[id]) {
     const key = PROTO_REPORT_SELECT_KEYS[id];
@@ -6909,6 +6910,13 @@ const PROTO_REPORT_TIME = [
   { id: "uk", name: "UK time", note: "Moves with BST" },
 ];
 
+const PROTO_REPORT_AUTH = [
+  { id: "password", name: "Password" },
+  { id: "key", name: "SSH key", note: "IMSERV's key on your server" },
+];
+
+const PROTO_REPORT_SSH_KEY = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK7q2Vx4mE3bT9wLr0sYp6dQ1aHfJ8nZc5uGkM2oPiWe astral@imserv";
+
 const PROTO_REPORT_SEND_AT = Array.from({ length: 17 }, (_, i) => `${String(i + 6).padStart(2, "0")}:00`);
 
 const PROTO_REPORT_SOON = [
@@ -7069,6 +7077,10 @@ function protoReportNormalize(raw) {
     sendAt: PROTO_REPORT_SEND_AT.includes(String(raw.sendAt)) ? String(raw.sendAt) : "09:00",
     sftpHost: String(raw.sftpHost || "").trim().slice(0, 120),
     sftpPath: String(raw.sftpPath || "").trim().slice(0, 160),
+    sftpPort: protoReportNumber(raw.sftpPort, delivery.includes("sftp") || !delivery.includes("ftp") ? 22 : 21, 1, 65535),
+    sftpUser: String(raw.sftpUser || "").trim().slice(0, 80),
+    sftpAuth: raw.sftpAuth === "key" ? "key" : "password",
+    sftpPassword: String(raw.sftpPassword || "").slice(0, 120),
     site: known.has(String(raw.site || "")) ? String(raw.site) : ids[0] || "",
     tenant: String(raw.tenant || "").replace(/\s+/g, " ").trim().slice(0, 80),
     tenantEmail: protoReportEmails([raw.tenantEmail])[0] || "",
@@ -7117,8 +7129,10 @@ function protoReportSeed() {
       period: "month",
       delivery: ["sftp"],
       format: "xlsx",
-      sftpHost: "sftp.imserv.com",
+      sftpHost: "sftp.networkrail.co.uk",
       sftpPath: "dcda/monthly",
+      sftpUser: "imserv-astral",
+      sftpAuth: "key",
       start: today,
     },
     {
@@ -7567,6 +7581,13 @@ function protoReportDraftIssue(draft) {
     if (server.length && !String(draft.sftpHost || "").trim()) {
       return `Add the ${server.map((way) => way.toUpperCase()).join(" and ")} server.`;
     }
+    if (server.length) {
+      const port = Number(draft.sftpPort || 22);
+      if (!(Number.isInteger(port) && port > 0 && port < 65536)) return "The port must be a whole number up to 65535.";
+      if (!String(draft.sftpUser || "").trim()) return "Add the username for the server.";
+      const key = draft.delivery.includes("sftp") && draft.sftpAuth === "key";
+      if (!key && !String(draft.sftpPassword || "")) return "Add the password for the server.";
+    }
     if (draft.period === "once") {
       const from = protoFromUkDate(protoReportDraftDate("from"));
       const to = protoFromUkDate(protoReportDraftDate("to"));
@@ -7971,6 +7992,110 @@ function protoReportPageOpen() {
   return Boolean(id && id !== "new" && protoCanEditReports() && protoReportDef(id));
 }
 
+function protoReportTestSig(draft) {
+  return ["sftpHost", "sftpPort", "sftpUser", "sftpAuth", "sftpPassword", "delivery"]
+    .map((key) => String(draft?.[key] ?? ""))
+    .join("|");
+}
+
+function protoReportTest(draft) {
+  const test = store.prototypeReportTest;
+  return test && test.sig === protoReportTestSig(draft) ? test : { state: "idle" };
+}
+
+function protoReportTestResult(draft) {
+  const host = String(draft.sftpHost || "").trim().toLowerCase();
+  const key = (draft.delivery || []).includes("sftp") && draft.sftpAuth === "key";
+  if (!String(draft.sftpUser || "").trim()) return { state: "fail", text: "Add the username, then test again." };
+  if (!key && !String(draft.sftpPassword || "")) return { state: "fail", text: "Add the password, then test again." };
+  if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(host)) return { state: "fail", text: "We could not find that server. Check the address." };
+  if (/block|refuse|firewall/.test(host)) {
+    return { state: "fail", text: "The server turned the connection away. Ask your IT team to let IMSERV through." };
+  }
+  if (!key && String(draft.sftpPassword) === "wrong") {
+    return { state: "fail", text: "The server did not accept the username or password." };
+  }
+  const folder = String(draft.sftpPath || "").trim();
+  return { state: "ok", text: `Connected. A test file landed in ${folder || "the top folder"}.` };
+}
+
+function protoReportTestLineHtml(draft) {
+  const test = protoReportTest(draft);
+  if (test.state === "testing") return "Testing the connection.";
+  if (test.state === "ok") return `${protoIconMark("check")}<span>${escapeHtml(test.text)}</span>`;
+  if (test.state === "fail") return `${protoIconMark("warning")}<span>${escapeHtml(test.text)}</span>`;
+  return "Sends a small test file and checks the server lets IMSERV in.";
+}
+
+function protoReportTestHtml(draft) {
+  const test = protoReportTest(draft);
+  const noHost = !String(draft.sftpHost || "").trim();
+  return `
+    <div class="astral-report-test">
+      ${protoGhost(test.state === "testing" ? "Testing" : "Test connection", "data-proto-report-test", {
+        disabled: noHost || test.state === "testing",
+      })}
+      <p class="astral-muted astral-report-test-line is-${test.state}" role="status" data-proto-report-test-line>${protoReportTestLineHtml(
+        draft
+      )}</p>
+    </div>
+  `;
+}
+
+function protoRunReportTest() {
+  const draft = protoReportDraft();
+  if (!draft || !protoCanEditReports() || !String(draft.sftpHost || "").trim()) return;
+  const sig = protoReportTestSig(draft);
+  setProto({ prototypeReportTest: { state: "testing", sig }, prototypeReportEdit: protoReportEditId() });
+  setTimeout(() => {
+    const now = protoReportDraft();
+    if (!now || protoReportTestSig(now) !== sig) return;
+    setProto({
+      prototypeReportTest: { ...protoReportTestResult(now), sig },
+      prototypeReportEdit: protoReportEditId(),
+    });
+    protoRestoreFocus("#astral-fs [data-proto-report-test]");
+  }, 1200);
+}
+
+function protoReportServerFields(draft, serverName) {
+  const ways = draft.delivery || [];
+  const sftp = ways.includes("sftp");
+  const key = sftp && draft.sftpAuth === "key";
+  const port = draft.sftpPort || (sftp ? 22 : 21);
+  const secret = key
+    ? protoField(
+        "IMSERV's public key",
+        `type="text" name="proto-report-ssh-key" value="${escapeHtml(PROTO_REPORT_SSH_KEY)}" readonly spellcheck="false"`
+      )
+    : protoField(
+        "Password",
+        `type="password" name="proto-report-sftpPassword" data-proto-report-field="sftpPassword" value="${escapeHtml(
+          draft.sftpPassword || ""
+        )}" autocomplete="new-password"`
+      );
+  return `
+    <div class="astral-report-pair">
+      ${protoReportInput(`${serverName} server`, "sftpHost", draft.sftpHost, 'placeholder="sftp.company.com" spellcheck="false"')}
+      ${protoReportInput("Port", "sftpPort", port, 'inputmode="numeric" maxlength="5"')}
+    </div>
+    <div class="astral-report-pair">
+      ${protoReportInput("Folder", "sftpPath", draft.sftpPath, 'placeholder="astral/interval" spellcheck="false"')}
+      ${protoReportInput("Username", "sftpUser", draft.sftpUser, 'placeholder="imserv-astral" spellcheck="false"')}
+    </div>
+    ${
+      sftp
+        ? `<div class="astral-report-pair">
+            ${protoReportOptionSelect("report-sftp-auth", "Sign in with", PROTO_REPORT_AUTH, draft.sftpAuth)}
+            ${secret}
+          </div>`
+        : secret
+    }
+    ${key ? '<p class="astral-muted">Add this key to the user on your server. IMSERV keeps the private half.</p>' : ""}
+    ${sftp ? "" : '<p class="astral-muted">FTP sends the file and password unencrypted. Use SFTP if your server has it.</p>'}
+    ${protoReportTestHtml(draft)}
+  `;
+}
 function protoReportSendFields(draft, opts = {}) {
   const ways = draft.delivery || [];
   const server = ways.filter((way) => way === "sftp" || way === "ftp");
@@ -7996,14 +8121,7 @@ function protoReportSendFields(draft, opts = {}) {
       })
     )}
     ${ways.includes("email") && !opts.page ? protoReportRecipientsHtml(draft) : ""}
-    ${
-      server.length
-        ? `<div class="astral-report-pair">
-            ${protoReportInput(`${serverName} server`, "sftpHost", draft.sftpHost, 'placeholder="sftp.company.com"')}
-            ${protoReportInput("Folder", "sftpPath", draft.sftpPath, 'placeholder="astral/interval"')}
-          </div>`
-        : ""
-    }
+    ${server.length ? protoReportServerFields(draft, serverName) : ""}
   `;
 }
 
@@ -8281,6 +8399,14 @@ function protoReportRefreshForm() {
     const preview = protoReportDraftPreview(draft);
     previewEl.textContent = preview;
     previewEl.hidden = !preview;
+  }
+  const testLine = modal.querySelector("[data-proto-report-test-line]");
+  if (testLine) {
+    const state = protoReportTest(draft).state;
+    testLine.className = `astral-muted astral-report-test-line is-${state}`;
+    testLine.innerHTML = protoReportTestLineHtml(draft);
+    const testBtn = modal.querySelector("[data-proto-report-test]");
+    if (testBtn) testBtn.disabled = !String(draft.sftpHost || "").trim() || state === "testing";
   }
   const tenantEl = modal.querySelector("[data-proto-report-tenant]");
   if (tenantEl && draft.type === "billing") {
@@ -20287,6 +20413,11 @@ function onPrototype(event) {
     if (!protoCanEditReports()) return;
     const id = reportDeleteBtn.dataset.protoReportDelete;
     protoReportLeave(protoReportDefsPatch(protoReportDefs().filter((def) => def.id !== id)));
+    return;
+  }
+  const reportTestBtn = event.target.closest("[data-proto-report-test]");
+  if (reportTestBtn) {
+    protoRunReportTest();
     return;
   }
   const reportRemoveBtn = event.target.closest("[data-proto-report-remove]");
