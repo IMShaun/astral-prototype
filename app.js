@@ -1151,8 +1151,8 @@ function normalize(data) {
       ? data.prototypeCompareSites
       : [];
     data.prototypeGroupSites = Array.isArray(data.prototypeGroupSites) ? data.prototypeGroupSites : [];
-    data.prototypeScope = data.prototypeScope === "group" ? "group" : "site";
-    data.prototypeGroup = data.prototypeGroup || "";
+    data.prototypeScope = data.prototypeScope === "site" ? "site" : "group";
+    data.prototypeGroup = data.prototypeGroup || (data.prototypeScope === "group" ? "all" : "");
     data.prototypeGroupClosed = Array.isArray(data.prototypeGroupClosed)
       ? data.prototypeGroupClosed
       : [];
@@ -3872,8 +3872,7 @@ function applyChrome() {
     ? store.researchSeverity
     : "all";
   store.activePrototypeView = protoViewId(store.activePrototypeView);
-  store.prototypeScope = store.prototypeScope === "group" ? "group" : "site";
-  store.prototypeGroup = store.prototypeGroup || "";
+  Object.assign(store, protoPortfolioHomePatch());
   store.prototypeGroupClosed = Array.isArray(store.prototypeGroupClosed)
     ? store.prototypeGroupClosed
     : [];

@@ -717,6 +717,29 @@ function protoCompareModalReset() {
   };
 }
 
+function protoPortfolioHomePatch() {
+  return {
+    prototypeScope: "group",
+    prototypeGroup: "all",
+    prototypeGroupClosed: [],
+    prototypeChannel: "all",
+    prototypePane: "consumption",
+    prototypeChartPoint: null,
+    prototypeMeterOpen: "none",
+    prototypeMeterSettings: "",
+    prototypeMeterFold: "",
+    prototypeGroupSites: [],
+    prototypeSiteMeters: [],
+    prototypePaneMeterKinds: null,
+    prototypeCompareIds: [],
+    prototypeCompareMeters: [],
+    prototypeCompareSites: [],
+    prototypeCompareOpen: false,
+    prototypeCompareLevel: "group",
+    ...protoCompareModalReset(),
+  };
+}
+
 function protoShouldResetPageFilters(patch) {
   if (Object.prototype.hasOwnProperty.call(patch, "activePrototypeView")) {
     if (protoViewId(patch.activePrototypeView) !== protoViewId(store.activePrototypeView)) {
@@ -743,6 +766,18 @@ function protoPatchStay(patch) {
     !Object.prototype.hasOwnProperty.call(patch, "prototypeDatePreset")
   ) {
     Object.assign(patch, protoDefaultDatePatch());
+  }
+  if (
+    patch.activePrototypeView === "portfolio" &&
+    store.activePrototypeView !== "portfolio" &&
+    !["prototypeScope", "prototypeGroup", "activePrototypeMeter"].some((key) =>
+      Object.prototype.hasOwnProperty.call(patch, key)
+    )
+  ) {
+    const home = protoPortfolioHomePatch();
+    Object.keys(home).forEach((key) => {
+      if (!Object.prototype.hasOwnProperty.call(patch, key)) patch[key] = home[key];
+    });
   }
   if (protoShouldResetPageFilters(patch)) {
     const reset = protoPageFilterReset();
