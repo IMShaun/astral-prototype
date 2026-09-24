@@ -686,7 +686,7 @@ function protoPageFilterReset() {
     prototypeChartPoint: null,
     prototypeChartView: "total",
     prototypeChartStyle: "bar",
-    prototypeChartFlows: ["in", "out"],
+    prototypeChartFlows: null,
     prototypeChartSliceOff: [],
     prototypePaneMeterKinds: null,
     prototypePillsOpen: false,
@@ -3483,7 +3483,7 @@ function protoToggleChartFlow(kind) {
   const next = ["in", "out"].filter((id) => (id === kind ? !cur.includes(id) : cur.includes(id)));
   const overlayOpen = Boolean(store.prototypePaneFilterOpen);
   setProto({
-    prototypeChartFlows: next,
+    prototypeChartFlows: next.length === 2 ? null : next,
     prototypeChartPoint: null,
     prototypePaneFilterOpen: overlayOpen,
   });
@@ -3492,6 +3492,18 @@ function protoToggleChartFlow(kind) {
       ? `#astral-fs .astral-detail-tools [data-proto-pane-filter="${kind}"]`
       : `#astral-fs [data-proto-chart-flow="${kind}"]`
   );
+}
+
+function protoTogglePaneFlowTick(kind) {
+  if (kind !== "in" && kind !== "out") return;
+  const cur = Array.isArray(store.prototypeChartFlows) ? protoChartFlowIds() : [];
+  const next = ["in", "out"].filter((id) => (id === kind ? !cur.includes(id) : cur.includes(id)));
+  setProto({
+    prototypeChartFlows: next.length ? next : null,
+    prototypeChartPoint: null,
+    prototypePaneFilterOpen: true,
+  });
+  protoRestoreFocus(`#astral-pane-filter-menu [data-proto-pane-filter="${kind}"]`);
 }
 
 function protoSiteFlow(site) {
@@ -3755,8 +3767,7 @@ function protoTogglePaneMeterKind(kind) {
   if (kind !== "electricity" && kind !== "gas" && kind !== "water") return;
   const pool = protoPanePoolMeters();
   if (!(pool || []).some((item) => protoMeterKind(item) === kind)) return;
-  const stored = protoPaneMeterKindIds();
-  const cur = stored || protoGraphMeterKinds();
+  const cur = protoPaneMeterKindIds() || [];
   let next = cur.includes(kind) ? cur.filter((id) => id !== kind) : [...cur, kind];
   if (protoPaneId() === "consumption") {
     if (!cur.includes(kind) && kind === "water") next = ["water"];
@@ -3764,7 +3775,7 @@ function protoTogglePaneMeterKind(kind) {
   }
   const overlayOpen = Boolean(store.prototypePaneFilterOpen);
   setProto({
-    prototypePaneMeterKinds: next,
+    prototypePaneMeterKinds: next.length ? next : null,
     prototypeChartPoint: null,
     prototypePaneFilterOpen: overlayOpen,
   });
@@ -9929,9 +9940,11 @@ function protoFilterItemOn(attr, picked, item) {
   const id = item?.id;
   if (!id) return false;
   if (!protoFilterItemAvailable(attr, item)) return false;
-  if (attr === "data-proto-pane-filter" && (id === "in" || id === "out")) return protoChartFlowOn(id);
+  if (attr === "data-proto-pane-filter" && (id === "in" || id === "out")) {
+    return Array.isArray(store.prototypeChartFlows) && protoChartFlowOn(id);
+  }
   if (attr === "data-proto-pane-filter" && (id === "electricity" || id === "gas" || id === "water")) {
-    return protoGraphMeterKinds().includes(id);
+    return (protoPaneMeterKindIds() || []).includes(id);
   }
   return (picked || []).includes(id);
 }
@@ -9973,9 +9986,9 @@ function protoTogglePaneFilterGroup(groupId) {
     prototypeChartPoint: null,
   };
   if (groupId === "meter") {
-    patch.prototypePaneMeterKinds = selectAll ? protoPanePoolMeterKinds() : [];
+    patch.prototypePaneMeterKinds = selectAll ? protoPanePoolMeterKinds() : null;
   } else if (groupId === "flow") {
-    patch.prototypeChartFlows = selectAll ? ["in", "out"] : [];
+    patch.prototypeChartFlows = selectAll ? ["in", "out"] : null;
   } else {
     patch.prototypePaneFilters = protoFilterGroupSelectNext(
       picked,
@@ -10290,34 +10303,17 @@ function protoTreeFilterControl() {
   });
 }
 
-function protoPaneDefaultMeterKinds() {
-  const saved = store.prototypePaneMeterKinds;
-  store.prototypePaneMeterKinds = null;
-  try {
-    return protoGraphMeterKinds();
-  } finally {
-    store.prototypePaneMeterKinds = saved;
-  }
-}
-
-function protoPaneGroupTicks(group, picked) {
-  const attr = "data-proto-pane-filter";
-  const items = group.items.filter((item) => protoFilterItemAvailable(attr, item));
-  const on = items.filter((item) => protoFilterItemOn(attr, picked, item)).map((item) => item.id);
-  if (group.id === "hours" || group.id === "tou") return { on, changed: on.length > 0 };
-  const base =
-    group.id === "meter"
-      ? protoPaneDefaultMeterKinds().filter((id) => items.some((item) => item.id === id))
-      : items.map((item) => item.id);
-  const same = on.length === base.length && on.every((id) => base.includes(id));
-  return { on, changed: !same };
-}
-
 function protoPaneFilterCount() {
+  const attr = "data-proto-pane-filter";
   const picked = protoPaneFilterIds();
-  const groups = PROTO_PANE_FILTERS.map((group) => protoPaneGroupTicks(group, picked));
-  if (!groups.some((group) => group.changed)) return 0;
-  return groups.reduce((sum, group) => sum + group.on.length, 0);
+  return PROTO_PANE_FILTERS.reduce(
+    (sum, group) =>
+      sum +
+      group.items.filter(
+        (item) => protoFilterItemAvailable(attr, item) && protoFilterItemOn(attr, picked, item)
+      ).length,
+    0
+  );
 }
 
 function protoPaneFilterControl() {
@@ -10333,7 +10329,7 @@ function protoPaneFilterControl() {
     canClear:
       count > 0 ||
       protoPaneMeterKindIds() !== null ||
-      protoChartFlowIds().length !== 2 ||
+      Array.isArray(store.prototypeChartFlows) ||
       (store.prototypeChartSliceOff || []).length > 0,
     menu: protoFilterTickGroups(picked, "data-proto-pane-filter", PROTO_PANE_FILTERS),
   });
@@ -20667,7 +20663,7 @@ function onPrototype(event) {
       setProto({
         prototypePaneFilters: [],
         prototypePaneMeterKinds: null,
-        prototypeChartFlows: ["in", "out"],
+        prototypeChartFlows: null,
         prototypeChartSliceOff: [],
         prototypePaneFilterOpen: false,
       });
@@ -20675,7 +20671,7 @@ function onPrototype(event) {
       return;
     }
     if (act === "in" || act === "out") {
-      protoToggleChartFlow(act);
+      protoTogglePaneFlowTick(act);
       return;
     }
     if (act === "electricity" || act === "gas" || act === "water") {
