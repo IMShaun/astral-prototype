@@ -7207,7 +7207,7 @@ function protoReportSendLabel(next) {
     next.getMonth()
   ];
   const year = next.getFullYear() !== protoToday().getFullYear() ? ` ${next.getFullYear()}` : "";
-  return `Next: ${day} ${next.getDate()} ${month}${year}`;
+  return `${day} ${next.getDate()} ${month}${year}`;
 }
 
 function protoReportFileLine(def) {
@@ -7251,6 +7251,13 @@ function protoReportSummary(def) {
   return `When any site in ${protoHomeCompany() || "the portfolio"} sends no data for ${protoReportSilenceName(
     def.hours
   )}.`;
+}
+
+function protoReportStatusHtml(def) {
+  if (!def.on) return protoTag("Paused");
+  const line = `<span class="astral-muted">${escapeHtml(protoReportStatusLine(def))}</span>`;
+  if (def.type === "alert" || def.type === "missing") return line;
+  return `${protoTag("Scheduled")}${line}`;
 }
 
 function protoReportStatusLine(def) {
@@ -14562,9 +14569,7 @@ function protoReportCard(def) {
       </div>
       <p>${escapeHtml(protoReportSummary(def))}</p>
       <div class="astral-actions"${canEdit ? ` data-proto-report-toggle="${id}"` : ""}>
-        <span class="astral-report-wait"><span class="astral-muted">${escapeHtml(
-          protoReportStatusLine(def)
-        )}</span></span>
+        <span class="astral-report-wait">${protoReportStatusHtml(def)}</span>
         ${canEdit ? protoIconBtn("settings", "Edit report", `data-proto-report-edit="${id}"`) : ""}
         ${
           canEdit
@@ -20067,8 +20072,8 @@ function onPrototype(event) {
     switchEl?.setAttribute("aria-checked", nextOn ? "true" : "false");
     const card = toggleHost.closest(".astral-card");
     card?.classList.toggle("is-off", !nextOn);
-    const wait = card?.querySelector(".astral-report-wait .astral-muted");
-    if (wait) wait.textContent = protoReportStatusLine({ ...def, on: nextOn });
+    const wait = card?.querySelector(".astral-report-wait");
+    if (wait) wait.innerHTML = protoReportStatusHtml({ ...def, on: nextOn });
     Object.assign(store, protoReportDefsPatch(next));
     persistChrome();
     return;
