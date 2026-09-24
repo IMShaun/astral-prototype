@@ -6835,7 +6835,7 @@ const PROTO_REPORT_FORMAT = [
 ];
 
 const PROTO_REPORT_TIME = [
-  { id: "utc", name: "UTC" },
+  { id: "utc", name: "UTC", note: "Stays the same all year" },
   { id: "uk", name: "UK time", note: "Moves with BST" },
 ];
 
