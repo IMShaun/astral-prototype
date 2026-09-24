@@ -574,6 +574,7 @@ function protoKnownView(id) {
     PROTO_ACCOUNT_VIEWS.some((view) => view.id === id) ||
     Boolean(PROTO_LENS_EXTRA[id]) ||
     id === "downloads" ||
+    id === PROTO_ALERT_RULES_VIEW ||
     id === "documents"
   );
 }
@@ -582,7 +583,7 @@ function protoViewId(raw) {
   const mapped = PROTO_OLD_VIEWS[raw] || raw;
   if (!protoKnownView(mapped)) return "home";
   if (mapped === "documents") return "downloads";
-  if (mapped === "downloads") return mapped;
+  if (mapped === "downloads" || mapped === PROTO_ALERT_RULES_VIEW) return mapped;
   if (mapped === "profile") return mapped;
   if (mapped === "settings") return protoCanOpenSettings() ? mapped : protoLens().nav[0] || "home";
   if (mapped === "users") return protoCanManagePeople() ? mapped : protoLens().nav[0] || "home";
@@ -6616,10 +6617,10 @@ function protoPickSelect(id, value) {
     );
     return;
   }
-  if (id === "report-sites" || id === "report-delivery") {
+  if (id === "report-sites" || id === "report-delivery" || id === "report-notify") {
     const draft = protoReportDraft();
     if (!draft) return;
-    const key = id === "report-sites" ? "sites" : "delivery";
+    const key = id === "report-sites" ? "sites" : id === "report-notify" ? "notify" : "delivery";
     protoReportPatchDraft({ [key]: protoReportToggleIn(draft[key], value) }, id);
     protoRestoreFocus(
       `#astral-fs [data-proto-select-option="${id}"][data-proto-select-value="${CSS.escape(value)}"]`
@@ -6630,6 +6631,7 @@ function protoPickSelect(id, value) {
     "report-site": "site",
     "report-period": "period",
     "report-basis": "basis",
+    "report-direction": "direction",
     "report-silence": "hours",
     "report-content": "content",
     "report-utility": "utility",
@@ -6840,15 +6842,42 @@ const PROTO_REPORT_TYPES = [
     id: "alert",
     name: "Data alert",
     short: "Data alert",
-    blurb: "Tell people when a site goes over a threshold you set.",
+    blurb: "Tell people when a site goes above or below a threshold you set.",
+    tab: "alerts",
   },
   {
     id: "missing",
     name: "Missing data",
     short: "Missing data",
     blurb: "Tell people when a site stops sending data.",
+    tab: "alerts",
   },
 ];
+
+const PROTO_ALERT_RULES_VIEW = "alert-rules";
+
+const PROTO_REPORT_DIRECTION = [
+  { id: "above", name: "Above" },
+  { id: "below", name: "Below" },
+];
+
+const PROTO_REPORT_NOTIFY = [
+  { id: "astral", name: "In Astral" },
+  { id: "email", name: "Email" },
+];
+
+function protoReportTabOf(type) {
+  return protoReportType(type).tab || "reports";
+}
+
+function protoReportTypesFor(tab) {
+  return PROTO_REPORT_TYPES.filter((item) => (item.tab || "reports") === tab);
+}
+
+// The tab a new report or alert opens from.
+function protoReportNewTab() {
+  return store.prototypeReportFrom === PROTO_ALERT_RULES_VIEW ? "alerts" : "reports";
+}
 
 const PROTO_REPORT_PERIODS = [
   { id: "once", name: "Custom range", every: "Once", word: "once", days: 0, note: "One file for the dates you pick" },
@@ -6872,7 +6901,7 @@ const PROTO_REPORT_SILENCE = [1, 3, 6, 12, 24, 48];
 
 const PROTO_REPORT_BASIS = [
   { id: "absolute", name: "Absolute amount", note: "A fixed daily use in kWh" },
-  { id: "average", name: "Portfolio average", note: "A share above the average site" },
+  { id: "average", name: "Portfolio average", note: "A percentage of the average site" },
 ];
 
 const PROTO_REPORT_DELIVERY = [
@@ -7100,6 +7129,13 @@ function protoReportNormalize(raw) {
     ),
     vat: protoReportNumber(raw.vat, 20, 0, 100),
     basis: raw.basis === "absolute" ? "absolute" : "average",
+    direction: raw.direction === "below" ? "below" : "above",
+    notify: (() => {
+      const list = PROTO_REPORT_NOTIFY.map((item) => item.id).filter((id) =>
+        (Array.isArray(raw.notify) ? raw.notify : ["astral", "email"]).includes(id)
+      );
+      return Array.isArray(raw.notify) ? list : ["astral", "email"];
+    })(),
     amount: protoReportNumber(raw.amount, 2000, 0, 10000000),
     percent: protoReportNumber(raw.percent, 25, 0, 1000),
     hours: PROTO_REPORT_SILENCE.includes(Number(raw.hours)) ? Number(raw.hours) : 3,
@@ -7239,15 +7275,23 @@ function protoReportScopeSites(def) {
   return all.filter((site) => picked.has(protoSiteId(site)));
 }
 
+function protoReportAlertBelow(def) {
+  return def.direction === "below";
+}
+
 function protoReportAlertLimit(def) {
+  const sign = protoReportAlertBelow(def) ? -1 : 1;
   return def.basis === "absolute"
     ? def.amount
-    : protoReportPortfolioAverage() * (1 + def.percent / 100);
+    : protoReportPortfolioAverage() * Math.max(0, 1 + (sign * def.percent) / 100);
 }
 
 function protoReportAlertHits(def) {
   const limit = protoReportAlertLimit(def);
-  return protoReportScopeSites(def).filter((site) => protoReportSiteDayKwh(site) > limit);
+  const below = protoReportAlertBelow(def);
+  return protoReportScopeSites(def).filter((site) =>
+    below ? protoReportSiteDayKwh(site) < limit : protoReportSiteDayKwh(site) > limit
+  );
 }
 
 function protoMeterSilentHours(meter) {
@@ -7391,10 +7435,11 @@ function protoReportSummary(def) {
     const scope = def.sites.length
       ? protoReportJoin(protoReportScopeSites(def).map((site) => site.name))
       : "any site";
+    const below = protoReportAlertBelow(def);
     if (def.basis === "absolute") {
-      return `When ${scope} uses more than ${protoReportKwh(def.amount)} in a day.`;
+      return `When ${scope} uses ${below ? "less" : "more"} than ${protoReportKwh(def.amount)} in a day.`;
     }
-    return `When ${scope} uses ${def.percent}% more than the portfolio average, ${protoReportKwh(
+    return `When ${scope} uses ${def.percent}% ${below ? "less" : "more"} than the portfolio average, ${protoReportKwh(
       protoReportAlertLimit(def)
     )} a day.`;
   }
@@ -7407,7 +7452,10 @@ function protoReportFlaggedHours(def) {
   let since = [];
   if (def.type === "alert") {
     const limit = protoReportAlertLimit(def);
-    since = protoReportAlertHits(def).map((site) => 24 * (1 - limit / protoReportSiteDayKwh(site)));
+    since = protoReportAlertHits(def).map((site) => {
+      const kwh = protoReportSiteDayKwh(site);
+      return 24 * (1 - (protoReportAlertBelow(def) ? kwh / limit : limit / kwh));
+    });
   } else if (def.type === "missing") {
     since = protoReportMissingHits(def).map(
       (site) => Math.max(...(site.meters || []).map((meter) => protoMeterSilentHours(meter))) - def.hours
@@ -7621,9 +7669,10 @@ function protoReportAutoName(def) {
     return `${def.tenant || "Tenant"} billing${site ? `, ${site.name}` : ""}`;
   }
   if (def.type === "alert") {
+    const below = protoReportAlertBelow(def);
     return def.basis === "absolute"
-      ? `Daily use over ${protoReportKwh(def.amount)}`
-      : `Use ${def.percent}% above average`;
+      ? `Daily use ${below ? "under" : "over"} ${protoReportKwh(def.amount)}`
+      : `Use ${def.percent}% ${below ? "below" : "above"} average`;
   }
   return `No data for ${protoReportSilenceName(def.hours)}`;
 }
@@ -7688,7 +7737,11 @@ function protoReportDraftIssueBase(draft) {
   if (draft.type === "alert") {
     const value = Number(draft.basis === "absolute" ? draft.amount : draft.percent);
     if (!(value > 0)) return "Enter a threshold above zero.";
+    if (draft.basis !== "absolute" && draft.direction === "below" && value >= 100) {
+      return "Below the average must be under 100%.";
+    }
   }
+  if (!protoReportIsFile(draft.type) && !(draft.notify || []).length) return "Pick how to tell people.";
   if (!people) return "Add at least one person or email.";
   return "";
 }
@@ -7717,8 +7770,9 @@ function protoReportDraftPreview(draft) {
   if (def.type === "alert") {
     const hits = protoReportAlertHits(def);
     const limit = `Limit ${protoReportKwh(protoReportAlertLimit(def))} a day.`;
-    if (!hits.length) return `${limit} No site is over right now.`;
-    return `${limit} Over right now: ${protoReportJoin(hits.map((site) => site.name))}.`;
+    const word = protoReportAlertBelow(def) ? "under" : "over";
+    if (!hits.length) return `${limit} No site is ${word} right now.`;
+    return `${limit} ${word === "under" ? "Under" : "Over"} right now: ${protoReportJoin(hits.map((site) => site.name))}.`;
   }
   const hits = protoReportMissingHits(def);
   if (!hits.length) return "Every site is sending right now.";
@@ -7994,7 +8048,15 @@ function protoReportRecipientsSub(draft) {
     return "Email is off. Adding someone turns it on.";
   }
   const n = protoReportRecipientRows(draft).length;
-  return `${n} ${n === 1 ? "person gets" : "people get"} this by email`;
+  const get = n === 1 ? "person gets" : "people get";
+  if (protoReportTabOf(draft.type) === "alerts") {
+    const ways = draft.notify || [];
+    if (!ways.length) return "Pick how to tell people in Settings.";
+    const how =
+      ways.length > 1 ? "in Astral and by email" : ways.includes("email") ? "by email" : "in Astral";
+    return `${n} ${get} this ${how}`;
+  }
+  return `${n} ${get} this by email`;
 }
 
 function protoReportRecipientsPane(draft) {
@@ -8012,7 +8074,9 @@ function protoReportRecipientsPane(draft) {
 }
 
 function protoReportEmailsOn(draft) {
-  return protoReportSends(draft.type) ? (draft.delivery || []).includes("email") : true;
+  if (protoReportSends(draft.type)) return (draft.delivery || []).includes("email");
+  if (draft.type === "billing") return true;
+  return (draft.notify || []).includes("email");
 }
 
 // Everyone on the list but you. Tenants count by their email.
@@ -8114,8 +8178,15 @@ function protoReportNoticeHtml() {
   return protoBanner(text, protoIconBtn("close", "Hide", 'data-proto-report-notice="hide"'));
 }
 
+function protoReportFromView() {
+  const from = store.prototypeReportFrom;
+  return from === "downloads" || from === PROTO_ALERT_RULES_VIEW ? from : "reports";
+}
+
 function protoReportBackLabel() {
-  return store.prototypeReportFrom === "downloads" ? "Back to downloads" : "Back to reports";
+  const from = protoReportFromView();
+  if (from === "downloads") return "Back to downloads";
+  return from === PROTO_ALERT_RULES_VIEW ? "Back to alerts" : "Back to reports";
 }
 
 function protoReportPage() {
@@ -8138,7 +8209,7 @@ function protoReportPage() {
           `<div class="astral-detail-head"><div>${protoDetailTitle("Settings", type.blurb)}</div></div>`,
           `<div class="astral-report-fields">
             ${protoReportInput(
-              "Report name",
+              protoReportTabOf(draft.type) === "alerts" ? "Alert name" : "Report name",
               "name",
               draft.name,
               `maxlength="80" placeholder="${escapeHtml(protoReportAutoName(protoReportDraftDef(draft)))}"`
@@ -8158,7 +8229,7 @@ function protoReportPage() {
           <p class="astral-muted astral-report-issue" data-proto-report-issue${issue ? "" : " hidden"}>${escapeHtml(
             issue
           )}</p>
-          ${protoTextBtn("Delete report", `data-proto-report-delete="${escapeHtml(id)}"`, {
+          ${protoTextBtn(protoReportTabOf(draft.type) === "alerts" ? "Delete alert" : "Delete report", `data-proto-report-delete="${escapeHtml(id)}"`, {
             className: "astral-report-delete",
           })}
         </div>
@@ -8402,9 +8473,11 @@ function protoReportTypeFields(draft, opts = {}) {
   }
   if (draft.type === "alert") {
     const absolute = draft.basis === "absolute";
+    const below = draft.direction === "below";
     return `
       ${protoReportSitesSelect(draft)}
       <div class="astral-report-pair">
+        ${protoReportOptionSelect("report-direction", "Alert when use goes", PROTO_REPORT_DIRECTION, draft.direction)}
         ${protoReportField(
           "Threshold",
           protoSelect({
@@ -8419,13 +8492,15 @@ function protoReportTypeFields(draft, opts = {}) {
             })),
           })
         )}
+      </div>
+      <div class="astral-report-pair">
         ${
           absolute
-            ? protoReportInput("Daily use over (kWh)", "amount", draft.amount, 'inputmode="decimal"')
-            : protoReportInput("Above the average by (%)", "percent", draft.percent, 'inputmode="decimal"')
+            ? protoReportInput(`Daily use ${below ? "under" : "over"} (kWh)`, "amount", draft.amount, 'inputmode="decimal"')
+            : protoReportInput(`${below ? "Below" : "Above"} the average by (%)`, "percent", draft.percent, 'inputmode="decimal"')
         }
       </div>
-      ${opts.page ? "" : protoReportRecipientsHtml(draft)}
+      ${protoReportNotifyFields(draft, opts)}
     `;
   }
   return `
@@ -8445,14 +8520,35 @@ function protoReportTypeFields(draft, opts = {}) {
     <p class="astral-muted">Checks every site in ${escapeHtml(
       protoHomeCompany() || "the portfolio"
     )}.</p>
+    ${protoReportNotifyFields(draft, opts)}
+  `;
+}
+
+function protoReportNotifyFields(draft, opts = {}) {
+  return `
+    ${protoReportField(
+      "Tell people",
+      protoSelect({
+        id: "report-notify",
+        label: "Tell people",
+        multi: true,
+        wide: true,
+        values: draft.notify || [],
+        placeholder: "Pick how to tell people",
+        countLabel: "ways",
+        allLabel: "In Astral and email",
+        options: PROTO_REPORT_NOTIFY.map((item) => ({ value: item.id, label: item.name })),
+      })
+    )}
+    <p class="astral-muted">In Astral shows it on Alerts for everyone on the list. Email sends it to them too.</p>
     ${opts.page ? "" : protoReportRecipientsHtml(draft)}
   `;
 }
 
 function protoReportTypePicker(draft) {
   return `
-    <div class="astral-report-types" role="radiogroup" aria-label="Report type">
-      ${PROTO_REPORT_TYPES.map((item) => {
+    <div class="astral-report-types" role="radiogroup" aria-label="${protoReportNewTab() === "alerts" ? "Alert type" : "Report type"}">
+      ${protoReportTypesFor(protoReportNewTab()).map((item) => {
         const on = draft?.type === item.id;
         return `
           <button
@@ -8472,10 +8568,16 @@ function protoReportTypePicker(draft) {
   `;
 }
 
+function protoReportSoonList(tab) {
+  return PROTO_REPORT_SOON.filter((item) => (item.tab || "reports") === tab);
+}
+
 function protoReportSoonTypes() {
+  const list = protoReportSoonList(protoReportNewTab());
+  if (!list.length) return "";
   return `
     <div class="astral-report-types is-soon" role="list" aria-label="Coming soon">
-      ${PROTO_REPORT_SOON.map(
+      ${list.map(
         (item) => `
           <div class="astral-report-type is-soon" role="listitem" aria-disabled="true">
             <span class="astral-report-type-head"><span>${escapeHtml(item.name)}</span>${protoTag(
@@ -8489,10 +8591,12 @@ function protoReportSoonTypes() {
   `;
 }
 
-function protoReportSoonCards() {
+function protoReportSoonCards(tab = "reports") {
+  const list = protoReportSoonList(tab);
+  if (!list.length) return "";
   return `
     <h3 class="astral-report-soon-head">Coming soon</h3>
-    ${PROTO_REPORT_SOON.map(
+    ${list.map(
       (item) => `
         <article class="astral-card astral-report-card is-soon" aria-disabled="true" data-proto-report-soon="${escapeHtml(
           item.id
@@ -8523,13 +8627,16 @@ function protoReportEditModal() {
   const id = protoReportEditId();
   if (id !== "new" || !protoCanEditReports()) return "";
   const isNew = true;
+  const alerts = protoReportNewTab() === "alerts";
   const draft = protoReportDraft();
   const type = draft ? protoReportType(draft.type) : null;
   const issue = protoReportDraftIssue(draft);
   const preview = protoReportDraftPreview(draft);
-  const lead = isNew
-    ? "Pick a type, then say what it covers and who gets it."
-    : `${type?.name || "Report"}. ${type?.blurb || ""}`;
+  const lead = alerts
+    ? "Pick a type, then say what it watches and who hears about it."
+    : isNew
+      ? "Pick a type, then say what it covers and who gets it."
+      : `${type?.name || "Report"}. ${type?.blurb || ""}`;
   return `
     <div class="astral-modal-back" data-proto-modal="report">
       <div
@@ -8542,7 +8649,7 @@ function protoReportEditModal() {
       >
         ${protoModalHead(
           "astral-report-edit-title",
-          isNew ? "Add a report" : "Edit report",
+          isNew ? (alerts ? "Add an alert" : "Add a report") : "Edit report",
           lead,
           "report"
         )}
@@ -8553,7 +8660,7 @@ function protoReportEditModal() {
               draft
                 ? `
                   ${protoReportInput(
-                    "Report name",
+                    protoReportTabOf(draft.type) === "alerts" ? "Alert name" : "Report name",
                     "name",
                     draft.name,
                     `maxlength="80" placeholder="${escapeHtml(protoReportAutoName(protoReportDraftDef(draft)))}"`
@@ -8571,7 +8678,7 @@ function protoReportEditModal() {
               issue && draft ? "" : " hidden"
             }>${escapeHtml(issue)}</p>
             <div class="astral-actions">
-              ${protoBtn(isNew ? "Add report" : "Save changes", "", {
+              ${protoBtn(isNew ? (alerts ? "Add alert" : "Add report") : "Save changes", "", {
                 type: "submit",
                 disabled: Boolean(issue),
               })}
@@ -8643,8 +8750,11 @@ function protoReportOpenEdit(id) {
   const def = id === "new" ? null : protoReportDef(id);
   if (id !== "new" && !def) return;
   const view = protoState().view;
+  const from = view === "downloads" || view === PROTO_ALERT_RULES_VIEW ? view : "reports";
+  const tab = def ? protoReportTabOf(def.type) : from === PROTO_ALERT_RULES_VIEW ? "alerts" : "reports";
   setProto({
     prototypeReportEdit: id,
+    prototypeReportFrom: from,
     prototypeReportDraft: def ? protoReportDraftFrom(def) : null,
     prototypeReportDraftStart: def ? def.start : protoFormatUkDate(protoToday()),
     prototypeReportDraftFrom: def ? def.from : "",
@@ -8657,8 +8767,7 @@ function protoReportOpenEdit(id) {
     prototypeSelectOpen: "",
     ...(def
       ? {
-          prototypeReportFrom: view === "downloads" ? "downloads" : "reports",
-          activePrototypeView: "reports",
+          activePrototypeView: tab === "alerts" ? PROTO_ALERT_RULES_VIEW : "reports",
         }
       : {}),
   });
@@ -8669,12 +8778,12 @@ function protoReportOpenEdit(id) {
   protoRestoreFocus(
     def
       ? '#astral-fs input[name="proto-report-name"]'
-      : '#astral-fs [data-proto-report-type="extract"]'
+      : `#astral-fs [data-proto-report-type="${protoReportTypesFor(tab)[0].id}"]`
   );
 }
 
 function protoReportLeave(patch = {}) {
-  const from = store.prototypeReportFrom === "downloads" ? "downloads" : "reports";
+  const from = protoReportFromView();
   const page = protoReportPageOpen();
   setProto({
     ...protoReportEditClear(),
@@ -9106,7 +9215,7 @@ function protoRailIcon(id) {
   if (id === "finance") return "rates";
   if (id === "alerts") return "warning";
   if (id === "queries") return "comment";
-  if (id === "reports" || id === "downloads") return "report";
+  if (id === "reports" || id === "downloads" || id === PROTO_ALERT_RULES_VIEW) return "report";
   if (id === "profile" || id === "settings" || id === "users") return id;
   if (id === "companies") return "companies";
   if (id === "servicing" || id === "inbox") return id;
@@ -9286,7 +9395,7 @@ function protoBackLink(label, attrs) {
 }
 
 function protoReportsArea(view) {
-  return view === "reports" || view === "downloads";
+  return view === "reports" || view === "downloads" || view === PROTO_ALERT_RULES_VIEW;
 }
 
 function protoReportsDownloadsTabs(active) {
@@ -9294,24 +9403,29 @@ function protoReportsDownloadsTabs(active) {
   return protoTabs(
     [
       { id: "reports", name: "Reports" },
+      { id: PROTO_ALERT_RULES_VIEW, name: "Alerts" },
       { id: "downloads", name: "Downloads" },
     ],
     active,
     "data-proto-view",
-    "Reports or Downloads"
+    "Reports, Alerts or Downloads"
   );
 }
 
 function protoReportsAreaHead(active) {
+  const open = protoReportEditId() === "new" ? "true" : "false";
   const addBtn =
     active === "reports" && protoCanAddReports()
       ? protoBtn(
           "Add a report",
-          `data-proto-report-edit="new" aria-haspopup="dialog" aria-expanded="${
-            protoReportEditId() === "new" ? "true" : "false"
-          }" aria-controls="astral-report-edit"`
+          `data-proto-report-edit="new" aria-haspopup="dialog" aria-expanded="${open}" aria-controls="astral-report-edit"`
         )
-      : "";
+      : active === PROTO_ALERT_RULES_VIEW && protoCanAddReports()
+        ? protoBtn(
+            "Add an alert",
+            `data-proto-report-edit="new" aria-haspopup="dialog" aria-expanded="${open}" aria-controls="astral-report-edit"`
+          )
+        : "";
   return `
     <header class="astral-page-head astral-page-tools">
       <div>
@@ -15209,7 +15323,7 @@ function protoReportCard(def) {
       <p>${escapeHtml(protoReportSummary(def))}</p>
       <div class="astral-actions"${canEdit ? ` data-proto-report-toggle="${id}"` : ""}>
         <span class="astral-report-wait">${protoReportStatusHtml(def)}</span>
-        ${canEdit ? protoIconBtn("settings", "Edit report", `data-proto-report-edit="${id}"`) : ""}
+        ${canEdit ? protoIconBtn("settings", protoReportTabOf(def.type) === "alerts" ? "Edit alert" : "Edit report", `data-proto-report-edit="${id}"`) : ""}
         ${
           canEdit
             ? `<button
@@ -15228,20 +15342,34 @@ function protoReportCard(def) {
 
 function protoReports() {
   if (protoReportPageOpen()) return protoReportPage();
-  const defs = protoReportDefs();
+  const defs = protoReportDefs().filter((def) => protoReportTabOf(def.type) === "reports");
   const empty = protoCanAddReports()
-    ? `<h3>No reports yet</h3><p class="astral-muted">Add a data extract, DC and DA report, tenant bill, data alert or missing data alert.</p>`
+    ? `<h3>No reports yet</h3><p class="astral-muted">Add a data extract, DC and DA report, or tenant bill.</p>`
     : `<h3>No reports yet</h3><p class="astral-muted">Reports your admin sets up show here.</p>`;
+  return protoReportsSheet("reports", defs, empty);
+}
+
+function protoAlertRules() {
+  if (protoReportPageOpen()) return protoReportPage();
+  const defs = protoReportDefs().filter((def) => protoReportTabOf(def.type) === "alerts");
+  const empty = protoCanAddReports()
+    ? `<h3>No alerts yet</h3><p class="astral-muted">Add a data alert or a missing data alert.</p>`
+    : `<h3>No alerts yet</h3><p class="astral-muted">Alerts your admin sets up show here.</p>`;
+  return protoReportsSheet(PROTO_ALERT_RULES_VIEW, defs, empty);
+}
+
+function protoReportsSheet(active, defs, empty) {
+  const tab = active === PROTO_ALERT_RULES_VIEW ? "alerts" : "reports";
   return astralShell(`
-    ${protoReportsAreaHead("reports")}
+    ${protoReportsAreaHead(active)}
     ${protoReportNoticeHtml()}
     ${protoReportEditModal()}
     ${
       defs.length
-        ? `<section class="astral-card astral-reports-sheet">${protoReportsCardTabs("reports")}<div class="astral-report-grid">${defs
+        ? `<section class="astral-card astral-reports-sheet">${protoReportsCardTabs(active)}<div class="astral-report-grid">${defs
             .map((def) => protoReportCard(def))
-            .join("")}${protoReportSoonCards()}</div></section>`
-        : `<section class="astral-card astral-reports-sheet">${protoReportsCardTabs("reports")}<div class="astral-empty">${empty}</div></section>`
+            .join("")}${protoReportSoonCards(tab)}</div></section>`
+        : `<section class="astral-card astral-reports-sheet">${protoReportsCardTabs(active)}<div class="astral-empty">${empty}</div></section>`
     }
   `);
 }
@@ -18438,6 +18566,7 @@ function protoApp() {
   if (view === "queries") return protoQueries();
   if (view === "reports") return protoReports();
   if (view === "downloads") return protoDownloadsPage();
+  if (view === PROTO_ALERT_RULES_VIEW) return protoAlertRules();
   if (view === "profile") return protoProfile();
   if (view === "settings") return protoSettings();
   if (view === "users") return protoUsers();
