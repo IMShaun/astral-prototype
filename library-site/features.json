@@ -121,7 +121,7 @@
             {
               "given": "I open Filter on the tree",
               "when": "the overlay shows",
-              "then": "I can tick Tenant owned, Electricity, Gas, Water, In, and Out"
+              "then": "I can tick Electricity, Gas, Water, In, and Out"
             },
             {
               "given": "the overlay is open",

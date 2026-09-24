@@ -155,14 +155,16 @@ function protoAvatarBtn(text, label = "Account") {
 function protoTabs(items, active, attr, aria) {
   const list = items || [];
   const hit = attr || "data-proto-pane";
+  const lead = list.some((item) => item.id === active) ? active : list[0]?.id;
   return `
     <div class="astral-tabs" role="tablist"${aria ? ` aria-label="${protoEsc(aria)}"` : ""}>
       ${list
         .map((item) => {
           const on = item.id === active;
+          const reach = item.id === lead ? "0" : "-1";
           return `<button type="button" role="tab" class="${on ? "is-on" : ""}" ${hit}="${protoEsc(
             item.id
-          )}" aria-selected="${on ? "true" : "false"}">${protoEsc(item.name)}</button>`;
+          )}" aria-selected="${on ? "true" : "false"}" tabindex="${reach}">${protoEsc(item.name)}</button>`;
         })
         .join("")}
     </div>
@@ -260,6 +262,13 @@ function protoFilterShell(config) {
   const active = open || n > 0;
   const label = n ? `Filter, ${n}` : "Filter";
   const extra = config.extraClass ? ` ${config.extraClass}` : "";
+  const clear = config.clear
+    ? `<div class="astral-filter-foot">${protoTextBtn(
+        "Clear all",
+        `role="menuitem" ${config.clear}${config.canClear ? "" : ' aria-disabled="true"'}`,
+        { disabled: !config.canClear }
+      )}</div>`
+    : "";
   return `
     <div class="astral-filter${extra}">
       ${protoIconBtn("filter", label, `${config.hit} aria-haspopup="menu" aria-expanded="${
@@ -275,7 +284,7 @@ function protoFilterShell(config) {
         role="menu"
         aria-label="Filter"
         ${open ? "" : "hidden"}
-      >${config.menu || ""}</div>
+      >${config.menu || ""}${clear}</div>
     </div>
   `;
 }

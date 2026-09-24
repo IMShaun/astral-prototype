@@ -17,11 +17,6 @@ const PROTO_ALERT_FACETS = [
 
 const PROTO_TREE_FILTERS = [
   {
-    id: "owned",
-    name: "Ownership",
-    items: [{ id: "tenant", name: "Tenant owned" }],
-  },
-  {
     id: "meter",
     name: "Utility type",
     items: [
@@ -40,7 +35,7 @@ const PROTO_TREE_FILTERS = [
   },
 ];
 const PROTO_PANE_FILTERS = [
-  ...PROTO_TREE_FILTERS.filter((group) => group.id !== "owned"),
+  ...PROTO_TREE_FILTERS,
   {
     id: "hours",
     name: "Hours",
@@ -8273,7 +8268,7 @@ function astralNav(state) {
       <header class="astral-nav${state.signedOut ? " is-out" : ""}">
         <p class="astral-brand">
           ${protoBrandMark()}
-          <span>Astral</span>
+          <span class="astral-brand-name">Astral</span>
         </p>
         ${account}
       </header>
@@ -9581,10 +9576,6 @@ function protoPickedInGroup(picked, groupId) {
   return protoFilterItemIds(groupId).filter((id) => picked.includes(id));
 }
 
-function protoMeterIsTenant(meter) {
-  return meter?.owned === "tenant";
-}
-
 function protoPickedPasses(picked, flags, meters) {
   const ids = Array.isArray(picked) ? picked : [];
   if (ids.includes("__none__")) return false;
@@ -9595,14 +9586,6 @@ function protoPickedPasses(picked, flags, meters) {
     if (!hit) return false;
   }
   if (!ids.length) return true;
-  const owned = protoPickedInGroup(ids, "owned");
-  if (owned.length) {
-    const hit = owned.some((id) => {
-      if (id === "tenant") return list.some(protoMeterIsTenant);
-      return false;
-    });
-    if (!hit) return false;
-  }
   const flow = protoPickedInGroup(ids, "flow");
   if (flow.length) {
     const hit = list.some((item) => {
@@ -9679,11 +9662,10 @@ function protoFilterPool(attr) {
   return protoFilterPoolCache.get(attr);
 }
 
-const PROTO_FILTER_COUNTED = new Set(["electricity", "gas", "water", "tenant", "in", "out"]);
+const PROTO_FILTER_COUNTED = new Set(["electricity", "gas", "water", "in", "out"]);
 
 function protoFilterMeterHit(id, meter) {
   if (id === "electricity" || id === "gas" || id === "water") return protoMeterKind(meter) === id;
-  if (id === "tenant") return protoMeterIsTenant(meter);
   if (id === "out") return meter.direction === "Export";
   if (id === "in") return meter.direction !== "Export";
   return null;
@@ -10064,6 +10046,8 @@ function protoTreeFilterControl() {
     open,
     count: picked.length,
     menuId: "astral-tree-filter-menu",
+    clear: 'data-proto-tree-filter="clear"',
+    canClear: picked.length > 0,
     menu: protoFilterTickGroups(picked, "data-proto-tree-filter"),
   });
 }
@@ -10076,6 +10060,12 @@ function protoPaneFilterControl() {
     open,
     count: picked.length,
     menuId: "astral-pane-filter-menu",
+    clear: 'data-proto-pane-filter="clear"',
+    canClear:
+      picked.length > 0 ||
+      protoPaneMeterKindIds() !== null ||
+      protoChartFlowIds().length !== 2 ||
+      (store.prototypeChartSliceOff || []).length > 0,
     menu: protoFilterTickGroups(picked, "data-proto-pane-filter", PROTO_PANE_FILTERS),
   });
 }
@@ -10163,6 +10153,8 @@ function protoCompareFilterControl() {
     open,
     count: protoCompareFilterCount(),
     menuId: "astral-compare-filter-menu",
+    clear: 'data-proto-compare-filter="clear"',
+    canClear: protoCompareFilterCount() > 0,
     extraClass: "astral-compare-filter",
     menu: `${protoFilterTickGroups(picked, "data-proto-compare-filter")}
       ${protoFilterSection(
@@ -11226,6 +11218,8 @@ function protoDownloadFilterControl() {
     open: protoDownloadFilterOpen(),
     count: picked.length,
     menuId: "astral-download-filter-menu",
+    clear: 'data-proto-download-filter="clear"',
+    canClear: picked.length > 0,
     menu: protoFilterTickGroups(picked, "data-proto-download-filter", PROTO_DOWNLOAD_FILTERS),
   });
 }
@@ -11256,8 +11250,6 @@ function protoDownloadFilterPills() {
   `;
 }
 
-const PROTO_EXPORT_NOTICE_MS = 10000;
-
 function protoExportNoticeFrom(raw, downloads) {
   if (!raw || typeof raw !== "object") return null;
   const kind = raw.kind === "pdf" ? "pdf" : raw.kind === "csv" ? "csv" : "";
@@ -11266,7 +11258,6 @@ function protoExportNoticeFrom(raw, downloads) {
   const rows = Array.isArray(downloads) ? downloads : [];
   if (!rows.some((item) => item.id === id)) return null;
   const shownAt = Number(raw.shownAt) || Date.now();
-  if (Date.now() - shownAt >= PROTO_EXPORT_NOTICE_MS) return null;
   return { kind, id, shownAt };
 }
 
@@ -11337,21 +11328,9 @@ function protoClearExportNoticeTimer() {
   protoExportNoticeArmedId = "";
 }
 
-function protoArmExportNoticeTimer(notice) {
-  if (!notice) {
-    protoClearExportNoticeTimer();
-    return;
-  }
-  if (protoExportNoticeArmedId === notice.id && protoExportNoticeTimer) return;
+// The banner stays until Hide. A timed hide fails WCAG 2.2.1, and the file is on Downloads.
+function protoArmExportNoticeTimer() {
   protoClearExportNoticeTimer();
-  protoExportNoticeArmedId = notice.id;
-  const wait = Math.max(0, PROTO_EXPORT_NOTICE_MS - (Date.now() - Number(notice.shownAt || 0)));
-  protoExportNoticeTimer = window.setTimeout(() => {
-    protoExportNoticeTimer = 0;
-    protoExportNoticeArmedId = "";
-    const current = store.prototypeExportNotice;
-    if (current && current.id === notice.id) setProto({ prototypeExportNotice: null });
-  }, wait);
 }
 
 function protoExportNotice() {
@@ -14683,6 +14662,8 @@ function protoUserRoleFilterControl() {
     open: protoUserRoleFilterOpen(),
     count: picked.length,
     menuId: "astral-user-filter-menu",
+    clear: 'data-proto-user-filter="clear"',
+    canClear: picked.length > 0,
     menu: protoFilterTickGroups(picked, "data-proto-user-filter", protoUserFilterGroups()),
   });
 }
@@ -20401,6 +20382,7 @@ function onPrototype(event) {
       setProto({
         prototypePaneFilters: [],
         prototypePaneMeterKinds: null,
+        prototypeChartFlows: ["in", "out"],
         prototypeChartSliceOff: [],
         prototypePaneFilterOpen: false,
       });
@@ -21890,3 +21872,182 @@ if (protoClassicScrollbars()) {
   );
   document.addEventListener("pointerleave", () => protoScrollNearAt(-1, -1));
 }
+
+/* Keyboard contract. Menus move with Up, Down, Home and End. Opening a menu from the
+   keyboard lands on the first item. Escape closes it and puts focus back on the button
+   that opened it. Tabs move with Left, Right, Home and End and select as they move.
+   A layer with aria-modal keeps Tab inside it. Escape hides a tooltip first. */
+const PROTO_LAYER = '[role="menu"], [role="dialog"], [role="listbox"], .astral-float-menu, .astral-select-menu, .astral-date-menu, .astral-filter-menu, .astral-export-menu, .astral-ack-menu, .astral-day-cal-menu, .astral-picker';
+const PROTO_FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+let protoKeyOrigin = "";
+
+function protoKeyShown(el) {
+  return Boolean(el && el.isConnected && !el.closest("[hidden]") && el.getClientRects().length);
+}
+
+function protoKeySig(el) {
+  if (!(el instanceof Element) || el === document.body) return "";
+  if (el.id) return `#${CSS.escape(el.id)}`;
+  const parts = [...el.attributes]
+    .filter((a) => /^data-/.test(a.name) || a.name === "aria-label" || a.name === "aria-controls" || a.name === "name" || a.name === "role")
+    .map((a) => `[${a.name}="${CSS.escape(a.value)}"]`);
+  return parts.length ? el.tagName.toLowerCase() + parts.join("") : "";
+}
+
+function protoKeyItems(menu) {
+  return [...menu.querySelectorAll('[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]')].filter(
+    (el) => protoKeyShown(el) && !el.disabled && el.getAttribute("aria-disabled") !== "true"
+  );
+}
+
+function protoKeyBack(sig) {
+  if (!sig) return;
+  window.setTimeout(() => {
+    const now = document.activeElement;
+    if (now && now !== document.body && now.isConnected && protoKeyShown(now)) return;
+    const next = document.querySelector(sig);
+    if (next && protoKeyShown(next)) next.focus({ preventScroll: true });
+  }, 40);
+}
+
+function protoKeyOpenFirst(trigger) {
+  const id = trigger.getAttribute("aria-controls");
+  window.setTimeout(() => {
+    const menu = id ? document.getElementById(id) : null;
+    if (!menu || !protoKeyShown(menu)) return;
+    const first = protoKeyItems(menu)[0];
+    if (first) first.focus({ preventScroll: true });
+  }, 40);
+}
+
+function protoKeyTip(event) {
+  const tips = [...document.querySelectorAll("#astral-fs .astral-icon-tip")].filter((tip) => {
+    if (!protoKeyShown(tip)) return false;
+    const look = getComputedStyle(tip);
+    return look.visibility === "visible" && Number(look.opacity) > 0.05;
+  });
+  if (!tips.length) return false;
+  tips.forEach((tip) => {
+    tip.classList.add("is-tip-off");
+    const host = tip._protoHost || tip.closest(".astral-tip-host, .astral-person.is-tip");
+    if (!host) return;
+    host.classList.add("is-tip-off");
+    const clear = () => {
+      host.classList.remove("is-tip-off");
+      tip.classList.remove("is-tip-off");
+      host.removeEventListener("pointerleave", clear);
+      host.removeEventListener("focusout", clear);
+    };
+    host.addEventListener("pointerleave", clear);
+    host.addEventListener("focusout", clear);
+  });
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  return true;
+}
+
+function protoKeyTrap(event) {
+  const layers = [...document.querySelectorAll('#astral-fs [aria-modal="true"]')].filter(protoKeyShown);
+  const layer = layers[layers.length - 1];
+  if (!layer) return;
+  const list = [...layer.querySelectorAll(PROTO_FOCUSABLE)].filter(protoKeyShown);
+  if (!list.length) return;
+  const first = list[0];
+  const last = list[list.length - 1];
+  const at = document.activeElement;
+  if (!layer.contains(at)) {
+    event.preventDefault();
+    first.focus();
+  } else if (event.shiftKey && at === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && at === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+function protoKeyTabs(event, tab) {
+  const list = tab.closest('[role="tablist"]');
+  if (!list) return;
+  const tabs = [...list.querySelectorAll('[role="tab"]')].filter((el) => protoKeyShown(el) && !el.disabled);
+  const at = tabs.indexOf(tab);
+  if (at < 0) return;
+  let next = at;
+  if (event.key === "ArrowRight") next = (at + 1) % tabs.length;
+  if (event.key === "ArrowLeft") next = (at - 1 + tabs.length) % tabs.length;
+  if (event.key === "Home") next = 0;
+  if (event.key === "End") next = tabs.length - 1;
+  event.preventDefault();
+  const sig = protoKeySig(tabs[next]);
+  tabs[next].focus();
+  if (tabs[next].getAttribute("aria-selected") !== "true") tabs[next].click();
+  window.setTimeout(() => {
+    const again = sig && document.querySelector(sig);
+    if (again && document.activeElement !== again) again.focus({ preventScroll: true });
+  }, 40);
+}
+
+function protoKeyMenu(event, menu) {
+  const items = protoKeyItems(menu);
+  if (!items.length) return;
+  const at = items.indexOf(event.target.closest('[role^="menuitem"]'));
+  let next = at;
+  if (event.key === "ArrowDown") next = at < 0 ? 0 : (at + 1) % items.length;
+  if (event.key === "ArrowUp") next = at < 0 ? items.length - 1 : (at - 1 + items.length) % items.length;
+  if (event.key === "Home") next = 0;
+  if (event.key === "End") next = items.length - 1;
+  event.preventDefault();
+  items[next].focus();
+}
+
+document.addEventListener(
+  "focusin",
+  (event) => {
+    const el = event.target;
+    if (!(el instanceof Element) || !el.closest("#astral-fs") || el.closest(PROTO_LAYER)) return;
+    protoKeyOrigin = protoKeySig(el);
+  },
+  true
+);
+
+document.addEventListener(
+  "keydown",
+  (event) => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const el = event.target;
+    if (!(el instanceof Element) || !el.closest("#astral-fs")) return;
+    if (!el.closest(PROTO_LAYER)) protoKeyOrigin = protoKeySig(el) || protoKeyOrigin;
+    if (event.key === "Escape") {
+      if (protoKeyTip(event)) return;
+      if (el.closest(PROTO_LAYER)) protoKeyBack(protoKeyOrigin);
+      return;
+    }
+    if (event.key === "Tab") {
+      protoKeyTrap(event);
+      return;
+    }
+    const menu = el.closest('[role="menu"]');
+    if (menu && ["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+      protoKeyMenu(event, menu);
+      return;
+    }
+    const tab = el.closest('[role="tab"]');
+    if (tab && ["ArrowRight", "ArrowLeft", "Home", "End"].includes(event.key)) {
+      protoKeyTabs(event, tab);
+      return;
+    }
+    const trigger = el.closest('[aria-haspopup="menu"]');
+    if (!trigger) return;
+    if (event.key === "ArrowDown" && trigger.getAttribute("aria-expanded") !== "true") {
+      event.preventDefault();
+      trigger.click();
+      protoKeyOpenFirst(trigger);
+    } else if ((event.key === "Enter" || event.key === " ") && trigger.getAttribute("aria-expanded") !== "true") {
+      protoKeyOpenFirst(trigger);
+    }
+  },
+  true
+);
+

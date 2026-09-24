@@ -72,6 +72,7 @@
   --color-icon-success: #067647;
   --color-icon-warning: #b54708;
   --scrollbar-size: 12px;
+  --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 16px;
@@ -1714,7 +1715,7 @@ button.chip {
 .astral-field textarea {
   min-height: 36px;
   padding: 8px 12px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: var(--radius-button);
   background: #fff;
   color: #000;
@@ -3402,7 +3403,7 @@ body.is-proto-fs .stage {
   filter: brightness(0);
 }
 
-.astral-brand span {
+.astral-brand-name {
   padding-left: 16px;
   border-left: 1px solid rgba(255, 255, 255, 0.2);
   font-weight: 500;
@@ -3626,10 +3627,6 @@ body.is-proto-fs .stage {
   gap: var(--space-8);
 }
 
-.astral-account {
-  justify-self: end;
-}
-
 .astral-tools {
   justify-content: flex-end;
   flex-wrap: nowrap;
@@ -3708,7 +3705,7 @@ body.is-proto-fs .stage {
   min-height: var(--control-height-sm);
   padding: 0 14px;
   border-radius: var(--radius-button);
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   background: none;
   color: #000;
 }
@@ -3749,7 +3746,7 @@ body.is-proto-fs .stage {
   height: 24px;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: 999px;
   background: #fff;
   cursor: pointer;
@@ -3796,7 +3793,7 @@ body.is-proto-fs .stage {
   min-height: var(--control-height-sm);
   padding: 0 14px;
   border-radius: var(--radius-button);
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   background: var(--color-background-surface);
   color: #000;
   width: max-content;
@@ -3811,7 +3808,7 @@ body.is-proto-fs .stage {
   height: var(--control-height-sm);
   min-height: var(--control-height-sm);
   padding: 0;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: var(--radius-button);
   background: var(--color-background-surface);
   color: #000;
@@ -3901,8 +3898,11 @@ body.is-proto-fs .stage {
   font: inherit;
   font-size: 0.8rem;
   font-weight: 600;
-  cursor: pointer;
   overflow: hidden;
+}
+
+button.astral-avatar {
+  cursor: pointer;
 }
 
 .astral-avatar.has-photo {
@@ -4303,7 +4303,7 @@ body.is-proto-fs .stage {
   min-height: var(--control-height-sm);
   min-width: 16rem;
   padding: 0 var(--space-16);
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: var(--radius-button);
   background: #fff;
   color: #000;
@@ -4785,6 +4785,7 @@ body.is-proto-fs .stage {
 .astral-stat:hover,
 .astral-home-card:hover,
 .astral-home-chart[data-proto-home-go]:hover,
+.astral-home-chart.is-link:hover,
 .astral-catch:hover {
   background: var(--color-background-hover);
 }
@@ -4805,7 +4806,9 @@ body.is-proto-fs .stage {
 }
 
 .astral-home-chart[data-proto-home-go],
-.astral-home-chart[data-proto-home-go] * {
+.astral-home-chart[data-proto-home-go] *,
+.astral-home-chart.is-link,
+.astral-home-chart.is-link * {
   cursor: pointer;
 }
 
@@ -4984,7 +4987,7 @@ button.astral-catch {
   align-items: center;
   gap: 2px;
   padding: 4px 4px 4px 10px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: 999px;
   background: #fff;
   color: #000;
@@ -5199,7 +5202,7 @@ button.astral-catch {
 .astral-search input {
   width: 100%;
   min-height: var(--control-height-sm);
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: var(--radius-button);
   padding: 0 var(--space-16);
   background: #fff;
@@ -5572,7 +5575,7 @@ button.astral-catch {
   padding: var(--space-4);
   align-self: start;
   position: relative;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: 999px;
   background: #fff;
   overflow-x: auto;
@@ -5946,7 +5949,7 @@ button.astral-catch {
 .astral-select-btn {
   min-height: var(--control-height-sm);
   padding: 0 12px 0 14px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: var(--radius-button);
   background: var(--color-background-surface);
   color: #000;
@@ -6080,7 +6083,7 @@ button.astral-catch {
   gap: 6px;
   min-height: 24px;
   padding: 2px 8px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: 999px;
   color: #000;
   background: #fff;
@@ -6160,7 +6163,7 @@ button.astral-flow-pill {
   gap: 4px;
   min-height: 24px;
   padding: 3px 7px 3px 5px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: 999px;
   background: #fff;
   font-size: 0.8rem;
@@ -6245,7 +6248,7 @@ button.astral-state {
 .astral-check {
   width: 16px;
   height: 16px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: 2px;
   box-sizing: border-box;
   flex: none;
@@ -6536,7 +6539,7 @@ button.astral-state {
   align-items: stretch;
   min-width: 0;
   height: var(--control-height-sm);
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: var(--radius-button);
   background: #fff;
   overflow: hidden;
@@ -6579,7 +6582,7 @@ button.astral-state {
   flex: none;
   align-items: center;
   padding: 0 12px;
-  border-left: 1px solid var(--color-border-strong);
+  border-left: 1px solid var(--color-border-control);
   background: var(--color-background-subtle);
   color: var(--color-text-secondary);
   font-size: 0.875rem;
@@ -6885,7 +6888,7 @@ button.astral-state {
   width: 100%;
   max-width: none;
   padding: 0 12px 0 14px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: var(--radius-button);
   background: var(--color-background-surface);
   white-space: nowrap;
@@ -6986,6 +6989,34 @@ button.astral-state {
   color: var(--color-text-secondary);
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+/* Clear all sits in a footer that stays in view while the groups scroll. */
+.astral-filter-foot {
+  position: sticky;
+  bottom: -8px;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  margin: 4px -8px -8px;
+  padding: 4px 8px;
+  border-top: 1px solid var(--color-border-default);
+  background: var(--color-background-surface);
+}
+
+.astral-filter-menu .astral-filter-foot .astral-text {
+  width: max-content;
+  min-height: var(--control-height-sm);
+  padding: 0 12px;
+  border-radius: var(--radius-button);
+  font-weight: var(--font-weight-semibold);
+}
+
+.astral-filter-menu .astral-filter-foot .astral-text:disabled,
+.astral-filter-menu .astral-filter-foot .astral-text:disabled:hover {
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -7471,7 +7502,7 @@ button.astral-state {
   min-height: var(--control-height-sm);
   width: 100%;
   padding: 0 var(--space-16);
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: var(--radius-button);
   background: #fff;
   color: #000;
@@ -7723,7 +7754,7 @@ button.astral-state {
 
 .astral-chart-key .astral-meter-pill.is-on {
   background: var(--slice, #fff);
-  border-color: var(--slice, var(--color-border-strong));
+  border-color: var(--slice, var(--color-border-control));
   color: var(--slice-ink, #000);
 }
 
@@ -7764,7 +7795,7 @@ button.astral-state {
   width: 10px;
   height: 10px;
   border: 1px solid #000;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   box-sizing: border-box;
 }
 
@@ -7905,7 +7936,7 @@ button.astral-state {
   min-width: 0;
   min-height: 36px;
   padding: 3px 4px 3px 12px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: 24px;
   background: #fff;
 }
@@ -7952,7 +7983,7 @@ button.astral-state {
   height: 28px;
   min-height: 28px;
   padding: 0;
-  border: 1px solid var(--color-border-default);
+  border: 1px solid var(--color-border-control);
   border-radius: 50%;
   background: var(--color-background-subtle);
   color: #000;
@@ -8746,19 +8777,23 @@ button.astral-state {
   border: 0;
 }
 
-.astral-breakdown-cols tbody tr[data-proto-hit] {
+.astral-breakdown-cols tbody tr[data-proto-hit],
+.astral-breakdown-cols tbody tr.is-link {
   cursor: pointer;
 }
 
-.astral-breakdown-cols tbody tr[data-proto-hit]:hover {
+.astral-breakdown-cols tbody tr[data-proto-hit]:hover,
+.astral-breakdown-cols tbody tr.is-link:hover {
   background: var(--color-background-hover);
 }
 
-.astral-breakdown-cols tbody tr[data-proto-hit].is-on {
+.astral-breakdown-cols tbody tr[data-proto-hit].is-on,
+.astral-breakdown-cols tbody tr.is-link.is-on {
   background: var(--color-background-subtle);
 }
 
-.astral-breakdown-cols tbody tr[data-proto-hit]:focus-visible {
+.astral-breakdown-cols tbody tr[data-proto-hit]:focus-visible,
+.astral-breakdown-cols tbody tr.is-link:focus-visible {
   outline: 2px solid #000;
   outline-offset: -2px;
 }
@@ -8789,11 +8824,13 @@ button.astral-state {
   background: #fff;
 }
 
-.astral-breakdown-cols.is-meters tbody tr[data-proto-hit]:hover th {
+.astral-breakdown-cols.is-meters tbody tr[data-proto-hit]:hover th,
+.astral-breakdown-cols.is-meters tbody tr.is-link:hover th {
   background: var(--color-background-hover);
 }
 
-.astral-breakdown-cols.is-meters tbody tr[data-proto-hit].is-on th {
+.astral-breakdown-cols.is-meters tbody tr[data-proto-hit].is-on th,
+.astral-breakdown-cols.is-meters tbody tr.is-link.is-on th {
   background: var(--color-background-subtle);
 }
 
@@ -8974,8 +9011,8 @@ button.astral-state {
   opacity: 0.22;
 }
 
-.astral-sort.is-asc .astral-sort-up,
-.astral-sort.is-desc .astral-sort-down {
+.astral-sort.is-on.is-asc .astral-sort-up,
+.astral-sort.is-on.is-desc .astral-sort-down {
   opacity: 1;
 }
 
@@ -8983,7 +9020,8 @@ button.astral-state {
 .astral-table tbody tr[data-proto-meter-open],
 .astral-table tbody tr[data-proto-site],
 .astral-table tbody tr[data-proto-query-open],
-.astral-table tbody tr[data-proto-see-as-company] {
+.astral-table tbody tr[data-proto-see-as-company],
+.astral-table tbody tr.is-link {
   cursor: pointer;
 }
 
@@ -8992,12 +9030,14 @@ button.astral-state {
 .astral-table tbody tr[data-proto-site]:hover,
 .astral-table tbody tr[data-proto-query-open]:hover,
 .astral-table tbody tr[data-proto-see-as-company]:hover,
+.astral-table tbody tr.is-link:hover,
 .astral-downloads .astral-table tbody tr:has([scope="row"]):hover,
 .astral-downloads .astral-table tbody tr:has([scope="row"]):focus-within {
   background: var(--color-background-hover);
 }
 
-.astral-table tbody tr[data-proto-query-open].is-on {
+.astral-table tbody tr[data-proto-query-open].is-on,
+.astral-table tbody tr.is-link.is-on {
   background: var(--color-background-subtle);
 }
 
@@ -9111,8 +9151,8 @@ button.astral-state {
 }
 
 .astral-tag.is-point {
-  background: var(--tag-fill);
-  color: var(--tag-ink);
+  background: var(--tag-fill, var(--color-background-subtle));
+  color: var(--tag-ink, var(--color-text-primary));
 }
 
 .astral-people {
@@ -9439,7 +9479,8 @@ button.astral-state {
 .astral-modal[data-proto-user-form],
 .astral-modal[data-proto-compare],
 .astral-modal[data-proto-team-form],
-.astral-modal[data-proto-renew-form] {
+.astral-modal[data-proto-renew-form],
+.astral-modal.is-narrow {
   width: min(28rem, 100%);
 }
 
@@ -9455,13 +9496,15 @@ button.astral-state {
 
 .astral-modal[data-proto-user-form],
 .astral-modal[data-proto-team-form],
-.astral-modal[data-proto-report-people-form] {
+.astral-modal[data-proto-report-people-form],
+.astral-modal.has-menus {
   overflow: visible;
 }
 
 .astral-modal[data-proto-user-form] .astral-modal-body,
 .astral-modal[data-proto-team-form] .astral-modal-body,
-.astral-modal[data-proto-report-people-form] .astral-modal-body {
+.astral-modal[data-proto-report-people-form] .astral-modal-body,
+.astral-modal.has-menus .astral-modal-body {
   overflow: visible;
   position: relative;
   z-index: 3;
@@ -9728,7 +9771,7 @@ button.astral-state {
   width: 100%;
   min-height: var(--control-height-sm);
   padding: 0 var(--space-16);
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: var(--radius-button);
   background: #fff;
   color: #000;
@@ -9766,7 +9809,8 @@ button.astral-state {
   max-width: 20rem;
 }
 
-.astral-card [data-proto-profile] .astral-profile-fields {
+.astral-card [data-proto-profile] .astral-profile-fields,
+.astral-card .astral-profile-form .astral-profile-fields {
   max-width: none;
 }
 
@@ -9781,7 +9825,8 @@ button.astral-state {
   min-width: 0;
 }
 
-.astral-card [data-proto-profile] {
+.astral-card [data-proto-profile],
+.astral-card .astral-profile-form {
   display: grid;
   gap: var(--space-16);
 }
@@ -9828,7 +9873,7 @@ button.astral-state {
   gap: 8px;
   margin: 0;
   padding: 8px 12px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: var(--radius-button);
   background: var(--color-background-surface);
   color: #000;
@@ -9865,7 +9910,7 @@ button.astral-state {
   min-height: var(--control-height-sm);
   width: 100%;
   padding: 0 var(--space-16);
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: var(--radius-button);
   background: #fff;
   color: #000;
@@ -10039,7 +10084,7 @@ button.astral-state {
   min-height: 48px;
   width: 100%;
   padding: 0;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: 8px;
   background: var(--color-background-subtle);
   color: #000;
@@ -10305,7 +10350,7 @@ button.astral-state {
   width: 7.25rem;
   min-height: var(--control-height-sm);
   padding: 0 14px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: var(--radius-button);
   background: #fff;
   color: #000;
@@ -10415,7 +10460,7 @@ button.astral-state {
   max-width: 100%;
   min-height: var(--control-height-sm);
   padding: 0 14px;
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border-control);
   border-radius: var(--radius-button);
   background: #fff;
   color: #000;
@@ -10562,6 +10607,7 @@ button.astral-state:focus-visible,
 .astral-stat:focus-visible,
 .astral-home-card:focus-visible,
 .astral-home-chart[data-proto-home-go]:focus-visible,
+.astral-home-chart.is-link:focus-visible,
 .astral-catch:focus-visible,
 .astral-site:focus-visible,
 .astral-group:focus-visible,
@@ -10983,4 +11029,13 @@ html.is-classic-scroll #astral-fs .is-scroll-near {
   html.is-classic-scroll #astral-fs * {
     transition: none;
   }
+}
+
+/* Escape hides a tooltip until the pointer or focus leaves its control. */
+.astral-tip-host.is-tip-off > .astral-icon-tip,
+.astral-person.is-tip.is-tip-off .astral-icon-tip,
+.astral-icon-tip.is-fixed-tip.is-tip-off {
+  opacity: 0;
+  visibility: hidden;
+  transition: none;
 }

@@ -615,8 +615,8 @@
           "figma": "radius/xs",
           "value": "2px",
           "alias": null,
-          "status": "scaffold",
-          "note": "",
+          "status": "brand",
+          "note": "Meter pill key mark only. A rounded square, not a circle.",
           "cssVar": "--radius-xs",
           "theme": "theme.radius.xs"
         },
@@ -1218,7 +1218,7 @@
           "value": "#dfdfdf",
           "alias": "primitive.color.gray.200",
           "status": "brand",
-          "note": "Infra Grey B, 1px. Do not thicken it to 2px or the field feels heavy.",
+          "note": "Infra Grey B, 1px. The one edge for every control: buttons, icon buttons, inputs, search, selects, date, checkboxes, switches, tabs, filter pills and meter pills. Change it here and every control follows. Focus goes black. Disabled uses Default. Cards, tables and menus use Default.",
           "cssVar": "--color-border-control",
           "theme": "theme.color.border.control"
         },
@@ -2660,14 +2660,15 @@
           "file": "src/components/Filter.tsx",
           "family": "forms",
           "summary": "An icon button that opens an overlay with ticks. The count is a cyan circle. No black rim. When a tree filter is on, pills sit under the control. Electricity, Gas, and Water sit with those marks. In and Out sit with the import and export marks. A cross clears that one. Clear takes them all off. The pane Filter keeps the count on the button. Pane pills wait.",
-          "usage": "The parent holds the ticks. Each group has All. All ticks every child. If a child is off, All is mixed. Tree Filter sits to the right of Search. The pane uses the same control to the right of Compare. Compare uses it next to Search in the modal. Sort sits in that overlay. Leave the modal and Search and Filter start again. Name, Needs action, and Sites or Meters. Ownership is Tenant owned. Meter is Electricity, Gas, and Water. Incoming and Outgoing. The ticks say In and Out. In and Out start on, same as the graph. Electricity and Gas start on when they are on the graph. Water is off until they tick it. Walk sites hold a water meter so the tick has a hit. Dummy site A1 still holds one. Serial then the number. Dummy site A1 and A2 are tenant owned so the tick has a hit. Do not invent ownership on Network Rail. The pane Filter also has Hours and Time of use. Hours is Operational, Non-operational, and Closed. Operational is trading or working. Non-operational is people may be there, preparing or maintaining, not trading. Closed is shut, no normal activity. Time of use is On peak and Off peak. Those ticks cross Hours. Do not split Peak and Off-peak from Operational, Non-operational, and Closed. The graph and Breakdown use Operational · Peak, Operational · Off-peak, Non-operational · Peak, Non-operational · Off-peak, Closed · Peak, and Closed · Off-peak. Those ticks stack in the bars, so you can see how and where each one lies. A key under the graph uses the same on and off pills as In and Out. Click to take a slice off. Off pills strike through the name. They can take the last one off. They also cut Breakdown. The tree does not have Hours or Time of use. Odd use, Missing data, and Not sending stay on Alerts. Downloads uses it next to Search. Kind is CSV and PDF. Type is Report and Data export. Status is Processing.",
+          "usage": "The parent holds the ticks. Each group has All. All ticks every child. If a child is off, All is mixed. Tree Filter sits to the right of Search. The pane uses the same control to the right of Compare. Compare uses it next to Search in the modal. Sort sits in that overlay. Leave the modal and Search and Filter start again. Name, Needs action, and Sites or Meters. Meter is Electricity, Gas, and Water. Incoming and Outgoing. The ticks say In and Out. In and Out start on, same as the graph. Electricity and Gas start on when they are on the graph. Water is off until they tick it. Walk sites hold a water meter so the tick has a hit. Dummy site A1 still holds one. Serial then the number. The pane Filter also has Hours and Time of use. Hours is Operational, Non-operational, and Closed. Operational is trading or working. Non-operational is people may be there, preparing or maintaining, not trading. Closed is shut, no normal activity. Time of use is On peak and Off peak. Those ticks cross Hours. Do not split Peak and Off-peak from Operational, Non-operational, and Closed. The graph and Breakdown use Operational · Peak, Operational · Off-peak, Non-operational · Peak, Non-operational · Off-peak, Closed · Peak, and Closed · Off-peak. Those ticks stack in the bars, so you can see how and where each one lies. A key under the graph uses the same on and off pills as In and Out. Click to take a slice off. Off pills strike through the name. They can take the last one off. They also cut Breakdown. The tree does not have Hours or Time of use. Odd use, Missing data, and Not sending stay on Alerts. Downloads uses it next to Search. Kind is CSV and PDF. Type is Report and Data export. Status is Processing. Clear all sits in a footer at the bottom of every Filter overlay, on the right, under a 1px Infra Grey B line. It stays in view while the groups scroll. It takes every tick off and puts the pane back to the start: In and Out on, the graph meters on, Hours and Time of use off, and Compare Sort back to Name. Then the overlay closes and focus goes back to Filter. When nothing is on, Clear all is greyed out. It does not hide, so the footer does not jump.",
           "variants": [
             "tree"
           ],
           "states": [
             "default",
             "open",
-            "on"
+            "on",
+            "nothing to clear"
           ],
           "tokens": [
             "semantic.color.action.primary",
@@ -2695,9 +2696,14 @@
               "name": "children",
               "type": "ReactNode",
               "note": "The tick list."
+            },
+            {
+              "name": "onClear",
+              "type": "() => void",
+              "note": "Clear all in the footer. Disabled when nothing is on."
             }
           ],
-          "snippet": "<Filter count={on.length} open={open} onOpenChange={setOpen}>{ticks}</Filter>",
+          "snippet": "<Filter count={on.length} open={open} onOpenChange={setOpen} onClear={clearAll}>{ticks}</Filter>",
           "figma": {
             "fileKey": "3tuSVg2s7OzuSi2LVIi55t",
             "libraryName": "IMSERV Design System",
@@ -4766,7 +4772,7 @@
             "status": "working",
             "say": "Compare",
             "avoid": "",
-            "note": "Opens a modal of others at the same level. Search and add more than one. A Filter sits to the right of Search. Overlay uses ticks. Same Ownership, Meter, and Incoming and Outgoing as the tree. Sort is Name, Needs action, and Sites or Meters. The row is the name and the meter count. Hover the count for the MPAN. It waits 0.7 seconds. On one meter, Compare lists other meters throughout the portfolio. The row is the site and the MPAN. Odd use, Missing data, and Not sending stay on Alerts.",
+            "note": "Opens a modal of others at the same level. Search and add more than one. A Filter sits to the right of Search. Overlay uses ticks. Same Meter and Incoming and Outgoing as the tree. Sort is Name, Needs action, and Sites or Meters. The row is the name and the meter count. Hover the count for the MPAN. It waits 0.7 seconds. On one meter, Compare lists other meters throughout the portfolio. The row is the site and the MPAN. Odd use, Missing data, and Not sending stay on Alerts.",
             "from": "Shaun on Compare count, 5 Sep"
           },
           {
@@ -4778,6 +4784,16 @@
             "avoid": "A second Clear ghost next to Compare",
             "note": "The cross on the Compare count. Drops the comparison and returns to the group or site you were on.",
             "from": "Shaun on Compare count, 5 Sep"
+          },
+          {
+            "id": "filter-clear-all",
+            "kind": "labels",
+            "name": "Clear all",
+            "status": "firm",
+            "say": "Clear all",
+            "avoid": "Reset, Reset filters, Clear filters, Remove all.",
+            "note": "The footer action in a Filter overlay. Two words, no noun: the overlay already says Filter. Clear on its own stays for the pill row under Search.",
+            "from": "Shaun on the Filter overlay, 24 Sep"
           },
           {
             "id": "last-year",
@@ -5096,7 +5112,7 @@
             "status": "draft",
             "say": "Filter",
             "avoid": "",
-            "note": "Icon to the right of Search site or meter. The same Filter sits on the pane, to the right of Compare. The tree Filter works on the tree. The pane Filter works on the pane. Meter ticks on the tree also cut the graph and Site profile until the pane has its own meter ticks. Overlay with ticks. Each group has All. All ticks every child. If a child is off, All is mixed. Ownership is Tenant owned. Meter is Electricity, Gas, and Water. Incoming and Outgoing. The ticks say In and Out. In and Out start on, same as the graph. Electricity and Gas start on when they are on the graph. Water is off until they tick it. Walk sites hold a water meter so the tick has a hit. Dummy site A1 still holds one. Serial then the number. Dummy site A1 and A2 are tenant owned so the tick has a hit. Do not invent ownership on Network Rail. The pane Filter also has Hours and Time of use. Hours is Operational, Non-operational, and Closed. Operational is trading or working. Non-operational is people may be there, preparing or maintaining, not trading. Closed is shut, no normal activity. Time of use is On peak and Off peak. Those ticks cross Hours. Do not split Peak and Off-peak from Operational, Non-operational, and Closed. The graph and Breakdown use Operational · Peak, Operational · Off-peak, Non-operational · Peak, Non-operational · Off-peak, Closed · Peak, and Closed · Off-peak. Those ticks stack in the bars, so you can see how and where each one lies. A key under the graph uses the same on and off pills as In and Out. Click to take a slice off. Off pills strike through the name. They can take the last one off. They also cut Breakdown. The tree does not have Hours or Time of use. On Consumption, water cannot share a graph with electricity or gas. The notice says this combination cannot be shown. View water consumption ticks Water and takes Electricity and Gas off. View electricity & gas consumption ticks those and takes Water off. Cost and Carbon can share. Odd use, Missing data, and Not sending stay on Alerts. When a tree filter is on, pills sit under Search and Filter. A cross clears that one. The pane Filter keeps the count on the button. Pane pills wait. Clear takes them all off. The Filter button shows how many are on. The count is a cyan circle. No black rim. Compare uses the same control next to Search. Sort sits in that overlay. Leave the modal and Search and Filter start again. Name, Needs action, and Sites or Meters. Downloads uses it next to Search. Kind is CSV and PDF. Type is Report and Data export. Status is Processing.",
+            "note": "Icon to the right of Search site or meter. The same Filter sits on the pane, to the right of Compare. The tree Filter works on the tree. The pane Filter works on the pane. Meter ticks on the tree also cut the graph and Site profile until the pane has its own meter ticks. Overlay with ticks. Each group has All. All ticks every child. If a child is off, All is mixed. Meter is Electricity, Gas, and Water. Incoming and Outgoing. The ticks say In and Out. In and Out start on, same as the graph. Electricity and Gas start on when they are on the graph. Water is off until they tick it. Walk sites hold a water meter so the tick has a hit. Dummy site A1 still holds one. Serial then the number. Dummy site A1 and A2 are tenant owned so the tick has a hit. Do not invent ownership on Network Rail. The pane Filter also has Hours and Time of use. Hours is Operational, Non-operational, and Closed. Operational is trading or working. Non-operational is people may be there, preparing or maintaining, not trading. Closed is shut, no normal activity. Time of use is On peak and Off peak. Those ticks cross Hours. Do not split Peak and Off-peak from Operational, Non-operational, and Closed. The graph and Breakdown use Operational · Peak, Operational · Off-peak, Non-operational · Peak, Non-operational · Off-peak, Closed · Peak, and Closed · Off-peak. Those ticks stack in the bars, so you can see how and where each one lies. A key under the graph uses the same on and off pills as In and Out. Click to take a slice off. Off pills strike through the name. They can take the last one off. They also cut Breakdown. The tree does not have Hours or Time of use. On Consumption, water cannot share a graph with electricity or gas. The notice says this combination cannot be shown. View water consumption ticks Water and takes Electricity and Gas off. View electricity & gas consumption ticks those and takes Water off. Cost and Carbon can share. Odd use, Missing data, and Not sending stay on Alerts. When a tree filter is on, pills sit under Search and Filter. A cross clears that one. The pane Filter keeps the count on the button. Pane pills wait. Clear takes them all off. The Filter button shows how many are on. The count is a cyan circle. No black rim. Compare uses the same control next to Search. Sort sits in that overlay. Leave the modal and Search and Filter start again. Name, Needs action, and Sites or Meters. Downloads uses it next to Search. Kind is CSV and PDF. Type is Report and Data export. Status is Processing.",
             "from": "Shaun on the tree filter, 6 Sep, and Max on interval filters, 22 Sep"
           },
           {
@@ -5108,16 +5124,6 @@
             "avoid": "Select all as the tick. Putting All on the site head or the group head.",
             "note": "On a Filter group. All ticks every child in that group. If a child is off, All is mixed. Click All again to take the children off. Hours All puts Operational, Non-operational, and Closed on, so the graph can show the combined tariff breakdown.",
             "from": "Select all in filter groups, 23 Sep"
-          },
-          {
-            "id": "tenant-owned",
-            "kind": "labels",
-            "name": "Tenant owned",
-            "status": "draft",
-            "say": "Tenant owned",
-            "avoid": "All tenant owned properties, as the tick.",
-            "note": "A Filter tick under Ownership. Dummy site A1 and A2 are tenant owned so the tick has a hit. Do not invent ownership on Network Rail. Odd use, Missing data, and Not sending stay on Alerts.",
-            "from": "Shaun on the pane Filter, 8 Sep"
           },
           {
             "id": "total-consumption",
@@ -6792,7 +6798,7 @@
             "name": "Find a meter",
             "status": "working",
             "summary": "Search, then a long list, when the portfolio is huge.",
-            "now": "All sits at the top of the tree. Click it for a collective overview. Search the group, then the site. A filter icon sits to the right of search. The same Filter sits on the pane, to the right of Compare. The overlay uses ticks. Each group has All. All ticks every child. If a child is off, All is mixed. It has a max height. The list scrolls. Native bars. Ownership is Tenant owned. Meter is Electricity, Gas, and Water. Incoming and Outgoing. Water is off until they tick it. Walk sites hold a water meter so the tick has a hit. Dummy site A1 still holds one. Serial then the number. Dummy site A1 and A2 are tenant owned so the tick has a hit. Do not invent ownership on Network Rail. The pane Filter also has Hours and Time of use. Hours is Operational, Non-operational, and Closed. Operational is trading or working. Non-operational is people may be there, preparing or maintaining, not trading. Closed is shut, no normal activity. Time of use is On peak and Off peak. Those ticks cross Hours. Do not split Peak and Off-peak from Operational, Non-operational, and Closed. The graph and Breakdown use Operational · Peak, Operational · Off-peak, Non-operational · Peak, Non-operational · Off-peak, Closed · Peak, and Closed · Off-peak. Those ticks stack in the bars, so you can see how and where each one lies. A key under the graph uses the same on and off pills as In and Out. Click to take a slice off. Off pills strike through the name. They can take the last one off. They also cut Breakdown. The tree does not have Hours or Time of use. Odd use, Missing data, and Not sending stay on Alerts. When a tree filter is on, pills sit under Search and Filter. A cross clears that one. Clear takes them all off. The pane Filter keeps the count on the button. Pane pills wait. The Filter button shows how many are on. The count is a cyan circle. No black rim. The Alerts tab holds the count. Site and meter counts sit to the right of the group heading. A site in the tree uses a grey pill for the number. Hover for the MPANs. It waits 0.7 seconds. Odd use, Missing data, and Not sending sit on the State column. A warning on those three. Sending has a tick. Icons for electricity, gas, and water wait on the tree. Incoming and Outgoing sit on the meter row in Site profile. In and Out sit in pills with an import or export mark, same as the graph.",
+            "now": "All sits at the top of the tree. Click it for a collective overview. Search the group, then the site. A filter icon sits to the right of search. The same Filter sits on the pane, to the right of Compare. The overlay uses ticks. Each group has All. All ticks every child. If a child is off, All is mixed. It has a max height. The list scrolls. Native bars. Meter is Electricity, Gas, and Water. Incoming and Outgoing. Water is off until they tick it. Walk sites hold a water meter so the tick has a hit. Dummy site A1 still holds one. Serial then the number. Dummy site A1 and A2 are tenant owned so the tick has a hit. Do not invent ownership on Network Rail. The pane Filter also has Hours and Time of use. Hours is Operational, Non-operational, and Closed. Operational is trading or working. Non-operational is people may be there, preparing or maintaining, not trading. Closed is shut, no normal activity. Time of use is On peak and Off peak. Those ticks cross Hours. Do not split Peak and Off-peak from Operational, Non-operational, and Closed. The graph and Breakdown use Operational · Peak, Operational · Off-peak, Non-operational · Peak, Non-operational · Off-peak, Closed · Peak, and Closed · Off-peak. Those ticks stack in the bars, so you can see how and where each one lies. A key under the graph uses the same on and off pills as In and Out. Click to take a slice off. Off pills strike through the name. They can take the last one off. They also cut Breakdown. The tree does not have Hours or Time of use. Odd use, Missing data, and Not sending stay on Alerts. When a tree filter is on, pills sit under Search and Filter. A cross clears that one. Clear takes them all off. The pane Filter keeps the count on the button. Pane pills wait. The Filter button shows how many are on. The count is a cyan circle. No black rim. The Alerts tab holds the count. Site and meter counts sit to the right of the group heading. A site in the tree uses a grey pill for the number. Hover for the MPANs. It waits 0.7 seconds. Odd use, Missing data, and Not sending sit on the State column. A warning on those three. Sending has a tick. Icons for electricity, gas, and water wait on the tree. Incoming and Outgoing sit on the meter row in Site profile. In and Out sit in pills with an import or export mark, same as the graph.",
             "later": "Show me all my export meters.",
             "uses": [
               "search",
@@ -6824,7 +6830,7 @@
             "name": "Compare the same level",
             "status": "working",
             "summary": "Compare a group with other groups, a site with other sites, or one meter with other meters.",
-            "now": "Compare opens a modal. Close sits top right. Title and the sub line stay at the top. Done stays at the bottom. Search and add others at that level. A Filter sits to the right of Search. Overlay uses ticks. Same Ownership, Meter, and Incoming and Outgoing as the tree. Sort is Name, Needs action, and Sites or Meters. When a filter is on, pills sit under Search and Filter. A cross clears that one. Clear takes them all off. The Filter button shows how many are on. The count is a cyan circle. No black rim. The row is the name and the meter count. Hover the count for the MPAN. It waits 0.7 seconds. On one meter, Compare lists other meters throughout the portfolio. The row is the site and the MPAN. The pane heading stays the place they started. The others sit in pills. The graph Selects stay on. Total or Individual. Then Bar or Line. Compared meters or sites stack in the bars when Bar is on. Colour matches the pills. Individual and Line is one line per site or meter. On a group, one line per site. On a site or a meter, one line per meter. Cost and Carbon use those names. Pills sit above the tabs. On a group, each pill is a site. On a site, each pill is a meter. One line. The name stays on one line. Every pill that fits on the line stays whole. The rest sit in Show x more. Show x more uses the same type as the pill. Hide puts them away. Colour on the pill matches the series on the graph. Off pills strike through the name. Click a pill to take it off the graph. Click it again to put it back. They can take the last one off. The graph sits empty. The first is the secondary. Then IBM Carbon categorical colours, in their order, so neighbouring lines stay distinct. Actual is a solid line. A dotted line is estimated. Hover a point for the name. A count of others sits on Compare. The count is a cyan circle. No black rim. The cross clears it.",
+            "now": "Compare opens a modal. Close sits top right. Title and the sub line stay at the top. Done stays at the bottom. Search and add others at that level. A Filter sits to the right of Search. Overlay uses ticks. Same Meter and Incoming and Outgoing as the tree. Sort is Name, Needs action, and Sites or Meters. When a filter is on, pills sit under Search and Filter. A cross clears that one. Clear takes them all off. The Filter button shows how many are on. The count is a cyan circle. No black rim. The row is the name and the meter count. Hover the count for the MPAN. It waits 0.7 seconds. On one meter, Compare lists other meters throughout the portfolio. The row is the site and the MPAN. The pane heading stays the place they started. The others sit in pills. The graph Selects stay on. Total or Individual. Then Bar or Line. Compared meters or sites stack in the bars when Bar is on. Colour matches the pills. Individual and Line is one line per site or meter. On a group, one line per site. On a site or a meter, one line per meter. Cost and Carbon use those names. Pills sit above the tabs. On a group, each pill is a site. On a site, each pill is a meter. One line. The name stays on one line. Every pill that fits on the line stays whole. The rest sit in Show x more. Show x more uses the same type as the pill. Hide puts them away. Colour on the pill matches the series on the graph. Off pills strike through the name. Click a pill to take it off the graph. Click it again to put it back. They can take the last one off. The graph sits empty. The first is the secondary. Then IBM Carbon categorical colours, in their order, so neighbouring lines stay distinct. Actual is a solid line. A dotted line is estimated. Hover a point for the name. A count of others sits on Compare. The count is a cyan circle. No black rim. The cross clears it.",
             "later": "",
             "uses": [
               "modal",
