@@ -578,14 +578,15 @@ function protoKnownView(id) {
     PROTO_VIEWS.some((view) => view.id === id) ||
     PROTO_ACCOUNT_VIEWS.some((view) => view.id === id) ||
     Boolean(PROTO_LENS_EXTRA[id]) ||
-    id === "downloads"
+    id === "downloads" ||
+    id === "documents"
   );
 }
 
 function protoViewId(raw) {
   const mapped = PROTO_OLD_VIEWS[raw] || raw;
   if (!protoKnownView(mapped)) return "home";
-  if (mapped === "downloads") return mapped;
+  if (mapped === "downloads" || mapped === "documents") return mapped;
   if (mapped === "profile") return mapped;
   if (mapped === "settings") return protoCanOpenSettings() ? mapped : protoLens().nav[0] || "home";
   if (mapped === "users") return protoCanManagePeople() ? mapped : protoLens().nav[0] || "home";
@@ -6518,8 +6519,19 @@ function protoPickSelect(id, value) {
     );
     return;
   }
-  if (id === "report-site" || id === "report-period" || id === "report-basis" || id === "report-silence") {
-    const key = { "report-site": "site", "report-period": "period", "report-basis": "basis", "report-silence": "hours" }[id];
+  const PROTO_REPORT_SELECT_KEYS = {
+    "report-site": "site",
+    "report-period": "period",
+    "report-basis": "basis",
+    "report-silence": "hours",
+    "report-content": "content",
+    "report-utility": "utility",
+    "report-channel": "channel",
+    "report-format": "format",
+    "report-time": "time",
+  };
+  if (PROTO_REPORT_SELECT_KEYS[id]) {
+    const key = PROTO_REPORT_SELECT_KEYS[id];
     protoReportPatchDraft({ [key]: id === "report-silence" ? Number(value) : value });
     protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
     return;
@@ -6701,7 +6713,13 @@ const PROTO_REPORT_TYPES = [
     id: "extract",
     name: "Scheduled data extract",
     short: "Data extract",
-    blurb: "All interval data for the sites you pick, sent as a CSV on a schedule.",
+    blurb: "Interval data, meter reads or missing data for the sites you pick, sent on a schedule.",
+  },
+  {
+    id: "dcda",
+    name: "DC and DA",
+    short: "DC/DA",
+    blurb: "The reads your data collector and data aggregator send, on a schedule.",
   },
   {
     id: "billing",
@@ -6740,7 +6758,62 @@ const PROTO_REPORT_BASIS = [
 const PROTO_REPORT_DELIVERY = [
   { id: "email", name: "Email" },
   { id: "sftp", name: "SFTP" },
+  { id: "ftp", name: "FTP" },
 ];
+
+const PROTO_REPORT_CONTENT = [
+  { id: "interval", name: "Interval data", note: "Every half hour" },
+  { id: "reads", name: "Meter reads", note: "One read a day" },
+  { id: "missing", name: "Missing data", note: "Only the gaps" },
+];
+
+const PROTO_REPORT_UTILITY = [
+  { id: "all", name: "All utilities" },
+  { id: "electricity", name: "Electricity" },
+  { id: "gas", name: "Gas" },
+  { id: "water", name: "Water" },
+];
+
+const PROTO_REPORT_CHANNEL = [
+  { id: "all", name: "Import and export" },
+  { id: "import", name: "Import" },
+  { id: "export", name: "Export" },
+];
+
+const PROTO_REPORT_FORMAT = [
+  { id: "csv", name: "CSV" },
+  { id: "xls", name: "XLS" },
+];
+
+const PROTO_REPORT_TIME = [
+  { id: "utc", name: "UTC" },
+  { id: "uk", name: "UK time", note: "Moves with BST" },
+];
+
+const PROTO_REPORT_SOON = [
+  { id: "health", name: "Data health", blurb: "How complete and on time each site's data is." },
+  { id: "capacity", name: "Capacity and kVA", blurb: "Peak demand in kVA against each site's agreed capacity." },
+  { id: "league", name: "League tables", blurb: "Rank sites against each other by use, cost or carbon." },
+  { id: "loa", name: "Alerts with LOA status", blurb: "Threshold alerts that show where each letter of authority stands." },
+  { id: "class", name: "Reports by meter class", blurb: "Split a report into non-HH, HH and sub-metering." },
+  { id: "claim", name: "Export and sub-meter channels", blurb: "Export and sub-meter data for an Ofgem claim-back." },
+];
+
+function protoReportSends(type) {
+  return type === "extract" || type === "dcda";
+}
+
+function protoReportIsFile(type) {
+  return protoReportSends(type) || type === "billing";
+}
+
+function protoReportPick(list, raw) {
+  return (list.find((item) => item.id === raw) || list[0]).id;
+}
+
+function protoReportOptionName(list, id) {
+  return (list.find((item) => item.id === id) || list[0]).name;
+}
 
 function protoReportTypeId(raw) {
   const id = String(raw || "");
@@ -6775,6 +6848,7 @@ function protoReportDefaultName(type) {
   if (type === "billing") return "Tenant billing";
   if (type === "alert") return "Data alert";
   if (type === "missing") return "Missing data alert";
+  if (type === "dcda") return "DC and DA reads";
   return "Interval data extract";
 }
 
@@ -6840,6 +6914,11 @@ function protoReportNormalize(raw) {
     sites,
     period: protoReportPeriod(type, raw.period).id,
     delivery: delivery.length ? delivery : ["email"],
+    content: protoReportPick(PROTO_REPORT_CONTENT, raw.content),
+    utility: protoReportPick(PROTO_REPORT_UTILITY, raw.utility),
+    channel: protoReportPick(PROTO_REPORT_CHANNEL, raw.channel),
+    format: protoReportPick(PROTO_REPORT_FORMAT, raw.format),
+    time: protoReportPick(PROTO_REPORT_TIME, raw.time),
     sftpHost: String(raw.sftpHost || "").trim().slice(0, 120),
     sftpPath: String(raw.sftpPath || "").trim().slice(0, 160),
     site: known.has(String(raw.site || "")) ? String(raw.site) : ids[0] || "",
@@ -6867,6 +6946,18 @@ function protoReportSeed() {
       period: "week",
       delivery: ["email"],
       people: ["me"],
+      start: today,
+    },
+    {
+      id: "seed-dcda",
+      type: "dcda",
+      name: "Monthly DC and DA reads",
+      sites: ids,
+      period: "month",
+      delivery: ["sftp"],
+      format: "xls",
+      sftpHost: "sftp.imserv.com",
+      sftpPath: "dcda/monthly",
       start: today,
     },
     {
@@ -6945,7 +7036,7 @@ function protoReportPortfolioAverage() {
 
 function protoReportScopeSites(def) {
   const all = protoEstateSites();
-  if (!def.sites.length) return def.type === "extract" ? [] : all;
+  if (!def.sites.length) return protoReportSends(def.type) ? [] : all;
   const picked = new Set(def.sites);
   return all.filter((site) => picked.has(protoSiteId(site)));
 }
@@ -7018,35 +7109,25 @@ function protoReportSendLabel(next) {
   return wait === 1 ? "Sent tomorrow" : `Sent in ${wait} days`;
 }
 
-function protoReportPeopleNames(ids) {
-  const people = protoUserPeople();
-  return ids
-    .map((id) => people.find((person) => person.id === id))
-    .filter(Boolean)
-    .map((person) => (person.you ? "you" : person.name));
-}
-
-function protoReportToLine(def) {
-  if (def.type === "billing") {
-    return `Email to you and ${def.tenant || def.tenantEmail || "the tenant"}`;
-  }
-  const names = [...protoReportPeopleNames(def.people), ...def.emails];
-  const email = names.length ? `Email to ${protoReportJoin(names)}` : "No one gets this yet";
-  if (def.type !== "extract") return email;
-  const parts = [];
-  if (def.delivery.includes("email")) parts.push(email);
-  if (def.delivery.includes("sftp")) {
-    const path = def.sftpPath ? `/${def.sftpPath.replace(/^\/+/, "")}` : "";
-    parts.push(`SFTP to ${def.sftpHost || "a server"}${path}`);
-  }
-  return parts.join(". ");
+function protoReportFileLine(def) {
+  const bits = [protoReportOptionName(PROTO_REPORT_FORMAT, def.format)];
+  if (def.utility !== "all") bits.push(protoReportOptionName(PROTO_REPORT_UTILITY, def.utility).toLowerCase());
+  if (def.channel !== "all") bits.push(`${protoReportOptionName(PROTO_REPORT_CHANNEL, def.channel).toLowerCase()} only`);
+  if (def.time === "uk") bits.push("UK time");
+  return bits.join(", ");
 }
 
 function protoReportSummary(def) {
-  if (def.type === "extract") {
+  if (protoReportSends(def.type)) {
     const names = protoReportScopeSites(def).map((site) => site.name);
-    const period = protoReportPeriod("extract", def.period);
-    return `${period.name} of interval data for ${protoReportJoin(names) || "no sites yet"}, as a CSV.`;
+    const period = protoReportPeriod(def.type, def.period);
+    const what =
+      def.type === "dcda"
+        ? "DC and DA reads"
+        : protoReportOptionName(PROTO_REPORT_CONTENT, def.content).toLowerCase();
+    const where =
+      names.length && names.length === protoEstateSites().length ? "all sites" : protoReportJoin(names) || "no sites yet";
+    return `${period.name} of ${what} for ${where}, as ${protoReportFileLine(def)}.`;
   }
   if (def.type === "billing") {
     const bill = protoReportBill(def);
@@ -7206,7 +7287,13 @@ function protoReportDraftDef(draft) {
 }
 
 function protoReportAutoName(def) {
-  if (def.type === "extract") return `${protoReportPeriod("extract", def.period).every} interval data`;
+  if (def.type === "extract") {
+    return `${protoReportPeriod("extract", def.period).every} ${protoReportOptionName(
+      PROTO_REPORT_CONTENT,
+      def.content
+    ).toLowerCase()}`;
+  }
+  if (def.type === "dcda") return `${protoReportPeriod("dcda", def.period).every} DC and DA reads`;
   if (def.type === "billing") {
     const site = protoReportSiteById(def.site);
     return `${def.tenant || "Tenant"} billing${site ? `, ${site.name}` : ""}`;
@@ -7224,12 +7311,13 @@ function protoReportDraftIssue(draft) {
   const people =
     (Array.isArray(draft.people) ? draft.people.length : 0) + protoReportEmails(draft.emails).length;
   const startOk = Boolean(protoFromUkDate(protoReportDraftStart()));
-  if (draft.type === "extract") {
+  if (protoReportSends(draft.type)) {
     if (!draft.sites?.length) return "Pick at least one site.";
     if (!draft.delivery?.length) return "Pick how to send it.";
     if (draft.delivery.includes("email") && !people) return "Add at least one person or email.";
-    if (draft.delivery.includes("sftp") && !String(draft.sftpHost || "").trim()) {
-      return "Add the SFTP host.";
+    const server = (draft.delivery || []).filter((way) => way === "sftp" || way === "ftp");
+    if (server.length && !String(draft.sftpHost || "").trim()) {
+      return `Add the ${server.map((way) => way.toUpperCase()).join(" and ")} server.`;
     }
     if (!startOk) return "Enter the first send date.";
     return "";
@@ -7254,9 +7342,9 @@ function protoReportDraftIssue(draft) {
 function protoReportDraftPreview(draft) {
   if (!draft) return "";
   const def = protoReportDraftDef(draft);
-  if (def.type === "extract") {
+  if (protoReportSends(def.type)) {
     const next = protoReportNextSend(def);
-    const period = protoReportPeriod("extract", def.period);
+    const period = protoReportPeriod(def.type, def.period);
     return next
       ? `${period.every}, first sent on ${protoFormatUkDate(next)}.`
       : `${period.every}.`;
@@ -7391,19 +7479,30 @@ function protoReportRecipientsHtml(draft) {
       draft.emails,
       'placeholder="name@company.com, name@company.com" inputmode="email"'
     )}
+    <p class="astral-muted">Each email has an opt-out link.</p>
   `;
 }
 
-function protoReportTypeFields(draft) {
-  if (draft.type === "extract") {
-    const email = (draft.delivery || []).includes("email");
-    const sftp = (draft.delivery || []).includes("sftp");
-    return `
-      ${protoReportSitesSelect(draft)}
-      <div class="astral-report-pair">
-        ${protoReportPeriodSelect(draft, "Data period")}
-        ${protoReportDayCalHtml(protoReportDraftStart())}
-      </div>
+function protoReportOptionSelect(id, label, list, value) {
+  return protoReportField(
+    label,
+    protoSelect({
+      id,
+      label,
+      wide: true,
+      value: protoReportPick(list, value),
+      options: list.map((item) => ({ value: item.id, label: item.name, note: item.note })),
+    })
+  );
+}
+
+function protoReportSendFields(draft) {
+  const ways = draft.delivery || [];
+  const server = ways.filter((way) => way === "sftp" || way === "ftp");
+  const serverName = server.map((way) => way.toUpperCase()).join(" or ");
+  return `
+    <div class="astral-report-pair">
+      ${protoReportOptionSelect("report-time", "Times in", PROTO_REPORT_TIME, draft.time)}
       ${protoReportField(
         "Send by",
         protoSelect({
@@ -7411,22 +7510,54 @@ function protoReportTypeFields(draft) {
           label: "Send by",
           multi: true,
           wide: true,
-          values: draft.delivery || [],
+          values: ways,
           placeholder: "Pick how to send it",
           countLabel: "ways",
-          allLabel: "Email and SFTP",
+          allLabel: "Email, SFTP and FTP",
           options: PROTO_REPORT_DELIVERY.map((item) => ({ value: item.id, label: item.name })),
         })
       )}
-      ${email ? protoReportRecipientsHtml(draft) : ""}
-      ${
-        sftp
-          ? `<div class="astral-report-pair">
-              ${protoReportInput("SFTP host", "sftpHost", draft.sftpHost, 'placeholder="sftp.company.com"')}
-              ${protoReportInput("Folder", "sftpPath", draft.sftpPath, 'placeholder="astral/interval"')}
-            </div>`
-          : ""
-      }
+    </div>
+    ${ways.includes("email") ? protoReportRecipientsHtml(draft) : ""}
+    ${
+      server.length
+        ? `<div class="astral-report-pair">
+            ${protoReportInput(`${serverName} server`, "sftpHost", draft.sftpHost, 'placeholder="sftp.company.com"')}
+            ${protoReportInput("Folder", "sftpPath", draft.sftpPath, 'placeholder="astral/interval"')}
+          </div>`
+        : ""
+    }
+  `;
+}
+
+function protoReportTypeFields(draft) {
+  if (draft.type === "extract") {
+    return `
+      ${protoReportSitesSelect(draft)}
+      <div class="astral-report-pair">
+        ${protoReportOptionSelect("report-content", "What it holds", PROTO_REPORT_CONTENT, draft.content)}
+        ${protoReportOptionSelect("report-format", "Format", PROTO_REPORT_FORMAT, draft.format)}
+      </div>
+      <div class="astral-report-pair">
+        ${protoReportOptionSelect("report-utility", "Utility", PROTO_REPORT_UTILITY, draft.utility)}
+        ${protoReportOptionSelect("report-channel", "Channel", PROTO_REPORT_CHANNEL, draft.channel)}
+      </div>
+      <div class="astral-report-pair">
+        ${protoReportPeriodSelect(draft, "Data period")}
+        ${protoReportDayCalHtml(protoReportDraftStart())}
+      </div>
+      ${protoReportSendFields(draft)}
+    `;
+  }
+  if (draft.type === "dcda") {
+    return `
+      ${protoReportSitesSelect(draft)}
+      <div class="astral-report-pair">
+        ${protoReportPeriodSelect(draft, "Data period")}
+        ${protoReportDayCalHtml(protoReportDraftStart())}
+      </div>
+      ${protoReportOptionSelect("report-format", "Format", PROTO_REPORT_FORMAT, draft.format)}
+      ${protoReportSendFields(draft)}
     `;
   }
   if (draft.type === "billing") {
@@ -7541,6 +7672,43 @@ function protoReportTypePicker(draft) {
         `;
       }).join("")}
     </div>
+    ${draft ? "" : protoReportSoonTypes()}
+  `;
+}
+
+function protoReportSoonTypes() {
+  return `
+    <div class="astral-report-types is-soon" role="list" aria-label="Coming soon">
+      ${PROTO_REPORT_SOON.map(
+        (item) => `
+          <div class="astral-report-type is-soon" role="listitem" aria-disabled="true">
+            <span class="astral-report-type-head"><span>${escapeHtml(item.name)}</span>${protoTag(
+              "Coming soon"
+            )}</span>
+            <span class="astral-muted">${escapeHtml(item.blurb)}</span>
+          </div>
+        `
+      ).join("")}
+    </div>
+  `;
+}
+
+function protoReportSoonCards() {
+  return `
+    <h3 class="astral-report-soon-head">Coming soon</h3>
+    ${PROTO_REPORT_SOON.map(
+      (item) => `
+        <article class="astral-card astral-report-card is-soon" aria-disabled="true" data-proto-report-soon="${escapeHtml(
+          item.id
+        )}">
+          <div class="astral-card-head">
+            <h3>${escapeHtml(item.name)}</h3>
+            ${protoTag("Coming soon")}
+          </div>
+          <p>${escapeHtml(item.blurb)}</p>
+        </article>
+      `
+    ).join("")}
   `;
 }
 
@@ -7684,17 +7852,44 @@ function protoReportToggleIn(list, value) {
   return cur.includes(value) ? cur.filter((item) => item !== value) : [...cur, value];
 }
 
-function protoReportCsv(def) {
-  const q = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+function protoReportMeters(def, site) {
+  return (site.meters || []).filter((meter) => {
+    if (def.utility !== "all" && protoMeterKind(meter) !== def.utility) return false;
+    const out = meter.direction === "Export";
+    if (def.channel === "import" && out) return false;
+    if (def.channel === "export" && !out) return false;
+    return true;
+  });
+}
+
+function protoReportClock(day, label, time) {
+  const m = /^(\d{1,2})([:.])(\d{2})/.exec(String(label || ""));
+  if (!m || time !== "uk") return { date: protoFormatUkDate(day), time: label };
+  const at = new Date(Date.UTC(day.getFullYear(), day.getMonth(), day.getDate(), Number(m[1]), Number(m[3])));
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/London",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(at)
+      .map((part) => [part.type, part.value])
+  );
+  return { date: `${parts.day}/${parts.month}/${parts.year}`, time: `${parts.hour}${m[2]}${parts.minute}` };
+}
+
+function protoReportRows(def) {
   const today = protoToday();
   if (def.type === "billing") {
     const bill = protoReportBill(def);
     const from = protoAddDays(today, -bill.period.days);
     const to = protoAddDays(today, -1);
-    const lines = [
-      ["site", "period", "from", "to", "projected cost (GBP)", "tenant", "tenant share (%)", "amount payable (GBP)"]
-        .map(q)
-        .join(","),
+    return [
+      ["site", "period", "from", "to", "projected cost (GBP)", "tenant", "tenant share (%)", "amount payable (GBP)"],
       [
         bill.site?.name || "",
         bill.period.name,
@@ -7704,46 +7899,101 @@ function protoReportCsv(def) {
         def.tenant,
         def.share,
         bill.due.toFixed(2),
-      ]
-        .map(q)
-        .join(","),
-      "",
-      ["meter", "utility", "projected cost (GBP)", "tenant pays (GBP)"].map(q).join(","),
+      ],
+      [],
+      ["meter", "utility", "projected cost (GBP)", "tenant pays (GBP)"],
       ...(bill.site?.meters || []).map((meter) => {
         const cost = protoMeterSpendGbp(meter) * bill.period.days;
-        return [meter.name, meter.commodity, cost.toFixed(2), ((cost * def.share) / 100).toFixed(2)]
-          .map(q)
-          .join(",");
+        return [meter.name, meter.commodity, cost.toFixed(2), ((cost * def.share) / 100).toFixed(2)];
       }),
     ];
-    return lines;
   }
-  const period = protoReportPeriod("extract", def.period);
-  const lines = [["site", "meter", "mpan", "date", "time", "value", "unit", "quality"].map(q).join(",")];
-  protoReportScopeSites(def).forEach((site) => {
-    (site.meters || []).forEach((meter) => {
-      for (let back = period.days; back >= 1; back -= 1) {
-        const day = protoAddDays(today, -back);
-        protoSeries(meter, "day", day).forEach((point) => {
-          lines.push(
-            [
-              site.name,
-              meter.name,
-              meter.mpan || "",
-              protoFormatUkDate(day),
-              point.label,
-              point.value == null ? "" : point.value,
-              point.unit || "kWh",
-              protoCsvQuality(point.quality, point.value),
-            ]
-              .map(q)
-              .join(",")
-          );
-        });
-      }
+  const period = protoReportPeriod(def.type, def.period);
+  const zone = def.time === "uk" ? "UK time" : "UTC";
+  const days = [];
+  for (let back = period.days; back >= 1; back -= 1) days.push(protoAddDays(today, -back));
+  const each = (fn) =>
+    protoReportScopeSites(def).forEach((site) =>
+      protoReportMeters(def, site).forEach((meter) => fn(site, meter))
+    );
+  const rows = [];
+  if (def.type === "dcda" || def.content === "reads") {
+    rows.push(
+      def.type === "dcda"
+        ? ["site", "meter", "meter point", "utility", "read date", "read", "unit", "read type", "data collector", "data aggregator"]
+        : ["site", "meter", "meter point", "utility", "read date", "read", "unit", "read type"]
+    );
+    each((site, meter) => {
+      let register = Math.round((Number(meter.base) || 8) * 24 * 400);
+      days.forEach((day) => {
+        const points = protoSeries(meter, "day", day);
+        register += points.reduce((n, point) => n + (Number(point.value) || 0), 0);
+        const estimated = points.some((point) => point.quality === "estimated" || point.value == null);
+        const row = [
+          site.name,
+          meter.name,
+          meter.mpan || "",
+          meter.commodity || "",
+          protoFormatUkDate(day),
+          register.toFixed(1),
+          protoMeterUseUnit(meter),
+          estimated ? "estimated" : "actual",
+        ];
+        rows.push(def.type === "dcda" ? [...row, "IMSERV", "IMSERV"] : row);
+      });
+    });
+    return rows;
+  }
+  const missing = def.content === "missing";
+  rows.push(["site", "meter", "meter point", "utility", `date (${zone})`, `time (${zone})`, "value", "unit", "quality"]);
+  each((site, meter) => {
+    days.forEach((day) => {
+      protoSeries(meter, "day", day).forEach((point) => {
+        if (missing && point.value != null && point.quality !== "missing") return;
+        const clock = protoReportClock(day, point.label, def.time);
+        rows.push([
+          site.name,
+          meter.name,
+          meter.mpan || "",
+          meter.commodity || "",
+          clock.date,
+          clock.time,
+          point.value == null ? "" : point.value,
+          point.unit || protoMeterUseUnit(meter),
+          protoCsvQuality(point.quality, point.value),
+        ]);
+      });
     });
   });
-  return lines;
+  if (missing && rows.length === 1) rows.push(["No missing data in this period."]);
+  return rows;
+}
+
+function protoReportCsv(def) {
+  const q = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+  return protoReportRows(def).map((row) => (row.length ? row.map(q).join(",") : ""));
+}
+
+function protoXlsBody(rows, sheet) {
+  const x = (value) =>
+    String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  const cell = (value) => {
+    const text = String(value ?? "");
+    const num = /^-?\d+(\.\d+)?$/.test(text);
+    return `<Cell><Data ss:Type="${num ? "Number" : "String"}">${x(text)}</Data></Cell>`;
+  };
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<?mso-application progid="Excel.Sheet"?>',
+    '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">',
+    `<Worksheet ss:Name="${x(String(sheet || "Report").slice(0, 31))}"><Table>`,
+    ...rows.map((row) => `<Row>${row.map(cell).join("")}</Row>`),
+    "</Table></Worksheet></Workbook>",
+  ].join("\n");
 }
 
 function protoUnreadFrom(alerts) {
@@ -7858,7 +8108,7 @@ function protoRailIcon(id) {
   if (id === "finance") return "rates";
   if (id === "alerts") return "warning";
   if (id === "queries") return "comment";
-  if (id === "reports" || id === "downloads") return "report";
+  if (id === "reports" || id === "downloads" || id === "documents") return "report";
   if (id === "profile" || id === "settings" || id === "users") return id;
   if (id === "companies") return "companies";
   if (id === "servicing" || id === "inbox") return id;
@@ -7866,7 +8116,7 @@ function protoRailIcon(id) {
 }
 
 function protoRailPage(state) {
-  const id = state.view === "downloads" ? "reports" : state.view;
+  const id = protoReportsArea(state.view) ? "reports" : state.view;
   const fromNav = protoShownViews().find((view) => view.id === id);
   if (fromNav) return fromNav;
   const fromAccount = PROTO_ACCOUNT_VIEWS.find((view) => view.id === id);
@@ -7943,7 +8193,7 @@ function astralRailNav(state) {
   const links = protoShownViews()
     .map((view) => {
       const on =
-        view.id === state.view || (view.id === "reports" && state.view === "downloads");
+        view.id === state.view || (view.id === "reports" && protoReportsArea(state.view));
       const count = view.id === "inbox" ? protoInboxUnreadCount() : 0;
       return `
       <button
@@ -7988,7 +8238,7 @@ function astralNav(state) {
   const links = protoShownViews()
     .map((view) => {
       const on =
-        view.id === state.view || (view.id === "reports" && state.view === "downloads");
+        view.id === state.view || (view.id === "reports" && protoReportsArea(state.view));
       return `
       <button
         type="button"
@@ -8029,16 +8279,21 @@ function astralPageHead(title, lead, extra) {
   `;
 }
 
+function protoReportsArea(view) {
+  return view === "reports" || view === "downloads" || view === "documents";
+}
+
 function protoReportsDownloadsTabs(active) {
   if (protoAdminRail()) return "";
   return protoTabs(
     [
       { id: "reports", name: "Reports" },
       { id: "downloads", name: "Downloads" },
+      { id: "documents", name: "My Documents" },
     ],
     active,
     "data-proto-view",
-    "Reports or Downloads"
+    "Reports, Downloads or My Documents"
   );
 }
 
@@ -10748,7 +11003,7 @@ function protoDownloadsFrom(raw) {
   return raw
     .map((item) => {
       if (!item || typeof item !== "object") return null;
-      const kind = item.kind === "pdf" ? "pdf" : item.kind === "csv" ? "csv" : "";
+      const kind = ["pdf", "csv", "xls"].includes(item.kind) ? item.kind : "";
       const id = String(item.id || "");
       const fileId = String(item.fileId || "");
       if (!kind || !id || !fileId) return null;
@@ -10879,6 +11134,7 @@ const PROTO_DOWNLOAD_FILTERS = [
     name: "Kind",
     items: [
       { id: "csv", name: "CSV" },
+      { id: "xls", name: "XLS" },
       { id: "pdf", name: "PDF" },
     ],
   },
@@ -10926,14 +11182,12 @@ function protoDownloadFilterName(id) {
 function protoDownloadMatches(item, q, picked) {
   const query = String(q || "").trim().toLowerCase();
   if (query) {
-    const hay = `${item.name} ${item.kind === "pdf" ? "pdf" : "csv"} ${
-      protoDownloadTypeName(item)
-    }`.toLowerCase();
+    const hay = `${item.name} ${item.kind} ${protoDownloadTypeName(item)}`.toLowerCase();
     if (!hay.includes(query)) return false;
   }
   const ids = Array.isArray(picked) ? picked : protoDownloadFilterIds();
-  const kinds = ids.filter((id) => id === "csv" || id === "pdf");
-  if (kinds.length && !kinds.includes(item.kind === "pdf" ? "pdf" : "csv")) return false;
+  const kinds = ids.filter((id) => id === "csv" || id === "pdf" || id === "xls");
+  if (kinds.length && !kinds.includes(item.kind)) return false;
   const types = ids.filter((id) => id === "report" || id === "export");
   if (types.length && !types.includes(protoDownloadType(item))) return false;
   if (ids.includes("processing") && protoDownloadReady(item)) return false;
@@ -10998,7 +11252,7 @@ function protoDownloads() {
     .filter((item) => item.live && item.file)
     .map((item) => ({
       id: `clockwork-${item.id}`,
-      kind: "csv",
+      kind: item.kind,
       type: "report",
       fileId: item.id,
       name: item.name,
@@ -11131,6 +11385,7 @@ function protoFlushDownloadTake() {
   if (!item || !protoDownloadReady(item)) return;
   protoDownloadTakeId = "";
   if (item.kind === "pdf") protoPdf(item.fileId);
+  else if (item.kind === "xls") protoXls(item.fileId);
   else protoCsv(item.fileId);
 }
 
@@ -11207,7 +11462,7 @@ function protoDownloadsSection() {
     (item, key) => {
       if (key === "name") return item.name;
       if (key === "type") return protoDownloadTypeName(item);
-      if (key === "kind") return item.kind === "pdf" ? "PDF" : "CSV";
+      if (key === "kind") return item.kind.toUpperCase();
       if (key === "made") return protoDownloadMadeAt(item);
       if (key === "status") return protoDownloadReady(item) ? 0 : protoDownloadLeftMs(item);
       return "";
@@ -11219,7 +11474,7 @@ function protoDownloadsSection() {
   const body = rows.length
     ? rows
         .map((item) => {
-          const kind = item.kind === "pdf" ? "PDF" : "CSV";
+          const kind = item.kind.toUpperCase();
           const ready = protoDownloadReady(item);
           const wait = ready
             ? `<span class="astral-tag">Complete</span>`
@@ -11294,6 +11549,113 @@ function protoDownloadsPage() {
     ${protoReportsAreaHead("downloads")}
     ${protoReportEditModal()}
     ${protoDownloadsSection()}
+  `);
+}
+
+function protoDocuments() {
+  const today = protoToday();
+  const list = [];
+  for (let back = 1; back <= 4; back += 1) {
+    const month = protoAddMonths(new Date(today.getFullYear(), today.getMonth(), 1), -back);
+    list.push({
+      id: `energy-${month.getFullYear()}-${month.getMonth() + 1}`,
+      name: `Monthly energy report, ${PROTO_MONTHS_LONG[month.getMonth()]} ${month.getFullYear()}`,
+      published: protoAddDays(protoAddMonths(month, 1), 3),
+      months: 1,
+      from: month,
+    });
+  }
+  const quarter = Math.floor(today.getMonth() / 3);
+  const qStart = protoAddMonths(new Date(today.getFullYear(), quarter * 3, 1), -3);
+  list.push({
+    id: `carbon-${qStart.getFullYear()}-q${Math.floor(qStart.getMonth() / 3) + 1}`,
+    name: `Quarterly carbon report, Q${Math.floor(qStart.getMonth() / 3) + 1} ${qStart.getFullYear()}`,
+    published: protoAddDays(protoAddMonths(qStart, 3), 10),
+    months: 3,
+    from: qStart,
+    carbon: true,
+  });
+  return list;
+}
+
+function protoDocumentPack(id) {
+  const doc = protoDocuments().find((item) => item.id === id);
+  if (!doc) return null;
+  const days = Math.round((protoAddMonths(doc.from, doc.months) - doc.from) / 86400000);
+  return {
+    file: doc.id,
+    title: doc.name,
+    note: `${protoHomeCompany() || "Portfolio"}. Published by IMSERV on ${protoFormatUkDate(doc.published)}.`,
+    headers: doc.carbon ? ["Site", "Use (kWh)", "Carbon (kgCO2e)"] : ["Site", "Use (kWh)", "Cost (GBP)"],
+    rows: protoEstateSites().map((site) => {
+      const kwh = protoReportSiteDayKwh(site) * days;
+      return [
+        site.name,
+        Math.round(kwh).toLocaleString("en-GB"),
+        doc.carbon
+          ? Math.round(kwh * 0.207).toLocaleString("en-GB")
+          : (protoSiteSpendGbp(site) * days).toFixed(2),
+      ];
+    }),
+  };
+}
+
+function protoDocumentsSection() {
+  const rows = protoSortedRows("documents", protoDocuments(), (item, key) => {
+    if (key === "name") return item.name;
+    if (key === "published") return item.published.getTime();
+    return "";
+  });
+  const body = rows.length
+    ? rows
+        .map(
+          (item) => `
+            <tr>
+              <th scope="row">${escapeHtml(item.name)}</th>
+              <td>${protoTag("Power BI")}</td>
+              <td>${protoTag("PDF")}</td>
+              <td><time datetime="${escapeHtml(protoIso(item.published))}">${escapeHtml(
+                protoFormatUkDate(item.published)
+              )}</time></td>
+              <td class="astral-downloads-get">${
+                protoCanAct()
+                  ? `<div class="astral-downloads-acts">${protoIconBtn(
+                      "export",
+                      "Download",
+                      `data-proto-document="${escapeHtml(item.id)}"`
+                    )}</div>`
+                  : ""
+              }</td>
+            </tr>
+          `
+        )
+        .join("")
+    : `<tr><td colspan="5" class="astral-muted">No documents yet.</td></tr>`;
+  return `
+    <section class="astral-card astral-downloads astral-documents" id="astral-documents">
+      ${protoReportsCardTabs("documents")}
+      <div class="astral-table-wrap is-tips">
+        <table class="astral-table">
+          <thead>
+            <tr>
+            ${protoSortHead("documents", "name", "Name")}
+            <th scope="col">Type</th>
+            <th scope="col">Kind</th>
+            ${protoSortHead("documents", "published", "Published")}
+            <th scope="col"><span class="sr-only">Download</span></th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+function protoDocumentsPage() {
+  return astralShell(`
+    ${protoReportsAreaHead("documents")}
+    ${protoDocumentsSection()}
   `);
 }
 
@@ -13829,7 +14191,8 @@ function protoReportList() {
     status: protoReportType(def.type).short,
     blurb: protoReportSummary(def),
     live: def.on,
-    file: def.type === "extract" || def.type === "billing",
+    file: protoReportIsFile(def.type),
+    kind: protoReportSends(def.type) ? def.format : "csv",
   }));
 }
 
@@ -13847,9 +14210,6 @@ function protoReportCard(def) {
         )}
       </div>
       <p>${escapeHtml(protoReportSummary(def))}</p>
-      <p class="astral-report-to">${protoIconMark("mail")}<span>${escapeHtml(
-        protoReportToLine(def)
-      )}</span></p>
       <div class="astral-actions"${canEdit ? ` data-proto-report-toggle="${id}"` : ""}>
         <span class="astral-report-wait"><span class="astral-muted">${escapeHtml(
           protoReportStatusLine(def)
@@ -13874,7 +14234,7 @@ function protoReportCard(def) {
 function protoReports() {
   const defs = protoReportDefs();
   const empty = protoCanEditReports()
-    ? `<h3>No reports yet</h3><p class="astral-muted">Add a data extract, tenant bill, data alert or missing data alert.</p>`
+    ? `<h3>No reports yet</h3><p class="astral-muted">Add a data extract, DC and DA report, tenant bill, data alert or missing data alert.</p>`
     : `<h3>No reports yet</h3><p class="astral-muted">Reports your team sets up show here.</p>`;
   return astralShell(`
     ${protoReportsAreaHead("reports")}
@@ -13883,7 +14243,7 @@ function protoReports() {
       defs.length
         ? `<section class="astral-card astral-reports-sheet">${protoReportsCardTabs("reports")}<div class="astral-report-grid">${defs
             .map((def) => protoReportCard(def))
-            .join("")}</div></section>`
+            .join("")}${protoReportSoonCards()}</div></section>`
         : `<section class="astral-card astral-reports-sheet">${protoReportsCardTabs("reports")}<div class="astral-empty">${empty}</div></section>`
     }
   `);
@@ -17082,6 +17442,7 @@ function protoApp() {
   if (view === "queries") return protoQueries();
   if (view === "reports") return protoReports();
   if (view === "downloads") return protoDownloadsPage();
+  if (view === "documents") return protoDocumentsPage();
   if (view === "profile") return protoProfile();
   if (view === "settings") return protoSettings();
   if (view === "users") return protoUsers();
@@ -17743,6 +18104,23 @@ function protoIntervalPack(id) {
   };
 }
 
+function protoReportSlug(report) {
+  return report.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "report";
+}
+
+function protoXls(id) {
+  const report = protoReportDef(id);
+  if (!report || !protoReportIsFile(report.type)) {
+    protoCsv(id);
+    return;
+  }
+  protoFileDownload(
+    protoXlsBody(protoReportRows(report), report.name),
+    `${protoReportSlug(report)}.xls`,
+    "application/vnd.ms-excel"
+  );
+}
+
 function protoCsv(id) {
   if (id === "users") {
     const lines = [
@@ -17763,9 +18141,8 @@ function protoCsv(id) {
     return;
   }
   const report = protoReportDef(id);
-  if (report && (report.type === "extract" || report.type === "billing")) {
-    const slug = report.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "report";
-    protoCsvDownload(protoReportCsv(report), `${slug}.csv`);
+  if (report && protoReportIsFile(report.type)) {
+    protoCsvDownload(protoReportCsv(report), `${protoReportSlug(report)}.csv`);
     return;
   }
   const pack = protoIntervalPack(id);
@@ -20338,6 +20715,12 @@ function onPrototype(event) {
   const csvBtn = event.target.closest("[data-proto-csv]");
   if (csvBtn) {
     protoCsv(csvBtn.dataset.protoCsv);
+    return;
+  }
+  const docBtn = event.target.closest("[data-proto-document]");
+  if (docBtn) {
+    const pack = protoDocumentPack(docBtn.dataset.protoDocument);
+    if (pack) protoPdfDownload(pack);
     return;
   }
   const reportSubmit = event.target.closest("[data-proto-report-edit-form] button[type='submit']");

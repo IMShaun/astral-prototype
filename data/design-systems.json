@@ -5276,7 +5276,7 @@
             "status": "working",
             "say": "Local time",
             "avoid": "Putting local time on the graph. Deleting a duplicated local clock. Renaming a row at the cutover.",
-            "note": "Graph times stay UTC. Local time waits as a user preference, a table display option, or a report or export setting. Not a graph control. Daylight saving can show the same local clock twice. Keep both rows. Do not rename them or delete one.",
+            "note": "Graph times stay UTC. Local time waits as a user preference or a table display option. Not a graph control. A Data extract can send UK time. UTC stays the default. Daylight saving can show the same local clock twice. Keep both rows. Do not rename them or delete one.",
             "from": "Max DataVision usability, 4 Sep, and Shaun on local time later, 23 Sep"
           },
           {
@@ -5393,11 +5393,11 @@
             "id": "my-documents",
             "kind": "words",
             "name": "My Documents",
-            "status": "draft",
+            "status": "working",
             "say": "My Documents",
             "avoid": "Downloads. Reports. Export.",
-            "note": "Files IMSERV produced elsewhere and placed for the customer. Safer than email or file transfer. A documents-only login may arrive here. Keep this off Downloads. The screen still waits.",
-            "from": "Handoff model, 22 Sep"
+            "note": "Files IMSERV produced elsewhere and placed for the customer. Power BI reports land here. Safer than email or file transfer. My Documents is a tab under Reports and compliance, after Downloads. The row is the name, Type, PDF, and Published. Download is an Icon button. Empty is No documents yet. A documents-only login may arrive here. Keep this off Downloads.",
+            "from": "Handoff model, 22 Sep, and version one scope register, 24 Sep"
           },
           {
             "id": "data-provision",
@@ -6035,9 +6035,9 @@
             "name": "Report",
             "status": "working",
             "say": "Report",
-            "avoid": "Excel. Add a custom report on the customer side.",
-            "note": "IMSERV Super admin sets reports up. Customer Admin and Manager only edit Clockwork email. Settings is the cog. It sits on the report card, and next to Download on a Report in Downloads. People, Occurrence, and Starts on sit there. Occurrence is Weekly, Monthly, or Quarterly. Starts on is dd/mm/yyyy. A calendar overlay picks the day. The month sits at the top. Today has a mark. Files sit on Downloads. Live is People are sent this report. The card shows how long is left until the next send. Months if a month or more. Weeks if a week or more. Days if under a week. Waiting is This report is not in yet. You cannot run it. Custom is a name only. You cannot run it yet.",
-            "from": "Shaun on Reports, 22 Sep"
+            "avoid": "Excel. Say XLS. Add a custom report on the customer side.",
+            "note": "Reports sit under Reports and compliance. Tabs are Reports, Downloads, and My Documents. Types are Data extract, DC and DA, Tenant billing, Data alert, and Missing data. A Data extract holds Interval data, Meter reads, or Missing data. Pick the sites, or All sites for the portfolio. Utility is All utilities, Electricity, Gas, or Water. Channel is Import and export, Import, or Export. Format is CSV or XLS. Times are UTC or UK time. UTC is the default. Send by Email, SFTP, or FTP. More than one person can get it. Each email has an opt-out link. The card is the name, the type Tag, one line on what it sends, and the next send. Who gets it and where it goes sit in Settings, not on the card. Settings is the cog. It sits on the report card, and next to Download on a Report in Downloads. First send on is dd/mm/yyyy. A calendar overlay picks the day. Files sit on Downloads. The card shows how long is left until the next send. Months if a month or more. Weeks if a week or more. Days if under a week. Coming soon cards sit at the end. You cannot open them.",
+            "from": "Shaun on Reports, 22 Sep, and version one scope register, 24 Sep"
           },
           {
             "id": "icon-tooltip",
@@ -6096,7 +6096,7 @@
             "status": "working",
             "say": "Downloads",
             "avoid": "My Documents. Using Downloads as the name of Report.",
-            "note": "A subpage from Reports. CSV and PDF from Export wait here. Keep My Documents off this pile.",
+            "note": "A subpage from Reports. CSV and PDF from Export wait here. A scheduled report also sends CSV or XLS here. Keep My Documents off this pile.",
             "from": "Shaun on export processing, 8 Sep, and handoff model, 22 Sep"
           },
           {
@@ -6588,6 +6588,46 @@
             "avoid": "Select an item.",
             "note": "The reading side before a ticket is open.",
             "from": "Admin servicing and inbox brief, 6 Oct"
+          },
+          {
+            "id": "coming-soon",
+            "kind": "labels",
+            "name": "Coming soon",
+            "status": "working",
+            "say": "Coming soon",
+            "avoid": "Wait as the tag. v1.1 on a screen. A date. Beta.",
+            "note": "A Tag on a card for work after version one. The card is grey and flat. No hover. No click. No Settings. One line says what it will do. It sits at the end of the list, under a Coming soon heading.",
+            "from": "Version one scope register, 24 Sep"
+          },
+          {
+            "id": "dc-da-report",
+            "kind": "words",
+            "name": "DC and DA",
+            "status": "working",
+            "say": "DC and DA",
+            "avoid": "Spelling out data collector and data aggregator on the tag. Flow numbers on the card.",
+            "note": "A scheduled report of the reads your data collector and data aggregator send. The tag is DC/DA. It sends by Email, SFTP, or FTP, as CSV or XLS.",
+            "from": "Version one scope register, 24 Sep"
+          },
+          {
+            "id": "xls",
+            "kind": "labels",
+            "name": "XLS",
+            "status": "working",
+            "say": "XLS",
+            "avoid": "Excel. Spreadsheet.",
+            "note": "A format for a scheduled report. Export on a graph stays CSV or PDF.",
+            "from": "Version one scope register, 24 Sep"
+          },
+          {
+            "id": "opt-out",
+            "kind": "words",
+            "name": "Opt out",
+            "status": "working",
+            "say": "Opt out",
+            "avoid": "Unsubscribe as the label in Astral.",
+            "note": "Each report email has a link to stop it. The person drops off that report. The report keeps sending to the rest.",
+            "from": "Version one scope register, 24 Sep"
           }
         ]
       },
@@ -6655,7 +6695,7 @@
             "name": "Documents only or full Astral",
             "status": "draft",
             "summary": "The shell follows what the company bought.",
-            "now": "The walk is full Astral. Portfolio, consumption, cost, carbon, alerts, reports. Documents and a documents-only shell still wait.",
+            "now": "The walk is full Astral. Portfolio, consumption, cost, carbon, alerts, reports. My Documents sits as a tab under Reports. A documents-only shell still waits.",
             "later": "Documents only opens My Documents, notifications, and profile. Hide Portfolio.",
             "uses": [
               "tabs"
@@ -6667,7 +6707,7 @@
             "name": "Four kinds of file",
             "status": "draft",
             "summary": "Scheduled report, My Documents, Export, and data provision stay distinct.",
-            "now": "Clockwork sits on Reports. Export queues CSV or PDF. Files wait on Downloads. My Documents still waits.",
+            "now": "Clockwork sits on Reports. Export queues CSV or PDF. Files wait on Downloads. My Documents is its own tab.",
             "later": "",
             "uses": [
               "tag",
@@ -7102,11 +7142,28 @@
             "note": "An icon button has a tooltip. Hover for the action. It waits 0.7 seconds. Clockwork email stays on Reports. Do not invent Excel. Do not invent Ready as a status colour."
           },
           {
+            "id": "reports-version-one",
+            "name": "Reports in version one",
+            "status": "working",
+            "summary": "Reports covers the version one scheduled and delivered reports. Later work sits as Coming soon.",
+            "now": "Add a report opens the type cards. Data extract, DC and DA, Tenant billing, Data alert, and Missing data. A Data extract holds Interval data, Meter reads, or Missing data. Pick sites or All sites. Filter by utility and by channel. Format is CSV or XLS. Times are UTC or UK time. Send by Email, SFTP, or FTP. Many people can get one report. Each email has an opt-out link. The file also sits on Downloads. Power BI reports sit on My Documents. Export from a graph sits on Downloads. Analysis reports sit on Portfolio. Dashboard widgets sit on Overview.",
+            "later": "Coming soon cards: Data health. Capacity and kVA. League tables across sites. Alerts with LOA status. Reports by meter class, non-HH, HH, and sub-metering. Export and sub-meter channels for an Ofgem claim-back. The what3words overlay and the company map sit on Portfolio later.",
+            "uses": [
+              "card",
+              "tag",
+              "modal",
+              "select",
+              "tabs",
+              "table"
+            ],
+            "note": "Coming soon cards cannot be opened. They sit under the type cards until a type is picked, and at the end of Reports. GSOP reporting is version one in the requirements register but not in the 86 functions. The DV totals, export, and multi-site reports still need a name."
+          },
+          {
             "id": "downloads-on-reports",
             "name": "Downloads",
             "status": "working",
             "summary": "Reports and data exports wait on their own page.",
-            "now": "Downloads is a subpage from Reports. Reports and Downloads sit as Tabs under Reports and compliance. The selected tab is a black pill. The pill slides. Do not put a ghost Downloads or Reports button in the page actions. View downloads opens it. Search downloads sits in the card. Filter sits to the right. Overlay uses ticks. Kind is CSV and PDF. Type is Report and Data export. Status is Processing. When a filter is on, pills sit under Search and Filter. A cross clears that one. Clear takes them all off. Leave a page and Search and Filter start again. An open person, overlay, or menu starts again. The Filter button shows how many are on. The count is a cyan circle. No black rim. The row is the name, Type, CSV or PDF, and Status. Type is Report or Data export. Report is black on cyan. Data export is white on black. Customer Admin and Manager get Settings on a Report, next to Download. Same Clockwork email as Reports. Complete sits in Tag when it is ready. A cyan bar sits above that line while it processes. Minutes if a minute or more. Seconds if under a minute. The cyan bar fills while it waits. Download waits until it is ready. Then it sits as an Icon button. Hover for Download. In this walk, Download plays a short dummy of the bar, then the file. The white card fills to the bottom. Rounded corners stay on. Only that card scrolls. The list fits the card. No sideways scroll. Empty is No downloads yet. Search or Filter with no hit is No downloads match.",
+            "now": "Downloads is a subpage from Reports. Reports, Downloads, and My Documents sit as Tabs under Reports and compliance. The selected tab is a black pill. The pill slides. Do not put a ghost Downloads or Reports button in the page actions. View downloads opens it. Search downloads sits in the card. Filter sits to the right. Overlay uses ticks. Kind is CSV, XLS, and PDF. Type is Report and Data export. Status is Processing. When a filter is on, pills sit under Search and Filter. A cross clears that one. Clear takes them all off. Leave a page and Search and Filter start again. An open person, overlay, or menu starts again. The Filter button shows how many are on. The count is a cyan circle. No black rim. The row is the name, Type, Kind, and Status. Type is Report or Data export. Report is black on cyan. Data export is white on black. Customer Admin and Manager get Settings on a Report, next to Download. Same Clockwork email as Reports. Complete sits in Tag when it is ready. A cyan bar sits above that line while it processes. Minutes if a minute or more. Seconds if under a minute. The cyan bar fills while it waits. Download waits until it is ready. Then it sits as an Icon button. Hover for Download. In this walk, Download plays a short dummy of the bar, then the file. The white card fills to the bottom. Rounded corners stay on. Only that card scrolls. The list fits the card. No sideways scroll. Empty is No downloads yet. Search or Filter with no hit is No downloads match.",
             "later": "",
             "uses": [
               "search",
@@ -7116,7 +7173,7 @@
               "banner",
               "button"
             ],
-            "note": "Clockwork email stays on Reports. Do not invent Excel. Do not invent Ready as a status colour."
+            "note": "Clockwork email stays on Reports. Say XLS, not Excel. Do not invent Ready as a status colour."
           },
           {
             "id": "query-from-graph",

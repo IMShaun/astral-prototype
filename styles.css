@@ -9582,25 +9582,6 @@ button.astral-state {
   margin-left: auto;
 }
 
-.astral-report-grid .astral-card > p.astral-report-to {
-  flex: none;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  min-height: 0;
-  margin: 0;
-  padding: 0 20px 16px;
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
-}
-
-.astral-report-to svg {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  margin-top: 2px;
-}
-
 @media (max-width: 560px) {
   .astral-report-types,
   .astral-report-pair {
@@ -10925,4 +10906,55 @@ button.astral-state:focus-visible,
   align-items: center;
   gap: var(--space-8, 8px);
   white-space: nowrap;
+}
+
+.astral-report-soon-head {
+  grid-column: 1 / -1;
+  margin: var(--space-8, 8px) 0 0;
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.astral-report-grid .astral-card.is-soon {
+  padding-bottom: 20px;
+  background: var(--color-background-subtle);
+  box-shadow: none;
+  cursor: default;
+}
+
+.astral-report-grid .astral-card.is-soon h3,
+.astral-report-grid .astral-card.is-soon > p {
+  color: var(--color-text-secondary);
+}
+
+.astral-report-grid .astral-card.is-soon:hover {
+  background: var(--color-background-subtle);
+}
+
+.astral-report-types.is-soon {
+  margin-top: -8px;
+}
+
+.astral-report-type.is-soon {
+  background: var(--color-background-subtle);
+  color: var(--color-text-secondary);
+  cursor: default;
+}
+
+.astral-report-type.is-soon:hover {
+  background: var(--color-background-subtle);
+}
+
+.astral-report-type-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.astral-report-type-head .astral-tag {
+  flex: none;
+  font-weight: 400;
 }
