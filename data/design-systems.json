@@ -2193,14 +2193,15 @@
           "file": "src/components/Avatar.tsx",
           "family": "core",
           "summary": "ME on the bar. Empty is white type on cyan with no outline. A name puts initials there. A JPEG or PNG sits in ME.",
-          "usage": "Pass the picture or the name. Empty ME stays white on cyan. Name updates the initials. Hover for Account. A gap sits between the bar and the overlay. On Invite link the picture sits next to who invited them. Do not put Astral in Users.",
+          "usage": "Pass the picture or the name. Empty ME stays white on cyan. Name updates the initials. Hover for Account. A gap sits between the bar and the overlay. On Invite link the picture sits next to who invited them. Do not put Astral in Users. While it loads, the circle is a plain grey shimmer with no initials or text bar.",
           "variants": [
             "empty",
             "initials",
             "photo"
           ],
           "states": [
-            "default"
+            "default",
+            "loading"
           ],
           "tokens": [
             "semantic.color.action.primary",
