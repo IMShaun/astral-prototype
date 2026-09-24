@@ -4895,7 +4895,7 @@ button.astral-catch {
 }
 
 .astral-settings-main .astral-pane-head {
-  padding-bottom: var(--space-stack-default);
+  padding-bottom: calc(var(--space-stack-default) - 6px);
 }
 
 .astral-settings-nav .astral-tree {
@@ -5307,7 +5307,8 @@ button.astral-catch {
   position: relative;
   z-index: 2;
   background: #fff;
-  padding-bottom: var(--space-stack-tight);
+  /* The pane body takes 6px of this gap back as focus ring room, so the spacing stays the same. */
+  padding-bottom: calc(var(--space-stack-tight) - 6px);
   padding-inline-end: var(--scrollbar-size);
 }
 
@@ -5318,7 +5319,8 @@ button.astral-catch {
   overflow: auto;
   overflow-x: clip;
   padding-inline-end: var(--scrollbar-size);
-  /* Room for focus rings on controls flush with the left edge. */
+  /* Room for focus rings on controls flush with the top or left edge. */
+  padding-block-start: 6px;
   padding-inline-start: 6px;
   margin-inline-start: -6px;
   overscroll-behavior: contain;
@@ -11113,3 +11115,13 @@ html.is-classic-scroll #astral-fs .is-scroll-near {
     animation: none;
   }
 }
+
+/* Search to add: one search box that lists matching people in a menu; picking one adds them. */
+.astral-people-tools .astral-search-add {
+  flex: 1 1 100%;
+}
+
+.astral-search-add .astral-search {
+  width: 100%;
+}
+

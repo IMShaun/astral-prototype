@@ -670,7 +670,6 @@ function protoPageFilterReset() {
     prototypeReportDraftStart: "",
     prototypeReportPeopleQuery: "",
     prototypeReportSiteQuery: "",
-    prototypeReportRecipientQuery: "",
     prototypeReportFrom: "",
     prototypeReportCalOpen: false,
     prototypeReportCal: "",
@@ -6545,7 +6544,13 @@ function protoPickSelect(id, value) {
   if (id === "report-people") {
     const draft = protoReportDraft();
     if (!draft) return;
+    const fromSearch = Boolean(document.querySelector("#astral-fs .astral-search-add"));
+    if (fromSearch) store.prototypeReportPeopleQuery = "";
     protoReportPatchDraft({ people: protoReportToggleIn(draft.people, value) }, "report-people");
+    if (fromSearch) {
+      protoRestoreFocus("#astral-fs input[name='proto-report-people-query']");
+      return;
+    }
     protoRestoreFocus(
       `#astral-fs [data-proto-select-option="report-people"][data-proto-select-value="${CSS.escape(
         value
@@ -7570,15 +7575,51 @@ function protoReportPeopleOptions(people) {
   });
 }
 
+function protoReportPeopleSearch(pool) {
+  const id = "report-people";
+  const query = String(store.prototypeReportPeopleQuery || "");
+  const q = query.trim().toLowerCase();
+  const open = protoSelectOpen() === id;
+  const shown = protoReportPeopleOptions(pool).filter(
+    (item) => !q || `${item.label} ${item.search}`.toLowerCase().includes(q)
+  );
+  const options = shown
+    .map(
+      (item) => `
+        <button
+          type="button"
+          role="option"
+          aria-selected="false"
+          data-proto-select-option="${id}"
+          data-proto-select-value="${escapeHtml(item.value)}"
+        >${item.html}</button>`
+    )
+    .join("");
+  const empty = options
+    ? ""
+    : `<p class="astral-muted">${pool.length ? "No one in your company matches." : "Everyone in your company already gets it."}</p>`;
+  return `
+    <div class="astral-select astral-search-add is-wide has-search${open && protoMenuEnter.has(`select:${id}`) ? " is-enter" : ""}" data-proto-select="${id}">
+      ${protoSearchField({
+        name: "proto-report-people-query",
+        value: query,
+        placeholder: "Search people in your company to add",
+        label: "Search people in your company to add",
+      })}
+      <div class="astral-select-menu${open ? protoMenuEnterClass(`select:${id}`) : ""}"${open ? "" : " hidden"}>
+        <div id="astral-select-${id}" class="astral-select-options" role="listbox" aria-label="People in your company">${options}${empty}</div>
+      </div>
+    </div>
+  `;
+}
+
 function protoReportRecipientList(draft) {
   const rows = protoReportRecipientRows(draft);
-  const q = String(store.prototypeReportRecipientQuery || "").trim().toLowerCase();
-  const shown = rows.filter((row) => !q || `${row.name} ${row.email} ${row.role}`.toLowerCase().includes(q));
   const picked = new Set((draft.people || []).map(String));
   const pool = protoUserPeople().filter((person) => !picked.has(person.id));
   const table = protoTable(
     ["Name", "Role", { label: "Remove", sort: false, hidden: true }],
-    shown.map((row) =>
+    rows.map((row) =>
       Object.assign(
         [
           `<span class="astral-person">${protoPersonFace(row.initials, row.name, row.email)}</span>`,
@@ -7593,37 +7634,13 @@ function protoReportRecipientList(draft) {
     ),
     {
       id: "report-recipients",
-      empty: rows.length ? "No one matches." : "No one gets this yet. Add people.",
+      empty: "No one gets this yet. Search for people to add them.",
     }
   );
   return `
-    <div class="astral-people-tools">
-      ${protoSearchField({
-        name: "proto-report-recipient-query",
-        value: store.prototypeReportRecipientQuery || "",
-        placeholder: "Search recipients",
-        label: "Search recipients",
-      })}
-      ${protoSelect({
-        id: "report-people",
-        label: "Add people",
-        multi: true,
-        values: [],
-        placeholder: "Add people",
-        empty: pool.length ? "No people match." : "Everyone on Astral already gets it.",
-        search: pool.length
-          ? {
-              name: "proto-report-people-query",
-              value: String(store.prototypeReportPeopleQuery || ""),
-              placeholder: "Search people",
-              label: "Search people",
-            }
-          : null,
-        options: protoReportPeopleOptions(pool),
-      })}
-    </div>
+    <div class="astral-people-tools">${protoReportPeopleSearch(pool)}</div>
     <div class="astral-people astral-report-recipients">${table}</div>
-    <p class="astral-people-count">${shown.length} of ${rows.length} ${rows.length === 1 ? "recipient" : "recipients"}. Each email has an opt-out link.</p>
+    <p class="astral-people-count">${rows.length} ${rows.length === 1 ? "recipient" : "recipients"}. Each email has an opt-out link.</p>
   `;
 }
 
@@ -8033,7 +8050,6 @@ function protoReportOpenEdit(id) {
     prototypeReportDraftStart: def ? def.start : protoFormatUkDate(protoToday()),
     prototypeReportPeopleQuery: "",
     prototypeReportSiteQuery: "",
-    prototypeReportRecipientQuery: "",
     prototypeReportCal: "",
     prototypeSelectOpen: "",
     ...(def
@@ -8086,7 +8102,6 @@ function protoReportEditClear() {
     prototypeReportDraftStart: "",
     prototypeReportPeopleQuery: "",
     prototypeReportSiteQuery: "",
-    prototypeReportRecipientQuery: "",
     prototypeReportCalOpen: false,
     prototypeReportCal: "",
   };
@@ -18565,7 +18580,7 @@ function protoFloatTrigger(host) {
   return (
     host.querySelector("[aria-expanded='true']") ||
     host.querySelector(
-      ".astral-select-btn, .astral-date-btn, .astral-date-input, .astral-brand-swatch, .astral-icon-btn, button"
+      ".astral-select-btn, .astral-search-add > .astral-search, .astral-date-btn, .astral-date-input, .astral-brand-swatch, .astral-icon-btn, button"
     )
   );
 }
@@ -18586,6 +18601,7 @@ function protoFloatPlaceBox(menu, host, trigger) {
 }
 
 function protoFloatAlign(menu, host) {
+  if (host.classList.contains("astral-search-add")) return "stretch";
   if (
     menu.classList.contains("astral-select-menu") ||
     menu.classList.contains("astral-date-menu") ||
@@ -18669,8 +18685,10 @@ function protoPlaceFloatMenus() {
     menu.style.width = "";
     menu.style.maxHeight = "";
     menu.style.overflowY = "";
-    if (align === "stretch") menu.style.width = `${Math.round(rect.width)}px`;
-    else if (align === "start") menu.style.minWidth = `${Math.round(rect.width)}px`;
+    if (align === "stretch") {
+      menu.style.width = `${Math.round(rect.width)}px`;
+      menu.style.minWidth = `${Math.round(rect.width)}px`;
+    } else if (align === "start") menu.style.minWidth = `${Math.round(rect.width)}px`;
     const preferUp = protoFloatPreferUp(menu, host);
     const roomBelow = floor - (rect.bottom + gap);
     const roomAbove = rect.top - gap - (box.top + margin);
@@ -19377,8 +19395,6 @@ function onPrototype(event) {
               ? { prototypeTeamPeopleQuery: "", prototypeSelectOpen: "team-people" }
               : name === "proto-report-people-query"
                 ? { prototypeReportPeopleQuery: "", prototypeSelectOpen: "report-people" }
-              : name === "proto-report-recipient-query"
-                ? { prototypeReportRecipientQuery: "" }
               : name === "proto-report-site-query"
                 ? { prototypeReportSiteQuery: "", prototypeSelectOpen: store.prototypeSelectOpen || "" }
               : name === "proto-point-tag-query"
@@ -19619,6 +19635,15 @@ function onPrototype(event) {
       });
       return;
     }
+  }
+  const searchAdd = event.target.closest(".astral-search-add input[type='search']");
+  if (searchAdd) {
+    const id = searchAdd.closest("[data-proto-select]").dataset.protoSelect;
+    if (protoSelectOpen() !== id) {
+      setProto({ prototypeSelectOpen: id });
+      protoRestoreFocus(`#astral-fs input[name='${searchAdd.name}']`, searchAdd.selectionStart);
+    }
+    return;
   }
   const selectOption = event.target.closest("[data-proto-select-option]");
   if (selectOption) {
@@ -19931,7 +19956,7 @@ function onPrototype(event) {
     protoRestoreFocus(
       next
         ? `#astral-fs [data-proto-report-remove="${CSS.escape(next.dataset.protoReportRemove)}"]`
-        : '#astral-fs [data-proto-select="report-people"] .astral-select-btn'
+        : "#astral-fs input[name='proto-report-people-query']"
     );
     return;
   }
@@ -21248,6 +21273,7 @@ function onPrototypeInput(event) {
   const reportPeopleSearch = event.target.closest("input[name='proto-report-people-query']");
   if (reportPeopleSearch) {
     store.prototypeReportPeopleQuery = reportPeopleSearch.value.slice(0, 120);
+    if (reportPeopleSearch.closest(".astral-search-add")) store.prototypeSelectOpen = "report-people";
     persistChrome();
     const active = document.activeElement === reportPeopleSearch;
     const start = reportPeopleSearch.selectionStart;
@@ -21262,15 +21288,6 @@ function onPrototypeInput(event) {
     const start = reportSiteSearch.selectionStart;
     render();
     if (active) protoRestoreFocus("#astral-fs input[name='proto-report-site-query']", start);
-    return;
-  }
-  const reportRecipientSearch = event.target.closest("input[name='proto-report-recipient-query']");
-  if (reportRecipientSearch) {
-    store.prototypeReportRecipientQuery = reportRecipientSearch.value.slice(0, 120);
-    const active = document.activeElement === reportRecipientSearch;
-    const start = reportRecipientSearch.selectionStart;
-    render();
-    if (active) protoRestoreFocus("#astral-fs input[name='proto-report-recipient-query']", start);
     return;
   }
   const reportField = event.target.closest("input[data-proto-report-field]");
@@ -21863,7 +21880,7 @@ function onPrototypeSubmit(event) {
 }
 
 function onPrototypeKey(event) {
-  if (event.key === "Enter" && event.target.closest("input[name='proto-team-people-query'], input[name='proto-report-people-query'], input[name='proto-report-site-query'], input[name='proto-report-recipient-query'], input[name='proto-person-team-query'], input[name='proto-person-sites-query']")) {
+  if (event.key === "Enter" && event.target.closest("input[name='proto-team-people-query'], input[name='proto-report-people-query'], input[name='proto-report-site-query'], input[name='proto-person-team-query'], input[name='proto-person-sites-query']")) {
     event.preventDefault();
     return;
   }
