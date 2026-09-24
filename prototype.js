@@ -6960,6 +6960,10 @@ function protoCanEditReports() {
   return protoCanAct();
 }
 
+function protoCanAddReports() {
+  return protoCompanyId() === "admin-user" && !store.prototypeSeeAsUser;
+}
+
 function protoReportDefsStore() {
   const raw = store.prototypeReportDefs;
   return raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
@@ -8157,6 +8161,7 @@ function protoReportRefreshForm() {
 
 function protoReportOpenEdit(id) {
   if (!protoCanEditReports()) return;
+  if (id === "new" && !protoCanAddReports()) return;
   const def = id === "new" ? null : protoReportDef(id);
   if (id !== "new" && !def) return;
   const view = protoState().view;
@@ -8692,7 +8697,7 @@ function protoReportsDownloadsTabs(active) {
 
 function protoReportsAreaHead(active) {
   const addBtn =
-    active === "reports" && protoCanEditReports()
+    active === "reports" && protoCanAddReports()
       ? protoBtn(
           "Add a report",
           `data-proto-report-edit="new" aria-haspopup="dialog" aria-expanded="${
@@ -14616,9 +14621,9 @@ function protoReportCard(def) {
 function protoReports() {
   if (protoReportPageOpen()) return protoReportPage();
   const defs = protoReportDefs();
-  const empty = protoCanEditReports()
+  const empty = protoCanAddReports()
     ? `<h3>No reports yet</h3><p class="astral-muted">Add a data extract, DC and DA report, tenant bill, data alert or missing data alert.</p>`
-    : `<h3>No reports yet</h3><p class="astral-muted">Reports your team sets up show here.</p>`;
+    : `<h3>No reports yet</h3><p class="astral-muted">Reports IMSERV sets up for you show here.</p>`;
   return astralShell(`
     ${protoReportsAreaHead("reports")}
     ${protoReportEditModal()}
