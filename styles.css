@@ -9628,6 +9628,96 @@ button.astral-state {
   margin-left: auto;
 }
 
+.astral-report-page-title {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-8);
+}
+
+.astral-report-page {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: var(--space-gap-tight);
+  overflow: hidden;
+}
+
+.astral-report-page > .astral-pane {
+  height: auto;
+  min-height: 0;
+}
+
+.astral-report-page.is-single > .astral-report-set {
+  grid-column: 1 / -1;
+}
+
+.astral-report-page.is-single .astral-report-fields {
+  max-width: 40rem;
+}
+
+.astral-report-fields {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.astral-report-fields > p.astral-muted {
+  margin: -8px 0 0;
+  font-size: 0.875rem;
+}
+
+.astral-report-who .astral-pane-body {
+  gap: 16px;
+}
+
+.astral-report-add-email {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-8);
+}
+
+.astral-report-add-email + p.astral-muted {
+  margin: -8px 0 0;
+  font-size: 0.875rem;
+}
+
+.astral-report-recipients .astral-people-col-role {
+  width: 9rem;
+}
+
+.astral-report-recipients .astral-people-col-more {
+  width: 3.5rem;
+  text-align: right;
+}
+
+.astral-report-who .astral-people-count {
+  margin: 0;
+}
+
+.astral-report-page-foot {
+  grid-column: 1 / -1;
+  padding: 16px 24px;
+  background: #fff;
+  border: 1px solid var(--color-border-default);
+  border-radius: 16px;
+}
+
+.astral-report-page-foot .astral-actions {
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .astral-report-page {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    overflow: visible;
+  }
+}
+
 @media (max-width: 560px) {
   .astral-report-types,
   .astral-report-pair {
