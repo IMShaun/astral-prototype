@@ -11123,3 +11123,17 @@ html.is-classic-scroll #astral-fs .is-scroll-near {
   flex: none;
   margin-inline-start: auto;
 }
+
+.astral-select-options .astral-select-all {
+  position: relative;
+  margin-block-end: 5px;
+}
+
+.astral-select-options .astral-select-all::after {
+  content: "";
+  position: absolute;
+  inset: auto 12px -3px;
+  height: 1px;
+  background: var(--color-border-default);
+  pointer-events: none;
+}

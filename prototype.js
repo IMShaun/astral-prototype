@@ -6188,6 +6188,8 @@ function protoQueryPinHead(titleHtml, extraHtml) {
   `;
 }
 
+const PROTO_SELECT_ALL = "__all";
+
 function protoSelect(config) {
   const id = config.id;
   const open = protoSelectOpen() === id;
@@ -6267,6 +6269,21 @@ function protoSelect(config) {
       `;
     })
     .join("");
+  const allOn = visible.length > 0 && visible.every((item) => values.includes(String(item.value)));
+  const allMix = !allOn && visible.some((item) => values.includes(String(item.value)));
+  const allHtml =
+    multi && config.selectAll && visible.length > 1
+      ? `
+        <button
+          type="button"
+          role="option"
+          class="astral-select-all${allOn ? " is-on" : ""}"
+          aria-selected="${allOn ? "true" : "false"}"
+          data-proto-select-option="${escapeHtml(id)}"
+          data-proto-select-value="${PROTO_SELECT_ALL}"
+        ><span class="astral-check${allOn ? " is-on" : allMix ? " is-mix" : ""}" aria-hidden="true"></span><span>Select all</span></button>
+      `
+      : "";
   const empty = options
     ? ""
     : config.empty
@@ -6289,7 +6306,7 @@ function protoSelect(config) {
         role="listbox"
         ${multi ? `aria-multiselectable="true"` : ""}
         aria-label="${escapeHtml(config.label || "Options")}"
-      >${options}${empty}</div>
+      >${allHtml}${options}${empty}</div>
   `;
   const select = `
     <div class="astral-select${extra ? ` ${extra}` : ""}" data-proto-select="${escapeHtml(id)}">
@@ -6575,6 +6592,24 @@ function protoPickSelect(id, value) {
       `#astral-fs [data-proto-select-option="report-people"][data-proto-select-value="${CSS.escape(
         value
       )}"]`
+    );
+    return;
+  }
+  if (id === "report-sites" && value === PROTO_SELECT_ALL) {
+    const draft = protoReportDraft();
+    if (!draft) return;
+    const q = String(store.prototypeReportSiteQuery || "").trim().toLowerCase();
+    const shown = protoEstateSites()
+      .filter((site) => !q || String(site.name || "").toLowerCase().includes(q))
+      .map((site) => String(protoSiteId(site)));
+    const cur = (draft.sites || []).map(String);
+    const every = shown.length && shown.every((item) => cur.includes(item));
+    const next = every
+      ? cur.filter((item) => !shown.includes(item))
+      : [...cur, ...shown.filter((item) => !cur.includes(item))];
+    protoReportPatchDraft({ sites: next }, id);
+    protoRestoreFocus(
+      `#astral-fs [data-proto-select-option="${id}"][data-proto-select-value="${PROTO_SELECT_ALL}"]`
     );
     return;
   }
@@ -7464,6 +7499,7 @@ function protoReportSitesSelect(draft) {
       placeholder: alert ? "All sites" : "Pick sites",
       countLabel: "sites",
       allLabel: "All sites",
+      selectAll: true,
       empty: sites.length ? "No sites match." : "No sites in this company.",
       search: sites.length
         ? {
