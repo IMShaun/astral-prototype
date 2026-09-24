@@ -6636,6 +6636,7 @@ function protoPickSelect(id, value) {
     "report-channel": "channel",
     "report-format": "format",
     "report-time": "time",
+    "report-send-at": "sendAt",
   };
   if (PROTO_REPORT_SELECT_KEYS[id]) {
     const key = PROTO_REPORT_SELECT_KEYS[id];
@@ -6908,6 +6909,8 @@ const PROTO_REPORT_TIME = [
   { id: "uk", name: "UK time", note: "Moves with BST" },
 ];
 
+const PROTO_REPORT_SEND_AT = Array.from({ length: 17 }, (_, i) => `${String(i + 6).padStart(2, "0")}:00`);
+
 const PROTO_REPORT_SOON = [
   { id: "health", name: "Data health", blurb: "How complete and on time each site's data is." },
   { id: "capacity", name: "Capacity and kVA", blurb: "Peak demand in kVA against each site's agreed capacity." },
@@ -7063,6 +7066,7 @@ function protoReportNormalize(raw) {
     channel: protoReportPick(PROTO_REPORT_CHANNEL, raw.channel),
     format: protoReportPick(PROTO_REPORT_FORMAT, raw.format),
     time: protoReportPick(PROTO_REPORT_TIME, raw.time),
+    sendAt: PROTO_REPORT_SEND_AT.includes(String(raw.sendAt)) ? String(raw.sendAt) : "09:00",
     sftpHost: String(raw.sftpHost || "").trim().slice(0, 120),
     sftpPath: String(raw.sftpPath || "").trim().slice(0, 160),
     site: known.has(String(raw.site || "")) ? String(raw.site) : ids[0] || "",
@@ -7264,6 +7268,24 @@ function protoReportSendLabel(next) {
   return `${day} ${next.getDate()} ${month}${year}`;
 }
 
+function protoReportZone(def) {
+  return protoReportSends(def.type) && def.time === "utc" ? "UTC" : "UK time";
+}
+
+function protoReportSendAtSelect(draft) {
+  const zone = protoReportZone(draft);
+  return protoReportField(
+    "Send at",
+    protoSelect({
+      id: "report-send-at",
+      label: "Send at",
+      wide: true,
+      value: draft.sendAt || "09:00",
+      options: PROTO_REPORT_SEND_AT.map((at) => ({ value: at, label: `${at} ${zone}` })),
+    })
+  );
+}
+
 function protoReportFileLine(def) {
   const bits = [protoReportOptionName(PROTO_REPORT_FORMAT, def.format)];
   if (def.utility !== "all") bits.push(protoReportOptionName(PROTO_REPORT_UTILITY, def.utility).toLowerCase());
@@ -7348,7 +7370,9 @@ function protoReportStatusHtml(def) {
     const sent = protoFromUkDate(def.start);
     return `${protoTag("Sent")}<span class="astral-muted">${escapeHtml(protoReportSendLabel(sent))}</span>`;
   }
-  return `${protoTag("Scheduled")}${line}`;
+  return `${protoTag("Scheduled")}<span class="astral-muted">${escapeHtml(
+    `${protoReportStatusLine(def)}, ${def.sendAt}`
+  )}</span>`;
 }
 
 function protoReportStatusLine(def) {
@@ -7578,12 +7602,13 @@ function protoReportDraftPreview(draft) {
   if (protoReportSends(def.type)) {
     const next = protoReportNextSend(def);
     const period = protoReportPeriod(def.type, def.period);
+    const at = `${def.sendAt} ${protoReportZone(def)}`;
     if (protoReportOnce(def)) {
-      return next ? `Once, sent on ${protoFormatUkDate(next)}.` : "Once. The send date has passed.";
+      return next ? `Once, sent on ${protoFormatUkDate(next)} at ${at}.` : "Once. The send date has passed.";
     }
     return next
-      ? `${period.every}, first sent on ${protoFormatUkDate(next)}.`
-      : `${period.every}.`;
+      ? `${period.every} at ${at}, first sent on ${protoFormatUkDate(next)}.`
+      : `${period.every} at ${at}.`;
   }
   if (def.type === "billing") {
     const bill = protoReportBill(def);
@@ -7952,22 +7977,24 @@ function protoReportSendFields(draft, opts = {}) {
   const serverName = server.map((way) => way.toUpperCase()).join(" or ");
   return `
     <div class="astral-report-pair">
+      ${protoReportSendAtSelect(draft)}
       ${protoReportOptionSelect("report-time", "Times in", PROTO_REPORT_TIME, draft.time)}
-      ${protoReportField(
-        "Send by",
-        protoSelect({
-          id: "report-delivery",
-          label: "Send by",
-          multi: true,
-          wide: true,
-          values: ways,
-          placeholder: "Pick how to send it",
-          countLabel: "ways",
-          allLabel: "Email, SFTP and FTP",
-          options: PROTO_REPORT_DELIVERY.map((item) => ({ value: item.id, label: item.name })),
-        })
-      )}
     </div>
+    <p class="astral-muted">Meter data comes in through the day. A later send holds more of it.</p>
+    ${protoReportField(
+      "Send by",
+      protoSelect({
+        id: "report-delivery",
+        label: "Send by",
+        multi: true,
+        wide: true,
+        values: ways,
+        placeholder: "Pick how to send it",
+        countLabel: "ways",
+        allLabel: "Email, SFTP and FTP",
+        options: PROTO_REPORT_DELIVERY.map((item) => ({ value: item.id, label: item.name })),
+      })
+    )}
     ${ways.includes("email") && !opts.page ? protoReportRecipientsHtml(draft) : ""}
     ${
       server.length
@@ -8032,6 +8059,7 @@ function protoReportTypeFields(draft, opts = {}) {
         })
       )}
       ${protoReportWhenFields(draft)}
+      ${protoReportSendAtSelect(draft)}
       <div class="astral-report-pair">
         ${protoReportInput("Tenant", "tenant", draft.tenant, 'maxlength="80" placeholder="Tenant name"')}
         ${protoReportInput("Tenant share (%)", "share", draft.share, 'inputmode="decimal" placeholder="50"')}
