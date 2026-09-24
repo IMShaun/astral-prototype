@@ -668,6 +668,8 @@ function protoPageFilterReset() {
     prototypeReportEdit: "",
     prototypeReportDraft: null,
     prototypeReportDraftStart: "",
+    prototypeReportDraftFrom: "",
+    prototypeReportDraftTo: "",
     prototypeReportPeopleQuery: "",
     prototypeReportSiteQuery: "",
     prototypeReportFrom: "",
@@ -2499,7 +2501,8 @@ function protoUkDateField(node) {
 function protoUkDateStoreKey(field) {
   if (field?.name === "proto-renew-from") return "prototypeRenewFrom";
   if (field?.name === "proto-renew-to") return "prototypeRenewTo";
-  if (field?.name === "proto-report-start") return "prototypeReportDraftStart";
+  const reportDate = protoReportDateOf(field?.name);
+  if (reportDate) return PROTO_REPORT_DATES[reportDate].key;
   return "";
 }
 
@@ -6846,11 +6849,22 @@ const PROTO_REPORT_TYPES = [
 ];
 
 const PROTO_REPORT_PERIODS = [
-  { id: "day", name: "Last day", every: "Daily", word: "daily", days: 1 },
-  { id: "week", name: "Last week", every: "Weekly", word: "weekly", days: 7 },
-  { id: "month", name: "Last month", every: "Monthly", word: "monthly", days: 30 },
-  { id: "quarter", name: "Last quarter", every: "Quarterly", word: "quarterly", days: 91 },
+  { id: "once", name: "Custom range", every: "Once", word: "once", days: 0, note: "One file for the dates you pick" },
+  { id: "day", name: "Last day", every: "Daily", word: "daily", days: 1, note: "The day before each send" },
+  { id: "week", name: "Last week", every: "Weekly", word: "weekly", days: 7, note: "The week before each send" },
+  { id: "month", name: "Last month", every: "Monthly", word: "monthly", days: 30, note: "The month before each send" },
+  { id: "quarter", name: "Last quarter", every: "Quarterly", word: "quarterly", days: 91, note: "The quarter before each send" },
 ];
+
+// Three date fields share one calendar. store.prototypeReportCalOpen holds the open one.
+const PROTO_REPORT_DATES = {
+  start: { name: "proto-report-start", key: "prototypeReportDraftStart" },
+  from: { name: "proto-report-from", key: "prototypeReportDraftFrom" },
+  to: { name: "proto-report-to", key: "prototypeReportDraftTo" },
+};
+
+// Prototype files stop at this many days so a two-year range still downloads.
+const PROTO_REPORT_FILE_DAYS = 62;
 
 const PROTO_REPORT_SILENCE = [1, 3, 6, 12, 24, 48];
 
@@ -6931,8 +6945,25 @@ function protoReportType(raw) {
 
 function protoReportPeriods(type) {
   return type === "billing"
-    ? PROTO_REPORT_PERIODS
+    ? PROTO_REPORT_PERIODS.filter((item) => item.id !== "once")
     : PROTO_REPORT_PERIODS.filter((item) => item.id !== "quarter");
+}
+
+function protoReportOnce(def) {
+  return protoReportSends(def?.type) && def?.period === "once";
+}
+
+function protoReportDefaultRange() {
+  const today = protoToday();
+  const from = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const to = new Date(today.getFullYear(), today.getMonth(), 0);
+  return { from: protoFormatUkDate(from), to: protoFormatUkDate(to) };
+}
+
+function protoReportRange(def) {
+  const from = protoFromUkDate(def.from);
+  const to = protoFromUkDate(def.to);
+  return from && to ? { from, to } : null;
 }
 
 function protoReportPeriod(type, raw) {
@@ -7008,6 +7039,9 @@ function protoReportNormalize(raw) {
     known.has(id)
   );
   const start = protoMaskUkDate(raw.start || "");
+  const range = protoReportDefaultRange();
+  const from = protoMaskUkDate(raw.from || "");
+  const to = protoMaskUkDate(raw.to || "");
   const delivery = PROTO_REPORT_DELIVERY.map((item) => item.id).filter((id) =>
     (Array.isArray(raw.delivery) ? raw.delivery : ["email"]).includes(id)
   );
@@ -7017,6 +7051,8 @@ function protoReportNormalize(raw) {
     name: String(raw.name || "").replace(/\s+/g, " ").trim().slice(0, 80) || protoReportDefaultName(type),
     on: raw.on !== false,
     start: protoFromUkDate(start) ? start : protoFormatUkDate(protoToday()),
+    from: protoFromUkDate(from) ? from : range.from,
+    to: protoFromUkDate(to) ? to : range.to,
     people: [...new Set((Array.isArray(raw.people) ? raw.people : []).map(String).filter(Boolean))],
     emails: protoReportEmails(raw.emails),
     sites,
@@ -7055,6 +7091,19 @@ function protoReportSeed() {
       delivery: ["email"],
       people: ["me"],
       start: today,
+    },
+    {
+      id: "seed-once",
+      type: "extract",
+      name: "Two years of interval data",
+      sites: ids,
+      period: "once",
+      from: protoFormatUkDate(new Date(protoToday().getFullYear() - 2, protoToday().getMonth(), 1)),
+      to: protoFormatUkDate(protoAddDays(protoToday(), -1)),
+      delivery: ["email"],
+      format: "xls",
+      people: ["me"],
+      start: protoFormatUkDate(protoAddDays(protoToday(), 7)),
     },
     {
       id: "seed-dcda",
@@ -7195,6 +7244,7 @@ function protoReportNextSend(def) {
   const start = protoFromUkDate(def.start);
   if (!start) return null;
   const todayStamp = protoDayStamp(protoToday());
+  if (protoReportOnce(def)) return protoDayStamp(start) >= todayStamp ? start : null;
   let next = new Date(start.getFullYear(), start.getMonth(), start.getDate());
   let guard = 0;
   while (protoDayStamp(next) <= todayStamp && guard < 800) {
@@ -7232,6 +7282,13 @@ function protoReportSummary(def) {
         : protoReportOptionName(PROTO_REPORT_CONTENT, def.content).toLowerCase();
     const where =
       names.length && names.length === protoEstateSites().length ? "all sites" : protoReportJoin(names) || "no sites yet";
+    const range = protoReportOnce(def) ? protoReportRange(def) : null;
+    if (range) {
+      const what1 = what.charAt(0).toUpperCase() + what.slice(1);
+      return `${what1} for ${where}, ${protoFormatFullDay(range.from)} to ${protoFormatFullDay(
+        range.to
+      )}, as ${protoReportFileLine(def)}.`;
+    }
     return `${period.name} of ${what} for ${where}, as ${protoReportFileLine(def)}.`;
   }
   if (def.type === "billing") {
@@ -7287,6 +7344,10 @@ function protoReportStatusHtml(def) {
     const hours = protoReportFlaggedHours(def);
     return hours === null ? line : `${protoTag(protoHoursAgo(hours))}${line}`;
   }
+  if (protoReportOnce(def) && !protoReportNextSend(def)) {
+    const sent = protoFromUkDate(def.start);
+    return `${protoTag("Sent")}<span class="astral-muted">${escapeHtml(protoReportSendLabel(sent))}</span>`;
+  }
   return `${protoTag("Scheduled")}${line}`;
 }
 
@@ -7303,46 +7364,64 @@ function protoReportStatusLine(def) {
   return protoReportSendLabel(protoReportNextSend(def));
 }
 
-function protoReportDraftStart() {
-  const start = protoMaskUkDate(store.prototypeReportDraftStart || "");
-  return start || protoFormatUkDate(protoToday());
+function protoReportDateOf(name) {
+  return Object.keys(PROTO_REPORT_DATES).find((id) => PROTO_REPORT_DATES[id].name === name) || "";
 }
 
-function protoReportCalMonth() {
-  const picked = protoFromUkDate(protoReportDraftStart());
+function protoReportDraftDate(field) {
+  const value = protoMaskUkDate(store[PROTO_REPORT_DATES[field].key] || "");
+  if (value) return value;
+  if (field === "start") return protoFormatUkDate(protoToday());
+  return protoReportDefaultRange()[field];
+}
+
+function protoReportDraftStart() {
+  return protoReportDraftDate("start");
+}
+
+function protoReportCalField() {
+  const raw = store.prototypeReportCalOpen;
+  if (raw === true) return "start";
+  return PROTO_REPORT_DATES[raw] ? raw : "";
+}
+
+function protoReportCalMonth(field = "start") {
+  const picked = protoFromUkDate(protoReportDraftDate(field));
   return protoReadCalMonth(store.prototypeReportCal, picked || protoToday());
 }
 
-function protoReportCalOpen() {
-  return Boolean(store.prototypeReportCalOpen);
+function protoReportCalOpen(field) {
+  const open = protoReportCalField();
+  return field ? open === field : Boolean(open);
 }
 
-function protoOpenReportCal() {
-  if (!protoCanEditReports()) return;
-  const picked = protoFromUkDate(protoReportDraftStart()) || protoToday();
-  const cal = store.prototypeReportCal || protoIso(picked).slice(0, 7);
-  if (protoReportCalOpen()) {
+function protoOpenReportCal(field = "start") {
+  if (!protoCanEditReports() || !PROTO_REPORT_DATES[field]) return;
+  const picked = protoFromUkDate(protoReportDraftDate(field)) || protoToday();
+  if (protoReportCalOpen(field)) {
+    const cal = store.prototypeReportCal || protoIso(picked).slice(0, 7);
     if (store.prototypeReportCal !== cal) store.prototypeReportCal = cal;
     return;
   }
   setProto({
-    prototypeReportCalOpen: true,
-    prototypeReportCal: cal,
+    prototypeReportCalOpen: field,
+    prototypeReportCal: protoIso(picked).slice(0, 7),
     prototypeSelectOpen: "",
   });
-  protoRestoreFocus('#astral-fs input[name="proto-report-start"]');
+  protoRestoreFocus(`#astral-fs input[name="${PROTO_REPORT_DATES[field].name}"]`);
 }
 
-function protoReportDayCalHtml(start, label = "First send on") {
-  const open = protoReportCalOpen();
-  const { year, month } = protoReportCalMonth();
+function protoReportDayCalHtml(start, label = "First send on", field = "start") {
+  const open = protoReportCalOpen(field);
+  const { year, month } = protoReportCalMonth(field);
   const picked = protoFromUkDate(start);
   const selectedIso = picked ? protoIso(picked) : "";
+  const menuId = field === "start" ? "astral-day-cal-menu" : `astral-day-cal-menu-${field}`;
   const days = protoCalDayCells({
     year,
     month,
     selectedIso,
-    allowFuture: true,
+    allowFuture: field === "start",
     pickAttr: "data-proto-day-cal-pick",
   });
   return `
@@ -7352,7 +7431,7 @@ function protoReportDayCalHtml(start, label = "First send on") {
         <input
           class="astral-date-input"
           type="text"
-          name="proto-report-start"
+          name="${PROTO_REPORT_DATES[field].name}"
           value="${escapeHtml(start)}"
           inputmode="numeric"
           autocomplete="off"
@@ -7362,11 +7441,11 @@ function protoReportDayCalHtml(start, label = "First send on") {
           aria-label="${escapeHtml(label)}"
           aria-haspopup="dialog"
           aria-expanded="${open ? "true" : "false"}"
-          aria-controls="astral-day-cal-menu"
+          aria-controls="${menuId}"
         />
       </label>
       <div
-        id="astral-day-cal-menu"
+        id="${menuId}"
         class="astral-day-cal-menu${open ? protoMenuEnterClass("report-cal") : ""}"
         role="dialog"
         aria-label="${escapeHtml(label)}"
@@ -7419,12 +7498,19 @@ function protoReportDraftDef(draft) {
     on: saved ? saved.on : true,
     owner: saved?.owner || protoProfileEmail(),
     start: protoReportDraftStart(),
+    from: protoReportDraftDate("from"),
+    to: protoReportDraftDate("to"),
   });
   if (!String(draft.name || "").trim()) def.name = protoReportAutoName(def);
   return def;
 }
 
 function protoReportAutoName(def) {
+  if (protoReportOnce(def)) {
+    const range = protoReportRange(def);
+    const what = def.type === "dcda" ? "DC and DA reads" : protoReportOptionName(PROTO_REPORT_CONTENT, def.content);
+    return range ? `${what}, ${protoFormatFullDay(range.from)} to ${protoFormatFullDay(range.to)}` : what;
+  }
   if (def.type === "extract") {
     return `${protoReportPeriod("extract", def.period).every} ${protoReportOptionName(
       PROTO_REPORT_CONTENT,
@@ -7457,6 +7543,15 @@ function protoReportDraftIssue(draft) {
     if (server.length && !String(draft.sftpHost || "").trim()) {
       return `Add the ${server.map((way) => way.toUpperCase()).join(" and ")} server.`;
     }
+    if (draft.period === "once") {
+      const from = protoFromUkDate(protoReportDraftDate("from"));
+      const to = protoFromUkDate(protoReportDraftDate("to"));
+      if (!from || !to) return "Enter the from and to dates.";
+      if (from > to) return "The from date must come before the to date.";
+      if (to > protoToday()) return "Pick dates up to today.";
+      if (!startOk) return "Enter the send date.";
+      return "";
+    }
     if (!startOk) return "Enter the first send date.";
     return "";
   }
@@ -7483,6 +7578,9 @@ function protoReportDraftPreview(draft) {
   if (protoReportSends(def.type)) {
     const next = protoReportNextSend(def);
     const period = protoReportPeriod(def.type, def.period);
+    if (protoReportOnce(def)) {
+      return next ? `Once, sent on ${protoFormatUkDate(next)}.` : "Once. The send date has passed.";
+    }
     return next
       ? `${period.every}, first sent on ${protoFormatUkDate(next)}.`
       : `${period.every}.`;
@@ -7565,11 +7663,29 @@ function protoReportPeriodSelect(draft, label) {
       value: protoReportPeriod(draft.type, draft.period).id,
       options: protoReportPeriods(draft.type).map((item) => ({
         value: item.id,
-        label: item.name,
-        note: `Sent ${item.word}`,
+        label: item.every,
+        note: item.note,
       })),
     })
   );
+}
+
+function protoReportWhenFields(draft) {
+  const once = draft.period === "once";
+  return `
+    <div class="astral-report-pair">
+      ${protoReportPeriodSelect(draft, "How often")}
+      ${protoReportDayCalHtml(protoReportDraftStart(), once ? "Send on" : "First send on")}
+    </div>
+    ${
+      once
+        ? `<div class="astral-report-pair">
+            ${protoReportDayCalHtml(protoReportDraftDate("from"), "Data from", "from")}
+            ${protoReportDayCalHtml(protoReportDraftDate("to"), "Data to", "to")}
+          </div>`
+        : ""
+    }
+  `;
 }
 
 function protoReportRecipientsHtml(draft) {
@@ -7876,20 +7992,14 @@ function protoReportTypeFields(draft, opts = {}) {
         ${protoReportOptionSelect("report-utility", "Utility", PROTO_REPORT_UTILITY, draft.utility)}
         ${protoReportOptionSelect("report-channel", "Channel", PROTO_REPORT_CHANNEL, draft.channel)}
       </div>
-      <div class="astral-report-pair">
-        ${protoReportPeriodSelect(draft, "Data period")}
-        ${protoReportDayCalHtml(protoReportDraftStart())}
-      </div>
+      ${protoReportWhenFields(draft)}
       ${protoReportSendFields(draft, opts)}
     `;
   }
   if (draft.type === "dcda") {
     return `
       ${protoReportSitesSelect(draft)}
-      <div class="astral-report-pair">
-        ${protoReportPeriodSelect(draft, "Data period")}
-        ${protoReportDayCalHtml(protoReportDraftStart())}
-      </div>
+      ${protoReportWhenFields(draft)}
       ${protoReportOptionSelect("report-format", "Format", PROTO_REPORT_FORMAT, draft.format)}
       ${protoReportSendFields(draft, opts)}
     `;
@@ -7921,10 +8031,7 @@ function protoReportTypeFields(draft, opts = {}) {
           })),
         })
       )}
-      <div class="astral-report-pair">
-        ${protoReportPeriodSelect(draft, "Cost period")}
-        ${protoReportDayCalHtml(protoReportDraftStart())}
-      </div>
+      ${protoReportWhenFields(draft)}
       <div class="astral-report-pair">
         ${protoReportInput("Tenant", "tenant", draft.tenant, 'maxlength="80" placeholder="Tenant name"')}
         ${protoReportInput("Tenant share (%)", "share", draft.share, 'inputmode="decimal" placeholder="50"')}
@@ -8169,6 +8276,8 @@ function protoReportOpenEdit(id) {
     prototypeReportEdit: id,
     prototypeReportDraft: def ? protoReportDraftFrom(def) : null,
     prototypeReportDraftStart: def ? def.start : protoFormatUkDate(protoToday()),
+    prototypeReportDraftFrom: def ? def.from : "",
+    prototypeReportDraftTo: def ? def.to : "",
     prototypeReportPeopleQuery: "",
     prototypeReportSiteQuery: "",
     prototypeReportCal: "",
@@ -8221,6 +8330,8 @@ function protoReportEditClear() {
     prototypeReportEdit: "",
     prototypeReportDraft: null,
     prototypeReportDraftStart: "",
+    prototypeReportDraftFrom: "",
+    prototypeReportDraftTo: "",
     prototypeReportPeopleQuery: "",
     prototypeReportSiteQuery: "",
     prototypeReportCalOpen: false,
@@ -8302,7 +8413,13 @@ function protoReportRows(def) {
   const period = protoReportPeriod(def.type, def.period);
   const zone = def.time === "uk" ? "UK time" : "UTC";
   const days = [];
-  for (let back = period.days; back >= 1; back -= 1) days.push(protoAddDays(today, -back));
+  const range = protoReportOnce(def) ? protoReportRange(def) : null;
+  if (range) {
+    for (let day = range.from; day <= range.to && days.length < 800; day = protoAddDays(day, 1)) days.push(day);
+    days.splice(0, Math.max(0, days.length - PROTO_REPORT_FILE_DAYS));
+  } else {
+    for (let back = period.days; back >= 1; back -= 1) days.push(protoAddDays(today, -back));
+  }
   const each = (fn) =>
     protoReportScopeSites(def).forEach((site) =>
       protoReportMeters(def, site).forEach((meter) => fn(site, meter))
@@ -19439,8 +19556,9 @@ function onPrototypeFocus(event) {
   if (event.type !== "focusin") return;
   const field = protoUkDateField(event.target);
   if (!field) return;
-  if (field.name === "proto-report-start") {
-    protoOpenReportCal();
+  const reportDate = protoReportDateOf(field.name);
+  if (reportDate) {
+    protoOpenReportCal(reportDate);
     return;
   }
   if (!event.relatedTarget) return;
@@ -19480,7 +19598,8 @@ function onPrototype(event) {
   }
   const dateField = protoUkDateField(event.target);
   if (dateField) {
-    if (dateField.name === "proto-report-start") protoOpenReportCal();
+    const reportDate = protoReportDateOf(dateField.name);
+    if (reportDate) protoOpenReportCal(reportDate);
     else protoStartUkDateField(dateField);
   }
   const sortBtn = event.target.closest("[data-proto-sort]");
@@ -19669,7 +19788,7 @@ function onPrototype(event) {
     const { year, month } = protoReportCalMonth();
     if (act === "prev" || act === "next") {
       setProto({
-        prototypeReportCalOpen: true,
+        prototypeReportCalOpen: protoReportCalField() || "start",
         prototypeReportCal: protoShiftCal(year, month, act === "next" ? 1 : -1),
         prototypeSelectOpen: "",
       });
@@ -19681,13 +19800,14 @@ function onPrototype(event) {
   if (dayCalPick) {
     const day = protoFromIso(dayCalPick.dataset.protoDayCalPick);
     if (!day) return;
+    const field = protoReportCalField() || "start";
     setProto({
-      prototypeReportDraftStart: protoFormatUkDate(day),
+      [PROTO_REPORT_DATES[field].key]: protoFormatUkDate(day),
       prototypeReportCal: protoIso(day).slice(0, 7),
       prototypeReportCalOpen: false,
       prototypeSelectOpen: "",
     });
-    protoRestoreFocus('#astral-fs input[name="proto-report-start"]');
+    protoRestoreFocus(`#astral-fs input[name="${PROTO_REPORT_DATES[field].name}"]`);
     return;
   }
   const calDay = event.target.closest("[data-proto-cal-day]");
@@ -21473,7 +21593,8 @@ function onPrototypeInput(event) {
   if (dateField) {
     const key = protoUkDateStoreKey(dateField);
     if (!key) return;
-    if (dateField.name === "proto-report-start" && !protoCanEditReports()) return;
+    const reportDate = protoReportDateOf(dateField.name);
+    if (reportDate && !protoCanEditReports()) return;
     if (
       (dateField.name === "proto-renew-from" || dateField.name === "proto-renew-to") &&
       !protoCanAdminCompany()
@@ -21482,7 +21603,7 @@ function onPrototypeInput(event) {
     }
     const applied = protoApplyUkDateInput(store[key], dateField.value, dateField.selectionStart);
     store[key] = applied.next;
-    if (dateField.name === "proto-report-start" && store.prototypeReportCalOpen) {
+    if (reportDate && protoReportCalOpen(reportDate)) {
       const typed = protoFromUkDate(applied.next);
       if (typed) store.prototypeReportCal = protoIso(typed).slice(0, 7);
     }
@@ -22054,8 +22175,9 @@ function onPrototypeKey(event) {
       return;
     }
     if (store.prototypeReportCalOpen) {
+      const field = protoReportCalField() || "start";
       setProto({ prototypeReportCalOpen: false });
-      protoRestoreFocus('#astral-fs input[name="proto-report-start"]');
+      protoRestoreFocus(`#astral-fs input[name="${PROTO_REPORT_DATES[field].name}"]`);
       return;
     }
     if (store.prototypeSelectOpen) {
