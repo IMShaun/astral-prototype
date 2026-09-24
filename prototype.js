@@ -7257,11 +7257,11 @@ function protoReportStatusLine(def) {
   if (!def.on) return "Paused";
   if (def.type === "alert") {
     const n = protoReportAlertHits(def).length;
-    return n ? `${n} ${n === 1 ? "site" : "sites"} over now` : "No site over now";
+    return n ? `Now: ${n} ${n === 1 ? "site" : "sites"} over the limit` : "Now: no site over the limit";
   }
   if (def.type === "missing") {
     const n = protoReportMissingHits(def).length;
-    return n ? `${n} ${n === 1 ? "site" : "sites"} silent now` : "Every site sending";
+    return n ? `Now: ${n} ${n === 1 ? "site" : "sites"} not sending` : "Now: every site sending";
   }
   return protoReportSendLabel(protoReportNextSend(def));
 }
@@ -8004,7 +8004,6 @@ function protoReportSoonCards() {
           </div>
           <p>${escapeHtml(item.blurb)}</p>
           <div class="astral-actions">
-            <span class="astral-report-wait"><span class="astral-muted">Not ready yet</span></span>
             ${protoIconBtn("settings", "Edit report", "", { disabled: true, tip: false })}
             <button
               type="button"
