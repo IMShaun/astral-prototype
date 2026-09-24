@@ -7202,16 +7202,12 @@ function protoReportNextSend(def) {
 
 function protoReportSendLabel(next) {
   if (!next) return "";
-  const today = protoToday();
-  const days = Math.round((protoDayStamp(next) - protoDayStamp(today)) / 86400000);
-  let months =
-    (next.getFullYear() - today.getFullYear()) * 12 + (next.getMonth() - today.getMonth());
-  if (next.getDate() < today.getDate()) months -= 1;
-  if (months >= 1) return `Sent in ${months} ${months === 1 ? "month" : "months"}`;
-  const weeks = Math.floor(Math.max(days, 0) / 7);
-  if (weeks >= 1) return `Sent in ${weeks} ${weeks === 1 ? "week" : "weeks"}`;
-  const wait = Math.max(days, 1);
-  return wait === 1 ? "Sent tomorrow" : `Sent in ${wait} days`;
+  const day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][next.getDay()];
+  const month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][
+    next.getMonth()
+  ];
+  const year = next.getFullYear() !== protoToday().getFullYear() ? ` ${next.getFullYear()}` : "";
+  return `Next: ${day} ${next.getDate()} ${month}${year}`;
 }
 
 function protoReportFileLine(def) {
