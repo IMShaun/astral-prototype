@@ -3088,16 +3088,16 @@ function protoSliceHoursKind(slice) {
 }
 
 const PROTO_SLICE_FILL = {
-  "hours-on|tou-on": "#002D9C",
+  "hours-on|tou-on": "#4589FF",
   "hours-on|tou-off": "#EE538B",
   "hours-non|tou-on": "#6929C4",
-  "hours-non|tou-off": "#A56EFF",
+  "hours-non|tou-off": "#D4BBFF",
   "hours-off|tou-on": "#8A3800",
   "hours-off|tou-off": "#737373",
-  "hours-on": "#002D9C",
+  "hours-on": "#4589FF",
   "hours-non": "#6929C4",
   "hours-off": "#737373",
-  "tou-on": "#002D9C",
+  "tou-on": "#4589FF",
   "tou-off": "#EE538B",
 };
 
@@ -3109,7 +3109,7 @@ function protoSliceFill(slice, outgoing) {
     const open = !slice?.hours || protoSliceHoursKind(slice) === "on";
     return peak && open ? protoOutgoingInk() : "#737373";
   }
-  return PROTO_SLICE_FILL[id] || "#002D9C";
+  return PROTO_SLICE_FILL[id] || "#4589FF";
 }
 
 function protoSliceInk(fill) {
