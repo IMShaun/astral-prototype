@@ -135,8 +135,9 @@ function protoTextarea(label, value, rows = 2) {
   )}</textarea></label>`;
 }
 
-function protoTag(label, tip) {
-  const tag = `<span class="astral-tag"${tip ? ' tabindex="0"' : ""}>${protoEsc(label)}</span>`;
+function protoTag(label, tip, className) {
+  const cls = className ? ` ${protoEsc(className)}` : "";
+  const tag = `<span class="astral-tag${cls}"${tip ? ' tabindex="0"' : ""}>${protoEsc(label)}</span>`;
   return tip ? protoIconTip(tag, tip) : tag;
 }
 
@@ -449,7 +450,8 @@ function protoSortHead(tableId, key, label, className) {
 
 function protoTable(headers, rows, opts) {
   const tableId = opts?.id || "library";
-  const keys = (opts?.keys || headers || []).map((item) =>
+  const labelOf = (item) => (item && typeof item === "object" ? item.label : item);
+  const keys = (opts?.keys || (headers || []).map(labelOf)).map((item) =>
     String(item)
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -460,7 +462,14 @@ function protoTable(headers, rows, opts) {
     const index = keys.indexOf(key);
     return index >= 0 ? protoPlainSortText(row[index]) : "";
   });
-  const head = (headers || []).map((item, i) => protoSortHead(tableId, keys[i], item)).join("");
+  // Action columns pass { label, sort: false, hidden: true } so they neither sort nor show a label.
+  const head = (headers || [])
+    .map((item, i) =>
+      item && typeof item === "object" && item.sort === false
+        ? `<th scope="col"><span${item.hidden ? ' class="sr-only"' : ""}>${protoEsc(item.label)}</span></th>`
+        : protoSortHead(tableId, keys[i], labelOf(item))
+    )
+    .join("");
   const cols = Math.max(1, (headers || []).length);
   const body =
     listed

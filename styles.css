@@ -7492,7 +7492,7 @@ button.astral-state {
   border-end-end-radius: var(--radius-lg);
 }
 
-.astral-modal label:not(.astral-search):not(.astral-upload) {
+.astral-modal label:not(.astral-search):not(.astral-upload):not(.astral-field) {
   display: grid;
   gap: 8px;
   font-weight: 600;
@@ -9628,7 +9628,7 @@ button.astral-state {
   margin-left: auto;
 }
 
-.astral-report-page-title {
+.astral-page-title {
   display: grid;
   justify-items: start;
   gap: var(--space-8);
@@ -9685,11 +9685,13 @@ button.astral-state {
   font-size: 0.875rem;
 }
 
-.astral-report-recipients .astral-people-col-role {
+.astral-report-recipients th:nth-child(2),
+.astral-report-recipients td:nth-child(2) {
   width: 9rem;
 }
 
-.astral-report-recipients .astral-people-col-more {
+.astral-report-recipients th:nth-child(3),
+.astral-report-recipients td:nth-child(3) {
   width: 3.5rem;
   text-align: right;
 }
@@ -9700,10 +9702,6 @@ button.astral-state {
 
 .astral-report-page-foot {
   grid-column: 1 / -1;
-  padding: 16px 24px;
-  background: #fff;
-  border: 1px solid var(--color-border-default);
-  border-radius: 16px;
 }
 
 .astral-report-page-foot .astral-actions {
@@ -10158,8 +10156,7 @@ button.astral-state {
 }
 
 .astral-auth > .astral-auth-links,
-.astral-auth > .astral-auth-links.astral-auth-back,
-.astral-auth .astral-auth-back {
+.astral-auth .astral-back {
   justify-content: center;
 }
 
@@ -10210,13 +10207,13 @@ button.astral-state {
   height: 32px;
 }
 
-.astral-auth-back {
+.astral-back {
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
 
-.astral-auth-back svg {
+.astral-back svg {
   width: 16px;
   height: 16px;
 }

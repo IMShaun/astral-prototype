@@ -2807,7 +2807,7 @@
           "react": "Table",
           "file": "src/components/Table.tsx",
           "summary": "Dense lists of meters, sites, and readings. Body type is black. Headers use Infra Grey C on white. The State column uses State pills. Breakdown In and Out are text headings.",
-          "usage": "Pass columns and rows. Do not fetch inside the table. The pane scrolls the interval table. On a group or All, the site list sits in Breakdown. The graph stays the same height. Total, Individual, Bar, Line, Hours, and filter pills do not change it. Do not give Breakdown its own scrollbar. Rows load as they scroll. Click a meter row to open it. Click it again to hide it. Opening one closes the others. Empty uses Empty. Queries sits the list in a card. Column headers sort. A pair of arrows sits in the header. Click for A to Z or lowest first. Click again to reverse. Words are alphabetical. Numbers and dates go lowest to highest, then the reverse. Resolve and other actions do not sort.",
+          "usage": "Pass columns and rows. Do not fetch inside the table. The pane scrolls the interval table. On a group or All, the site list sits in Breakdown. The graph stays the same height. Total, Individual, Bar, Line, Hours, and filter pills do not change it. Do not give Breakdown its own scrollbar. Rows load as they scroll. Click a meter row to open it. Click it again to hide it. Opening one closes the others. Empty uses Empty. Queries sits the list in a card. Column headers sort. A pair of arrows sits in the header. Click for A to Z or lowest first. Click again to reverse. Words are alphabetical. Numbers and dates go lowest to highest, then the reverse. Resolve and other actions do not sort. An action column has no sort. Its heading is hidden but read aloud. Remove on recipients.",
           "variants": [
             "default"
           ],
@@ -2859,7 +2859,7 @@
           "file": "src/components/Tag.tsx",
           "family": "indicators",
           "summary": "A quiet pill for a short fact. Live, Waiting, Custom, role, discipline, Expiry on Users, Complete on Downloads, Type on Downloads, and a label on a graph reading. No status colour. Report tags explain on hover.",
-          "usage": "Keep to one or two words. Do not add a green or red fill for status. Meter health uses State, not Tag. Hover on a report tag. Live is People are sent this report. Waiting is This report is not in yet. You cannot run it. Custom is A name only. You cannot run it yet. On Users, Expiry is how long is left. Years if more than 12 months. Months if a month or more. Days if under a month. On Downloads, Complete is the file is ready. Type is Report or Data export. Report is black on cyan. Data export is white on black. On a graph point, tags sit as Tag pills. Each name gets an assigned colour from the IBM Carbon categorical set. That name keeps the colour. Type is black or white for contrast. Not a status colour. A tag stays on that reading when they leave and come back. Peak, On peak, and Out of hours are Time of use, not tags. Do not put tags in Settings. Do not pick a tag to list every reading. Reports on tagged data wait.",
+          "usage": "Keep to one or two words. Do not add a green or red fill for status. Meter health uses State, not Tag. Hover on a report tag. Live is People are sent this report. Waiting is This report is not in yet. You cannot run it. Custom is A name only. You cannot run it yet. On Users, Expiry is how long is left. Years if more than 12 months. Months if a month or more. Days if under a month. On Downloads, Complete is the file is ready. Type is Report or Data export. Report is black on cyan. Data export is white on black. On a graph point, tags sit as Tag pills. Each name gets an assigned colour from the IBM Carbon categorical set. That name keeps the colour. Type is black or white for contrast. Not a status colour. A tag stays on that reading when they leave and come back. Peak, On peak, and Out of hours are Time of use, not tags. Do not put tags in Settings. Do not pick a tag to list every reading. Reports on tagged data wait. A report type tag takes its type class. It is the same Tag.",
           "variants": [
             "default"
           ],
@@ -3163,7 +3163,7 @@
           "react": "PageHeader",
           "file": "src/components/PageHeader.tsx",
           "summary": "Title on the pane. The live shell keeps the heading while the pane scrolls.",
-          "usage": "One header per page. The helper line is off for space. The action is the thing they came to do. The tree stays. The pane scrolls. The tree and the pane use the same 16px inset. The heading on the pane stays. On a page without a tree the heading stays. The white card fills to the bottom. Rounded corners stay on. Only that card scrolls.",
+          "usage": "One header per page. The helper line is off for space. The action is the thing they came to do. The tree stays. The pane scrolls. The tree and the pane use the same 16px inset. The heading on the pane stays. On a page without a tree the heading stays. The white card fills to the bottom. Rounded corners stay on. Only that card scrolls. A sub-page puts a Back to link above the title. Name where it goes. Back to reports. Back to downloads.",
           "variants": [
             "default"
           ],
@@ -3192,6 +3192,11 @@
               "name": "action",
               "type": "ReactNode",
               "note": "Usually a primary Button."
+            },
+            {
+              "name": "back",
+              "type": "node",
+              "note": "Back to link on a sub-page."
             }
           ],
           "snippet": "<PageHeader title=\"Crewe depot\" action={<Button kind=\"secondary\">Compare</Button>} />",

@@ -7368,23 +7368,16 @@ function protoReportDraftPreview(draft) {
 }
 
 function protoReportField(label, inner) {
-  return `<div class="astral-team-field"><p>${escapeHtml(label)}</p>${inner}</div>`;
+  return `<div class="astral-field"><span>${escapeHtml(label)}</span>${inner}</div>`;
 }
 
 function protoReportInput(label, field, value, attrs = "") {
-  return `
-    <label>
-      ${escapeHtml(label)}
-      <input
-        type="text"
-        name="proto-report-${escapeHtml(field)}"
-        data-proto-report-field="${escapeHtml(field)}"
-        value="${escapeHtml(value ?? "")}"
-        autocomplete="off"
-        ${attrs}
-      />
-    </label>
-  `;
+  return protoField(
+    label,
+    `type="text" name="proto-report-${escapeHtml(field)}" data-proto-report-field="${escapeHtml(
+      field
+    )}" value="${escapeHtml(value ?? "")}" autocomplete="off" ${attrs}`
+  );
 }
 
 function protoReportSitesSelect(draft) {
@@ -7461,16 +7454,7 @@ function protoReportRecipientsHtml(draft) {
               label: "Search people",
             }
           : null,
-        options: people.map((person) => ({
-          value: person.id,
-          label: person.you && person.name !== "You" ? `${person.name} (you)` : person.name,
-          search: `${person.name} ${person.email || ""} ${protoUserRoleName(person.role)}`,
-          html: `<span class="astral-select-person"><span>${escapeHtml(
-            person.you && person.name !== "You" ? `${person.name} (you)` : person.name
-          )}</span><span class="astral-muted">${escapeHtml(
-            protoUserRoleName(person.role)
-          )}</span></span>`,
-        })),
+        options: protoReportPeopleOptions(people),
       })
     )}
     ${protoReportInput(
@@ -7528,44 +7512,47 @@ function protoReportRecipientRows(draft) {
   return rows;
 }
 
+function protoReportPeopleOptions(people) {
+  return people.map((person) => {
+    const name = person.you && person.name !== "You" ? `${person.name} (you)` : person.name;
+    return {
+      value: person.id,
+      label: name,
+      search: `${person.name} ${person.email || ""} ${protoUserRoleName(person.role)}`,
+      html: `<span class="astral-select-person"><span>${escapeHtml(name)}</span><span class="astral-muted">${escapeHtml(
+        protoUserRoleName(person.role)
+      )}</span></span>`,
+    };
+  });
+}
+
 function protoReportRecipientList(draft) {
   const rows = protoReportRecipientRows(draft);
   const q = String(store.prototypeReportRecipientQuery || "").trim().toLowerCase();
-  const shown = protoSortedRows(
-    "report-recipients",
-    rows.filter((row) => !q || `${row.name} ${row.email} ${row.role}`.toLowerCase().includes(q)),
-    (row, key) => (key === "role" ? row.role : row.name)
-  );
+  const shown = rows.filter((row) => !q || `${row.name} ${row.email} ${row.role}`.toLowerCase().includes(q));
   const picked = new Set((draft.people || []).map(String));
   const pool = protoUserPeople().filter((person) => !picked.has(person.id));
-  const addEmail = String(store.prototypeReportAddEmail || "");
   const emailError = Boolean(store.prototypeReportAddEmailError);
-  const body =
-    shown
-      .map(
-        (row) => `
-          <tr>
-            <th scope="row" class="astral-people-col-name">
-              <span class="astral-person">
-                <span class="astral-person-mark" aria-hidden="true">${escapeHtml(row.initials)}</span>
-                <span class="astral-person-copy">
-                  <strong><span class="astral-people-name">${escapeHtml(row.name)}</span></strong>
-                  ${row.email ? `<span class="astral-muted">${escapeHtml(row.email)}</span>` : ""}
-                </span>
-              </span>
-            </th>
-            <td class="astral-people-col-role">${escapeHtml(row.role)}</td>
-            <td class="astral-people-col-more">
-              ${protoIconBtn("close", `Remove ${row.name}`, `data-proto-report-remove="${escapeHtml(row.key)}"`, {
-                className: "is-plain",
-                tipLabel: "Remove",
-              })}
-            </td>
-          </tr>
-        `
+  const table = protoTable(
+    ["Name", "Role", { label: "Remove", sort: false, hidden: true }],
+    shown.map((row) =>
+      Object.assign(
+        [
+          `<span class="astral-person">${protoPersonFace(row.initials, row.name, row.email)}</span>`,
+          escapeHtml(row.role),
+          protoIconBtn("close", `Remove ${row.name}`, `data-proto-report-remove="${escapeHtml(row.key)}"`, {
+            className: "is-plain",
+            tipLabel: "Remove",
+          }),
+        ],
+        { sortBy: { name: row.name, role: row.role } }
       )
-      .join("") ||
-    `<tr><td colspan="3">${rows.length ? "No one matches." : "No one gets this yet. Add people or an email."}</td></tr>`;
+    ),
+    {
+      id: "report-recipients",
+      empty: rows.length ? "No one matches." : "No one gets this yet. Add people or an email.",
+    }
+  );
   return `
     <div class="astral-people-tools">
       ${protoSearchField({
@@ -7589,30 +7576,18 @@ function protoReportRecipientList(draft) {
               label: "Search people",
             }
           : null,
-        options: pool.map((person) => ({
-          value: person.id,
-          label: person.you && person.name !== "You" ? `${person.name} (you)` : person.name,
-          search: `${person.name} ${person.email || ""} ${protoUserRoleName(person.role)}`,
-          html: `<span class="astral-select-person"><span>${escapeHtml(
-            person.you && person.name !== "You" ? `${person.name} (you)` : person.name
-          )}</span><span class="astral-muted">${escapeHtml(protoUserRoleName(person.role))}</span></span>`,
-        })),
+        options: protoReportPeopleOptions(pool),
       })}
     </div>
     <div class="astral-report-add-email">
-      <label class="astral-field">
-        <span>Someone not on Astral</span>
-        <input
-          type="text"
-          name="proto-report-add-email"
-          value="${escapeHtml(addEmail)}"
-          placeholder="name@company.com"
-          inputmode="email"
-          autocomplete="off"
-          spellcheck="false"
-          ${emailError ? 'aria-invalid="true" aria-describedby="astral-report-add-email-error"' : ""}
-        />
-      </label>
+      ${protoField(
+        "Someone not on Astral",
+        `type="text" name="proto-report-add-email" value="${escapeHtml(
+          String(store.prototypeReportAddEmail || "")
+        )}" placeholder="name@company.com" inputmode="email" autocomplete="off" spellcheck="false"${
+          emailError ? ' aria-invalid="true" aria-describedby="astral-report-add-email-error"' : ""
+        }`
+      )}
       ${protoGhost("Add email", "data-proto-report-add-email")}
     </div>
     ${
@@ -7620,20 +7595,7 @@ function protoReportRecipientList(draft) {
         ? `<p class="astral-muted" id="astral-report-add-email-error" role="status">Enter a full email address, like name@company.com.</p>`
         : ""
     }
-    <div class="astral-people astral-report-recipients">
-      <div class="astral-table-wrap">
-        <table class="astral-table">
-          <thead>
-            <tr>
-              ${protoSortHead("report-recipients", "name", "Name", "astral-people-col-name")}
-              ${protoSortHead("report-recipients", "role", "Role", "astral-people-col-role")}
-              <th scope="col" class="astral-people-col-more"><span class="sr-only">Remove</span></th>
-            </tr>
-          </thead>
-          <tbody>${body}</tbody>
-        </table>
-      </div>
-    </div>
+    <div class="astral-people astral-report-recipients">${table}</div>
     <p class="astral-people-count">${shown.length} of ${rows.length} ${rows.length === 1 ? "recipient" : "recipients"}. Each email has an opt-out link.</p>
   `;
 }
@@ -7667,20 +7629,12 @@ function protoReportPage() {
   const preview = protoReportDraftPreview(draft);
   const people = protoReportUsesPeople(draft);
   return astralShell(`
-    <header class="astral-page-head astral-page-tools">
-      <div class="astral-report-page-title">
-        ${protoTextBtn(
-          `${protoIconMark("prev")}<span>${escapeHtml(protoReportBackLabel())}</span>`,
-          'data-proto-report-edit="cancel"',
-          { html: true, className: "astral-auth-back" }
-        )}
-        <h2>${escapeHtml(def.name)}</h2>
-      </div>
-      <div class="astral-page-actions">${protoIconTip(
-        `<span class="astral-tag is-${escapeHtml(draft.type)}" tabindex="0">${escapeHtml(type.short)}</span>`,
-        type.blurb
-      )}</div>
-    </header>
+    ${astralPageHead(
+      def.name,
+      "",
+      `<div class="astral-page-actions">${protoTag(type.short, type.blurb, `is-${draft.type}`)}</div>`,
+      protoBackLink(protoReportBackLabel(), 'data-proto-report-edit="cancel"')
+    )}
     <form class="astral-report-page${people ? "" : " is-single"}" data-proto-report-edit-form novalidate>
       <section class="astral-card astral-pane astral-report-set">
         ${protoPaneShell(
@@ -8552,15 +8506,23 @@ function astralNav(state) {
   `;
 }
 
-function astralPageHead(title, lead, extra) {
+function astralPageHead(title, lead, extra, back) {
   return `
     <header class="astral-page-head${extra ? " astral-page-tools" : ""}">
-      <div>
+      <div${back ? ' class="astral-page-title"' : ""}>
+        ${back || ""}
         <h2>${escapeHtml(title)}</h2>
       </div>
       ${extra || ""}
     </header>
   `;
+}
+
+function protoBackLink(label, attrs) {
+  return protoTextBtn(`${protoIconMark("prev")}<span>${escapeHtml(label)}</span>`, attrs, {
+    html: true,
+    className: "astral-back",
+  });
 }
 
 function protoReportsArea(view) {
@@ -14438,10 +14400,7 @@ function protoReportCard(def) {
     <article class="astral-card astral-report-card${def.on ? "" : " is-off"}" data-proto-report-card="${id}">
       <div class="astral-card-head">
         <h3>${escapeHtml(def.name)}</h3>
-        ${protoIconTip(
-          `<span class="astral-tag is-${escapeHtml(def.type)}" tabindex="0">${escapeHtml(type.short)}</span>`,
-          type.blurb
-        )}
+        ${protoTag(type.short, type.blurb, `is-${def.type}`)}
       </div>
       <p>${escapeHtml(protoReportSummary(def))}</p>
       <div class="astral-actions"${canEdit ? ` data-proto-report-toggle="${id}"` : ""}>
@@ -14982,6 +14941,16 @@ function protoUserRoleName(id) {
 function protoUserInitials(person) {
   if (person?.you) return protoProfileInitials();
   return protoProfileInitials(person?.name || person?.email || "?");
+}
+
+function protoPersonFace(initials, name, helper, tag = "") {
+  return `
+    <span class="astral-person-mark" aria-hidden="true">${escapeHtml(initials)}</span>
+    <span class="astral-person-copy">
+      <strong><span class="astral-people-name">${escapeHtml(name)}</span>${tag ? ` ${tag}` : ""}</strong>
+      ${helper ? `<span class="astral-muted">${escapeHtml(helper)}</span>` : ""}
+    </span>
+  `;
 }
 
 function protoUserDrafts() {
@@ -16377,28 +16346,16 @@ function protoUsersTable(people, pool, showTeam) {
                     )}">`
                   : `<span class="astral-person">`
               }
-                <span class="astral-person-mark" aria-hidden="true">${escapeHtml(
-                  protoUserInitials(person)
-                )}</span>
-                <span class="astral-person-copy">
-                  <strong>
-                    <span class="astral-people-name">${escapeHtml(person.name)}</span>
-                    ${
-                      person.role === "manager"
-                        ? `<span class="astral-tag">Manager</span>`
-                        : ""
-                    }
-                  </strong>
-                  ${
-                    person.you
-                      ? `<span class="astral-muted">${escapeHtml(
-                          protoProfileJobTitle() || "Contact still waits"
-                        )}</span>`
-                      : person.name === person.email
-                        ? ""
-                        : `<span class="astral-muted">${escapeHtml(person.email)}</span>`
-                  }
-                </span>
+                ${protoPersonFace(
+                  protoUserInitials(person),
+                  person.name,
+                  person.you
+                    ? protoProfileJobTitle() || "Contact still waits"
+                    : person.name === person.email
+                      ? ""
+                      : person.email,
+                  person.role === "manager" ? protoTag("Manager") : ""
+                )}
               ${canManage ? "</button>" : "</span>"}
             </th>
             ${
@@ -16977,10 +16934,9 @@ function protoAuthBack() {
   const resume = store.prototypeInviteResume;
   return `
     <p class="astral-auth-links">
-      ${protoTextBtn(
-        `${protoIconMark("prev")}<span>Back to sign in</span>`,
-        resume ? 'data-proto-invite="resume"' : 'data-proto-flow="sign-in"',
-        { html: true, className: "astral-auth-back" }
+      ${protoBackLink(
+        "Back to sign in",
+        resume ? 'data-proto-invite="resume"' : 'data-proto-flow="sign-in"'
       )}
     </p>
   `;
