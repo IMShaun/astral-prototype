@@ -7253,24 +7253,35 @@ function protoReportSummary(def) {
   )}.`;
 }
 
-function protoReportTriggeredOn(def) {
-  if (def.type === "alert") return protoReportAlertHits(def).length ? protoToday() : null;
-  if (def.type !== "missing") return null;
-  const since = protoReportMissingHits(def).map((site) =>
-    Math.max(...(site.meters || []).map((meter) => protoMeterSilentHours(meter))) - def.hours
-  );
-  if (!since.length) return null;
-  return protoAddDays(protoToday(), -Math.floor(Math.max(0, Math.min(...since)) / 24));
+function protoReportFlaggedHours(def) {
+  let since = [];
+  if (def.type === "alert") {
+    const limit = protoReportAlertLimit(def);
+    since = protoReportAlertHits(def).map((site) => 24 * (1 - limit / protoReportSiteDayKwh(site)));
+  } else if (def.type === "missing") {
+    since = protoReportMissingHits(def).map(
+      (site) => Math.max(...(site.meters || []).map((meter) => protoMeterSilentHours(meter))) - def.hours
+    );
+  }
+  return since.length ? Math.max(0, ...since) : null;
+}
+
+function protoHoursAgo(hours) {
+  const unit = (n, word) => `${n} ${word}${n === 1 ? "" : "s"} ago`;
+  if (hours < 1) return "Just now";
+  if (hours < 24) return unit(Math.floor(hours), "hour");
+  const days = Math.floor(hours / 24);
+  if (days < 7) return unit(days, "day");
+  if (days < 30) return unit(Math.floor(days / 7), "week");
+  return unit(Math.max(1, Math.floor(days / 30)), "month");
 }
 
 function protoReportStatusHtml(def) {
   if (!def.on) return protoTag("Paused");
   const line = `<span class="astral-muted">${escapeHtml(protoReportStatusLine(def))}</span>`;
   if (def.type === "alert" || def.type === "missing") {
-    const on = protoReportTriggeredOn(def);
-    return on
-      ? `${line}<span class="astral-tag"><span class="sr-only">Last triggered </span>${escapeHtml(protoReportSendLabel(on))}</span>`
-      : line;
+    const hours = protoReportFlaggedHours(def);
+    return hours === null ? line : `${protoTag(protoHoursAgo(hours))}${line}`;
   }
   return `${protoTag("Scheduled")}${line}`;
 }
@@ -7279,11 +7290,11 @@ function protoReportStatusLine(def) {
   if (!def.on) return "Paused";
   if (def.type === "alert") {
     const n = protoReportAlertHits(def).length;
-    return n ? `${n} ${n === 1 ? "site" : "sites"} over the limit` : "No site over the limit";
+    return n ? `${n} ${n === 1 ? "site" : "sites"} flagged` : "No sites flagged";
   }
   if (def.type === "missing") {
     const n = protoReportMissingHits(def).length;
-    return n ? `${n} ${n === 1 ? "site" : "sites"} not sending` : "Every site sending";
+    return n ? `${n} ${n === 1 ? "site" : "sites"} flagged` : "No sites flagged";
   }
   return protoReportSendLabel(protoReportNextSend(def));
 }
