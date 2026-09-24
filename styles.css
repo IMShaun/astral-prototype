@@ -9674,18 +9674,6 @@ button.astral-state {
   gap: 16px;
 }
 
-.astral-report-add-email {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: var(--space-8);
-}
-
-.astral-report-add-email + p.astral-muted {
-  margin: -8px 0 0;
-  font-size: 0.875rem;
-}
-
 .astral-report-recipients th:nth-child(2),
 .astral-report-recipients td:nth-child(2) {
   width: 9rem;

@@ -6647,7 +6647,7 @@
             "status": "firm",
             "say": "Recipients",
             "avoid": "Distribution list, Subscribers, Mailing list.",
-            "note": "The people who get a report by email. The pane meta is 3 people get this by email. Empty is No one gets this yet. Add people or an email. Someone not on Astral labels the email box. Remove takes one person off.",
+            "note": "The people who get a report by email. The pane meta is 3 people get this by email. Empty is No one gets this yet. Add people. Remove takes one person off.",
             "from": "Shaun on Edit report, 24 Sep"
           }
         ]
@@ -7167,7 +7167,7 @@
             "name": "Reports in version one",
             "status": "working",
             "summary": "Reports covers the version one scheduled and delivered reports. Later work sits as Coming soon.",
-            "now": "Add a report opens the type cards in a modal. Edit report opens a page for that report, not a modal. Settings sits on the left. Recipients sits on the right. Save changes, Cancel, and Delete report sit in the bar under both. Back to reports goes back without saving. Data extract, DC and DA, Tenant billing, Data alert, and Missing data. A Data extract holds Interval data, Meter reads, or Missing data. Pick sites or All sites. Filter by utility and by channel. Format is CSV or XLS. Times are UTC or UK time. Send by Email, SFTP, or FTP. Many people can get one report. Admin and Manager see Recipients as one long list, like Users with no teams. Search recipients, Add people, and Someone not on Astral add to it. Remove takes one off. Contributor picks people and other emails. Each email has an opt-out link. The file also sits on Downloads. Power BI reports sit on Downloads as Documents. Export from a graph sits on Downloads. Analysis reports sit on Portfolio. Dashboard widgets sit on Overview.",
+            "now": "Add a report opens the type cards in a modal. Edit report opens a page for that report, not a modal. Settings sits on the left. Recipients sits on the right. Save changes, Cancel, and Delete report sit in the bar under both. Back to reports goes back without saving. Data extract, DC and DA, Tenant billing, Data alert, and Missing data. A Data extract holds Interval data, Meter reads, or Missing data. Pick sites or All sites. Filter by utility and by channel. Format is CSV or XLS. Times are UTC or UK time. Send by Email, SFTP, or FTP. Many people can get one report. Admin and Manager see Recipients as one long list, like Users with no teams. Search recipients finds people. Add people adds to it. Remove takes one off. Contributor picks people and other emails. Each email has an opt-out link. The file also sits on Downloads. Power BI reports sit on Downloads as Documents. Export from a graph sits on Downloads. Analysis reports sit on Portfolio. Dashboard widgets sit on Overview.",
             "later": "Coming soon cards: Data health. Capacity and kVA. League tables across sites. Alerts with LOA status. Reports by meter class, non-HH, HH, and sub-metering. Export and sub-meter channels for an Ofgem claim-back. The what3words overlay and the company map sit on Portfolio later.",
             "uses": [
               "card",

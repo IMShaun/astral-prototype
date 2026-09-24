@@ -671,8 +671,6 @@ function protoPageFilterReset() {
     prototypeReportPeopleQuery: "",
     prototypeReportSiteQuery: "",
     prototypeReportRecipientQuery: "",
-    prototypeReportAddEmail: "",
-    prototypeReportAddEmailError: false,
     prototypeReportFrom: "",
     prototypeReportCalOpen: false,
     prototypeReportCal: "",
@@ -7578,7 +7576,6 @@ function protoReportRecipientList(draft) {
   const shown = rows.filter((row) => !q || `${row.name} ${row.email} ${row.role}`.toLowerCase().includes(q));
   const picked = new Set((draft.people || []).map(String));
   const pool = protoUserPeople().filter((person) => !picked.has(person.id));
-  const emailError = Boolean(store.prototypeReportAddEmailError);
   const table = protoTable(
     ["Name", "Role", { label: "Remove", sort: false, hidden: true }],
     shown.map((row) =>
@@ -7596,7 +7593,7 @@ function protoReportRecipientList(draft) {
     ),
     {
       id: "report-recipients",
-      empty: rows.length ? "No one matches." : "No one gets this yet. Add people or an email.",
+      empty: rows.length ? "No one matches." : "No one gets this yet. Add people.",
     }
   );
   return `
@@ -7625,22 +7622,6 @@ function protoReportRecipientList(draft) {
         options: protoReportPeopleOptions(pool),
       })}
     </div>
-    <div class="astral-report-add-email">
-      ${protoField(
-        "Someone not on Astral",
-        `type="text" name="proto-report-add-email" value="${escapeHtml(
-          String(store.prototypeReportAddEmail || "")
-        )}" placeholder="name@company.com" inputmode="email" autocomplete="off" spellcheck="false"${
-          emailError ? ' aria-invalid="true" aria-describedby="astral-report-add-email-error"' : ""
-        }`
-      )}
-      ${protoGhost("Add email", "data-proto-report-add-email")}
-    </div>
-    ${
-      emailError
-        ? `<p class="astral-muted" id="astral-report-add-email-error" role="status">Enter a full email address, like name@company.com.</p>`
-        : ""
-    }
     <div class="astral-people astral-report-recipients">${table}</div>
     <p class="astral-people-count">${shown.length} of ${rows.length} ${rows.length === 1 ? "recipient" : "recipients"}. Each email has an opt-out link.</p>
   `;
@@ -8053,8 +8034,6 @@ function protoReportOpenEdit(id) {
     prototypeReportPeopleQuery: "",
     prototypeReportSiteQuery: "",
     prototypeReportRecipientQuery: "",
-    prototypeReportAddEmail: "",
-    prototypeReportAddEmailError: false,
     prototypeReportCal: "",
     prototypeSelectOpen: "",
     ...(def
@@ -8108,35 +8087,9 @@ function protoReportEditClear() {
     prototypeReportPeopleQuery: "",
     prototypeReportSiteQuery: "",
     prototypeReportRecipientQuery: "",
-    prototypeReportAddEmail: "",
-    prototypeReportAddEmailError: false,
     prototypeReportCalOpen: false,
     prototypeReportCal: "",
   };
-}
-
-function protoReportAddEmail() {
-  const draft = protoReportDraft();
-  if (!draft || !protoCanManagePeople()) return;
-  const raw = String(store.prototypeReportAddEmail || "").trim();
-  const email = protoReportEmails([raw])[0];
-  if (!email) {
-    setProto({ prototypeReportAddEmailError: Boolean(raw) });
-    protoRestoreFocus('#astral-fs input[name="proto-report-add-email"]');
-    return;
-  }
-  const person = protoUserPeople().find(
-    (item) => String(item.email || "").toLowerCase() === email.toLowerCase()
-  );
-  const patch = person
-    ? { people: [...new Set([...(draft.people || []), person.id])] }
-    : { emails: protoReportEmails([...protoReportEmails(draft.emails), email]).join(", ") };
-  setProto({
-    prototypeReportDraft: { ...draft, ...patch },
-    prototypeReportAddEmail: "",
-    prototypeReportAddEmailError: false,
-  });
-  protoRestoreFocus('#astral-fs input[name="proto-report-add-email"]');
 }
 
 function protoReportPatchDraft(patch, keepOpen) {
@@ -19978,12 +19931,8 @@ function onPrototype(event) {
     protoRestoreFocus(
       next
         ? `#astral-fs [data-proto-report-remove="${CSS.escape(next.dataset.protoReportRemove)}"]`
-        : '#astral-fs input[name="proto-report-add-email"]'
+        : '#astral-fs [data-proto-select="report-people"] .astral-select-btn'
     );
-    return;
-  }
-  if (event.target.closest("[data-proto-report-add-email]")) {
-    protoReportAddEmail();
     return;
   }
   const reportEditBtn = event.target.closest("[data-proto-report-edit]");
@@ -21324,17 +21273,6 @@ function onPrototypeInput(event) {
     if (active) protoRestoreFocus("#astral-fs input[name='proto-report-recipient-query']", start);
     return;
   }
-  const reportAddEmail = event.target.closest("input[name='proto-report-add-email']");
-  if (reportAddEmail) {
-    store.prototypeReportAddEmail = reportAddEmail.value.slice(0, 160);
-    if (store.prototypeReportAddEmailError) {
-      store.prototypeReportAddEmailError = false;
-      reportAddEmail.removeAttribute("aria-invalid");
-      reportAddEmail.removeAttribute("aria-describedby");
-      document.querySelector("#astral-report-add-email-error")?.remove();
-    }
-    return;
-  }
   const reportField = event.target.closest("input[data-proto-report-field]");
   if (reportField) {
     const draft = protoReportDraft();
@@ -21925,11 +21863,6 @@ function onPrototypeSubmit(event) {
 }
 
 function onPrototypeKey(event) {
-  if (event.key === "Enter" && event.target.closest("input[name='proto-report-add-email']")) {
-    event.preventDefault();
-    protoReportAddEmail();
-    return;
-  }
   if (event.key === "Enter" && event.target.closest("input[name='proto-team-people-query'], input[name='proto-report-people-query'], input[name='proto-report-site-query'], input[name='proto-report-recipient-query'], input[name='proto-person-team-query'], input[name='proto-person-sites-query']")) {
     event.preventDefault();
     return;
