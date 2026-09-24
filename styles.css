@@ -4263,6 +4263,10 @@ button.astral-avatar {
   background: var(--color-background-canvas);
 }
 
+.astral-card > .astral-stage-tools {
+  background: none;
+}
+
 .astral-page-head h2 {
   font-size: 2rem;
   line-height: 1;
