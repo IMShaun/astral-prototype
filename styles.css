@@ -9631,8 +9631,68 @@ button.astral-state {
   gap: 12px;
 }
 
-.astral-report-test .astral-ghost {
+.astral-report-test .astral-ghost,
+.astral-report-sample .astral-ghost {
   flex: none;
+}
+
+.astral-report-consent-host {
+  display: grid;
+  gap: 12px;
+}
+
+.astral-report-consent-host:empty {
+  display: none;
+}
+
+.astral-report-who .astral-report-consent-host {
+  margin-top: 16px;
+}
+
+.astral-report-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--color-border-control);
+  border-radius: 8px;
+  background: #fff;
+  color: #000;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.astral-report-consent:hover {
+  background: var(--color-background-hover);
+}
+
+.astral-report-consent:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
+
+.astral-report-consent .astral-check {
+  margin-top: 2px;
+}
+
+.astral-report-consent-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.astral-report-consent-copy .astral-muted {
+  font-size: 0.875rem;
+}
+
+.astral-report-sample {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
 }
 
 .astral-report-test-line {

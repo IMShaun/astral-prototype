@@ -7056,7 +7056,7 @@ function protoReportNormalize(raw) {
   const delivery = PROTO_REPORT_DELIVERY.map((item) => item.id).filter((id) =>
     (Array.isArray(raw.delivery) ? raw.delivery : ["email"]).includes(id)
   );
-  return {
+  const def = {
     id: String(raw.id || `report-${Date.now()}`),
     type,
     name: String(raw.name || "").replace(/\s+/g, " ").trim().slice(0, 80) || protoReportDefaultName(type),
@@ -7091,6 +7091,11 @@ function protoReportNormalize(raw) {
     hours: PROTO_REPORT_SILENCE.includes(Number(raw.hours)) ? Number(raw.hours) : 3,
     owner: String(raw.owner || protoProfileEmail()),
   };
+  // Reports saved before the consent tick keep the list they already had.
+  def.consentFor = Array.isArray(raw.consentFor)
+    ? [...new Set(raw.consentFor.map(String))]
+    : protoReportConsentKeys(def);
+  return def;
 }
 
 function protoReportSeed() {
@@ -7569,6 +7574,13 @@ function protoReportAutoName(def) {
 }
 
 function protoReportDraftIssue(draft) {
+  const issue = protoReportDraftIssueBase(draft);
+  if (issue) return issue;
+  const consent = protoReportConsent(draft);
+  return consent.ask && !consent.on ? "Confirm you have permission to email everyone on the list." : "";
+}
+
+function protoReportDraftIssueBase(draft) {
   if (!draft) return "Pick a report type.";
   const people =
     (Array.isArray(draft.people) ? draft.people.length : 0) + protoReportEmails(draft.emails).length;
@@ -7766,6 +7778,7 @@ function protoReportRecipientsHtml(draft) {
       'placeholder="name@company.com, name@company.com" inputmode="email"'
     )}
     <p class="astral-muted">Each email has an opt-out link.</p>
+    ${protoReportConsentHost(draft)}
   `;
 }
 
@@ -7928,10 +7941,113 @@ function protoReportRecipientsPane(draft) {
           "Recipients",
           protoReportRecipientsSub(draft)
         )}</div></div>`,
-        protoReportRecipientList(draft)
+        `${protoReportRecipientList(draft)}${protoReportConsentHost(draft)}`
       )}
     </section>
   `;
+}
+
+function protoReportEmailsOn(draft) {
+  return protoReportSends(draft.type) ? (draft.delivery || []).includes("email") : true;
+}
+
+// Everyone on the list but you. Tenants count by their email.
+function protoReportConsentKeys(draft) {
+  const mine = protoProfileEmail().toLowerCase();
+  return [
+    ...new Set(
+      protoReportRecipientRows(draft)
+        .map((row) =>
+          row.fixed ? `tenant:${String(draft.tenantEmail || "").trim()}` : row.key
+        )
+        .map((key) => key.toLowerCase())
+        .filter((key) => key !== "person:me" && key !== "tenant:" && key !== `email:${mine}` && key !== `tenant:${mine}`)
+    ),
+  ];
+}
+
+function protoReportConsentSaved() {
+  const id = protoReportEditId();
+  const saved = id && id !== "new" ? protoReportDef(id) : null;
+  return saved ? saved.consentFor : [];
+}
+
+function protoReportConsent(draft) {
+  if (!draft || !protoReportEmailsOn(draft)) return { ask: false, on: true, fresh: [] };
+  const saved = new Set(protoReportConsentSaved());
+  const given = new Set(Array.isArray(draft.consentFor) ? draft.consentFor : []);
+  const fresh = protoReportConsentKeys(draft).filter((key) => !saved.has(key));
+  return { ask: fresh.length > 0, on: fresh.every((key) => given.has(key)), fresh };
+}
+
+function protoReportSampleSent(draft) {
+  const sent = store.prototypeReportSample;
+  return sent && sent.id === (protoReportEditId() || "") && sent.type === draft?.type ? sent : null;
+}
+
+function protoReportConsentInner(draft) {
+  if (!draft || !protoReportEmailsOn(draft)) return "";
+  const consent = protoReportConsent(draft);
+  const sent = protoReportSampleSent(draft);
+  const n = consent.fresh.length;
+  const box = consent.ask
+    ? `
+      <button
+        type="button"
+        role="checkbox"
+        class="astral-report-consent${consent.on ? " is-on" : ""}"
+        aria-checked="${consent.on ? "true" : "false"}"
+        data-proto-report-consent
+      >
+        ${protoCheck(consent.on)}
+        <span class="astral-report-consent-copy">
+          <span>I have permission to email everyone on this list.</span>
+          <span class="astral-muted">${
+            n === 1 ? "The new recipient gets" : `The ${n} new recipients get`
+          } an email that says you added them. Each can opt out.</span>
+        </span>
+      </button>
+    `
+    : "";
+  return `
+    ${box}
+    <div class="astral-report-sample">
+      ${protoGhost("Send me a test", "data-proto-report-sample")}
+      <p class="astral-muted astral-report-test-line${sent ? " is-ok" : ""}" role="status">${
+        sent
+          ? `${protoIconMark("check")}<span>A sample went to ${escapeHtml(protoProfileEmail())}.</span>`
+          : "Sends a sample to you, so you see what recipients get."
+      }</p>
+    </div>
+  `;
+}
+
+function protoReportConsentHost(draft) {
+  return `<div class="astral-report-consent-host" data-proto-report-consent-host>${protoReportConsentInner(draft)}</div>`;
+}
+
+function protoReportToggleConsent() {
+  const draft = protoReportDraft();
+  if (!draft) return;
+  const consent = protoReportConsent(draft);
+  const saved = protoReportConsentSaved();
+  setProto({
+    prototypeReportDraft: {
+      ...draft,
+      consentFor: consent.on ? saved : [...new Set([...saved, ...protoReportConsentKeys(draft)])],
+    },
+  });
+}
+
+function protoReportNoticeHtml() {
+  const notice = store.prototypeReportNotice;
+  if (!notice || !notice.n) return "";
+  const who = protoProfileName() || "you";
+  const text =
+    notice.n === 1
+      ? `Saved. The new recipient gets an email that says ${who} added them to ${notice.name}.`
+      : `Saved. The ${notice.n} new recipients get an email that says ${who} added them to ${notice.name}.`;
+  return protoBanner(text, protoIconBtn("close", "Hide", 'data-proto-report-notice="hide"'));
 }
 
 function protoReportBackLabel() {
@@ -8188,7 +8304,7 @@ function protoReportTypeFields(draft, opts = {}) {
         draft.tenantEmail,
         'inputmode="email" placeholder="accounts@tenant.com"'
       )}
-      ${opts.page ? "" : '<p class="astral-muted">Sent by email to you and the tenant.</p>'}
+      ${opts.page ? "" : `<p class="astral-muted">Sent by email to you and the tenant.</p>${protoReportConsentHost(draft)}`}
     `;
   }
   if (draft.type === "alert") {
@@ -8409,6 +8525,14 @@ function protoReportRefreshForm() {
     if (testBtn) testBtn.disabled = !String(draft.sftpHost || "").trim() || state === "testing";
   }
   const tenantEl = modal.querySelector("[data-proto-report-tenant]");
+  const consentHost = modal.querySelector("[data-proto-report-consent-host]");
+  if (consentHost) {
+    const html = protoReportConsentInner(draft);
+    if (consentHost.protoHtml !== html) {
+      consentHost.innerHTML = html;
+      consentHost.protoHtml = html;
+    }
+  }
   if (tenantEl && draft.type === "billing") {
     const row = protoReportTenantRow(draft);
     const mark = tenantEl.querySelector(".astral-person-mark");
@@ -8434,6 +8558,8 @@ function protoReportOpenEdit(id) {
     prototypeReportDraftTo: def ? def.to : "",
     prototypeReportPeopleQuery: "",
     prototypeReportSiteQuery: "",
+    prototypeReportNotice: null,
+    prototypeReportSample: null,
     prototypeReportCal: "",
     prototypeSelectOpen: "",
     ...(def
@@ -14983,6 +15109,7 @@ function protoReports() {
     : `<h3>No reports yet</h3><p class="astral-muted">Reports your admin sets up show here.</p>`;
   return astralShell(`
     ${protoReportsAreaHead("reports")}
+    ${protoReportNoticeHtml()}
     ${protoReportEditModal()}
     ${
       defs.length
@@ -20420,6 +20547,20 @@ function onPrototype(event) {
     protoRunReportTest();
     return;
   }
+  if (event.target.closest("[data-proto-report-consent]")) {
+    protoReportToggleConsent();
+    return;
+  }
+  if (event.target.closest("[data-proto-report-sample]")) {
+    setProto({
+      prototypeReportSample: { id: protoReportEditId() || "", type: protoReportDraft()?.type || "" },
+    });
+    return;
+  }
+  if (event.target.closest('[data-proto-report-notice="hide"]')) {
+    setProto({ prototypeReportNotice: null });
+    return;
+  }
   const reportRemoveBtn = event.target.closest("[data-proto-report-remove]");
   if (reportRemoveBtn) {
     const draft = protoReportDraft();
@@ -22357,11 +22498,15 @@ function onPrototypeSubmit(event) {
     const draft = protoReportDraft();
     if (!draft || protoReportDraftIssue(draft)) return;
     const def = protoReportDraftDef(draft);
+    const fresh = protoReportConsent(draft).fresh.length;
     const defs = protoReportDefs();
     const next = defs.some((item) => item.id === def.id)
       ? defs.map((item) => (item.id === def.id ? def : item))
       : [...defs, def];
-    protoReportLeave(protoReportDefsPatch(next));
+    protoReportLeave({
+      ...protoReportDefsPatch(next),
+      prototypeReportNotice: fresh ? { n: fresh, name: def.name } : null,
+    });
   }
 }
 
