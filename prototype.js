@@ -6961,7 +6961,7 @@ function protoCanEditReports() {
 }
 
 function protoCanAddReports() {
-  return protoCompanyId() === "admin-user" && !store.prototypeSeeAsUser;
+  return protoCanEditReports();
 }
 
 function protoReportDefsStore() {
@@ -14623,7 +14623,7 @@ function protoReports() {
   const defs = protoReportDefs();
   const empty = protoCanAddReports()
     ? `<h3>No reports yet</h3><p class="astral-muted">Add a data extract, DC and DA report, tenant bill, data alert or missing data alert.</p>`
-    : `<h3>No reports yet</h3><p class="astral-muted">Reports IMSERV sets up for you show here.</p>`;
+    : `<h3>No reports yet</h3><p class="astral-muted">Reports your admin sets up show here.</p>`;
   return astralShell(`
     ${protoReportsAreaHead("reports")}
     ${protoReportEditModal()}
