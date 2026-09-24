@@ -583,7 +583,8 @@ function protoViewId(raw) {
   const mapped = PROTO_OLD_VIEWS[raw] || raw;
   if (!protoKnownView(mapped)) return "home";
   if (mapped === "documents") return "downloads";
-  if (mapped === "downloads" || mapped === PROTO_ALERT_RULES_VIEW) return mapped;
+  if (mapped === "downloads") return mapped;
+  if (mapped === PROTO_ALERT_RULES_VIEW) return protoLens().nav.includes("alerts") ? mapped : protoLens().nav[0] || "home";
   if (mapped === "profile") return mapped;
   if (mapped === "settings") return protoCanOpenSettings() ? mapped : protoLens().nav[0] || "home";
   if (mapped === "users") return protoCanManagePeople() ? mapped : protoLens().nav[0] || "home";
@@ -9221,7 +9222,8 @@ function protoRailIcon(id) {
   if (id === "finance") return "rates";
   if (id === "alerts") return "warning";
   if (id === "queries") return "comment";
-  if (id === "reports" || id === "downloads" || id === PROTO_ALERT_RULES_VIEW) return "report";
+  if (id === PROTO_ALERT_RULES_VIEW) return "warning";
+  if (id === "reports" || id === "downloads") return "report";
   if (id === "profile" || id === "settings" || id === "users") return id;
   if (id === "companies") return "companies";
   if (id === "servicing" || id === "inbox") return id;
@@ -9229,7 +9231,7 @@ function protoRailIcon(id) {
 }
 
 function protoRailPage(state) {
-  const id = protoReportsArea(state.view) ? "reports" : state.view;
+  const id = protoReportsArea(state.view) ? "reports" : protoAlertsArea(state.view) ? "alerts" : state.view;
   const fromNav = protoShownViews().find((view) => view.id === id);
   if (fromNav) return fromNav;
   const fromAccount = PROTO_ACCOUNT_VIEWS.find((view) => view.id === id);
@@ -9306,7 +9308,9 @@ function astralRailNav(state) {
   const links = protoShownViews()
     .map((view) => {
       const on =
-        view.id === state.view || (view.id === "reports" && protoReportsArea(state.view));
+        view.id === state.view ||
+        (view.id === "reports" && protoReportsArea(state.view)) ||
+        (view.id === "alerts" && protoAlertsArea(state.view));
       const count = view.id === "inbox" ? protoInboxUnreadCount() : 0;
       return `
       <button
@@ -9351,7 +9355,9 @@ function astralNav(state) {
   const links = protoShownViews()
     .map((view) => {
       const on =
-        view.id === state.view || (view.id === "reports" && protoReportsArea(state.view));
+        view.id === state.view ||
+        (view.id === "reports" && protoReportsArea(state.view)) ||
+        (view.id === "alerts" && protoAlertsArea(state.view));
       return `
       <button
         type="button"
@@ -9401,7 +9407,23 @@ function protoBackLink(label, attrs) {
 }
 
 function protoReportsArea(view) {
-  return view === "reports" || view === "downloads" || view === PROTO_ALERT_RULES_VIEW;
+  return view === "reports" || view === "downloads";
+}
+
+function protoAlertsArea(view) {
+  return view === "alerts" || view === PROTO_ALERT_RULES_VIEW;
+}
+
+function protoAlertsCardTabs(active) {
+  return `<div class="astral-card-tabs">${protoTabs(
+    [
+      { id: "alerts", name: "Flags" },
+      { id: PROTO_ALERT_RULES_VIEW, name: "Your alerts" },
+    ],
+    active,
+    "data-proto-view",
+    "Flags or your alerts"
+  )}</div>`;
 }
 
 function protoReportsDownloadsTabs(active) {
@@ -9409,12 +9431,11 @@ function protoReportsDownloadsTabs(active) {
   return protoTabs(
     [
       { id: "reports", name: "Reports" },
-      { id: PROTO_ALERT_RULES_VIEW, name: "Alerts" },
       { id: "downloads", name: "Downloads" },
     ],
     active,
     "data-proto-view",
-    "Reports, Alerts or Downloads"
+    "Reports or Downloads"
   );
 }
 
@@ -9432,10 +9453,11 @@ function protoReportsAreaHead(active) {
             `data-proto-report-edit="new" aria-haspopup="dialog" aria-expanded="${open}" aria-controls="astral-report-edit"`
           )
         : "";
+  const title = protoAlertsArea(active) ? "Alerts" : "Reports and compliance";
   return `
     <header class="astral-page-head astral-page-tools">
       <div>
-        <h2>Reports and compliance</h2>
+        <h2>${title}</h2>
       </div>
       <div class="astral-page-actions">${addBtn}</div>
     </header>
@@ -15288,10 +15310,13 @@ function protoAlerts() {
   }).join("");
   const cards = alerts.map((item) => protoAlertCard(item, item.meter)).join("");
   return astralShell(`
-    ${astralPageHead("Alerts", protoData()?.alertsLead || "")}
-    <div class="astral-stage-tools astral-pills" role="group" aria-label="Filter flags">${chips}</div>
-    <div class="astral-stack">${cards || `<p class="astral-empty">No alerts in this filter.</p>`}</div>
-    <p class="astral-muted">Every alert here is something a customer would otherwise find from a bill or a missed reading.</p>
+    ${protoReportsAreaHead("alerts")}
+    <section class="astral-card astral-reports-sheet astral-alerts-sheet">
+      ${protoAlertsCardTabs("alerts")}
+      <div class="astral-stage-tools astral-pills" role="group" aria-label="Filter flags">${chips}</div>
+      <div class="astral-stack">${cards || `<p class="astral-empty">No flags in this filter.</p>`}</div>
+      <p class="astral-muted">Every flag here is something a customer would otherwise find from a bill or a missed reading.</p>
+    </section>
   `);
 }
 
@@ -15366,16 +15391,17 @@ function protoAlertRules() {
 
 function protoReportsSheet(active, defs, empty) {
   const tab = active === PROTO_ALERT_RULES_VIEW ? "alerts" : "reports";
+  const cardTabs = tab === "alerts" ? protoAlertsCardTabs(active) : protoReportsCardTabs(active);
   return astralShell(`
     ${protoReportsAreaHead(active)}
     ${protoReportNoticeHtml()}
     ${protoReportEditModal()}
     ${
       defs.length
-        ? `<section class="astral-card astral-reports-sheet">${protoReportsCardTabs(active)}<div class="astral-report-grid">${defs
+        ? `<section class="astral-card astral-reports-sheet">${cardTabs}<div class="astral-report-grid">${defs
             .map((def) => protoReportCard(def))
             .join("")}${protoReportSoonCards(tab)}</div></section>`
-        : `<section class="astral-card astral-reports-sheet">${protoReportsCardTabs(active)}<div class="astral-empty">${empty}</div></section>`
+        : `<section class="astral-card astral-reports-sheet">${cardTabs}<div class="astral-empty">${empty}</div></section>`
     }
   `);
 }
