@@ -7761,29 +7761,27 @@ function protoReportDraftPreview(draft) {
     const period = protoReportPeriod(def.type, def.period);
     const at = `${def.sendAt} ${protoReportZone(def)}`;
     if (protoReportOnce(def)) {
-      return next ? `Once, sent on ${protoFormatUkDate(next)} at ${at}.` : "Once. The send date has passed.";
+      return next ? `Once, on ${protoReportSendLabel(next)} at ${at}.` : "Once. The send date has passed.";
     }
-    return next
-      ? `${period.every} at ${at}, first sent on ${protoFormatUkDate(next)}.`
-      : `${period.every} at ${at}.`;
+    return next ? `${period.every} at ${at}. Next send ${protoReportSendLabel(next)}.` : `${period.every} at ${at}.`;
   }
   if (def.type === "billing") {
     const bill = protoReportBill(def);
     if (!bill.site) return "";
-    return `Projected ${bill.period.word} cost ${protoSpendMoney(bill.cost)}. Tenant pays ${protoSpendMoney(
+    return `Projected ${bill.period.word} cost ${protoSpendMoney(bill.cost)}. The tenant pays ${protoSpendMoney(
       bill.net
-    )}, plus ${protoSpendMoney(bill.vat)} VAT: ${protoSpendMoney(bill.due)}.`;
+    )} plus ${protoSpendMoney(bill.vat)} VAT, ${protoSpendMoney(bill.due)} in all.`;
   }
   if (def.type === "alert") {
     const hits = protoReportAlertHits(def);
     const limit = `Limit ${protoReportKwh(protoReportAlertLimit(def))} a day.`;
     const word = protoReportAlertBelow(def) ? "under" : "over";
-    if (!hits.length) return `${limit} No site is ${word} right now.`;
-    return `${limit} ${word === "under" ? "Under" : "Over"} right now: ${protoReportJoin(hits.map((site) => site.name))}.`;
+    if (!hits.length) return `${limit} No site is ${word} it right now.`;
+    return `${limit} ${protoReportJoin(hits.map((site) => site.name))} ${hits.length === 1 ? "is" : "are"} ${word} it right now.`;
   }
   const hits = protoReportMissingHits(def);
   if (!hits.length) return "Every site is sending right now.";
-  return `Silent right now: ${protoReportJoin(hits.map((site) => site.name))}.`;
+  return `${protoReportJoin(hits.map((site) => site.name))} ${hits.length === 1 ? "is" : "are"} not sending right now.`;
 }
 
 function protoReportField(label, inner) {
@@ -8203,6 +8201,9 @@ function protoReportPage() {
   const type = protoReportType(draft.type);
   const issue = protoReportDraftIssue(draft);
   const preview = protoReportDraftPreview(draft);
+  const alert = protoReportTabOf(draft.type) === "alerts";
+  const groups = protoReportGroups(draft, { page: true });
+  const group = groups.find((item) => item.id === protoReportGroupId(groups));
   return astralShell(`
     ${astralPageHead(
       def.name,
@@ -8213,15 +8214,20 @@ function protoReportPage() {
     <form class="astral-report-page" data-proto-report-edit-form novalidate>
       <section class="astral-card astral-pane astral-report-set">
         ${protoPaneShell(
-          `<div class="astral-detail-head"><div>${protoDetailTitle("Settings", type.blurb)}</div></div>`,
-          `<div class="astral-report-fields">
-            ${protoReportInput(
-              protoReportTabOf(draft.type) === "alerts" ? "Alert name" : "Report name",
-              "name",
-              draft.name,
-              `maxlength="80" placeholder="${escapeHtml(protoReportAutoName(protoReportDraftDef(draft)))}"`
-            )}
-            ${protoReportTypeFields(draft, { page: true })}
+          `<div class="astral-detail-head"><div>${protoDetailTitle("Settings", type.blurb)}</div></div>
+          ${protoTabs(groups, group.id, "data-proto-report-group", alert ? "Alert settings" : "Report settings")}`,
+          `<div class="astral-report-fields" role="tabpanel" aria-label="${escapeHtml(group.name)}">
+            ${
+              group.id === "details"
+                ? protoReportInput(
+                    alert ? "Alert name" : "Report name",
+                    "name",
+                    draft.name,
+                    `maxlength="80" placeholder="${escapeHtml(protoReportAutoName(protoReportDraftDef(draft)))}"`
+                  )
+                : ""
+            }
+            ${group.html}
             <p class="astral-report-preview" data-proto-report-preview${preview ? "" : " hidden"}>${escapeHtml(
               preview
             )}</p>
@@ -8354,16 +8360,21 @@ function protoReportServerFields(draft, serverName) {
     ${protoReportTestHtml(draft)}
   `;
 }
-function protoReportSendFields(draft, opts = {}) {
-  const ways = draft.delivery || [];
-  const server = ways.filter((way) => way === "sftp" || way === "ftp");
-  const serverName = server.map((way) => way.toUpperCase()).join(" or ");
+function protoReportSendTimeFields(draft) {
   return `
     <div class="astral-report-pair">
       ${protoReportSendAtSelect(draft)}
       ${protoReportOptionSelect("report-time", "Times in", PROTO_REPORT_TIME, draft.time)}
     </div>
-    <p class="astral-muted">Meter data comes in through the day. A later send holds more of it.</p>
+    <p class="astral-muted">Meter data comes in through the day, so a later send holds more of it.</p>
+  `;
+}
+
+function protoReportDeliveryFields(draft, opts = {}) {
+  const ways = draft.delivery || [];
+  const server = ways.filter((way) => way === "sftp" || way === "ftp");
+  const serverName = server.map((way) => way.toUpperCase()).join(" or ");
+  return `
     ${protoReportField(
       "Send by",
       protoSelect({
@@ -8378,7 +8389,13 @@ function protoReportSendFields(draft, opts = {}) {
         options: PROTO_REPORT_DELIVERY.map((item) => ({ value: item.id, label: item.name })),
       })
     )}
-    ${ways.includes("email") && !opts.page ? protoReportRecipientsHtml(draft) : ""}
+    ${
+      ways.includes("email")
+        ? opts.page
+          ? '<p class="astral-muted">Email goes to everyone in Recipients.</p>'
+          : protoReportRecipientsHtml(draft)
+        : ""
+    }
     ${server.length ? protoReportServerFields(draft, serverName) : ""}
   `;
 }
@@ -8405,130 +8422,179 @@ function protoReportBillSplit(draft) {
     .join("");
   return `
     ${rows}
-    <p class="astral-muted">Only the utilities on this site show. The tenant pays their share of each charge.</p>
+    <p class="astral-muted">Only the utilities on this site show. The tenant pays their share of each one.</p>
     <div class="astral-report-pair">
       ${protoReportInput("VAT (%)", "vat", draft.vat, 'inputmode="decimal" placeholder="20"')}
     </div>
   `;
 }
 
-function protoReportTypeFields(draft, opts = {}) {
-  if (draft.type === "extract") {
-    return `
-      ${protoReportSitesSelect(draft)}
-      <div class="astral-report-pair">
-        ${protoReportOptionSelect("report-content", "What it holds", PROTO_REPORT_CONTENT, draft.content)}
-        ${protoReportOptionSelect("report-format", "Format", PROTO_REPORT_FORMAT, draft.format)}
-      </div>
-      <div class="astral-report-pair">
-        ${protoReportOptionSelect("report-utility", "Utility", PROTO_REPORT_UTILITY, draft.utility)}
-        ${protoReportOptionSelect("report-channel", "Channel", PROTO_REPORT_CHANNEL, draft.channel)}
-      </div>
-      ${protoReportWhenFields(draft)}
-      ${protoReportSendFields(draft, opts)}
-    `;
-  }
-  if (draft.type === "dcda") {
-    return `
-      ${protoReportSitesSelect(draft)}
-      ${protoReportWhenFields(draft)}
-      ${protoReportOptionSelect("report-format", "Format", PROTO_REPORT_FORMAT, draft.format)}
-      ${protoReportSendFields(draft, opts)}
-    `;
+const PROTO_REPORT_GROUP_NAMES = {
+  details: "Details",
+  data: "Data",
+  charges: "Charges",
+  trigger: "Trigger",
+  schedule: "Schedule",
+  delivery: "Delivery",
+};
+
+function protoReportGroup(id, html) {
+  return { id, name: PROTO_REPORT_GROUP_NAMES[id], html };
+}
+
+function protoReportGroups(draft, opts = {}) {
+  if (draft.type === "extract" || draft.type === "dcda") {
+    const extract = draft.type === "extract";
+    return [
+      protoReportGroup("details", protoReportSitesSelect(draft)),
+      protoReportGroup(
+        "data",
+        extract
+          ? `
+            <div class="astral-report-pair">
+              ${protoReportOptionSelect("report-content", "What it holds", PROTO_REPORT_CONTENT, draft.content)}
+              ${protoReportOptionSelect("report-format", "Format", PROTO_REPORT_FORMAT, draft.format)}
+            </div>
+            <div class="astral-report-pair">
+              ${protoReportOptionSelect("report-utility", "Utility", PROTO_REPORT_UTILITY, draft.utility)}
+              ${protoReportOptionSelect("report-channel", "Channel", PROTO_REPORT_CHANNEL, draft.channel)}
+            </div>
+          `
+          : `
+            <div class="astral-report-pair">
+              ${protoReportOptionSelect("report-format", "Format", PROTO_REPORT_FORMAT, draft.format)}
+            </div>
+            <p class="astral-muted">Holds the reads your data collector and data aggregator sent.</p>
+          `
+      ),
+      protoReportGroup("schedule", `${protoReportWhenFields(draft)}${protoReportSendTimeFields(draft)}`),
+      protoReportGroup("delivery", protoReportDeliveryFields(draft, opts)),
+    ];
   }
   if (draft.type === "billing") {
     const sites = protoEstateSites();
-    return `
-      ${protoReportField(
-        "Site",
-        protoSelect({
-          id: "report-site",
-          label: "Site",
-          wide: true,
-          value: draft.site || "",
-          placeholder: "Pick a site",
-          empty: sites.length ? "No sites match." : "No sites in this company.",
-          search: sites.length
-            ? {
-                name: "proto-report-site-query",
-                value: String(store.prototypeReportSiteQuery || ""),
-                placeholder: "Search sites",
-                label: "Search sites",
-              }
-            : null,
-          options: sites.map((site) => ({
-            value: protoSiteId(site),
-            label: site.name,
-            note: `${protoSpendMoney(protoSiteSpendGbp(site))} a day`,
-          })),
-        })
-      )}
-      ${protoReportWhenFields(draft)}
-      ${protoReportSendAtSelect(draft)}
-      <div class="astral-report-pair">
-        ${protoReportInput("Tenant", "tenant", draft.tenant, 'maxlength="80" placeholder="Tenant name"')}
-        ${protoReportInput(
-          "Tenant email",
-          "tenantEmail",
-          draft.tenantEmail,
-          'inputmode="email" placeholder="accounts@tenant.com"'
-        )}
-      </div>
-      ${protoReportBillSplit(draft)}
-      ${opts.page ? "" : `<p class="astral-muted">Sent by email to you and the tenant.</p>${protoReportConsentHost(draft)}`}
-    `;
+    return [
+      protoReportGroup(
+        "details",
+        `
+          ${protoReportField(
+            "Site",
+            protoSelect({
+              id: "report-site",
+              label: "Site",
+              wide: true,
+              value: draft.site || "",
+              placeholder: "Pick a site",
+              empty: sites.length ? "No sites match." : "No sites in this company.",
+              search: sites.length
+                ? {
+                    name: "proto-report-site-query",
+                    value: String(store.prototypeReportSiteQuery || ""),
+                    placeholder: "Search sites",
+                    label: "Search sites",
+                  }
+                : null,
+              options: sites.map((site) => ({
+                value: protoSiteId(site),
+                label: site.name,
+                note: `${protoSpendMoney(protoSiteSpendGbp(site))} a day`,
+              })),
+            })
+          )}
+          <div class="astral-report-pair">
+            ${protoReportInput("Tenant", "tenant", draft.tenant, 'maxlength="80" placeholder="Tenant name"')}
+            ${protoReportInput(
+              "Tenant email",
+              "tenantEmail",
+              draft.tenantEmail,
+              'inputmode="email" placeholder="accounts@tenant.com"'
+            )}
+          </div>
+          <p class="astral-muted">The bill goes by email to the tenant and everyone on the list.</p>
+          ${opts.page ? "" : protoReportConsentHost(draft)}
+        `
+      ),
+      protoReportGroup("charges", protoReportBillSplit(draft)),
+      protoReportGroup(
+        "schedule",
+        `${protoReportWhenFields(draft)}<div class="astral-report-pair">${protoReportSendAtSelect(draft)}</div>`
+      ),
+    ];
   }
   if (draft.type === "alert") {
     const absolute = draft.basis === "absolute";
     const below = draft.direction === "below";
-    return `
-      ${protoReportSitesSelect(draft)}
-      <div class="astral-report-pair">
-        ${protoReportOptionSelect("report-direction", "Alert when use goes", PROTO_REPORT_DIRECTION, draft.direction)}
-        ${protoReportField(
-          "Threshold",
-          protoSelect({
-            id: "report-basis",
-            label: "Threshold",
-            wide: true,
-            value: absolute ? "absolute" : "average",
-            options: PROTO_REPORT_BASIS.map((item) => ({
-              value: item.id,
-              label: item.name,
-              note: item.note,
-            })),
-          })
-        )}
-      </div>
-      <div class="astral-report-pair">
-        ${
-          absolute
-            ? protoReportInput(`Daily use ${below ? "under" : "over"} (kWh)`, "amount", draft.amount, 'inputmode="decimal"')
-            : protoReportInput(`${below ? "Below" : "Above"} the average by (%)`, "percent", draft.percent, 'inputmode="decimal"')
-        }
-      </div>
-      ${protoReportNotifyFields(draft, opts)}
-    `;
+    return [
+      protoReportGroup(
+        "details",
+        `${protoReportSitesSelect(draft)}<p class="astral-muted">Leave it empty to watch every site.</p>`
+      ),
+      protoReportGroup(
+        "trigger",
+        `
+          <div class="astral-report-pair">
+            ${protoReportOptionSelect("report-direction", "Alert when use goes", PROTO_REPORT_DIRECTION, draft.direction)}
+            ${protoReportField(
+              "Threshold",
+              protoSelect({
+                id: "report-basis",
+                label: "Threshold",
+                wide: true,
+                value: absolute ? "absolute" : "average",
+                options: PROTO_REPORT_BASIS.map((item) => ({
+                  value: item.id,
+                  label: item.name,
+                  note: item.note,
+                })),
+              })
+            )}
+          </div>
+          <div class="astral-report-pair">
+            ${
+              absolute
+                ? protoReportInput(`Daily use ${below ? "under" : "over"} (kWh)`, "amount", draft.amount, 'inputmode="decimal"')
+                : protoReportInput(`${below ? "Below" : "Above"} the average by (%)`, "percent", draft.percent, 'inputmode="decimal"')
+            }
+          </div>
+        `
+      ),
+      protoReportGroup("delivery", protoReportNotifyFields(draft, opts)),
+    ];
   }
-  return `
-    ${protoReportField(
-      "No data for",
-      protoSelect({
-        id: "report-silence",
-        label: "No data for",
-        wide: true,
-        value: String(draft.hours || 3),
-        options: PROTO_REPORT_SILENCE.map((hours) => ({
-          value: String(hours),
-          label: protoReportSilenceName(hours),
-        })),
-      })
-    )}
-    <p class="astral-muted">Checks every site in ${escapeHtml(
-      protoHomeCompany() || "the portfolio"
-    )}.</p>
-    ${protoReportNotifyFields(draft, opts)}
-  `;
+  return [
+    protoReportGroup(
+      "details",
+      `<p class="astral-muted">Watches every site in ${escapeHtml(protoHomeCompany() || "the portfolio")}.</p>`
+    ),
+    protoReportGroup(
+      "trigger",
+      protoReportField(
+        "No data for",
+        protoSelect({
+          id: "report-silence",
+          label: "No data for",
+          wide: true,
+          value: String(draft.hours || 3),
+          options: PROTO_REPORT_SILENCE.map((hours) => ({
+            value: String(hours),
+            label: protoReportSilenceName(hours),
+          })),
+        })
+      )
+    ),
+    protoReportGroup("delivery", protoReportNotifyFields(draft, opts)),
+  ];
+}
+
+function protoReportTypeFields(draft, opts = {}) {
+  return protoReportGroups(draft, opts)
+    .map((group) => group.html)
+    .join("");
+}
+
+function protoReportGroupId(groups) {
+  const want = String(store.prototypeReportGroup || "");
+  return groups.some((group) => group.id === want) ? want : groups[0].id;
 }
 
 function protoReportNotifyFields(draft, opts = {}) {
@@ -8771,6 +8837,7 @@ function protoReportOpenEdit(id) {
     prototypeReportNotice: null,
     prototypeReportSample: null,
     prototypeReportCal: "",
+    prototypeReportGroup: "details",
     prototypeSelectOpen: "",
     ...(def
       ? {
@@ -8825,6 +8892,7 @@ function protoReportEditClear() {
     prototypeReportSiteQuery: "",
     prototypeReportCalOpen: false,
     prototypeReportCal: "",
+    prototypeReportGroup: "details",
   };
 }
 
@@ -20826,6 +20894,13 @@ function onPrototype(event) {
     if (!protoCanEditReports()) return;
     const id = reportDeleteBtn.dataset.protoReportDelete;
     protoReportLeave(protoReportDefsPatch(protoReportDefs().filter((def) => def.id !== id)));
+    return;
+  }
+  const reportGroupBtn = event.target.closest("[data-proto-report-group]");
+  if (reportGroupBtn) {
+    const id = reportGroupBtn.dataset.protoReportGroup;
+    setProto({ prototypeReportGroup: id, prototypeReportEdit: protoReportEditId(), prototypeSelectOpen: "" });
+    protoRestoreFocus(`#astral-fs [data-proto-report-group="${id}"]`);
     return;
   }
   const reportTestBtn = event.target.closest("[data-proto-report-test]");
