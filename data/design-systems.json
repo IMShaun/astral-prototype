@@ -3320,19 +3320,19 @@
           ],
           "props": [
             {
-              "name": "page",
-              "type": "number",
-              "note": "One based."
+              "name": "label",
+              "type": "string",
+              "note": "Previous or Next."
             },
             {
-              "name": "count",
-              "type": "number",
-              "note": "How many pages."
+              "name": "kind",
+              "type": "\"prev\" | \"next\"",
+              "note": "Which arrow."
             },
             {
-              "name": "onChange",
-              "type": "(page: number) => void",
-              "note": "The page owns the request."
+              "name": "onClick",
+              "type": "() => void",
+              "note": "The page moves the date window."
             }
           ],
           "snippet": "<IconButton label=\"Previous\" kind=\"prev\" onClick={back} />",
@@ -3446,7 +3446,7 @@
           "react": "Banner",
           "file": "src/components/Banner.tsx",
           "family": "messaging",
-          "summary": "A full width note. Grey A fill and black type until status colour is named. Export processing floats under the nav, in the middle, with a 1px Infra Grey B outline. It goes after 10 seconds. Hide puts it away.",
+          "summary": "A full width note. Grey A fill and black type until status colour is named. Export processing floats under the nav, in the middle, with a 1px Infra Grey B outline. It stays until Hide. No timer.",
           "usage": "One message. Do not add a green or red banner. Do not put a View alerts banner on Consumption. The Alerts tab holds the count. Export processing floats under the nav.",
           "variants": [
             "default"
