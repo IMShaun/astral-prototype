@@ -6552,7 +6552,21 @@ function protoPickSelect(id, value) {
     if (!draft) return;
     const fromSearch = Boolean(document.querySelector("#astral-fs .astral-search-add"));
     if (fromSearch) store.prototypeReportPeopleQuery = "";
-    protoReportPatchDraft({ people: protoReportToggleIn(draft.people, value) }, "report-people");
+    const people = protoReportToggleIn(draft.people, value);
+    const ways = draft.delivery || [];
+    const emailOn =
+      fromSearch && protoReportSends(draft.type) && people.includes(value) && !ways.includes("email");
+    protoReportPatchDraft(
+      emailOn
+        ? {
+            people,
+            delivery: PROTO_REPORT_DELIVERY.map((item) => item.id).filter(
+              (id) => id === "email" || ways.includes(id)
+            ),
+          }
+        : { people },
+      "report-people"
+    );
     if (fromSearch) {
       protoRestoreFocus("#astral-fs input[name='proto-report-people-query']");
       return;
@@ -7024,6 +7038,7 @@ function protoReportSeed() {
       tenant: "Northgate Retail",
       tenantEmail: "accounts@northgate-retail.co.uk",
       share: 35,
+      people: ["me"],
       start: today,
     },
     {
@@ -7536,15 +7551,23 @@ function protoReportOptionSelect(id, label, list, value) {
   );
 }
 
-function protoReportUsesPeople(draft) {
-  if (!draft || draft.type === "billing") return false;
-  if (protoReportSends(draft.type)) return (draft.delivery || []).includes("email");
-  return true;
+function protoReportTenantRow(draft) {
+  const name = String(draft.tenant || "").trim() || "Tenant";
+  const email = protoReportEmails([draft.tenantEmail])[0] || "";
+  return {
+    key: "tenant",
+    name,
+    email: email || "Add their email in Settings",
+    role: "Tenant",
+    initials: protoProfileInitials(name),
+    fixed: true,
+  };
 }
 
 function protoReportRecipientRows(draft) {
   const people = protoUserPeople();
   const picked = new Set((draft.people || []).map(String));
+  const tenant = draft.type === "billing" ? [protoReportTenantRow(draft)] : [];
   const rows = people
     .filter((person) => picked.has(person.id))
     .map((person) => ({
@@ -7554,6 +7577,7 @@ function protoReportRecipientRows(draft) {
       role: protoUserRoleName(person.role),
       initials: protoUserInitials(person),
     }));
+  rows.unshift(...tenant);
   const known = new Set(rows.map((row) => row.email.toLowerCase()));
   protoReportEmails(draft.emails).forEach((email) => {
     if (known.has(email.toLowerCase())) return;
@@ -7629,12 +7653,18 @@ function protoReportRecipientList(draft) {
     rows.map((row) =>
       Object.assign(
         [
-          `<span class="astral-person">${protoPersonFace(row.initials, row.name, row.email)}</span>`,
+          `<span class="astral-person"${row.fixed ? " data-proto-report-tenant" : ""}>${protoPersonFace(
+            row.initials,
+            row.name,
+            row.email
+          )}</span>`,
           escapeHtml(row.role),
-          protoIconBtn("close", `Remove ${row.name}`, `data-proto-report-remove="${escapeHtml(row.key)}"`, {
-            className: "is-plain",
-            tipLabel: "Remove",
-          }),
+          row.fixed
+            ? ""
+            : protoIconBtn("close", `Remove ${row.name}`, `data-proto-report-remove="${escapeHtml(row.key)}"`, {
+                className: "is-plain",
+                tipLabel: "Remove",
+              }),
         ],
         { sortBy: { name: row.name, role: row.role } }
       )
@@ -7651,17 +7681,23 @@ function protoReportRecipientList(draft) {
   `;
 }
 
-function protoReportRecipientsPane(draft) {
+function protoReportRecipientsSub(draft) {
+  if (protoReportSends(draft.type) && !(draft.delivery || []).includes("email")) {
+    return "Email is off. Adding someone turns it on.";
+  }
   const n = protoReportRecipientRows(draft).length;
-  const manage = protoCanManagePeople();
+  return `${n} ${n === 1 ? "person gets" : "people get"} this by email`;
+}
+
+function protoReportRecipientsPane(draft) {
   return `
     <section class="astral-card astral-pane astral-report-who">
       ${protoPaneShell(
         `<div class="astral-detail-head"><div>${protoDetailTitle(
           "Recipients",
-          `${n} ${n === 1 ? "person gets" : "people get"} this by email`
+          protoReportRecipientsSub(draft)
         )}</div></div>`,
-        manage ? protoReportRecipientList(draft) : `<div class="astral-report-fields">${protoReportRecipientsHtml(draft)}</div>`
+        protoReportRecipientList(draft)
       )}
     </section>
   `;
@@ -7678,7 +7714,6 @@ function protoReportPage() {
   const type = protoReportType(draft.type);
   const issue = protoReportDraftIssue(draft);
   const preview = protoReportDraftPreview(draft);
-  const people = protoReportUsesPeople(draft);
   return astralShell(`
     ${astralPageHead(
       def.name,
@@ -7686,7 +7721,7 @@ function protoReportPage() {
       `<div class="astral-page-actions">${protoTag(type.short, type.blurb, `is-${draft.type}`)}</div>`,
       protoBackLink(protoReportBackLabel(), 'data-proto-report-edit="cancel"')
     )}
-    <form class="astral-report-page${people ? "" : " is-single"}" data-proto-report-edit-form novalidate>
+    <form class="astral-report-page" data-proto-report-edit-form novalidate>
       <section class="astral-card astral-pane astral-report-set">
         ${protoPaneShell(
           `<div class="astral-detail-head"><div>${protoDetailTitle("Settings", type.blurb)}</div></div>`,
@@ -7704,7 +7739,7 @@ function protoReportPage() {
           </div>`
         )}
       </section>
-      ${people ? protoReportRecipientsPane(draft) : ""}
+      ${protoReportRecipientsPane(draft)}
       <div class="astral-card astral-report-page-foot">
         <div class="astral-actions">
           ${protoBtn("Save changes", "", { type: "submit", disabled: Boolean(issue) })}
@@ -7831,7 +7866,7 @@ function protoReportTypeFields(draft, opts = {}) {
         draft.tenantEmail,
         'inputmode="email" placeholder="accounts@tenant.com"'
       )}
-      <p class="astral-muted">Sent by email to you and the tenant.</p>
+      ${opts.page ? "" : '<p class="astral-muted">Sent by email to you and the tenant.</p>'}
     `;
   }
   if (draft.type === "alert") {
@@ -8043,6 +8078,16 @@ function protoReportRefreshForm() {
     const preview = protoReportDraftPreview(draft);
     previewEl.textContent = preview;
     previewEl.hidden = !preview;
+  }
+  const tenantEl = modal.querySelector("[data-proto-report-tenant]");
+  if (tenantEl && draft.type === "billing") {
+    const row = protoReportTenantRow(draft);
+    const mark = tenantEl.querySelector(".astral-person-mark");
+    const name = tenantEl.querySelector(".astral-people-name");
+    const email = tenantEl.querySelector(".astral-person-copy > .astral-muted");
+    if (mark) mark.textContent = row.initials;
+    if (name) name.textContent = row.name;
+    if (email) email.textContent = row.email;
   }
 }
 
@@ -19946,7 +19991,7 @@ function onPrototype(event) {
   const reportRemoveBtn = event.target.closest("[data-proto-report-remove]");
   if (reportRemoveBtn) {
     const draft = protoReportDraft();
-    if (!draft || !protoCanManagePeople()) return;
+    if (!draft || !protoCanEditReports()) return;
     const key = reportRemoveBtn.dataset.protoReportRemove;
     const value = key.slice(key.indexOf(":") + 1);
     const patch = key.startsWith("person:")

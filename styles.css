@@ -9654,14 +9654,6 @@ button.astral-state {
   min-height: 0;
 }
 
-.astral-report-page.is-single > .astral-report-set {
-  grid-column: 1 / -1;
-}
-
-.astral-report-page.is-single .astral-report-fields {
-  max-width: 40rem;
-}
-
 .astral-report-fields {
   display: grid;
   align-content: start;
