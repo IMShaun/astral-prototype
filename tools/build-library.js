@@ -19,6 +19,8 @@ const CHECK = process.argv.includes("--check");
 const CHROME = /\.astral-(preview|export|lib-host)\b|data-proto|#skills-list|\.ds-/;
 const HOST = "#astral-fs";
 const HOST_HOOK = ":is(#astral-fs, .astral-root)";
+// Short aliases the prototype desk sets on :root. The product never reads them.
+const DESK_VARS = new Set(["--paper", "--ink", "--muted", "--line", "--surface", "--mark", "--mark-soft", "--warn", "--warn-soft", "--next", "--next-soft", "--shadow", "--radius", "--side", "--pad", "--font"]);
 
 function parse(src) {
   const items = [];
@@ -128,7 +130,10 @@ function emitRules(items, indent, used) {
   const out = [];
   items.forEach((item) => {
     if (item.type === "rule") {
-      const sels = splitSel(item.pre).map(keepSelector).filter(Boolean);
+      const onlyVars = /^\s*(--[\w-]+\s*:[^;]+;\s*)+$/.test(item.body.replace(/\/\*[\s\S]*?\*\//g, ""));
+      const sels = splitSel(item.pre)
+        .map((sel) => (onlyVars && sel === HOST ? HOST_HOOK : keepSelector(sel)))
+        .filter(Boolean);
       if (!sels.length) return;
       for (const m of item.body.matchAll(/animation(?:-name)?\s*:\s*([^;]+)/g)) {
         m[1].split(/[\s,]+/).forEach((w) => used.add(w));
@@ -146,15 +151,15 @@ function emitRules(items, indent, used) {
 
 function rootVars(items) {
   const vars = new Map();
-  const root = items.find((it) => it.type === "rule" && it.pre === ":root");
-  if (!root) return vars;
-  root.body
+  items
+    .filter((it) => it.type === "rule" && it.pre === ":root")
+    .forEach((root) => root.body
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .split(";")
     .forEach((decl) => {
       const m = decl.trim().match(/^(--[\w-]+)\s*:\s*([\s\S]+)$/);
       if (m) vars.set(m[1], m[2].trim().replace(/\s+/g, " "));
-    });
+    }));
   return vars;
 }
 
@@ -177,7 +182,9 @@ function buildTokens(styleItems, oldTokensCss, stamp) {
   const oldVars = rootVars(oldItems);
   const merged = new Map();
   // Live values first, in source order. The type scale lives only in the export.
-  vars.forEach((v, k) => merged.set(k, v));
+  vars.forEach((v, k) => {
+    if (!DESK_VARS.has(k)) merged.set(k, v);
+  });
   oldVars.forEach((v, k) => {
     if (!merged.has(k)) merged.set(k, v);
   });
@@ -329,10 +336,19 @@ export function Icon({ name, size = 18, colour = "primary", ...rest }: Props) {
 
 const COMPONENT_KEYS = ["id", "name", "react", "file", "summary", "usage", "variants", "states", "tokens", "props", "snippet", "family"];
 
+// Only entries that name a product file ship. Guidance-only entries (StatusBadge) stay in the docs.
+function componentFile(c) {
+  return String(c.file || "").replace(/^\.?\//, "");
+}
+
+function oldComponentFile(c) {
+  return componentFile(c) || `src/components/${String(c.react || c.name || "Component").replace(/\s+/g, "")}.tsx`;
+}
+
 function buildComponents(docs, oldComponents, iconSource) {
   const old = new Map(oldComponents.map((c) => [c.id, c]));
   return docs
-    .filter((c) => c.id !== "figma")
+    .filter((c) => c.id !== "figma" && componentFile(c))
     .map((c) => {
       const out = {};
       COMPONENT_KEYS.forEach((k) => {
@@ -348,6 +364,48 @@ function buildComponents(docs, oldComponents, iconSource) {
       }
       return out;
     });
+}
+
+function listOrNone(items) {
+  return items.length ? items.map((x) => `- \`${x}\``).join("\n") : "- None";
+}
+
+// Generated from the build, so a deletion can never go unlisted.
+function diffNotes(version, diff, scoped) {
+  return [
+    `## ${version} against ${diff.base} (generated)`,
+    "",
+    "Written by tools/build-library.js. Deletions are listed first because CSS variables fail soft.",
+    "",
+    `### Tokens removed (${diff.tokensRemoved.length})`,
+    "",
+    listOrNone(diff.tokensRemoved),
+    "",
+    `### Files removed (${diff.filesRemoved.length})`,
+    "",
+    listOrNone(diff.filesRemoved),
+    "",
+    `### Tokens added (${diff.tokensAdded.length})`,
+    "",
+    listOrNone(diff.tokensAdded),
+    "",
+    `### Files added (${diff.filesAdded.length})`,
+    "",
+    listOrNone(diff.filesAdded),
+    "",
+    `### Guidance only, no file (${diff.guidanceOnly.length})`,
+    "",
+    "These are rules in the docs, not components. Do not build them.",
+    "",
+    listOrNone(diff.guidanceOnly),
+    "",
+    `### Scoped under .astral-root (${scoped.length})`,
+    "",
+    "These selectors do nothing until the app root carries class=\"astral-root\".",
+    "",
+    listOrNone(scoped),
+    "",
+  ].join("\n");
 }
 
 function main() {
@@ -387,16 +445,44 @@ function main() {
   const docs = JSON.parse(read("data/design-systems.json")).systems.imserv;
   const answersPath = path.join(ROOT, "docs", "astral-ui-answers.md");
 
+  const sameVersion = lib.version === log.version && lib.base;
+  const base = sameVersion
+    ? lib.base
+    : {
+        version: lib.version || "v1 (unversioned)",
+        tokens: [...rootVars(parse(lib.tokensCss)).keys()],
+        files: (lib.components || []).map(oldComponentFile),
+      };
+  const components = buildComponents(docs.components, lib.components, buildIconSource(marks));
+  const files = components.map(componentFile);
+  const diff = {
+    base: base.version,
+    tokensAdded: [...tokens.vars.keys()].filter((k) => !base.tokens.includes(k)),
+    tokensRemoved: base.tokens.filter((k) => !tokens.vars.has(k)),
+    filesAdded: files.filter((f) => !base.files.includes(f)),
+    filesRemoved: base.files.filter((f) => !files.includes(f)),
+    guidanceOnly: docs.components.filter((c) => c.id !== "figma" && !componentFile(c)).map((c) => c.react || c.name),
+  };
+  const scoped = rules
+    .flatMap((r) => (r.startsWith("@") ? r.split("\n").filter((l) => /^\s+\S.*[{,]$/.test(l) && !/^\s+@/.test(l)) : r.split("\n").filter((l) => /[{,]$/.test(l))))
+    .map((l) => l.trim().replace(/\s*[{,]$/, ""))
+    .filter((sel) => sel.includes(HOST_HOOK))
+    .map((sel) => sel.split(HOST_HOOK).join(".astral-root"))
+    .filter((sel, i, all) => all.indexOf(sel) === i);
+
   const next = {
     ...lib,
+    base,
+    diff,
+    scoped,
     version: log.version,
     versionDate: log.date,
-    changelog: log.text,
+    changelog: `${log.text.trim()}\n\n${diffNotes(log.version, diff, scoped)}`,
     answers: fs.existsSync(answersPath) ? read("docs/astral-ui-answers.md") : "",
     tokensCss: tokens.css,
     themeTs: buildTheme(lib.themeTs, tokens.vars),
     lookCss,
-    components: buildComponents(docs.components, lib.components, buildIconSource(marks)),
+    components,
     icons: marks,
   };
 
@@ -406,6 +492,8 @@ function main() {
       `Astral look ${stamp}`,
       `rules ${rules.length} (media ${media}), keyframes ${frames.length}, lookCss ${lookCss.length} chars`,
       `tokens ${tokens.vars.size}, icons ${Object.keys(marks).length}, components ${next.components.length}`,
+      `since ${diff.base}: tokens +${diff.tokensAdded.length} -${diff.tokensRemoved.length}, files +${diff.filesAdded.length} -${diff.filesRemoved.length}${diff.filesRemoved.length ? ` (${diff.filesRemoved.join(", ")})` : ""}`,
+      `scoped under .astral-root: ${scoped.length} selectors`,
       loose.length ? `vars with no token (set by JS or inline): ${loose.join(", ")}` : "every var() has a token",
     ].join("\n")
   );

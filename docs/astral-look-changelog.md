@@ -26,6 +26,9 @@ First versioned export. v1 was the unversioned zip imported into AstralTech on 2
 - Base `html` rule in tokens.css: Roobert, weight 500, primary text.
 - Icon: 7 new glyphs (analyse, menu, home, companies, report, servicing, inbox) and a `brand` colour. `cyan` stays as a deprecated alias.
 - `VERSION`, `CHANGELOG.md` and `ANSWERS.md` in the zip.
+- A generated section at the end of `CHANGELOG.md`: tokens removed, files removed, tokens added, guidance-only entries, and every selector scoped under `.astral-root`. The build writes it, so a deletion cannot go unlisted.
+- `--astral-scroll-end` (48px). v1 read only the first `:root` and missed it.
+- The `.astral-root` custom properties rule (`--astral-head-h` and the like). v1 dropped it with the bare `#astral-fs` frame.
 
 ### Changed
 
@@ -39,3 +42,6 @@ First versioned export. v1 was the unversioned zip imported into AstralTech on 2
 - Desk and prototype selectors: `#skills-list`, `.ds-preview`, `.astral-preview-*`, `.astral-export-*`, `.astral-lib-host`, every `data-proto-*` selector, and the bare `#astral-fs` frame.
 - `.astral-account { justify-self: end }`. It did nothing.
 - The export banner's 10 second timer. The banner stays until Hide.
+- `src/components/StatusBadge.tsx`. It was never a product file. The pack made up a file name for any docs entry without one. Guidance-only entries now ship no file.
+- StatusBadge from the library site component list. Its rule stays in the docs: meter health uses State, short facts use Tag.
+- The prototype desk aliases (`--paper`, `--ink`, `--line` and the like). They sat in the same `:root` and would have leaked into tokens.css.

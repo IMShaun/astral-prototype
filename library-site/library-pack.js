@@ -151,13 +151,11 @@
     return new Uint8Array(await response.arrayBuffer());
   }
 
+  // No file named means guidance only. Never invent a file from the React name.
   function componentPath(item) {
-    const named = String(item.file || "")
+    return String(item.file || "")
       .replace(/^\.\//, "")
       .replace(/^\//, "");
-    if (named) return named;
-    const stem = String(item.react || item.name || "Component").replace(/\s+/g, "");
-    return `src/components/${stem}.tsx`;
   }
 
   function snippetModule(path, snippet) {
@@ -194,7 +192,11 @@
   }
 
   function readme(data, parts) {
-    const lines = ["# Astral React starter", "", "Put these files in the product repo.", ""];
+    const lines = ["# Astral React starter", ""];
+    if (data.version) {
+      lines.push(`Version ${data.version}${data.versionDate ? ` (${data.versionDate})` : ""}. See VERSION, CHANGELOG.md and ANSWERS.md.`, "");
+    }
+    lines.push("Put these files in the product repo.", "");
     if (parts.tokens) {
       lines.push(
         "## Tokens",
@@ -714,6 +716,11 @@
       throw new Error("empty");
     }
     const files = [textFile("README.md", readme(data, picked)), textFile("src/index.ts", indexTs(picked))];
+    if (data.version) {
+      files.push(textFile("VERSION", `${data.version}${data.versionDate ? ` ${data.versionDate}` : ""}\n`));
+    }
+    if (data.changelog) files.push(textFile("CHANGELOG.md", data.changelog));
+    if (data.answers) files.push(textFile("ANSWERS.md", data.answers));
     if (picked.tokens) {
       files.push(textFile("src/theme/tokens.css", data.tokensCss || ""));
       files.push(textFile("src/theme/astral.ts", data.themeTs || ""));
@@ -722,6 +729,7 @@
       files.push(textFile("src/theme/components.css", data.lookCss || ""));
       (data.components || []).forEach((item) => {
         const path = componentPath(item);
+        if (!path) return;
         const body = item.source ? String(item.source) : snippetModule(path, item.snippet);
         files.push(textFile(path, body));
       });
