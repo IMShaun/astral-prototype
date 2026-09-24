@@ -1132,7 +1132,8 @@ function normalize(data) {
     data.prototypeChannel = data.prototypeChannel || "all";
     data.prototypeChartFlows = Array.isArray(data.prototypeChartFlows)
       ? data.prototypeChartFlows.filter((id) => id === "in" || id === "out")
-      : ["in", "out"];
+      : [];
+    if (data.prototypeChartFlows.length !== 1) data.prototypeChartFlows = null;
     data.prototypeChartSliceOff = Array.isArray(data.prototypeChartSliceOff)
       ? data.prototypeChartSliceOff.filter((id) => typeof id === "string")
       : [];
@@ -3911,7 +3912,8 @@ function applyChrome() {
   store.prototypeSiteMeters = Array.isArray(store.prototypeSiteMeters) ? store.prototypeSiteMeters : [];
   store.prototypeChartFlows = Array.isArray(store.prototypeChartFlows)
     ? store.prototypeChartFlows.filter((id) => id === "in" || id === "out")
-    : ["in", "out"];
+    : [];
+  if (store.prototypeChartFlows.length !== 1) store.prototypeChartFlows = null;
   store.prototypeChartSliceOff = Array.isArray(store.prototypeChartSliceOff)
     ? store.prototypeChartSliceOff.filter((id) => typeof id === "string")
     : [];

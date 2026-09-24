@@ -3042,7 +3042,7 @@ function protoHourIsPeak(meter, hour, at) {
 }
 
 function protoChartStackSlices() {
-  const picked = protoPaneFilterIds();
+  const picked = protoPaneFilterIds().filter((id) => protoPaneHasHourKind(id));
   const hours = protoPickedInGroup(picked, "hours");
   const tou = protoPickedInGroup(picked, "tou");
   if (!hours.length && !tou.length) return [];
@@ -9931,7 +9931,41 @@ function protoFilterItemCount(attr, item) {
   return pool.filter((meter) => protoFilterMeterHit(id, meter)).length;
 }
 
+const PROTO_HOURS_KIND = { "hours-on": "on", "hours-non": "non", "hours-off": "closed" };
+let protoHoursKindCache = null;
+
+function protoMeterHasHourKind(meter, kind) {
+  const rows = protoMeterProfile(meter?.id).hours || [];
+  return (rows.length ? rows : [null]).some((row) => {
+    for (let i = 0; i < 48; i += 1) {
+      if (protoHourKind(meter, i / 2, row || undefined) === kind) return true;
+    }
+    return false;
+  });
+}
+
+function protoPaneHasHourKind(id) {
+  const kind = PROTO_HOURS_KIND[id];
+  if (!kind) return true;
+  if (!protoHoursKindCache) {
+    protoHoursKindCache = new Map();
+    queueMicrotask(() => {
+      protoHoursKindCache = null;
+    });
+  }
+  if (!protoHoursKindCache.has(id)) {
+    protoHoursKindCache.set(
+      id,
+      (protoPanePoolMeters() || []).some((meter) => protoMeterHasHourKind(meter, kind))
+    );
+  }
+  return protoHoursKindCache.get(id);
+}
+
 function protoFilterItemAvailable(attr, item) {
+  if (attr === "data-proto-pane-filter" && PROTO_HOURS_KIND[item?.id]) {
+    return protoPaneHasHourKind(item.id);
+  }
   const n = protoFilterItemCount(attr, item);
   return n === null || n > 0;
 }
