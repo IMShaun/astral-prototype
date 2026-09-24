@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 /*
  * Builds the Astral look for the React export.
- * Reads styles.css, astral-ui.js, data/design-systems.json and docs/.
+ * Reads styles.css, astral-ui.js, data/design-systems.json, data/retired-tokens.json and docs/.
  * Rewrites library-site/astral-lib.js (tokensCss, themeTs, lookCss, components, icons, version).
+ *
+ * styles.css :root is the source of truth for tokens.css. Nothing is merged back from the previous export.
+ * A token can only leave by being listed in data/retired-tokens.json. The build fails otherwise.
  *
  *   node tools/build-library.js          write the library
  *   node tools/build-library.js --check  report only
@@ -176,26 +179,35 @@ function readChangelog() {
   return { version: m[1], date: m[2], text };
 }
 
+// Custom properties in these families are tokens. A var() in one of them with no token is a bug, not a runtime var.
+const TOKEN_FAMILY = /^--(color|space|radius|font|motion|ease|control|scrollbar|tip)-/;
+
+function readRetired() {
+  const list = JSON.parse(read("data/retired-tokens.json")).tokens;
+  const byName = new Map();
+  list.forEach((t) => {
+    if (!/^--[\w-]+$/.test(t.name || "")) throw new Error(`data/retired-tokens.json: bad token name ${JSON.stringify(t.name)}`);
+    if (!t.retiredIn || !t.reason) throw new Error(`data/retired-tokens.json: ${t.name} needs retiredIn and reason`);
+    if (byName.has(t.name)) throw new Error(`data/retired-tokens.json: ${t.name} is listed twice`);
+    byName.set(t.name, t);
+  });
+  return byName;
+}
+
 function buildTokens(styleItems, oldTokensCss, stamp) {
-  const vars = rootVars(styleItems);
-  const oldItems = parse(oldTokensCss);
-  const oldVars = rootVars(oldItems);
-  const merged = new Map();
-  // Live values first, in source order. The type scale lives only in the export.
-  vars.forEach((v, k) => {
-    if (!DESK_VARS.has(k)) merged.set(k, v);
+  const vars = new Map();
+  // styles.css :root only, in source order. The type scale lives only in the export.
+  rootVars(styleItems).forEach((v, k) => {
+    if (!DESK_VARS.has(k)) vars.set(k, v);
   });
-  oldVars.forEach((v, k) => {
-    if (!merged.has(k)) merged.set(k, v);
-  });
-  const typeStyles = oldItems.filter((it) => it.type === "rule" && it.pre.startsWith(".astral-type-"));
-  const lines = [...merged].map(([k, v]) => `  ${k}: ${v};`);
+  const typeStyles = parse(oldTokensCss).filter((it) => it.type === "rule" && it.pre.startsWith(".astral-type-"));
+  const lines = [...vars].map(([k, v]) => `  ${k}: ${v};`);
   return {
-    vars: merged,
+    vars,
     css:
       [
         `/* Astral tokens ${stamp}. Put this in src/theme/tokens.css and import it once. */`,
-        "/* These variables match the live product :root. */",
+        "/* These variables are the Astral prototype's :root, the source of truth. Retired tokens are listed in CHANGELOG.md. */",
         "/* Drop Roobert Regular, Medium, and SemiBold in src/theme/fonts. Aptos is the fallback. */",
         ...fontFaces(styleItems),
         `:root {\n${lines.join("\n")}\n}`,
@@ -266,6 +278,47 @@ function buildTheme(oldThemeTs, vars) {
   syncTheme(theme, vars, [], missing);
   if (missing.length) throw new Error(`Theme keys with no token: ${missing.join(", ")}`);
   return `export const theme = ${tsLiteral(theme)} as const;\n\n${tail.trim()}\n`;
+}
+
+function themePath(theme, cssVar) {
+  const alias = Object.keys(THEME_VAR).find((k) => THEME_VAR[k] === cssVar);
+  if (alias) return `theme.${alias}`;
+  let node = theme;
+  let rest = cssVar.slice(2);
+  const trail = [];
+  while (rest) {
+    if (!node || typeof node !== "object") return "";
+    const key = Object.keys(node)
+      .filter((k) => rest === k || rest.startsWith(`${k}-`))
+      .sort((a, b) => b.length - a.length)[0];
+    if (!key) return "";
+    trail.push(key);
+    node = node[key];
+    rest = rest.slice(key.length + 1);
+  }
+  return typeof node === "object" ? "" : `theme.${trail.join(".")}`;
+}
+
+// The library site token table. Same list and values as tokens.css, so it cannot drift.
+function buildSiteTokens(oldList, vars, docTokens, themeTs) {
+  const old = new Map((oldList || []).map((t) => [t.cssVar, t]));
+  const doc = new Map((docTokens || []).map((t) => [t.cssVar, t]));
+  const { theme } = loadTheme(themeTs);
+  const kind = (k) => (k.startsWith("--color-") ? "colour" : k.startsWith("--radius-") ? "shape" : k.startsWith("--font-") ? "type" : "space");
+  return [...vars].map(([k, value]) => {
+    if (old.has(k)) return { ...old.get(k), value };
+    const d = doc.get(k) || {};
+    const words = k.slice(2).split("-").slice(1).join(" ");
+    return {
+      id: d.id || `semantic.${k.slice(2).replace(/-/g, ".")}`,
+      name: d.name || words.charAt(0).toUpperCase() + words.slice(1),
+      kind: kind(k),
+      cssVar: k,
+      theme: d.theme || themePath(theme, k),
+      value,
+      status: d.status || "scaffold",
+    };
+  });
 }
 
 function iconMarks() {
@@ -370,6 +423,16 @@ function listOrNone(items) {
   return items.length ? items.map((x) => `- \`${x}\``).join("\n") : "- None";
 }
 
+function retiredTable(retired) {
+  if (!retired.length) return "- None";
+  const cell = (s) => String(s || "").replace(/\|/g, "\\|");
+  return [
+    "| Token | Last value | Retired in | Use instead | Why |",
+    "| --- | --- | --- | --- | --- |",
+    ...retired.map((t) => `| \`${t.name}\` | \`${cell(t.lastValue)}\` | ${t.retiredIn} | ${t.use ? cell(t.use) : "Nothing"} | ${cell(t.reason)} |`),
+  ].join("\n");
+}
+
 // Generated from the build, so a deletion can never go unlisted.
 function diffNotes(version, diff, scoped) {
   return [
@@ -379,7 +442,15 @@ function diffNotes(version, diff, scoped) {
     "",
     `### Tokens removed (${diff.tokensRemoved.length})`,
     "",
+    `Tokens in ${diff.base} that are not in ${version}. Each one is in the retired list below.`,
+    "",
     listOrNone(diff.tokensRemoved),
+    "",
+    `### Tokens retired (${diff.tokensRetired.length})`,
+    "",
+    "Retired on purpose, from data/retired-tokens.json. The build never brings these back and fails if anything still reads one.",
+    "",
+    retiredTable(diff.tokensRetired),
     "",
     `### Files removed (${diff.filesRemoved.length})`,
     "",
@@ -446,23 +517,62 @@ function main() {
   const answersPath = path.join(ROOT, "docs", "astral-ui-answers.md");
 
   const sameVersion = lib.version === log.version && lib.base;
+  // The unversioned zips were called v1. The partner team labels them by date; the base is the newest one.
+  const relabel = (v) => (v === "v1 (unversioned)" ? "pre-v2 (23 Sep)" : v);
   const base = sameVersion
-    ? lib.base
+    ? { ...lib.base, version: relabel(lib.base.version) }
     : {
-        version: lib.version || "v1 (unversioned)",
+        version: relabel(lib.version || "v1 (unversioned)"),
         tokens: [...rootVars(parse(lib.tokensCss)).keys()],
         files: (lib.components || []).map(oldComponentFile),
       };
+  const retired = readRetired();
   const components = buildComponents(docs.components, lib.components, buildIconSource(marks));
   const files = components.map(componentFile);
   const diff = {
     base: base.version,
     tokensAdded: [...tokens.vars.keys()].filter((k) => !base.tokens.includes(k)),
     tokensRemoved: base.tokens.filter((k) => !tokens.vars.has(k)),
+    tokensRetired: [...retired.values()],
     filesAdded: files.filter((f) => !base.files.includes(f)),
     filesRemoved: base.files.filter((f) => !files.includes(f)),
     guidanceOnly: docs.components.filter((c) => c.id !== "figma" && !componentFile(c)).map((c) => c.react || c.name),
   };
+  let themeTs = "";
+  let themeError = "";
+  try {
+    themeTs = buildTheme(lib.themeTs, tokens.vars);
+  } catch (e) {
+    themeError = e.message;
+  }
+
+  // A token leaves only by retirement. Anything else stops the build.
+  const errors = [];
+  const lastBuild = [...rootVars(parse(lib.tokensCss)).keys()];
+  [...new Set([...base.tokens, ...lastBuild])]
+    .filter((k) => !tokens.vars.has(k) && !retired.has(k))
+    .forEach((k) => errors.push(`${k} was in the last export and is not in styles.css :root. Put it back, or retire it in data/retired-tokens.json.`));
+  if (themeError) errors.push(themeError);
+  (docs.tokens || [])
+    .map((t) => t.cssVar)
+    .filter((k) => k && !tokens.vars.has(k) && !retired.has(k))
+    .forEach((k) => errors.push(`${k} is in data/design-systems.json but not in styles.css :root. Add it to :root, or retire it in data/retired-tokens.json.`));
+  retired.forEach((t, k) => {
+    if (tokens.vars.has(k)) errors.push(`${k} is retired but styles.css :root still declares it. Remove one or the other.`);
+    if (t.use && TOKEN_FAMILY.test(t.use) && !t.use.split(/\s+or\s+/).every((u) => tokens.vars.has(u)))
+      errors.push(`${k} says use ${t.use}, which is not a token.`);
+  });
+  const shipped = `${tokens.css}\n${lookCss}\n${themeTs}`;
+  [...new Set([...shipped.matchAll(/var\((--[\w-]+)/g)].map((m) => m[1]))]
+    .filter((v) => retired.has(v))
+    .forEach((v) => errors.push(`${v} is retired but the export still reads it.`));
+  loose
+    .filter((v) => TOKEN_FAMILY.test(v))
+    .forEach((v) => errors.push(`var(${v}) looks like a token but there is no such token. It fails soft to its fallback.`));
+  if (errors.length) {
+    console.error(`Astral look ${stamp}: ${errors.length} token problem(s)\n${errors.map((e) => `- ${e}`).join("\n")}`);
+    process.exit(1);
+  }
   const scoped = rules
     .flatMap((r) => (r.startsWith("@") ? r.split("\n").filter((l) => /^\s+\S.*[{,]$/.test(l) && !/^\s+@/.test(l)) : r.split("\n").filter((l) => /[{,]$/.test(l))))
     .map((l) => l.trim().replace(/\s*[{,]$/, ""))
@@ -480,7 +590,8 @@ function main() {
     changelog: `${log.text.trim()}\n\n${diffNotes(log.version, diff, scoped)}`,
     answers: fs.existsSync(answersPath) ? read("docs/astral-ui-answers.md") : "",
     tokensCss: tokens.css,
-    themeTs: buildTheme(lib.themeTs, tokens.vars),
+    themeTs,
+    tokens: buildSiteTokens(lib.tokens, tokens.vars, docs.tokens, themeTs),
     lookCss,
     components,
     icons: marks,
@@ -493,6 +604,7 @@ function main() {
       `rules ${rules.length} (media ${media}), keyframes ${frames.length}, lookCss ${lookCss.length} chars`,
       `tokens ${tokens.vars.size}, icons ${Object.keys(marks).length}, components ${next.components.length}`,
       `since ${diff.base}: tokens +${diff.tokensAdded.length} -${diff.tokensRemoved.length}, files +${diff.filesAdded.length} -${diff.filesRemoved.length}${diff.filesRemoved.length ? ` (${diff.filesRemoved.join(", ")})` : ""}`,
+      `retired tokens: ${retired.size}`,
       `scoped under .astral-root: ${scoped.length} selectors`,
       loose.length ? `vars with no token (set by JS or inline): ${loose.join(", ")}` : "every var() has a token",
     ].join("\n")

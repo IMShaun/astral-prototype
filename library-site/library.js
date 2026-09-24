@@ -214,7 +214,7 @@
     return `
       <section class="lib-lead">
         <h1>Tokens</h1>
-        <p>These variables match the live product. Use the CSS variable in styles. Use the theme path in React. Choose a name to copy the CSS variable.</p>
+        <p>These variables are the Astral prototype's :root, the source of truth. Retired tokens are listed in CHANGELOG.md. Use the CSS variable in styles. Use the theme path in React. Choose a name to copy the CSS variable.</p>
       </section>
       <div class="lib-split">
         <nav class="lib-list" aria-label="Token kind">

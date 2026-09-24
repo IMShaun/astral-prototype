@@ -110,6 +110,22 @@
   --ease-slide: cubic-bezier(0.22, 1, 0.36, 1);
   --tip-delay: 0.7s;
   --font-family-sans: "Roobert", Aptos, "Segoe UI", sans-serif;
+  --font-size-12: 12px;
+  --font-size-14: 14px;
+  --font-size-16: 16px;
+  --font-size-18: 18px;
+  --font-size-20: 20px;
+  --font-size-24: 24px;
+  --font-size-32: 32px;
+  --font-size-48: 48px;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-line-tight: 1.15;
+  --font-line-snug: 1.3;
+  --font-line-normal: 1.5;
+  --font-tracking-none: 0;
+  --font-tracking-tight: -0.03em;
+  --font-tracking-label: 0.1em;
 
   --paper: var(--color-background-canvas);
   --ink: var(--color-text-primary);
@@ -10908,7 +10924,7 @@ button.astral-state:focus-visible,
 
 .is-skel :is(.astral-group.is-on, .astral-count, [class*="astral-badge"]) {
   background: transparent !important;
-  border-color: var(--color-border, #e3e5e8) !important;
+  border-color: var(--color-border-default) !important;
   box-shadow: none !important;
 }
 
