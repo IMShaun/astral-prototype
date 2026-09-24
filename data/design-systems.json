@@ -3163,7 +3163,7 @@
           "react": "PageHeader",
           "file": "src/components/PageHeader.tsx",
           "summary": "Title on the pane. The live shell keeps the heading while the pane scrolls.",
-          "usage": "One header per page. The helper line is off for space. The action is the thing they came to do. The tree stays. The pane scrolls. The tree and the pane use the same 16px inset. The heading on the pane stays. On a page without a tree the heading stays. The white card fills to the bottom. Rounded corners stay on. Only that card scrolls. A sub-page puts a Back to link above the title. Name where it goes. Back to reports. Back to downloads.",
+          "usage": "One header per page. The helper line is off for space. The action is the thing they came to do. The tree stays. The pane scrolls. The tree and the pane use the same 16px inset. The heading on the pane stays. On a page without a tree the heading stays. The white card fills to the bottom. Rounded corners stay on. Only that card scrolls. A sub-page puts a Back to link above the title. Name where it goes. Back to reports. Back to downloads. Opening a sub-page with a back link slides it in from the right. Going back slides the parent in from the left. No motion when reduced motion is on.",
           "variants": [
             "default"
           ],

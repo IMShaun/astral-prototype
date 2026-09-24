@@ -8064,7 +8064,10 @@ function protoReportOpenEdit(id) {
         }
       : {}),
   });
-  if (def) document.querySelector("#astral-fs .astral-stage-body")?.scrollTo(0, 0);
+  if (def) {
+    document.querySelector("#astral-fs .astral-stage-body")?.scrollTo(0, 0);
+    protoPageSlide("in");
+  }
   protoRestoreFocus(
     def
       ? '#astral-fs input[name="proto-report-name"]'
@@ -8080,6 +8083,21 @@ function protoReportLeave(patch = {}) {
     ...(page ? { activePrototypeView: from } : {}),
     ...patch,
   });
+  if (page) protoPageSlide("back");
+}
+
+function protoPageSlide(dir) {
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+  const stage = document.querySelector("#astral-fs .astral-stage");
+  if (!stage) return;
+  const cls = dir === "back" ? "is-slide-back" : "is-slide-in";
+  stage.classList.remove("is-slide-in", "is-slide-back");
+  void stage.offsetWidth;
+  stage.classList.add(cls);
+  clearTimeout(protoPageSlide.timer);
+  protoPageSlide.timer = setTimeout(() => {
+    document.querySelector("#astral-fs .astral-stage")?.classList.remove(cls);
+  }, 420);
 }
 
 function protoReportEditClear() {

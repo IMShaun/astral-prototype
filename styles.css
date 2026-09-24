@@ -11082,3 +11082,46 @@ html.is-classic-scroll #astral-fs .is-scroll-near {
   visibility: hidden;
   transition: none;
 }
+
+/* Page slide: moving into a sub-page (like report settings) slides in from the right; going back slides in from the left. */
+.astral-stage.is-slide-in,
+.astral-stage.is-slide-back {
+  overflow-x: clip;
+}
+
+.astral-stage.is-slide-in > * {
+  animation: astral-page-in 320ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.astral-stage.is-slide-back > * {
+  animation: astral-page-back 320ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+@keyframes astral-page-in {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes astral-page-back {
+  from {
+    opacity: 0;
+    transform: translateX(-32px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .astral-stage.is-slide-in > *,
+  .astral-stage.is-slide-back > * {
+    animation: none;
+  }
+}
