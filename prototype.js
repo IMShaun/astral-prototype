@@ -20665,6 +20665,7 @@ function onPrototype(event) {
       ? {
           prototypeScope: "group",
           prototypeGroup: "all",
+          prototypeGroupClosed: protoClosedAll(),
           prototypeChannel: "all",
           prototypePane: sameGroup ? protoPaneId() : "consumption",
           prototypeChartPoint: sameGroup ? store.prototypeChartPoint : null,
