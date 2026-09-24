@@ -10802,6 +10802,21 @@ button.astral-state:focus-visible,
   border-color: transparent !important;
 }
 
+/* Initials circles load as a plain shimmering circle, with no text bar inside. */
+.is-skel :is(.astral-person-mark, .astral-avatar) {
+  color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  background: linear-gradient(90deg, var(--skel-base) 30%, var(--skel-sheen-hi) 50%, var(--skel-base) 70%) fixed !important;
+  background-size: 200vw 100% !important;
+  animation: astral-skel-sheen 1.6s linear infinite;
+}
+
+.is-skel :is(.astral-person-mark, .astral-avatar) .astral-skel-text {
+  background: none;
+  animation: none;
+}
+
 .astral-skel-chart {
   display: block;
   width: 100%;
@@ -10833,6 +10848,7 @@ button.astral-state:focus-visible,
 
 @media (prefers-reduced-motion: reduce) {
   .is-skel .astral-skel-text,
+  .is-skel :is(.astral-person-mark, .astral-avatar),
   .astral-skel-in {
     animation: none;
   }
