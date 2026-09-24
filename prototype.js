@@ -7253,10 +7253,25 @@ function protoReportSummary(def) {
   )}.`;
 }
 
+function protoReportTriggeredOn(def) {
+  if (def.type === "alert") return protoReportAlertHits(def).length ? protoToday() : null;
+  if (def.type !== "missing") return null;
+  const since = protoReportMissingHits(def).map((site) =>
+    Math.max(...(site.meters || []).map((meter) => protoMeterSilentHours(meter))) - def.hours
+  );
+  if (!since.length) return null;
+  return protoAddDays(protoToday(), -Math.floor(Math.max(0, Math.min(...since)) / 24));
+}
+
 function protoReportStatusHtml(def) {
   if (!def.on) return protoTag("Paused");
   const line = `<span class="astral-muted">${escapeHtml(protoReportStatusLine(def))}</span>`;
-  if (def.type === "alert" || def.type === "missing") return line;
+  if (def.type === "alert" || def.type === "missing") {
+    const on = protoReportTriggeredOn(def);
+    return on
+      ? `${line}<span class="astral-tag"><span class="sr-only">Last triggered </span>${escapeHtml(protoReportSendLabel(on))}</span>`
+      : line;
+  }
   return `${protoTag("Scheduled")}${line}`;
 }
 
@@ -7264,11 +7279,11 @@ function protoReportStatusLine(def) {
   if (!def.on) return "Paused";
   if (def.type === "alert") {
     const n = protoReportAlertHits(def).length;
-    return n ? `Now: ${n} ${n === 1 ? "site" : "sites"} over the limit` : "Now: no site over the limit";
+    return n ? `${n} ${n === 1 ? "site" : "sites"} over the limit` : "No site over the limit";
   }
   if (def.type === "missing") {
     const n = protoReportMissingHits(def).length;
-    return n ? `Now: ${n} ${n === 1 ? "site" : "sites"} not sending` : "Now: every site sending";
+    return n ? `${n} ${n === 1 ? "site" : "sites"} not sending` : "Every site sending";
   }
   return protoReportSendLabel(protoReportNextSend(def));
 }
