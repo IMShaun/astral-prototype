@@ -10290,17 +10290,47 @@ function protoTreeFilterControl() {
   });
 }
 
+function protoPaneDefaultMeterKinds() {
+  const saved = store.prototypePaneMeterKinds;
+  store.prototypePaneMeterKinds = null;
+  try {
+    return protoGraphMeterKinds();
+  } finally {
+    store.prototypePaneMeterKinds = saved;
+  }
+}
+
+function protoPaneGroupCount(group, picked) {
+  const attr = "data-proto-pane-filter";
+  const items = group.items.filter((item) => protoFilterItemAvailable(attr, item));
+  const on = items.filter((item) => protoFilterItemOn(attr, picked, item)).map((item) => item.id);
+  if (group.id === "hours" || group.id === "tou") return on.length;
+  const base =
+    group.id === "meter"
+      ? protoPaneDefaultMeterKinds().filter((id) => items.some((item) => item.id === id))
+      : items.map((item) => item.id);
+  const same = on.length === base.length && on.every((id) => base.includes(id));
+  if (same) return 0;
+  return Math.max(1, on.length);
+}
+
+function protoPaneFilterCount() {
+  const picked = protoPaneFilterIds();
+  return PROTO_PANE_FILTERS.reduce((sum, group) => sum + protoPaneGroupCount(group, picked), 0);
+}
+
 function protoPaneFilterControl() {
   const open = protoPaneFilterOpen();
   const picked = protoPaneFilterIds();
+  const count = protoPaneFilterCount();
   return protoFilterShell({
     hit: `data-proto-pane-filter="toggle"`,
     open,
-    count: picked.length,
+    count,
     menuId: "astral-pane-filter-menu",
     clear: 'data-proto-pane-filter="clear"',
     canClear:
-      picked.length > 0 ||
+      count > 0 ||
       protoPaneMeterKindIds() !== null ||
       protoChartFlowIds().length !== 2 ||
       (store.prototypeChartSliceOff || []).length > 0,
@@ -12440,21 +12470,14 @@ function protoMetersForComparePick(id) {
 function protoCompareMeterNote(meters) {
   const list = meters || [];
   const n = list.length;
+  if (!n) return "";
   const label = `${n} ${protoSiteMeterNoun(list)}`;
   const refs = list.map((item) => protoMeterRef(item)).filter(Boolean);
-  const spoken = [label, ...refs].join(". ");
-  const tip = refs.length
-    ? `<span class="astral-compare-mpan" role="tooltip">${refs
-        .map((ref) => `<span>${escapeHtml(ref)}</span>`)
-        .join("")}</span>`
-    : "";
-  return `
-    <span class="astral-compare-meters" tabindex="0" aria-label="${escapeHtml(spoken)}">
-      ${protoIconMark("meter")}
-      <span class="astral-muted">${escapeHtml(label)}</span>
-      ${tip}
-    </span>
-  `;
+  const tip = refs.length ? `${label}. ${refs.join(". ")}` : label;
+  return protoIconTip(
+    `<span class="astral-count" tabindex="0" aria-label="${escapeHtml(tip)}">${n}</span>`,
+    tip
+  );
 }
 
 function protoCompareMeterLine(meter) {
@@ -12830,7 +12853,7 @@ function protoCompareModal() {
                 .map(
                   (item) => `
                     <li>
-                      <span class="astral-compare-copy">
+                      <span class="astral-compare-copy${!item.meter && item.meters ? " is-count" : ""}">
                         <span>${escapeHtml(item.name)}</span>
                         ${
                           item.meter

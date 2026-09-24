@@ -9772,60 +9772,10 @@ button.astral-state {
   flex: none;
 }
 
-.astral-compare-meters {
-  position: relative;
-  display: inline-flex;
+.astral-compare-copy.is-count {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  width: max-content;
-  border-radius: 8px;
-}
-
-.astral-compare-meters svg {
-  width: 14px;
-  height: 14px;
-  flex: none;
-  color: var(--color-text-secondary);
-}
-
-.astral-compare-meters:focus {
-  outline: none;
-}
-
-.astral-compare-meters:focus-visible {
-  outline: 2px solid #000;
-  outline-offset: 2px;
-}
-
-.astral-compare-mpan {
-  position: absolute;
-  left: 0;
-  top: calc(100% + 6px);
-  z-index: 12;
-  display: grid;
-  gap: 2px;
-  min-width: 9rem;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 12px;
-  background: #fff;
-  color: #000;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0s, visibility 0s;
-}
-
-.astral-compare-mpan span {
-  font-variant-numeric: tabular-nums;
-}
-
-.astral-compare-meters:hover .astral-compare-mpan,
-.astral-compare-meters:focus-within .astral-compare-mpan {
-  opacity: 1;
-  visibility: visible;
-  transition-delay: var(--tip-delay);
+  gap: 8px;
 }
 
 .astral-modal .astral-select,
