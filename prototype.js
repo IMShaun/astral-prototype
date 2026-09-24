@@ -12663,6 +12663,13 @@ function protoSliceCellAmount(point, slice) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function protoBreakdownReading(value, quality) {
+  if (value == null) return "No reading";
+  const amount = protoFormatAmount(value);
+  if (quality !== "estimated") return amount;
+  return `<span class="astral-reading">${amount}${protoTag("Estimated")}</span>`;
+}
+
 function protoIntervalRowHtml(point, dual, chart, sliceCols) {
   const picked = protoChartPoint();
   const on = Boolean(picked && picked.chart === chart && picked.time === point.label);
@@ -12672,7 +12679,10 @@ function protoIntervalRowHtml(point, dual, chart, sliceCols) {
   if (sliceCols?.length) {
     const missing = point.value == null;
     const cells = sliceCols
-      .map((slice) => `<td>${missing ? "No reading" : protoFormatAmount(protoSliceCellAmount(point, slice))}</td>`)
+      .map(
+        (slice) =>
+          `<td>${missing ? "No reading" : protoBreakdownReading(protoSliceCellAmount(point, slice), point.quality)}</td>`
+      )
       .join("");
     return `<tr ${row}>${time}${cells}</tr>`;
   }
@@ -12680,16 +12690,15 @@ function protoIntervalRowHtml(point, dual, chart, sliceCols) {
     return `
       <tr ${row}>
         ${time}
-        <td>${point.value == null ? "No reading" : protoFormatAmount(point.value)}</td>
-        <td>${point.last == null ? "No reading" : protoFormatAmount(point.last)}</td>
+        <td>${protoBreakdownReading(point.value, point.quality)}</td>
+        <td>${protoBreakdownReading(point.last, point.lastQuality)}</td>
       </tr>
     `;
   }
   return `
     <tr ${row}>
       ${time}
-      <td>${point.value == null ? "No reading" : protoFormatAmount(point.value)}</td>
-      <td>${escapeHtml(protoQualityWord(point.quality, point.value))}</td>
+      <td>${protoBreakdownReading(point.value, point.quality)}</td>
     </tr>
   `;
 }
@@ -12868,7 +12877,7 @@ function protoIntervalTable(points, dual) {
     ? sliceCols.map((slice) => `<th scope="col">${escapeHtml(protoSliceName(slice))}</th>`).join("")
     : dual
       ? `<th scope="col">In</th><th scope="col">Out</th>`
-      : `<th scope="col">${escapeHtml(points[0]?.unit || protoMeasureUnit())}</th><th scope="col">Quality</th>`;
+      : `<th scope="col">${escapeHtml(points[0]?.unit || protoMeasureUnit())}</th>`;
   return protoBreakdownPanel(`
     <table class="astral-table astral-breakdown-cols${sliceCols.length ? " is-profile" : ""}">
       <thead>
@@ -12884,13 +12893,14 @@ function protoIntervalTable(points, dual) {
 
 function protoMeterCompareCell(point, slice) {
   if (!point || point.value == null) return "No reading";
-  return protoFormatAmount(slice ? protoSliceCellAmount(point, slice) : point.value);
+  return protoBreakdownReading(slice ? protoSliceCellAmount(point, slice) : point.value, point.quality);
 }
 
 function protoMeterCompareTotal(cells) {
   const present = cells.filter((cell) => cell && cell.value != null);
   if (!present.length) return "No reading";
-  return protoFormatAmount(protoRoundReading(present.reduce((n, cell) => n + Number(cell.value || 0), 0), 1));
+  const sum = protoRoundReading(present.reduce((n, cell) => n + Number(cell.value || 0), 0), 1);
+  return protoBreakdownReading(sum, present.some((cell) => cell.quality === "estimated") ? "estimated" : "actual");
 }
 
 function protoBreakdownMeterHead(ref, note, options = {}) {
@@ -12986,7 +12996,8 @@ function protoMeterCompareTable(meters, all, options = {}) {
         )
         .join("")}</tr>`
     : "";
-  const minWidth = 6 + (tracks.length * per + totals.length) * 8.5;
+  const hasEstimate = rows.some((row) => row.cells.some((cell) => cell?.quality === "estimated"));
+  const minWidth = 6 + (tracks.length * per + totals.length) * (hasEstimate ? 11 : 8.5);
   return protoBreakdownPanel(`
     <div class="astral-table-wrap astral-breakdown-scroll" tabindex="0" role="region" aria-label="${escapeHtml(
       `${chart} by ${protoBelowSiteNoun(1)}`

@@ -4526,7 +4526,7 @@
             "status": "working",
             "say": "Estimated",
             "avoid": "Using the same mark as Alert.",
-            "note": "A reading that was guessed. Confidence, not attention. Do not use the Alert pattern. On the graph the bar uses a quiet fill of the same colour, not a hatch. On a line the stretch is dotted. Actual is a solid line.",
+            "note": "A reading that was guessed. Confidence, not attention. Do not use the Alert pattern. On the graph the bar uses a quiet fill of the same colour, not a hatch. On a line the stretch is dotted. Actual is a solid line. In Breakdown an Estimated tag sits to the right of the number.",
             "from": "Talks and UAT walkthroughs, and handoff model, 22 Sep"
           },
           {
@@ -5046,7 +5046,7 @@
             "status": "working",
             "say": "Breakdown",
             "avoid": "",
-            "note": "The interval table sits in Breakdown. Closed until they open it. Time is UTC. Local time waits as a table option. Click a row to highlight that time on the graph. On a group or All, the site list sits in Breakdown. The graph stays the same height. Total, Individual, Bar, Line, Hours, and filter pills do not change it. The pane scrolls it. Do not give Breakdown its own scrollbar. Rows load as they scroll. In and Out are text headings, same as Time. When Hours or Time of use ticks are on, Operational · Peak, Operational · Off-peak, Non-operational · Peak, Non-operational · Off-peak, Closed · Peak, and Closed · Off-peak sit as text headings, same as Time. Do not make them pills. Do not split Peak and Off-peak from the operating state. Breakdown follows the pills that are on.",
+            "note": "The interval table sits in Breakdown. Closed until they open it. Time is UTC. Local time waits as a table option. Click a row to highlight that time on the graph. On a group or All, the site list sits in Breakdown. The graph stays the same height. Total, Individual, Bar, Line, Hours, and filter pills do not change it. The pane scrolls it. Do not give Breakdown its own scrollbar. Rows load as they scroll. In and Out are text headings, same as Time. An estimated reading carries an Estimated tag to the right of the number. An actual reading is the number alone. No Quality column. A total carries the tag when any reading in it is estimated. When Hours or Time of use ticks are on, Operational · Peak, Operational · Off-peak, Non-operational · Peak, Non-operational · Off-peak, Closed · Peak, and Closed · Off-peak sit as text headings, same as Time. Do not make them pills. Do not split Peak and Off-peak from the operating state. Breakdown follows the pills that are on.",
             "from": "Shaun on the site pane, 6 Sep"
           },
           {
