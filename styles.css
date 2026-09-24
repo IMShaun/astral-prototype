@@ -4735,7 +4735,10 @@ body.is-proto-fs .stage {
 
 .astral-report-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17.5rem), 1fr));
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(100%, max(15rem, calc((100% - 3 * var(--space-16)) / 4))), 1fr)
+  );
   gap: var(--space-16);
   align-items: stretch;
   min-width: 0;
@@ -10917,9 +10920,6 @@ button.astral-state:focus-visible,
 }
 
 .astral-report-grid .astral-card.is-soon {
-  padding-bottom: 20px;
-  background: var(--color-background-subtle);
-  box-shadow: none;
   cursor: default;
 }
 
@@ -10928,8 +10928,13 @@ button.astral-state:focus-visible,
   color: var(--color-text-secondary);
 }
 
-.astral-report-grid .astral-card.is-soon:hover {
-  background: var(--color-background-subtle);
+.astral-report-grid .astral-card.is-soon .astral-actions {
+  cursor: default;
+}
+
+.astral-report-grid .astral-card.is-soon .astral-icon-btn:disabled {
+  background: transparent;
+  border-color: transparent;
 }
 
 .astral-report-types.is-soon {
@@ -10957,4 +10962,25 @@ button.astral-state:focus-visible,
 .astral-report-type-head .astral-tag {
   flex: none;
   font-weight: 400;
+}
+
+
+html.is-classic-scroll #astral-fs,
+html.is-classic-scroll #astral-fs * {
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 240ms ease;
+}
+
+html.is-classic-scroll #astral-fs.is-scrolling,
+html.is-classic-scroll #astral-fs.is-scroll-near,
+html.is-classic-scroll #astral-fs .is-scrolling,
+html.is-classic-scroll #astral-fs .is-scroll-near {
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.is-classic-scroll #astral-fs,
+  html.is-classic-scroll #astral-fs * {
+    transition: none;
+  }
 }

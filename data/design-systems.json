@@ -5395,8 +5395,8 @@
             "name": "My Documents",
             "status": "working",
             "say": "My Documents",
-            "avoid": "Downloads. Reports. Export.",
-            "note": "Files IMSERV produced elsewhere and placed for the customer. Power BI reports land here. Safer than email or file transfer. My Documents is a tab under Reports and compliance, after Downloads. The row is the name, Type, PDF, and Published. Download is an Icon button. Empty is No documents yet. A documents-only login may arrive here. Keep this off Downloads.",
+            "avoid": "A separate My Documents tab. Reports. Export.",
+            "note": "Files IMSERV produced elsewhere and placed for the customer. Power BI reports land here. Safer than email or file transfer. They sit on Downloads as Type Document, PDF. Created is the day IMSERV published it. A documents-only login may arrive on Downloads.",
             "from": "Handoff model, 22 Sep, and version one scope register, 24 Sep"
           },
           {
@@ -6036,7 +6036,7 @@
             "status": "working",
             "say": "Report",
             "avoid": "Excel. Say XLS. Add a custom report on the customer side.",
-            "note": "Reports sit under Reports and compliance. Tabs are Reports, Downloads, and My Documents. Types are Data extract, DC and DA, Tenant billing, Data alert, and Missing data. A Data extract holds Interval data, Meter reads, or Missing data. Pick the sites, or All sites for the portfolio. Utility is All utilities, Electricity, Gas, or Water. Channel is Import and export, Import, or Export. Format is CSV or XLS. Times are UTC or UK time. UTC is the default. Send by Email, SFTP, or FTP. More than one person can get it. Each email has an opt-out link. The card is the name, the type Tag, one line on what it sends, and the next send. Who gets it and where it goes sit in Settings, not on the card. Settings is the cog. It sits on the report card, and next to Download on a Report in Downloads. First send on is dd/mm/yyyy. A calendar overlay picks the day. Files sit on Downloads. The card shows how long is left until the next send. Months if a month or more. Weeks if a week or more. Days if under a week. Coming soon cards sit at the end. You cannot open them.",
+            "note": "Reports sit under Reports and compliance. Tabs are Reports and Downloads. Types are Data extract, DC and DA, Tenant billing, Data alert, and Missing data. A Data extract holds Interval data, Meter reads, or Missing data. Pick the sites, or All sites for the portfolio. Utility is All utilities, Electricity, Gas, or Water. Channel is Import and export, Import, or Export. Format is CSV or XLS. Times are UTC or UK time. UTC is the default. Send by Email, SFTP, or FTP. More than one person can get it. Each email has an opt-out link. Four cards a row on a wide screen. Three below that. Fewer only on a narrow screen. The card is the name, the type Tag, one line on what it sends, and the next send. Who gets it and where it goes sit in Settings, not on the card. Settings is the cog. It sits on the report card, and next to Download on a Report in Downloads. First send on is dd/mm/yyyy. A calendar overlay picks the day. Files sit on Downloads. The card shows how long is left until the next send. Months if a month or more. Weeks if a week or more. Days if under a week. Coming soon cards sit at the end. You cannot open them.",
             "from": "Shaun on Reports, 22 Sep, and version one scope register, 24 Sep"
           },
           {
@@ -6095,8 +6095,8 @@
             "name": "Downloads",
             "status": "working",
             "say": "Downloads",
-            "avoid": "My Documents. Using Downloads as the name of Report.",
-            "note": "A subpage from Reports. CSV and PDF from Export wait here. A scheduled report also sends CSV or XLS here. Keep My Documents off this pile.",
+            "avoid": "Using Downloads as the name of Report. A separate My Documents tab.",
+            "note": "A subpage from Reports. CSV and PDF from Export wait here. A scheduled report sends CSV or XLS here. Documents IMSERV publishes sit here too.",
             "from": "Shaun on export processing, 8 Sep, and handoff model, 22 Sep"
           },
           {
@@ -6596,7 +6596,7 @@
             "status": "working",
             "say": "Coming soon",
             "avoid": "Wait as the tag. v1.1 on a screen. A date. Beta.",
-            "note": "A Tag on a card for work after version one. The card is grey and flat. No hover. No click. No Settings. One line says what it will do. It sits at the end of the list, under a Coming soon heading.",
+            "note": "A Tag on a report card for work after version one. The card looks like a live report card, in its disabled state. The title and line are grey. The foot says Not ready yet. Settings and the switch are disabled. Disabled is grey, not a faded colour. No click. It sits at the end of the list, under a Coming soon heading.",
             "from": "Version one scope register, 24 Sep"
           },
           {
@@ -6695,7 +6695,7 @@
             "name": "Documents only or full Astral",
             "status": "draft",
             "summary": "The shell follows what the company bought.",
-            "now": "The walk is full Astral. Portfolio, consumption, cost, carbon, alerts, reports. My Documents sits as a tab under Reports. A documents-only shell still waits.",
+            "now": "The walk is full Astral. Portfolio, consumption, cost, carbon, alerts, reports. Documents sit on Downloads. A documents-only shell still waits.",
             "later": "Documents only opens My Documents, notifications, and profile. Hide Portfolio.",
             "uses": [
               "tabs"
@@ -6707,13 +6707,13 @@
             "name": "Four kinds of file",
             "status": "draft",
             "summary": "Scheduled report, My Documents, Export, and data provision stay distinct.",
-            "now": "Clockwork sits on Reports. Export queues CSV or PDF. Files wait on Downloads. My Documents is its own tab.",
+            "now": "Clockwork sits on Reports. Export queues CSV or PDF. Files wait on Downloads. Documents sit on Downloads as Type Document.",
             "later": "",
             "uses": [
               "tag",
               "icon-button"
             ],
-            "note": "Do not dump documents onto Downloads. Do not call Export a Report."
+            "note": "Tell them apart by Type on Downloads. Do not call Export a Report."
           },
           {
             "id": "estimated-is-not-alert",
@@ -7146,7 +7146,7 @@
             "name": "Reports in version one",
             "status": "working",
             "summary": "Reports covers the version one scheduled and delivered reports. Later work sits as Coming soon.",
-            "now": "Add a report opens the type cards. Data extract, DC and DA, Tenant billing, Data alert, and Missing data. A Data extract holds Interval data, Meter reads, or Missing data. Pick sites or All sites. Filter by utility and by channel. Format is CSV or XLS. Times are UTC or UK time. Send by Email, SFTP, or FTP. Many people can get one report. Each email has an opt-out link. The file also sits on Downloads. Power BI reports sit on My Documents. Export from a graph sits on Downloads. Analysis reports sit on Portfolio. Dashboard widgets sit on Overview.",
+            "now": "Add a report opens the type cards. Data extract, DC and DA, Tenant billing, Data alert, and Missing data. A Data extract holds Interval data, Meter reads, or Missing data. Pick sites or All sites. Filter by utility and by channel. Format is CSV or XLS. Times are UTC or UK time. Send by Email, SFTP, or FTP. Many people can get one report. Each email has an opt-out link. The file also sits on Downloads. Power BI reports sit on Downloads as Documents. Export from a graph sits on Downloads. Analysis reports sit on Portfolio. Dashboard widgets sit on Overview.",
             "later": "Coming soon cards: Data health. Capacity and kVA. League tables across sites. Alerts with LOA status. Reports by meter class, non-HH, HH, and sub-metering. Export and sub-meter channels for an Ofgem claim-back. The what3words overlay and the company map sit on Portfolio later.",
             "uses": [
               "card",
@@ -7162,8 +7162,8 @@
             "id": "downloads-on-reports",
             "name": "Downloads",
             "status": "working",
-            "summary": "Reports and data exports wait on their own page.",
-            "now": "Downloads is a subpage from Reports. Reports, Downloads, and My Documents sit as Tabs under Reports and compliance. The selected tab is a black pill. The pill slides. Do not put a ghost Downloads or Reports button in the page actions. View downloads opens it. Search downloads sits in the card. Filter sits to the right. Overlay uses ticks. Kind is CSV, XLS, and PDF. Type is Report and Data export. Status is Processing. When a filter is on, pills sit under Search and Filter. A cross clears that one. Clear takes them all off. Leave a page and Search and Filter start again. An open person, overlay, or menu starts again. The Filter button shows how many are on. The count is a cyan circle. No black rim. The row is the name, Type, Kind, and Status. Type is Report or Data export. Report is black on cyan. Data export is white on black. Customer Admin and Manager get Settings on a Report, next to Download. Same Clockwork email as Reports. Complete sits in Tag when it is ready. A cyan bar sits above that line while it processes. Minutes if a minute or more. Seconds if under a minute. The cyan bar fills while it waits. Download waits until it is ready. Then it sits as an Icon button. Hover for Download. In this walk, Download plays a short dummy of the bar, then the file. The white card fills to the bottom. Rounded corners stay on. Only that card scrolls. The list fits the card. No sideways scroll. Empty is No downloads yet. Search or Filter with no hit is No downloads match.",
+            "summary": "Reports, data exports, and documents wait on one page.",
+            "now": "Downloads is a subpage from Reports. Reports and Downloads sit as Tabs under Reports and compliance. The selected tab is a black pill. The pill slides. Do not put a ghost Downloads or Reports button in the page actions. View downloads opens it. Search downloads sits in the card. Filter sits to the right. Overlay uses ticks. Kind is CSV, XLS, and PDF. Type is Report, Data export, and Document. Status is Processing. When a filter is on, pills sit under Search and Filter. A cross clears that one. Clear takes them all off. Leave a page and Search and Filter start again. An open person, overlay, or menu starts again. The Filter button shows how many are on. The count is a cyan circle. No black rim. The row is the name, Type, Kind, and Status. Type is Report, Data export, or Document. Document is a Power BI file IMSERV publishes. Report is black on cyan. Data export is white on black. Customer Admin and Manager get Settings on a Report, next to Download. Same Clockwork email as Reports. Complete sits in Tag when it is ready. A cyan bar sits above that line while it processes. Minutes if a minute or more. Seconds if under a minute. The cyan bar fills while it waits. Download waits until it is ready. Then it sits as an Icon button. Hover for Download. In this walk, Download plays a short dummy of the bar, then the file. The white card fills to the bottom. Rounded corners stay on. Only that card scrolls. The list fits the card. No sideways scroll. Empty is No downloads yet. Search or Filter with no hit is No downloads match.",
             "later": "",
             "uses": [
               "search",
@@ -7330,7 +7330,7 @@
             "name": "Native overflow",
             "status": "working",
             "summary": "One native scroll owner. Keyboard if there is no tab stop.",
-            "now": "Use the browser bar. Vertical on the pane, the stage, the tree, the modal, and Reports. Nested regions stay put. Do not hide the bar on a desktop content pane. Do not paint a custom thumb. Tabs hide the bar inside the pill. The tab buttons are the keyboard path. Reports wrap. Do not scroll sideways. Breakdown loads as they scroll. The pane scrolls it. Reduced motion keeps scroll still.",
+            "now": "Use the browser bar. Vertical on the pane, the stage, the tree, the modal, and Reports. Nested regions stay put. The bar behaves like a Mac. Where the system draws overlay bars, leave them. Where it draws classic bars, like Windows, the thumb shows while they scroll, or when the pointer is near that edge. It fades after a second. The gutter stays, so nothing moves. Do not paint a custom thumb. Tabs hide the bar inside the pill. The tab buttons are the keyboard path. Reports wrap. Do not scroll sideways. Breakdown loads as they scroll. The pane scrolls it. Reduced motion keeps scroll still.",
             "later": "",
             "uses": [
               "tabs",
@@ -7339,7 +7339,7 @@
               "list",
               "card"
             ],
-            "note": "Do not invent a JavaScript scrollbar. Thumb versus track at least 3:1. Do not put cyan on white."
+            "note": "Do not invent a JavaScript scrollbar. The browser draws the bar. A class only shows or hides the thumb. Thumb versus track at least 3:1 when it shows. Do not put cyan on white. Reduced motion shows and hides it with no fade."
           },
           {
             "id": "card-stack",

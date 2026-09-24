@@ -586,7 +586,8 @@ function protoKnownView(id) {
 function protoViewId(raw) {
   const mapped = PROTO_OLD_VIEWS[raw] || raw;
   if (!protoKnownView(mapped)) return "home";
-  if (mapped === "downloads" || mapped === "documents") return mapped;
+  if (mapped === "documents") return "downloads";
+  if (mapped === "downloads") return mapped;
   if (mapped === "profile") return mapped;
   if (mapped === "settings") return protoCanOpenSettings() ? mapped : protoLens().nav[0] || "home";
   if (mapped === "users") return protoCanManagePeople() ? mapped : protoLens().nav[0] || "home";
@@ -7706,6 +7707,18 @@ function protoReportSoonCards() {
             ${protoTag("Coming soon")}
           </div>
           <p>${escapeHtml(item.blurb)}</p>
+          <div class="astral-actions">
+            <span class="astral-report-wait"><span class="astral-muted">Not ready yet</span></span>
+            ${protoIconBtn("settings", "Edit report", "", { disabled: true, tip: false })}
+            <button
+              type="button"
+              class="astral-switch"
+              role="switch"
+              aria-checked="false"
+              aria-label="${escapeHtml(item.name)}"
+              disabled
+            ></button>
+          </div>
         </article>
       `
     ).join("")}
@@ -8108,7 +8121,7 @@ function protoRailIcon(id) {
   if (id === "finance") return "rates";
   if (id === "alerts") return "warning";
   if (id === "queries") return "comment";
-  if (id === "reports" || id === "downloads" || id === "documents") return "report";
+  if (id === "reports" || id === "downloads") return "report";
   if (id === "profile" || id === "settings" || id === "users") return id;
   if (id === "companies") return "companies";
   if (id === "servicing" || id === "inbox") return id;
@@ -8280,7 +8293,7 @@ function astralPageHead(title, lead, extra) {
 }
 
 function protoReportsArea(view) {
-  return view === "reports" || view === "downloads" || view === "documents";
+  return view === "reports" || view === "downloads";
 }
 
 function protoReportsDownloadsTabs(active) {
@@ -8289,11 +8302,10 @@ function protoReportsDownloadsTabs(active) {
     [
       { id: "reports", name: "Reports" },
       { id: "downloads", name: "Downloads" },
-      { id: "documents", name: "My Documents" },
     ],
     active,
     "data-proto-view",
-    "Reports, Downloads or My Documents"
+    "Reports or Downloads"
   );
 }
 
@@ -11008,7 +11020,12 @@ function protoDownloadsFrom(raw) {
       const fileId = String(item.fileId || "");
       if (!kind || !id || !fileId) return null;
       const waitMs = Number(item.waitMs) || 0;
-      const type = item.type === "report" || String(id).startsWith("clockwork-") ? "report" : "export";
+      const type =
+        item.type === "document" || String(id).startsWith("doc-")
+          ? "document"
+          : item.type === "report" || String(id).startsWith("clockwork-")
+            ? "report"
+            : "export";
       return {
         id,
         kind,
@@ -11024,13 +11041,16 @@ function protoDownloadsFrom(raw) {
 }
 
 function protoDownloadType(item) {
+  if (item?.type === "document" || String(item?.id || "").startsWith("doc-")) return "document";
   return item?.type === "report" || String(item?.id || "").startsWith("clockwork-")
     ? "report"
     : "export";
 }
 
 function protoDownloadTypeName(item) {
-  return protoDownloadType(item) === "report" ? "Report" : "Data export";
+  const type = protoDownloadType(item);
+  if (type === "document") return "Document";
+  return type === "report" ? "Report" : "Data export";
 }
 
 function protoDownloadTypeTag(item) {
@@ -11077,6 +11097,10 @@ function protoDownloadReady(item) {
 }
 
 function protoDownloadMadeAt(item) {
+  if (protoDownloadType(item) === "document" && Number(item?.added) <= 1) {
+    const doc = protoDocuments().find((row) => row.id === item.fileId);
+    return doc ? doc.published.setHours(7, 0, 0, 0) : 0;
+  }
   if (protoDownloadType(item) === "report" && String(item?.id || "").startsWith("clockwork-")) {
     const def = protoReportDef(item.fileId);
     const start = def ? protoFromUkDate(def.start) : null;
@@ -11144,6 +11168,7 @@ const PROTO_DOWNLOAD_FILTERS = [
     items: [
       { id: "report", name: "Report" },
       { id: "export", name: "Data export" },
+      { id: "document", name: "Document" },
     ],
   },
   {
@@ -11188,7 +11213,7 @@ function protoDownloadMatches(item, q, picked) {
   const ids = Array.isArray(picked) ? picked : protoDownloadFilterIds();
   const kinds = ids.filter((id) => id === "csv" || id === "pdf" || id === "xls");
   if (kinds.length && !kinds.includes(item.kind)) return false;
-  const types = ids.filter((id) => id === "report" || id === "export");
+  const types = ids.filter((id) => id === "report" || id === "export" || id === "document");
   if (types.length && !types.includes(protoDownloadType(item))) return false;
   if (ids.includes("processing") && protoDownloadReady(item)) return false;
   return true;
@@ -11259,8 +11284,21 @@ function protoDownloads() {
       added: 1,
       waitMs: 1,
     }));
+  const docs = protoDocuments().map((doc) => ({
+    id: `doc-${doc.id}`,
+    kind: "pdf",
+    type: "document",
+    fileId: doc.id,
+    name: doc.name,
+    added: 1,
+    waitMs: 1,
+  }));
   const seen = new Set(queued.map((item) => item.id));
-  return [...clockwork.filter((item) => !seen.has(item.id)), ...queued].slice(0, 40);
+  return [
+    ...clockwork.filter((item) => !seen.has(item.id)),
+    ...docs.filter((item) => !seen.has(item.id)),
+    ...queued,
+  ].slice(0, 40);
 }
 
 function protoExportPlaceName(fileId) {
@@ -11598,65 +11636,6 @@ function protoDocumentPack(id) {
       ];
     }),
   };
-}
-
-function protoDocumentsSection() {
-  const rows = protoSortedRows("documents", protoDocuments(), (item, key) => {
-    if (key === "name") return item.name;
-    if (key === "published") return item.published.getTime();
-    return "";
-  });
-  const body = rows.length
-    ? rows
-        .map(
-          (item) => `
-            <tr>
-              <th scope="row">${escapeHtml(item.name)}</th>
-              <td>${protoTag("Power BI")}</td>
-              <td>${protoTag("PDF")}</td>
-              <td><time datetime="${escapeHtml(protoIso(item.published))}">${escapeHtml(
-                protoFormatUkDate(item.published)
-              )}</time></td>
-              <td class="astral-downloads-get">${
-                protoCanAct()
-                  ? `<div class="astral-downloads-acts">${protoIconBtn(
-                      "export",
-                      "Download",
-                      `data-proto-document="${escapeHtml(item.id)}"`
-                    )}</div>`
-                  : ""
-              }</td>
-            </tr>
-          `
-        )
-        .join("")
-    : `<tr><td colspan="5" class="astral-muted">No documents yet.</td></tr>`;
-  return `
-    <section class="astral-card astral-downloads astral-documents" id="astral-documents">
-      ${protoReportsCardTabs("documents")}
-      <div class="astral-table-wrap is-tips">
-        <table class="astral-table">
-          <thead>
-            <tr>
-            ${protoSortHead("documents", "name", "Name")}
-            <th scope="col">Type</th>
-            <th scope="col">Kind</th>
-            ${protoSortHead("documents", "published", "Published")}
-            <th scope="col"><span class="sr-only">Download</span></th>
-            </tr>
-          </thead>
-          <tbody>${body}</tbody>
-        </table>
-      </div>
-    </section>
-  `;
-}
-
-function protoDocumentsPage() {
-  return astralShell(`
-    ${protoReportsAreaHead("documents")}
-    ${protoDocumentsSection()}
-  `);
 }
 
 function protoAlertFacetId(raw) {
@@ -17442,7 +17421,6 @@ function protoApp() {
   if (view === "queries") return protoQueries();
   if (view === "reports") return protoReports();
   if (view === "downloads") return protoDownloadsPage();
-  if (view === "documents") return protoDocumentsPage();
   if (view === "profile") return protoProfile();
   if (view === "settings") return protoSettings();
   if (view === "users") return protoUsers();
@@ -18230,6 +18208,11 @@ function protoUsersPack() {
 }
 
 function protoPdf(id) {
+  const docPack = protoDocumentPack(id);
+  if (docPack) {
+    protoPdfDownload(docPack);
+    return;
+  }
   if (id === "users") {
     protoPdfDownload(protoUsersPack());
     return;
@@ -20717,12 +20700,6 @@ function onPrototype(event) {
     protoCsv(csvBtn.dataset.protoCsv);
     return;
   }
-  const docBtn = event.target.closest("[data-proto-document]");
-  if (docBtn) {
-    const pack = protoDocumentPack(docBtn.dataset.protoDocument);
-    if (pack) protoPdfDownload(pack);
-    return;
-  }
   const reportSubmit = event.target.closest("[data-proto-report-edit-form] button[type='submit']");
   if (reportSubmit && (store.prototypeSelectOpen || store.prototypeReportCalOpen)) {
     event.preventDefault();
@@ -21851,3 +21828,65 @@ document.addEventListener("pointerup", onPrototypePointerUp);
 document.addEventListener("pointercancel", onPrototypePointerUp);
 document.addEventListener("keydown", onPrototypeKey);
 document.addEventListener("paste", onPrototypePaste);
+
+const PROTO_SCROLL_SHOW_MS = 1000;
+const PROTO_SCROLL_EDGE = 16;
+const protoScrollTimers = new WeakMap();
+let protoScrollNear = null;
+let protoScrollNearFrame = 0;
+
+function protoClassicScrollbars() {
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:absolute;top:-999px;width:100px;height:100px;overflow:scroll;";
+  document.body.appendChild(probe);
+  const classic = probe.offsetWidth - probe.clientWidth > 0;
+  probe.remove();
+  return classic;
+}
+
+function protoScrollShow(el) {
+  if (!(el instanceof Element) || !el.closest("#astral-fs")) return;
+  el.classList.add("is-scrolling");
+  clearTimeout(protoScrollTimers.get(el));
+  protoScrollTimers.set(
+    el,
+    setTimeout(() => el.classList.remove("is-scrolling"), PROTO_SCROLL_SHOW_MS)
+  );
+}
+
+function protoScrollOwnerAt(x, y) {
+  let el = document.elementFromPoint(x, y);
+  while (el && el !== document.body) {
+    const overflowY = getComputedStyle(el).overflowY;
+    if ((overflowY === "auto" || overflowY === "scroll") && el.scrollHeight > el.clientHeight) {
+      const box = el.getBoundingClientRect();
+      return box.right - x <= PROTO_SCROLL_EDGE + (el.offsetWidth - el.clientWidth) ? el : null;
+    }
+    el = el.parentElement;
+  }
+  return null;
+}
+
+function protoScrollNearAt(x, y) {
+  const owner = protoScrollOwnerAt(x, y);
+  if (owner === protoScrollNear) return;
+  if (protoScrollNear) protoScrollNear.classList.remove("is-scroll-near");
+  protoScrollNear = owner && owner.closest("#astral-fs") ? owner : null;
+  if (protoScrollNear) protoScrollNear.classList.add("is-scroll-near");
+}
+
+if (protoClassicScrollbars()) {
+  document.documentElement.classList.add("is-classic-scroll");
+  document.addEventListener("scroll", (event) => protoScrollShow(event.target), true);
+  document.addEventListener(
+    "pointermove",
+    (event) => {
+      if (event.pointerType !== "mouse") return;
+      const { clientX, clientY } = event;
+      cancelAnimationFrame(protoScrollNearFrame);
+      protoScrollNearFrame = requestAnimationFrame(() => protoScrollNearAt(clientX, clientY));
+    },
+    { passive: true }
+  );
+  document.addEventListener("pointerleave", () => protoScrollNearAt(-1, -1));
+}
