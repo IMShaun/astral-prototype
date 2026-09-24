@@ -9636,6 +9636,21 @@ button.astral-state {
   flex: none;
 }
 
+.astral-report-split {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.astral-report-split legend {
+  padding: 0;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
 .astral-report-consent-host {
   display: grid;
   gap: 12px;

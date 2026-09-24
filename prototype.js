@@ -6894,6 +6894,13 @@ const PROTO_REPORT_UTILITY = [
   { id: "water", name: "Water" },
 ];
 
+// Standing charge in pounds a meter a day. Placeholder until tariffs come through.
+const PROTO_REPORT_BILL_UTILS = [
+  { id: "electricity", name: "Electricity", standing: 1.35 },
+  { id: "gas", name: "Gas", standing: 0.85 },
+  { id: "water", name: "Water", standing: 0.45 },
+];
+
 const PROTO_REPORT_CHANNEL = [
   { id: "all", name: "Import and export" },
   { id: "import", name: "Import" },
@@ -7085,6 +7092,13 @@ function protoReportNormalize(raw) {
     tenant: String(raw.tenant || "").replace(/\s+/g, " ").trim().slice(0, 80),
     tenantEmail: protoReportEmails([raw.tenantEmail])[0] || "",
     share: protoReportNumber(raw.share, 50, 0, 100),
+    ...Object.fromEntries(
+      PROTO_REPORT_BILL_UTILS.flatMap((util) => [
+        [`${util.id}Standing`, protoReportNumber(raw[`${util.id}Standing`], protoReportNumber(raw.share, 50, 0, 100), 0, 100)],
+        [`${util.id}Usage`, protoReportNumber(raw[`${util.id}Usage`], protoReportNumber(raw.share, 50, 0, 100), 0, 100)],
+      ])
+    ),
+    vat: protoReportNumber(raw.vat, 20, 0, 100),
     basis: raw.basis === "absolute" ? "absolute" : "average",
     amount: protoReportNumber(raw.amount, 2000, 0, 10000000),
     percent: protoReportNumber(raw.percent, 25, 0, 1000),
@@ -7149,6 +7163,9 @@ function protoReportSeed() {
       tenant: "Northgate Retail",
       tenantEmail: "accounts@northgate-retail.co.uk",
       share: 35,
+      electricityStanding: 50,
+      electricityUsage: 35,
+      vat: 20,
       people: ["me"],
       start: today,
     },
@@ -7249,11 +7266,42 @@ function protoReportMissingHits(def) {
   );
 }
 
+function protoReportMeterUtil(meter) {
+  const id = String(meter?.commodity || "Electricity").toLowerCase();
+  return PROTO_REPORT_BILL_UTILS.some((util) => util.id === id) ? id : "electricity";
+}
+
+function protoReportBillUtils(site) {
+  const have = new Set((site?.meters || []).map(protoReportMeterUtil));
+  const list = PROTO_REPORT_BILL_UTILS.filter((util) => have.has(util.id));
+  return list.length ? list : PROTO_REPORT_BILL_UTILS.slice(0, 1);
+}
+
 function protoReportBill(def) {
   const site = protoReportSiteById(def.site);
   const period = protoReportPeriod("billing", def.period);
-  const cost = site ? protoSiteSpendGbp(site) * period.days : 0;
-  return { site, period, cost, due: (cost * def.share) / 100 };
+  const lines = site
+    ? protoReportBillUtils(site).map((util) => {
+        const meters = (site.meters || []).filter((meter) => protoReportMeterUtil(meter) === util.id);
+        const usage = meters.reduce((n, meter) => n + protoMeterSpendGbp(meter), 0) * period.days;
+        const standing = meters.length * util.standing * period.days;
+        const standingShare = Number(def[`${util.id}Standing`]) || 0;
+        const usageShare = Number(def[`${util.id}Usage`]) || 0;
+        return {
+          util,
+          meters,
+          usage,
+          standing,
+          standingShare,
+          usageShare,
+          due: (standing * standingShare + usage * usageShare) / 100,
+        };
+      })
+    : [];
+  const cost = lines.reduce((n, line) => n + line.usage + line.standing, 0);
+  const net = lines.reduce((n, line) => n + line.due, 0);
+  const vat = (net * def.vat) / 100;
+  return { site, period, lines, cost, net, vat, due: net + vat };
 }
 
 function protoReportStepDate(date, period) {
@@ -7337,7 +7385,7 @@ function protoReportSummary(def) {
     if (!bill.site) return "Pick a site to project its cost.";
     return `${bill.site.name}. Projected ${bill.period.word} cost ${protoSpendMoney(
       bill.cost
-    )}. ${def.tenant || "The tenant"} pays ${def.share}%: ${protoSpendMoney(bill.due)}.`;
+    )}. ${def.tenant || "The tenant"} pays ${protoSpendMoney(bill.due)}, including VAT at ${def.vat}%.`;
   }
   if (def.type === "alert") {
     const scope = def.sites.length
@@ -7522,6 +7570,13 @@ function protoReportDraftFrom(def) {
     ...def,
     emails: def.emails.join(", "),
     share: String(def.share),
+    vat: String(def.vat),
+    ...Object.fromEntries(
+      PROTO_REPORT_BILL_UTILS.flatMap((util) => [
+        [`${util.id}Standing`, String(def[`${util.id}Standing`])],
+        [`${util.id}Usage`, String(def[`${util.id}Usage`])],
+      ])
+    ),
     amount: String(def.amount),
     percent: String(def.percent),
   };
@@ -7616,8 +7671,17 @@ function protoReportDraftIssueBase(draft) {
     if (!draft.site) return "Pick a site.";
     if (!String(draft.tenant || "").trim()) return "Add the tenant's name.";
     if (!protoReportEmails([draft.tenantEmail]).length) return "Add the tenant's email.";
-    const share = Number(draft.share);
-    if (!(share > 0 && share <= 100)) return "Tenant share must be between 1 and 100%.";
+    const site = protoReportSiteById(draft.site);
+    const shares = protoReportBillUtils(site).flatMap((util) => [
+      String(draft[`${util.id}Standing`] ?? "").trim(),
+      String(draft[`${util.id}Usage`] ?? "").trim(),
+    ]);
+    if (shares.some((raw) => raw === "" || !(Number(raw) >= 0 && Number(raw) <= 100))) {
+      return "Each share must be between 0 and 100%.";
+    }
+    if (!shares.some((raw) => Number(raw) > 0)) return "Give the tenant a share of at least one charge.";
+    const vat = String(draft.vat ?? "").trim();
+    if (vat === "" || !(Number(vat) >= 0 && Number(vat) <= 100)) return "VAT must be between 0 and 100%.";
     if (!startOk) return "Enter the first send date.";
     return "";
   }
@@ -7647,8 +7711,8 @@ function protoReportDraftPreview(draft) {
     const bill = protoReportBill(def);
     if (!bill.site) return "";
     return `Projected ${bill.period.word} cost ${protoSpendMoney(bill.cost)}. Tenant pays ${protoSpendMoney(
-      bill.due
-    )}.`;
+      bill.net
+    )}, plus ${protoSpendMoney(bill.vat)} VAT: ${protoSpendMoney(bill.due)}.`;
   }
   if (def.type === "alert") {
     const hits = protoReportAlertHits(def);
@@ -8241,6 +8305,35 @@ function protoReportSendFields(draft, opts = {}) {
   `;
 }
 
+function protoReportBillSplit(draft) {
+  const site = protoReportSiteById(draft.site);
+  const rows = protoReportBillUtils(site)
+    .map(
+      (util) => `
+        <fieldset class="astral-report-split">
+          <legend>${escapeHtml(util.name)}</legend>
+          <div class="astral-report-pair">
+            ${protoReportInput(
+              "Standing charge share (%)",
+              `${util.id}Standing`,
+              draft[`${util.id}Standing`],
+              'inputmode="decimal" placeholder="50"'
+            )}
+            ${protoReportInput("Usage share (%)", `${util.id}Usage`, draft[`${util.id}Usage`], 'inputmode="decimal" placeholder="50"')}
+          </div>
+        </fieldset>
+      `
+    )
+    .join("");
+  return `
+    ${rows}
+    <p class="astral-muted">Only the utilities on this site show. The tenant pays their share of each charge.</p>
+    <div class="astral-report-pair">
+      ${protoReportInput("VAT (%)", "vat", draft.vat, 'inputmode="decimal" placeholder="20"')}
+    </div>
+  `;
+}
+
 function protoReportTypeFields(draft, opts = {}) {
   if (draft.type === "extract") {
     return `
@@ -8296,14 +8389,14 @@ function protoReportTypeFields(draft, opts = {}) {
       ${protoReportSendAtSelect(draft)}
       <div class="astral-report-pair">
         ${protoReportInput("Tenant", "tenant", draft.tenant, 'maxlength="80" placeholder="Tenant name"')}
-        ${protoReportInput("Tenant share (%)", "share", draft.share, 'inputmode="decimal" placeholder="50"')}
+        ${protoReportInput(
+          "Tenant email",
+          "tenantEmail",
+          draft.tenantEmail,
+          'inputmode="email" placeholder="accounts@tenant.com"'
+        )}
       </div>
-      ${protoReportInput(
-        "Tenant email",
-        "tenantEmail",
-        draft.tenantEmail,
-        'inputmode="email" placeholder="accounts@tenant.com"'
-      )}
+      ${protoReportBillSplit(draft)}
       ${opts.page ? "" : `<p class="astral-muted">Sent by email to you and the tenant.</p>${protoReportConsentHost(draft)}`}
     `;
   }
@@ -8671,7 +8764,18 @@ function protoReportRows(def) {
     const from = protoAddDays(today, -bill.period.days);
     const to = protoAddDays(today, -1);
     return [
-      ["site", "period", "from", "to", "projected cost (GBP)", "tenant", "tenant share (%)", "amount payable (GBP)"],
+      [
+        "site",
+        "period",
+        "from",
+        "to",
+        "projected cost (GBP)",
+        "tenant",
+        "tenant pays before VAT (GBP)",
+        "VAT (%)",
+        "VAT (GBP)",
+        "amount payable (GBP)",
+      ],
       [
         bill.site?.name || "",
         bill.period.name,
@@ -8679,15 +8783,36 @@ function protoReportRows(def) {
         protoFormatUkDate(to),
         bill.cost.toFixed(2),
         def.tenant,
-        def.share,
+        bill.net.toFixed(2),
+        def.vat,
+        bill.vat.toFixed(2),
         bill.due.toFixed(2),
       ],
       [],
-      ["meter", "utility", "projected cost (GBP)", "tenant pays (GBP)"],
-      ...(bill.site?.meters || []).map((meter) => {
-        const cost = protoMeterSpendGbp(meter) * bill.period.days;
-        return [meter.name, meter.commodity, cost.toFixed(2), ((cost * def.share) / 100).toFixed(2)];
-      }),
+      [
+        "utility",
+        "standing charge (GBP)",
+        "standing charge share (%)",
+        "usage cost (GBP)",
+        "usage share (%)",
+        "tenant pays before VAT (GBP)",
+      ],
+      ...bill.lines.map((line) => [
+        line.util.name,
+        line.standing.toFixed(2),
+        line.standingShare,
+        line.usage.toFixed(2),
+        line.usageShare,
+        line.due.toFixed(2),
+      ]),
+      [],
+      ["meter", "utility", "usage cost (GBP)", "usage share (%)", "tenant pays before VAT (GBP)"],
+      ...bill.lines.flatMap((line) =>
+        line.meters.map((meter) => {
+          const cost = protoMeterSpendGbp(meter) * bill.period.days;
+          return [meter.name, line.util.name, cost.toFixed(2), line.usageShare, ((cost * line.usageShare) / 100).toFixed(2)];
+        })
+      ),
     ];
   }
   const period = protoReportPeriod(def.type, def.period);
