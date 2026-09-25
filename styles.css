@@ -6495,7 +6495,8 @@ button.astral-state {
 .astral-site-overview {
   display: grid;
   gap: 8px;
-  padding: 0 0 24px;
+  /* Same 16px lead as .astral-chart-wrap, so every tab starts at one height. */
+  padding: 16px 0 24px;
   border-bottom: 1px solid var(--color-border-strong);
   margin-bottom: 24px;
 }
