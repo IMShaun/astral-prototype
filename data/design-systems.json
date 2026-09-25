@@ -2555,7 +2555,7 @@
           "react": "Control",
           "file": "src/components/Control.tsx",
           "family": "forms",
-          "summary": "Checkbox, radio, and switch. The checkbox is 16px, radius 2. On nests Icon/Tick Size 16 Inverse. 8px gap to the label. A switch at rest is a 1px Infra Grey B edge and a black circle. On is the cyan fill and a white circle. No black rim. The circle slides. The fill follows.",
+          "summary": "Checkbox, radio, and switch. The checkbox is 16px, radius 2. On nests Icon/Tick Size 16 Inverse. 8px gap to the label. A switch at rest is a 1px Infra Grey B edge and a black circle. On is the cyan fill and a white circle. No black rim. The circle slides. The fill follows. The radio is a 16px circle with the same edge. On is black with a white dot.",
           "usage": "Pass checked and onChange. The page owns the value. Filter overlays and multi Select use this checkbox. Reports uses the switch to turn a report on or off. The switch sits on the right, under a line. Off reports stay in the same list.",
           "variants": [
             "checkbox",
@@ -6226,7 +6226,7 @@
             "status": "draft",
             "say": "",
             "avoid": "",
-            "note": "The tag on a report card. It sits top right. A long name wraps. The tag stays. Hover for the meaning. It waits 0.7 seconds. The tip sits outside the control. Live is People are sent this report. Waiting is This report is not in yet. You cannot run it. Custom is A name only. You cannot run it yet. A live report shows a Scheduled Tag and the date of the next send, as Wed 1 Oct. Off shows a Paused Tag. Settings is the cog. It sits on the report card, and next to Download on a Report in Downloads. Clockwork email is People, Occurrence, and Starts on. The switch sits on the right, under a line. It waits until Live. Off is the 1px Infra Grey B edge and a black circle. Disabled is grey, not a faded colour. The bar turns the switch when it is Live. Hover shows a pointer. On is the cyan fill and a white circle. No black rim. The circle slides. The fill follows.",
+            "note": "The tag on a report card. It sits top right. A long name wraps. The tag stays. Hover for the meaning. It waits 0.7 seconds. The tip sits outside the control. Live is People are sent this report. Waiting is This report is not in yet. You cannot run it. Custom is A name only. You cannot run it yet. A live report shows a Scheduled Tag and the date of the next send, as Wed 1 Oct. Off shows a Paused Tag. Settings is the cog. It sits on the report card, and next to Download on a Report in Downloads. Clockwork email is People, Occurrence, and Starts on. The switch sits on the right, under a line. It waits until Live. Off is the 1px Infra Grey B edge and a black circle. Disabled is grey, not a faded colour. The bar turns the switch when it is Live. Hover shows a pointer. On is the cyan fill and a white circle. No black rim. The circle slides. The fill follows. The radio is a 16px circle with the same edge. On is black with a white dot.",
             "from": "Shaun on report cards, 6 Sep"
           },
           {
@@ -7136,6 +7136,20 @@
             "note": "Shaun set the line at 7 to 10 inputs. Rethink how a form like this is split before adding more fields."
           },
           {
+            "id": "pick-a-type",
+            "name": "Pick a type",
+            "status": "working",
+            "summary": "Radio cards when the type decides the rest of the form.",
+            "now": "A label sits above, such as Report type. Each card is a radio, a name and one line. Cards stack in one column so the lines read in full. The card is white. Picked adds a black edge and fills the radio. One tab stop. Arrow keys move the pick. Types that are not ready fold into a Coming soon accordion under the list. It starts closed. The foot says what to pick while nothing is picked. Add a report and Add an alert use this.",
+            "later": "",
+            "uses": [
+              "control",
+              "card",
+              "modal"
+            ],
+            "note": "Do not use pill buttons for cards with a line of help. Do not grey out later types as cards they might click."
+          },
+          {
             "id": "actual-or-estimated",
             "name": "Actual or estimated",
             "status": "working",
@@ -7361,7 +7375,7 @@
             "status": "working",
             "summary": "Reports covers the version one scheduled and delivered reports. Later work sits as Coming soon.",
             "now": "Customers add, name, edit, and pause their own reports. Many reports can share a type. Each has its own name, sites, and recipients. Add a report opens the type cards in a modal. Edit report opens a page for that report, not a modal. Settings sits on the left. Tabs sit under its heading. Details comes first, with the name and sites. Data, Charges, or Trigger comes next, for what the type needs. Schedule and Delivery come last. A type only shows the tabs it uses. Tenant billing always goes by email. Its Delivery tab holds Attach the bill to the email. Recipients sits on the right. Save changes, Cancel, and Delete report sit in the bar under both. Back to reports goes back without saving. An alert opens the same page. Back to alerts goes back to Settings. Reports holds Data extract, DC and DA, and Tenant billing. Data alert and Missing data sit on Alerts, under Settings. A Data alert goes off when use goes Above or Below a threshold. The threshold is a daily kWh or a percentage of the portfolio average. Missing data waits 1 to 48 hours. Tell people is In Astral, Email, or both. In Astral shows it on Alerts for everyone on the list. A Data extract holds Interval data, Meter reads, or Missing data. Pick sites or All sites. Select all sits at the top of the Sites list. It ticks every site that matches the search. Click it again to clear them. Some ticked shows a dash. Filter by utility and by channel. How often is Once, Daily, Weekly, or Monthly. Tenant billing has Quarterly and no Once. Tenant billing splits each utility on the site: Electricity, Gas, and Water. Each has a standing charge share and a usage share, from 0 to 100%. VAT (%) adds tax on top. The bill shows each charge, the tenant share, the VAT, and the amount payable. Once sends one file for a custom range. Data from and Data to go up to today. Send on is the day it goes. After that the card shows a Sent tag and the date. A name says what it holds, not how often, so rename it freely. Format is CSV or XLSX, one or the other. CSV is for a system to read in. XLSX is for a spreadsheet. Export from a graph gives CSV or PDF. Times are UTC or UK time. Send at picks the hour, 06:00 to 22:00. It starts at 09:00. Meter data comes in through the day, so a later send holds more of it. The card shows the next date and hour. Send by Email, SFTP, or FTP. SFTP and FTP ask for the server, port, folder, and username. SFTP signs in with a password or an SSH key. With a key, add IMSERV's public key to the user on your server. SFTP needs the server's SSH fingerprint. It starts with SHA256. Astral checks it before every send. FTP says it is unencrypted. Test connection sends a small test file. It says Connected, or why the server turned it away. A failed test warns. It does not block Save. Many people can get one report. Every report page has Recipients on the right. It is one long list, like Users with no teams. One search box finds people in your company. Picking one adds them and clears the search. Remove takes one off. On Tenant billing, the tenant sits at the top of the list. Change them in Settings. When Email is off in Send by, adding someone turns it on. Attach the file to the email is on by default. Off, the email links to the file on Downloads. Each email has an opt-out link. The tick sits above Save. It reads I have permission to send this data to everyone on the list, the SFTP server, or both. It asks again when someone new joins, the server changes, or what it sends changes. Save waits for it. You and people already on the list skip it. After Save, a banner says the new recipients get an email that names who added them. Send me a test sends a sample to you. The file also sits on Downloads. Power BI reports sit on Downloads as Documents. Export from a graph sits on Downloads. Analysis reports sit on Portfolio. Dashboard widgets sit on Overview.",
-            "later": "Coming soon cards: Data health. Capacity and kVA. League tables across sites. LOA renewal dates, a list of every letter of authority and when it needs renewing. Reports by meter class, non-HH, HH, and sub-metering. Export and sub-meter channels for an Ofgem claim-back. On Alerts, LOA renewal warns people before a letter of authority runs out, such as three months ahead. The what3words overlay and the company map sit on Portfolio later.",
+            "later": "Coming soon cards: Data health. Capacity and kVA. League tables across sites. Letter of authority dates, when each letter of authority needs renewing. Reports by meter class, non-HH, HH, and sub-metering. Export and sub-meter channels for an Ofgem claim-back. On Alerts, Letter of authority renewal warns people before a letter of authority runs out, such as three months ahead. The what3words overlay and the company map sit on Portfolio later.",
             "uses": [
               "card",
               "tag",
@@ -7371,7 +7385,7 @@
               "table",
               "search"
             ],
-            "note": "Coming soon cards cannot be opened. They sit under the type cards until a type is picked, and at the end of Reports and Settings. Each shows only its own. They hide while a search or a filter is on. GSOP reporting is version one in the requirements register but not in the 86 functions. The DV totals, export, and multi-site reports still need a name."
+            "note": "Coming soon cards cannot be opened. They sit at the end of Reports and Settings. In Add a report they fold into a Coming soon accordion under the types, closed at first, until a type is picked. Each shows only its own. They hide while a search or a filter is on. GSOP reporting is version one in the requirements register but not in the 86 functions. The DV totals, export, and multi-site reports still need a name."
           },
           {
             "id": "downloads-on-reports",

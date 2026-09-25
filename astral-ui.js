@@ -316,6 +316,10 @@ function protoCheck(on) {
   return `<span class="astral-check${on ? " is-on" : ""}" aria-hidden="true"></span>`;
 }
 
+function protoRadio(on) {
+  return `<span class="astral-radio${on ? " is-on" : ""}" aria-hidden="true"></span>`;
+}
+
 function protoBanner(message, actionsHtml) {
   return `
     <div class="astral-banner astral-alert-call astral-export-toast" role="status">
@@ -675,6 +679,8 @@ function astralPreview(id) {
     control: `
       <span class="ds-check">${protoCheck(true)}<span>Show estimated</span></span>
       <span class="ds-check">${protoCheck(false)}<span>Show estimated</span></span>
+      <span class="ds-check">${protoRadio(true)}<span>Scheduled data extract</span></span>
+      <span class="ds-check">${protoRadio(false)}<span>Tenant billing</span></span>
       ${protoSwitch(true)}
       ${protoSwitch(false, "Off")}
     `,
@@ -781,4 +787,5 @@ window.AstralUI = {
   search: protoSearchField,
   modalHead: protoModalHead,
   check: protoCheck,
+  radio: protoRadio,
 };

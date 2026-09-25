@@ -7253,19 +7253,19 @@ const PROTO_REPORT_TYPES = [
     id: "extract",
     name: "Scheduled data extract",
     short: "Data extract",
-    blurb: "Interval data, meter reads or missing data for the sites you pick, sent on a schedule.",
+    blurb: "Interval data, meter reads or missing data, sent on a schedule.",
   },
   {
     id: "dcda",
     name: "DC and DA",
     short: "DC/DA",
-    blurb: "The reads your data collector and data aggregator send, on a schedule.",
+    blurb: "Reads from your data collector and data aggregator, sent on a schedule.",
   },
   {
     id: "billing",
     name: "Tenant billing",
     short: "Tenant billing",
-    blurb: "The projected cost of a site and the share a tenant pays.",
+    blurb: "A site's projected cost and the share each tenant pays.",
   },
   {
     id: "alert",
@@ -7387,14 +7387,14 @@ const PROTO_REPORT_SEND_AT = Array.from({ length: 17 }, (_, i) => `${String(i + 
 const PROTO_REPORT_SOON = [
   { id: "health", name: "Data health", blurb: "How complete and on time each site's data is." },
   { id: "capacity", name: "Capacity and kVA", blurb: "Peak demand in kVA against each site's agreed capacity." },
-  { id: "league", name: "League tables", blurb: "Rank sites against each other by use, cost or carbon." },
-  { id: "loa", name: "LOA renewal dates", blurb: "Every letter of authority and the date it needs renewing." },
-  { id: "class", name: "Reports by meter class", blurb: "Split a report into non-HH, HH and sub-metering." },
+  { id: "league", name: "League tables", blurb: "Rank sites by use, cost or carbon." },
+  { id: "loa", name: "Letter of authority dates", blurb: "When each letter of authority needs renewing." },
+  { id: "class", name: "Reports by meter class", blurb: "Split a report into non-HH, HH and sub-meters." },
   { id: "claim", name: "Export and sub-meter channels", blurb: "Export and sub-meter data for an Ofgem claim-back." },
   {
     id: "loa-renew",
-    name: "LOA renewal",
-    blurb: "Warns people before a letter of authority runs out, such as three months ahead.",
+    name: "Letter of authority renewal",
+    blurb: "Warn people before a letter of authority runs out, such as three months ahead.",
     tab: "alerts",
   },
 ];
@@ -9160,24 +9160,32 @@ function protoReportNotifyFields(draft, opts = {}) {
   `;
 }
 
+// Radio cards. One tab stop. Arrow keys move the pick, like native radios.
 function protoReportTypePicker(draft) {
+  const label = protoReportNewTab() === "alerts" ? "Alert type" : "Report type";
+  const types = protoReportTypesFor(protoReportNewTab());
+  const picked = types.some((item) => item.id === draft?.type) ? draft.type : types[0]?.id;
   return `
-    <div class="astral-report-types" role="radiogroup" aria-label="${protoReportNewTab() === "alerts" ? "Alert type" : "Report type"}">
-      ${protoReportTypesFor(protoReportNewTab()).map((item) => {
-        const on = draft?.type === item.id;
-        return `
-          <button
-            type="button"
-            role="radio"
-            class="astral-report-type${on ? " is-on" : ""}"
-            aria-checked="${on ? "true" : "false"}"
-            data-proto-report-type="${escapeHtml(item.id)}"
-          >
-            <span>${escapeHtml(item.name)}</span>
-            <span class="astral-muted">${escapeHtml(item.blurb)}</span>
-          </button>
-        `;
-      }).join("")}
+    <div class="astral-report-type-field">
+      <span class="astral-report-type-label" id="astral-report-type-label">${label}</span>
+      <div class="astral-report-types" role="radiogroup" aria-labelledby="astral-report-type-label">
+        ${types.map((item) => {
+          const on = draft?.type === item.id;
+          return `
+            <button
+              type="button"
+              role="radio"
+              class="astral-report-type${on ? " is-on" : ""}"
+              aria-checked="${on ? "true" : "false"}"
+              tabindex="${item.id === picked ? "0" : "-1"}"
+              data-proto-report-type="${escapeHtml(item.id)}"
+            >
+              <span class="astral-report-type-head">${protoRadio(on)}<span>${escapeHtml(item.name)}</span></span>
+              <span class="astral-muted">${escapeHtml(item.blurb)}</span>
+            </button>
+          `;
+        }).join("")}
+      </div>
     </div>
     ${draft ? "" : protoReportSoonTypes()}
   `;
@@ -9187,23 +9195,34 @@ function protoReportSoonList(tab) {
   return PROTO_REPORT_SOON.filter((item) => (item.tab || "reports") === tab);
 }
 
+let protoReportSoonOpen = false;
+
+// Later types fold away so the ones they can pick lead.
 function protoReportSoonTypes() {
   const list = protoReportSoonList(protoReportNewTab());
   if (!list.length) return "";
-  return `
-    <div class="astral-report-types is-soon" role="list" aria-label="Coming soon">
-      ${list.map(
-        (item) => `
-          <div class="astral-report-type is-soon" role="listitem" aria-disabled="true">
-            <span class="astral-report-type-head"><span>${escapeHtml(item.name)}</span>${protoTag(
-              "Coming soon"
-            )}</span>
-            <span class="astral-muted">${escapeHtml(item.blurb)}</span>
-          </div>
-        `
-      ).join("")}
-    </div>
-  `;
+  return protoAccordion({
+    id: "astral-report-soon-list",
+    open: protoReportSoonOpen,
+    name: "Coming soon",
+    attr: "data-proto-report-soon-fold",
+    count: list.length,
+    modifier: "astral-report-soon",
+    inner: `
+      <ul class="astral-report-soon-list">
+        ${list
+          .map(
+            (item) => `
+              <li>
+                <span>${escapeHtml(item.name)}</span>
+                <span class="astral-muted">${escapeHtml(item.blurb)}</span>
+              </li>
+            `
+          )
+          .join("")}
+      </ul>
+    `,
+  });
 }
 
 function protoReportSoonCards(tab = "reports") {
@@ -9291,8 +9310,8 @@ function protoReportEditModal() {
           <div class="astral-modal-foot">
             ${draft ? protoReportConsentHost(draft) : ""}
             <p class="astral-muted astral-report-issue" data-proto-report-issue${
-              issue && draft ? "" : " hidden"
-            }>${escapeHtml(issue)}</p>
+              issue ? "" : " hidden"
+            }>${escapeHtml(draft ? issue : `Pick ${alerts ? "an alert" : "a report"} type.`)}</p>
             <div class="astral-actions">
               ${protoBtn(isNew ? (alerts ? "Add alert" : "Add report") : "Save changes", "", {
                 type: "submit",
@@ -22050,6 +22069,12 @@ function onPrototype(event) {
     );
     return;
   }
+  const reportSoonBtn = event.target.closest("[data-proto-report-soon-fold]");
+  if (reportSoonBtn) {
+    protoReportSoonOpen = !protoReportSoonOpen;
+    protoSyncFoldClip(reportSoonBtn.closest(".astral-accordion"), protoReportSoonOpen);
+    return;
+  }
   const reportTypeBtn = event.target.closest("[data-proto-report-type]");
   if (reportTypeBtn) {
     if (!protoCanEditReports() || protoReportEditId() !== "new") return;
@@ -22139,6 +22164,7 @@ function onPrototype(event) {
       protoCloseModal("report");
       return;
     }
+    if (id === "new") protoReportSoonOpen = false;
     protoReportOpenEdit(id);
     return;
   }
@@ -24193,6 +24219,14 @@ function onPrototypeSubmit(event) {
 function onPrototypeKey(event) {
   if (event.key === "Enter" && event.target.closest("input[name='proto-team-people-query'], input[name='proto-report-people-query'], input[name='proto-report-site-query'], input[name='proto-person-team-query'], input[name='proto-person-sites-query']")) {
     event.preventDefault();
+    return;
+  }
+  const typeRadio = event.target.closest(".astral-report-types [role='radio']");
+  if (typeRadio && ["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) {
+    event.preventDefault();
+    const radios = [...typeRadio.parentElement.querySelectorAll("[role='radio']")];
+    const step = event.key === "ArrowDown" || event.key === "ArrowRight" ? 1 : -1;
+    radios[(radios.indexOf(typeRadio) + step + radios.length) % radios.length]?.click();
     return;
   }
   const breakdownHit = event.target.closest("tr[data-proto-hit]");
