@@ -4330,12 +4330,43 @@ function protoChartPointSeriesMark(label, color) {
   return `${mark}${name}`;
 }
 
-function protoChartPointReading(label, value, unit, color, quality, cls = "") {
+function protoChartPointReading(label, value, unit, color, quality, cls = "", drill = "") {
   const amount = escapeHtml(protoFormatReading(value, unit));
   const series = protoChartPointSeriesMark(label, color);
-  return `<p class="astral-query-pin-reading${cls ? ` ${cls}` : ""}">${series}<span class="astral-query-pin-kwh">${amount}</span>${protoReadingQualityMark(
-    quality
-  )}</p>`;
+  const inner = `${series}<span class="astral-query-pin-kwh">${amount}</span>${protoReadingQualityMark(quality)}`;
+  if (drill) {
+    return `<button type="button" class="astral-query-pin-reading is-drill${cls ? ` ${cls}` : ""}" ${drill} aria-label="${escapeHtml(
+      `Open ${label}, ${protoFormatReading(value, unit)}${protoReadingQualityWords(quality)}`
+    )}">${inner}</button>`;
+  }
+  return `<p class="astral-query-pin-reading${cls ? ` ${cls}` : ""}">${inner}</p>`;
+}
+
+// Brings the picked site into view in the tree without moving the page.
+function protoRevealTreeSite() {
+  const el = document.querySelector("#astral-fs .astral-tree .astral-site.is-on");
+  const tree = el?.closest(".astral-tree");
+  if (!tree) return;
+  const box = tree.getBoundingClientRect();
+  const row = el.getBoundingClientRect();
+  if (row.top >= box.top && row.bottom <= box.bottom) return;
+  tree.scrollTop += row.top - box.top - (box.height - row.height) / 2;
+}
+
+// A reading in the pin opens the next level. A site opens as if picked in the tree. A meter narrows the graph to it.
+function protoPinDrillAttr(row) {
+  const id = String(row?.id || "");
+  if (!id || protoCompareOn()) return "";
+  if (store.prototypeScope === "group") {
+    const site = protoSiteByMeter(id);
+    return site && protoSiteId(site) === id ? `data-proto-site="${escapeHtml(id)}" data-proto-drill` : "";
+  }
+  if (store.prototypeScope === "site") {
+    const site = protoSiteByMeter(store.activePrototypeMeter);
+    const ids = protoMetersForPane(site?.meters || []).map((item) => item.id);
+    return ids.length > 1 && ids.includes(id) ? `data-proto-drill-meter="${escapeHtml(id)}"` : "";
+  }
+  return "";
 }
 
 function protoPointSliceRows(point) {
@@ -4411,7 +4442,15 @@ function protoHoverSlices(point, opts = {}) {
   const shown = opts.all || !rest ? slices : slices.slice(0, PROTO_HOVER_SLICE_MAX);
   const html = shown
     .map((row) =>
-      protoChartPointReading(row.name, row.value, unit, row.color || protoSliceFill(row), row.quality)
+      protoChartPointReading(
+        row.name,
+        row.value,
+        unit,
+        row.color || protoSliceFill(row),
+        row.quality,
+        "",
+        opts.drill ? protoPinDrillAttr(row) : ""
+      )
     )
     .join("");
   return { html, rest };
@@ -4809,7 +4848,7 @@ function protoAnalyseControl(point) {
 function protoChartPointTitle(point) {
   if (!point) return "";
   const time = `<p class="astral-muted">${escapeHtml(protoChartAt(point.time))}</p>`;
-  const slicesHtml = protoHoverSlices(point, { all: true });
+  const slicesHtml = protoHoverSlices(point, { all: true, drill: true });
   const rows = `<div class="astral-query-pin-readings${slicesHtml.rest ? " is-scroll" : ""}">${slicesHtml.html}</div>`;
   const tags = protoPointTagsOn(point);
   const tagRow = tags.length
@@ -22354,7 +22393,7 @@ function onPrototype(event) {
       prototypeChannel: "all",
       ...protoSiteMeterPatch(sameSite ? protoSiteMeterIds(site) : [], site, { empty: sameSite }),
       ...(sameSite ? {} : { prototypePaneMeterKinds: null }),
-      prototypePane: sameSite ? protoPaneId() : "consumption",
+      prototypePane: sameSite || siteBtn.hasAttribute("data-proto-drill") ? protoPaneId() : "consumption",
       prototypeChartPoint: sameSite ? store.prototypeChartPoint : null,
       activePrototypeView: "portfolio",
       prototypeFullscreen: true,
@@ -22367,6 +22406,16 @@ function onPrototype(event) {
       return;
     }
     setProto(patch);
+    if (siteBtn.hasAttribute("data-proto-drill")) requestAnimationFrame(protoRevealTreeSite);
+    return;
+  }
+  const drillMeter = event.target.closest("[data-proto-drill-meter]");
+  if (drillMeter) {
+    const site = protoSiteByMeter(store.activePrototypeMeter);
+    setProto({
+      ...protoSiteMeterPatch([drillMeter.dataset.protoDrillMeter], site, { empty: true }),
+      prototypeChartPoint: null,
+    });
     return;
   }
   const meterPill = event.target.closest("[data-proto-meter-pill]");

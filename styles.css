@@ -8276,6 +8276,34 @@ button.astral-state {
   color: var(--color-text-primary);
 }
 
+.astral-query-pin-reading.is-drill {
+  appearance: none;
+  margin: 0 -4px;
+  padding: 0 4px;
+  width: calc(100% + 8px);
+  min-height: 24px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.astral-query-pin-reading.is-drill:hover {
+  background: var(--color-background-subtle);
+}
+
+.astral-query-pin-reading.is-drill:hover .astral-query-pin-series {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+}
+
+.astral-query-pin-reading.is-drill:focus-visible {
+  outline: 2px solid var(--color-focus-contrast);
+  outline-offset: -2px;
+}
+
 .astral-query-pin-reading .astral-chart-key-mark,
 .astral-query-pin-reading .astral-flow-pill {
   flex: none;
