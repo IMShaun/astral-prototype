@@ -7124,6 +7124,8 @@ function protoReportNormalize(raw) {
     sftpUser: String(raw.sftpUser || "").trim().slice(0, 80),
     sftpAuth: raw.sftpAuth === "key" ? "key" : "password",
     sftpPassword: String(raw.sftpPassword || "").slice(0, 120),
+    sftpFingerprint: String(raw.sftpFingerprint || "").trim().slice(0, 120),
+    attach: raw.attach !== false,
     site: known.has(String(raw.site || "")) ? String(raw.site) : ids[0] || "",
     tenant: String(raw.tenant || "").replace(/\s+/g, " ").trim().slice(0, 80),
     tenantEmail: protoReportEmails([raw.tenantEmail])[0] || "",
@@ -7152,6 +7154,12 @@ function protoReportNormalize(raw) {
   def.consentFor = Array.isArray(raw.consentFor)
     ? [...new Set(raw.consentFor.map(String))]
     : protoReportConsentKeys(def);
+  // Saved before the server and data joined consent, so they count as agreed.
+  if (Array.isArray(raw.consentFor) && !def.consentFor.some((key) => key.startsWith("data:"))) {
+    def.consentFor = [
+      ...new Set([...def.consentFor, ...protoReportConsentKeys(def).filter((key) => !protoReportIsPersonKey(key))]),
+    ];
+  }
   return def;
 }
 
@@ -7195,6 +7203,7 @@ function protoReportSeed() {
       sftpPath: "dcda/monthly",
       sftpUser: "imserv-astral",
       sftpAuth: "key",
+      sftpFingerprint: "SHA256:q3Lx8Jb1kT4vYp0nW2cR9mZs6HdE5uFgA7iKoNhXyB0",
       start: today,
     },
     {
@@ -7688,7 +7697,7 @@ function protoReportDraftIssue(draft) {
   const issue = protoReportDraftIssueBase(draft);
   if (issue) return issue;
   const consent = protoReportConsent(draft);
-  return consent.ask && !consent.on ? "Confirm you have permission to email everyone on the list." : "";
+  return consent.ask && !consent.on ? "Tick to confirm you have permission to send this data." : "";
 }
 
 function protoReportDraftIssueBase(draft) {
@@ -7710,6 +7719,11 @@ function protoReportDraftIssueBase(draft) {
       if (!String(draft.sftpUser || "").trim()) return "Add the username for the server.";
       const key = draft.delivery.includes("sftp") && draft.sftpAuth === "key";
       if (!key && !String(draft.sftpPassword || "")) return "Add the password for the server.";
+      if (draft.delivery.includes("sftp")) {
+        const print = String(draft.sftpFingerprint || "").trim();
+        if (!print) return "Add the server's SSH fingerprint.";
+        if (!protoReportFingerprintOk(print)) return "Check the SSH fingerprint. It starts with SHA256.";
+      }
     }
     if (draft.period === "once") {
       const from = protoFromUkDate(protoReportDraftDate("from"));
@@ -7901,7 +7915,7 @@ function protoReportRecipientsHtml(draft) {
       'placeholder="name@company.com, name@company.com" inputmode="email"'
     )}
     <p class="astral-muted">Each email has an opt-out link.</p>
-    ${protoReportConsentHost(draft)}
+    ${protoReportSampleHtml(draft)}
   `;
 }
 
@@ -8072,7 +8086,7 @@ function protoReportRecipientsPane(draft) {
           "Recipients",
           protoReportRecipientsSub(draft)
         )}</div></div>`,
-        `${protoReportRecipientList(draft)}${protoReportConsentHost(draft)}`
+        `${protoReportRecipientList(draft)}${protoReportSampleHtml(draft)}`
       )}
     </section>
   `;
@@ -8084,8 +8098,42 @@ function protoReportEmailsOn(draft) {
   return (draft.notify || []).includes("email");
 }
 
-// Everyone on the list but you. Tenants count by their email.
+function protoReportServerOn(draft) {
+  return protoReportSends(draft.type) && (draft.delivery || []).some((way) => way === "sftp" || way === "ftp");
+}
+
+function protoReportServerKey(draft) {
+  const host = String(draft.sftpHost || "").trim().toLowerCase();
+  const path = String(draft.sftpPath || "").trim().replace(/^\/+|\/+$/g, "").toLowerCase();
+  return `server:${host}/${path}`;
+}
+
+// What the data covers. A change here asks for consent again.
+function protoReportDataKey(draft) {
+  const sites = [...(draft.sites || [])].map(String).sort().join(",");
+  const bits =
+    draft.type === "extract"
+      ? [sites, draft.content, draft.utility, draft.channel]
+      : draft.type === "billing"
+        ? [draft.site]
+        : [sites];
+  return `data:${draft.type}|${bits.join("|")}`;
+}
+
+function protoReportIsPersonKey(key) {
+  return !key.startsWith("server:") && !key.startsWith("data:");
+}
+
+// Everyone on the list but you, the server, and what the data covers.
 function protoReportConsentKeys(draft) {
+  const people = protoReportEmailsOn(draft) ? protoReportPeopleKeys(draft) : [];
+  const server = protoReportServerOn(draft) && String(draft.sftpHost || "").trim() ? [protoReportServerKey(draft)] : [];
+  const out = [...people, ...server];
+  return out.length ? [...out, protoReportDataKey(draft)] : [];
+}
+
+// Tenants count by their email.
+function protoReportPeopleKeys(draft) {
   const mine = protoProfileEmail().toLowerCase();
   return [
     ...new Set(
@@ -8106,7 +8154,7 @@ function protoReportConsentSaved() {
 }
 
 function protoReportConsent(draft) {
-  if (!draft || !protoReportEmailsOn(draft)) return { ask: false, on: true, fresh: [] };
+  if (!draft) return { ask: false, on: true, fresh: [] };
   const saved = new Set(protoReportConsentSaved());
   const given = new Set(Array.isArray(draft.consentFor) ? draft.consentFor : []);
   const fresh = protoReportConsentKeys(draft).filter((key) => !saved.has(key));
@@ -8119,12 +8167,28 @@ function protoReportSampleSent(draft) {
 }
 
 function protoReportConsentInner(draft) {
-  if (!draft || !protoReportEmailsOn(draft)) return "";
+  if (!draft) return "";
   const consent = protoReportConsent(draft);
-  const sent = protoReportSampleSent(draft);
-  const n = consent.fresh.length;
-  const box = consent.ask
-    ? `
+  if (!consent.ask) return "";
+  const people = consent.fresh.filter(protoReportIsPersonKey);
+  const n = people.length;
+  const dataNew = consent.fresh.some((key) => key.startsWith("data:"));
+  const serverNew = consent.fresh.some((key) => key.startsWith("server:"));
+  const keys = protoReportConsentKeys(draft);
+  const hasPeople = keys.some(protoReportIsPersonKey);
+  const hasServer = keys.some((key) => key.startsWith("server:"));
+  const ways = (draft.delivery || []).filter((way) => way === "sftp" || way === "ftp");
+  const serverName = ways.length === 1 ? `the ${ways[0].toUpperCase()} server` : "the server";
+  const to = [
+    ...(hasPeople && (n || dataNew) ? ["everyone on the list"] : []),
+    ...(hasServer && (serverNew || dataNew) ? [serverName] : []),
+  ];
+  const why = n
+    ? `${n === 1 ? "The new recipient gets" : `The ${n} new recipients get`} an email that says you added them. Each can opt out.`
+    : serverNew
+      ? "The server is new since the last save."
+      : "What it sends has changed since the last save.";
+  return `
       <button
         type="button"
         role="checkbox"
@@ -8134,16 +8198,17 @@ function protoReportConsentInner(draft) {
       >
         ${protoCheck(consent.on)}
         <span class="astral-report-consent-copy">
-          <span>I have permission to email everyone on this list.</span>
-          <span class="astral-muted">${
-            n === 1 ? "The new recipient gets" : `The ${n} new recipients get`
-          } an email that says you added them. Each can opt out.</span>
+          <span>I have permission to send this data to ${escapeHtml(to.join(" and "))}.</span>
+          <span class="astral-muted">${escapeHtml(why)}</span>
         </span>
       </button>
-    `
-    : "";
+    `;
+}
+
+function protoReportSampleHtml(draft) {
+  if (!draft || !protoReportEmailsOn(draft)) return "";
+  const sent = protoReportSampleSent(draft);
   return `
-    ${box}
     <div class="astral-report-sample">
       ${protoGhost("Send me a test", "data-proto-report-sample")}
       <p class="astral-muted astral-report-test-line${sent ? " is-ok" : ""}" role="status">${
@@ -8236,6 +8301,7 @@ function protoReportPage() {
       </section>
       ${protoReportRecipientsPane(draft)}
       <div class="astral-card astral-report-page-foot">
+        ${protoReportConsentHost(draft)}
         <div class="astral-actions">
           ${protoBtn("Save changes", "", { type: "submit", disabled: Boolean(issue) })}
           ${protoGhost("Cancel", 'data-proto-report-edit="cancel"')}
@@ -8257,7 +8323,7 @@ function protoReportPageOpen() {
 }
 
 function protoReportTestSig(draft) {
-  return ["sftpHost", "sftpPort", "sftpUser", "sftpAuth", "sftpPassword", "delivery"]
+  return ["sftpHost", "sftpPort", "sftpUser", "sftpAuth", "sftpPassword", "sftpFingerprint", "delivery"]
     .map((key) => String(draft?.[key] ?? ""))
     .join("|");
 }
@@ -8279,8 +8345,19 @@ function protoReportTestResult(draft) {
   if (!key && String(draft.sftpPassword) === "wrong") {
     return { state: "fail", text: "The server did not accept the username or password." };
   }
+  if ((draft.delivery || []).includes("sftp")) {
+    const print = String(draft.sftpFingerprint || "").trim();
+    if (!print) return { state: "fail", text: "Add the SSH fingerprint, then test again." };
+    if (!protoReportFingerprintOk(print) || /0000/.test(print)) {
+      return { state: "fail", text: "The server's fingerprint does not match. Check it with your IT team." };
+    }
+  }
   const folder = String(draft.sftpPath || "").trim();
   return { state: "ok", text: `Connected. A test file landed in ${folder || "the top folder"}.` };
+}
+
+function protoReportFingerprintOk(print) {
+  return /^SHA256:[A-Za-z0-9+/]{20,}={0,2}$/.test(print) || /^([0-9a-f]{2}:){15}[0-9a-f]{2}$/i.test(print);
 }
 
 function protoReportTestLineHtml(draft) {
@@ -8356,6 +8433,12 @@ function protoReportServerFields(draft, serverName) {
         : secret
     }
     ${key ? '<p class="astral-muted">Add this key to the user on your server. IMSERV keeps the private half.</p>' : ""}
+    ${
+      sftp
+        ? `${protoReportInput("SSH fingerprint", "sftpFingerprint", draft.sftpFingerprint, 'placeholder="SHA256:" spellcheck="false"')}
+          <p class="astral-muted">Ask your IT team for it. Astral checks it before every send, so the file only goes to your server.</p>`
+        : ""
+    }
     ${sftp ? "" : '<p class="astral-muted">FTP sends the file and password unencrypted. Use SFTP if your server has it.</p>'}
     ${protoReportTestHtml(draft)}
   `;
@@ -8367,6 +8450,29 @@ function protoReportSendTimeFields(draft) {
       ${protoReportOptionSelect("report-time", "Times in", PROTO_REPORT_TIME, draft.time)}
     </div>
     <p class="astral-muted">Meter data comes in through the day, so a later send holds more of it.</p>
+  `;
+}
+
+function protoReportAttachHtml(draft) {
+  if (!protoReportEmailsOn(draft)) return "";
+  const on = draft.attach !== false;
+  const what = draft.type === "billing" ? "bill" : "file";
+  return `
+    <button
+      type="button"
+      role="checkbox"
+      class="astral-report-consent"
+      aria-checked="${on ? "true" : "false"}"
+      data-proto-report-attach
+    >
+      ${protoCheck(on)}
+      <span class="astral-report-consent-copy">
+        <span>Attach the ${what} to the email</span>
+        <span class="astral-muted">${
+          on ? `The email holds the ${what}.` : `The email links to the ${what} on Downloads.`
+        }</span>
+      </span>
+    </button>
   `;
 }
 
@@ -8392,8 +8498,8 @@ function protoReportDeliveryFields(draft, opts = {}) {
     ${
       ways.includes("email")
         ? opts.page
-          ? '<p class="astral-muted">Email goes to everyone in Recipients.</p>'
-          : protoReportRecipientsHtml(draft)
+          ? `<p class="astral-muted">Email goes to everyone in Recipients.</p>${protoReportAttachHtml(draft)}`
+          : `${protoReportAttachHtml(draft)}${protoReportRecipientsHtml(draft)}`
         : ""
     }
     ${server.length ? protoReportServerFields(draft, serverName) : ""}
@@ -8510,14 +8616,22 @@ function protoReportGroups(draft, opts = {}) {
               'inputmode="email" placeholder="accounts@tenant.com"'
             )}
           </div>
-          <p class="astral-muted">The bill goes by email to the tenant and everyone on the list.</p>
-          ${opts.page ? "" : protoReportConsentHost(draft)}
         `
       ),
       protoReportGroup("charges", protoReportBillSplit(draft)),
       protoReportGroup(
         "schedule",
         `${protoReportWhenFields(draft)}<div class="astral-report-pair">${protoReportSendAtSelect(draft)}</div>`
+      ),
+      protoReportGroup(
+        "delivery",
+        `
+          <p class="astral-muted">The bill goes by email to the tenant and everyone ${
+            opts.page ? "in Recipients" : "on the list"
+          }.</p>
+          ${protoReportAttachHtml(draft)}
+          ${opts.page ? "" : protoReportSampleHtml(draft)}
+        `
       ),
     ];
   }
@@ -8747,6 +8861,7 @@ function protoReportEditModal() {
             }
           </div>
           <div class="astral-modal-foot">
+            ${draft ? protoReportConsentHost(draft) : ""}
             <p class="astral-muted astral-report-issue" data-proto-report-issue${
               issue && draft ? "" : " hidden"
             }>${escapeHtml(issue)}</p>
@@ -20908,6 +21023,11 @@ function onPrototype(event) {
     protoRunReportTest();
     return;
   }
+  if (event.target.closest("[data-proto-report-attach]")) {
+    const draft = protoReportDraft();
+    if (draft) protoReportPatchDraft({ attach: draft.attach === false });
+    return;
+  }
   if (event.target.closest("[data-proto-report-consent]")) {
     protoReportToggleConsent();
     return;
@@ -22859,7 +22979,7 @@ function onPrototypeSubmit(event) {
     const draft = protoReportDraft();
     if (!draft || protoReportDraftIssue(draft)) return;
     const def = protoReportDraftDef(draft);
-    const fresh = protoReportConsent(draft).fresh.length;
+    const fresh = protoReportConsent(draft).fresh.filter(protoReportIsPersonKey).length;
     const defs = protoReportDefs();
     const next = defs.some((item) => item.id === def.id)
       ? defs.map((item) => (item.id === def.id ? def : item))

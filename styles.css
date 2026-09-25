@@ -9680,7 +9680,7 @@ button.astral-state {
   display: none;
 }
 
-.astral-report-who .astral-report-consent-host {
+.astral-report-who .astral-report-sample {
   margin-top: 16px;
 }
 
@@ -9816,6 +9816,8 @@ button.astral-state {
 
 .astral-report-page-foot {
   grid-column: 1 / -1;
+  display: grid;
+  gap: 16px;
 }
 
 .astral-report-page-foot .astral-actions {
