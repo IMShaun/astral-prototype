@@ -52,6 +52,8 @@ const PROTO_ICON_MARKS = {
   report: `<path d="M7 3.75h7.2L19.5 9v11.25H7V3.75z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><path d="M14.2 3.75V9H19.5M9.6 12.6h6.3M9.6 16.2h4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
   servicing: `<path d="M14.6 6.4a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3-3a5.5 5.5 0 0 1-7.3 7.3l-6.1 6.1a2.05 2.05 0 0 1-2.9-2.9l6.1-6.1a5.5 5.5 0 0 1 7.3-7.3l-3.1 2.9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
   inbox: `<path d="M3.75 12.75h4.5l1.5 2.25h4.5l1.5-2.25h4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /><path d="M6.4 5.25h11.2l2.65 7.5v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-5.25l2.65-7.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />`,
+  grid: `<rect x="4" y="4" width="6.5" height="6.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" />`,
+  list: `<path d="M9.5 6.5h10.5M9.5 12h10.5M9.5 17.5h10.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><circle cx="5" cy="6.5" r="1.4" fill="currentColor" /><circle cx="5" cy="12" r="1.4" fill="currentColor" /><circle cx="5" cy="17.5" r="1.4" fill="currentColor" />`,
 };
 
 function protoIconNames() {
@@ -166,6 +168,25 @@ function protoTabs(items, active, attr, aria) {
           return `<button type="button" role="tab" class="${on ? "is-on" : ""}" ${hit}="${protoEsc(
             item.id
           )}" aria-selected="${on ? "true" : "false"}" tabindex="${reach}">${protoEsc(item.name)}</button>`;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+// Two or three looks for the same items, as icon buttons. Each is pressed or not.
+function protoViewSwitch(items, active, attr, aria) {
+  const list = items || [];
+  const hit = attr || "data-proto-view-switch";
+  return `
+    <div class="astral-view-switch" role="group" aria-label="${protoEsc(aria || "View")}">
+      ${list
+        .map((item) => {
+          const on = item.id === active;
+          const btn = `<button type="button" class="${on ? "is-on" : ""}" ${hit}="${protoEsc(item.id)}" aria-pressed="${
+            on ? "true" : "false"
+          }" aria-label="${protoEsc(item.name)}">${protoIconMark(item.icon)}</button>`;
+          return protoIconTip(btn, item.name);
         })
         .join("")}
     </div>
@@ -720,6 +741,15 @@ function astralPreview(id) {
       "data-library-tab",
       "Consumption, Cost, Carbon, Site profile, Alerts, and Queries"
     ),
+    "view-switch": protoViewSwitch(
+      [
+        { id: "cards", name: "Card view", icon: "grid" },
+        { id: "list", name: "List view", icon: "list" },
+      ],
+      "cards",
+      "data-library-view",
+      "View"
+    ),
     breadcrumbs: protoBreadcrumbs(["Network Rail", "Crewe depot", "1600002234567"]),
     pagination: `${protoIconBtn("prev", "Previous")}${protoIconBtn("next", "Next", "", {
       disabled: true,
@@ -745,6 +775,7 @@ window.AstralUI = {
   tag: protoTag,
   switch: protoSwitch,
   tabs: protoTabs,
+  viewSwitch: protoViewSwitch,
   filter: protoFilterShell,
   search: protoSearchField,
   modalHead: protoModalHead,

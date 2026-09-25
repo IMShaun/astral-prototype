@@ -5728,6 +5728,7 @@ button.astral-catch {
 }
 
 .astral-stage-body > .astral-card:only-child > .astral-downloads-head,
+.astral-stage-body > .astral-card:only-child > .astral-sheet-head,
 .astral-stage-body > .astral-card:only-child > .astral-card-tabs,
 .astral-stage-body > .astral-card:only-child > .astral-card-head {
   flex: none;
@@ -5824,20 +5825,140 @@ button.astral-catch {
   overflow: hidden;
 }
 
-.astral-downloads-head {
+.astral-downloads-head,
+.astral-sheet-head {
   display: grid;
   gap: 8px;
 }
 
-.astral-downloads-tools {
+.astral-downloads-tools,
+.astral-sheet-tools {
   display: flex;
   align-items: flex-start;
   gap: 8px;
 }
 
-.astral-downloads-tools .astral-search {
+.astral-downloads-tools .astral-search,
+.astral-sheet-tools .astral-search {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+/* View switch. Same outline as Tabs, sized to sit beside a 36px Search. */
+.astral-view-switch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  height: var(--control-height-sm);
+  padding: 3px;
+  border: 1px solid var(--color-border-control);
+  border-radius: 999px;
+  background: #fff;
+}
+
+.astral-view-switch button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: #000;
+  cursor: pointer;
+  transition: background-color var(--motion-slide) var(--ease-slide), color var(--motion-slide) var(--ease-slide);
+}
+
+.astral-view-switch button svg {
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+
+.astral-view-switch button:hover {
+  background: var(--color-background-hover);
+}
+
+.astral-view-switch button.is-on,
+.astral-view-switch button.is-on:hover {
+  background: var(--color-nav);
+  color: var(--color-on-nav);
+}
+
+.astral-view-switch button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .astral-view-switch button {
+    transition: none;
+  }
+}
+
+.astral-stage-body > .astral-reports-sheet > .astral-table-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.astral-report-table .astral-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.astral-report-table .astral-table th,
+.astral-report-table .astral-table td {
+  vertical-align: middle;
+  overflow-wrap: break-word;
+}
+
+.astral-report-table .astral-table th:nth-child(1) {
+  width: 22%;
+}
+
+.astral-report-table .astral-table th:nth-child(2) {
+  width: 9.5rem;
+}
+
+.astral-report-table .astral-table th:nth-child(4) {
+  width: 15rem;
+}
+
+.astral-report-table .astral-table th:nth-child(5),
+.astral-report-table .astral-table td.astral-report-row-acts {
+  width: 7.5rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.astral-report-table .astral-report-wait {
+  flex-wrap: nowrap;
+}
+
+.astral-report-table tbody tr:hover,
+.astral-report-table tbody tr:focus-within {
+  background: var(--color-background-hover);
+}
+
+.astral-report-table tbody tr.is-off {
+  background: var(--color-background-subtle);
+}
+
+.astral-report-row-switch {
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.astral-reports-sheet > .astral-empty .astral-text {
+  justify-self: start;
+  margin-top: 8px;
 }
 
 .astral-downloads .astral-table {

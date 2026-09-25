@@ -649,6 +649,9 @@ function protoPageFilterReset() {
     prototypeDownloadQuery: "",
     prototypeDownloadFilters: [],
     prototypeDownloadFilterOpen: false,
+    prototypeReportQuery: "",
+    prototypeReportFilters: [],
+    prototypeReportFilterOpen: false,
     prototypeUserQuery: "",
     prototypeCompanyQuery: "",
     prototypeUserRoleFilter: [],
@@ -6084,6 +6087,7 @@ function protoOpenMenuKeys() {
   if (store.prototypePaneFilterOpen) keys.push("astral-pane-filter-menu");
   if (store.prototypeCompareFilterOpen) keys.push("astral-compare-filter-menu");
   if (store.prototypeDownloadFilterOpen) keys.push("astral-download-filter-menu");
+  if (store.prototypeReportFilterOpen) keys.push("astral-report-filter-menu");
   if (store.prototypeUserRoleFilterOpen) keys.push("astral-user-filter-menu");
   if (store.prototypeAckOpen) keys.push(`ack:${store.prototypeAckOpen}`);
   if (store.prototypeQueryMore) keys.push(`more:${store.prototypeQueryMore}`);
@@ -10995,6 +10999,7 @@ function protoFilterMeterHit(id, meter) {
 }
 
 function protoFilterItemCount(attr, item) {
+  if (attr === "data-proto-report-filter") return protoReportFilterCount(item?.id);
   const pool = protoFilterPool(attr);
   const id = item?.id;
   if (!pool || !id || !PROTO_FILTER_COUNTED.has(id)) return null;
@@ -11159,6 +11164,20 @@ function protoToggleDownloadFilterGroup(groupId) {
   protoRestoreFocus(`#astral-download-filter-menu [data-proto-download-filter-all="${CSS.escape(groupId)}"]`);
 }
 
+function protoToggleReportFilterGroup(groupId) {
+  const group = protoReportFilterGroups().find((row) => row.id === groupId);
+  if (!group) return;
+  const picked = protoReportFilterIds();
+  const selectAll = protoFilterGroupTickState(group, "data-proto-report-filter", picked) !== "on";
+  setProto({
+    prototypeReportFilterOpen: true,
+    prototypeReportFilters: protoReportFilterIds(
+      protoFilterGroupSelectNext(picked, group, !selectAll, "data-proto-report-filter")
+    ),
+  });
+  protoRestoreFocus(`#astral-report-filter-menu [data-proto-report-filter-all="${CSS.escape(groupId)}"]`);
+}
+
 function protoToggleUserFilterGroup(groupId) {
   const group = protoUserFilterGroups().find((row) => row.id === groupId);
   if (!group) return;
@@ -11178,6 +11197,7 @@ const PROTO_FILTER_MENU_IDS = {
   "data-proto-pane-filter": "astral-pane-filter-menu",
   "data-proto-compare-filter": "astral-compare-filter-menu",
   "data-proto-download-filter": "astral-download-filter-menu",
+  "data-proto-report-filter": "astral-report-filter-menu",
   "data-proto-user-filter": "astral-user-filter-menu",
 };
 
@@ -11338,7 +11358,12 @@ function protoFilterTickGroups(picked, attr, groups = PROTO_TREE_FILTERS) {
         const on = protoFilterItemOn(attr, picked, item);
         const avail = protoFilterItemAvailable(attr, item);
         const count = protoFilterItemCount(attr, item);
-        const noun = attr === "data-proto-tree-filter" ? "site" : "meter";
+        const noun =
+          attr === "data-proto-tree-filter"
+            ? "site"
+            : attr === "data-proto-report-filter"
+              ? protoReportSheetTab() === "alerts" ? "alert" : "report"
+              : "meter";
         const countHtml =
           count === null
             ? ""
@@ -15612,20 +15637,290 @@ function protoAlertRules() {
   return protoReportsSheet(PROTO_ALERT_RULES_VIEW, defs, empty);
 }
 
+const PROTO_REPORT_FILTERS = {
+  reports: [
+    {
+      id: "type",
+      name: "Type",
+      items: protoReportTypesFor("reports").map((item) => ({ id: item.id, name: item.short })),
+    },
+    {
+      id: "status",
+      name: "Status",
+      items: [
+        { id: "scheduled", name: "Scheduled" },
+        { id: "sent", name: "Sent" },
+        { id: "paused", name: "Paused" },
+      ],
+    },
+    {
+      id: "often",
+      name: "How often",
+      items: PROTO_REPORT_PERIODS.map((item) => ({ id: item.id, name: item.every })),
+    },
+    {
+      id: "way",
+      name: "Send by",
+      items: PROTO_REPORT_DELIVERY.map((item) => ({ id: item.id, name: item.name })),
+    },
+  ],
+  alerts: [
+    {
+      id: "type",
+      name: "Type",
+      items: protoReportTypesFor("alerts").map((item) => ({ id: item.id, name: item.short })),
+    },
+    {
+      id: "status",
+      name: "Status",
+      items: [
+        { id: "flagged", name: "Sites flagged" },
+        { id: "clear", name: "No sites flagged" },
+        { id: "paused", name: "Paused" },
+      ],
+    },
+    {
+      id: "tell",
+      name: "Tell people",
+      items: PROTO_REPORT_NOTIFY.map((item) => ({ id: item.id, name: item.name })),
+    },
+  ],
+};
+
+const PROTO_REPORT_LAYOUTS = [
+  { id: "cards", name: "Card view", icon: "grid" },
+  { id: "list", name: "List view", icon: "list" },
+];
+
+function protoReportSheetTab() {
+  return protoViewId(store.activePrototypeView) === PROTO_ALERT_RULES_VIEW ? "alerts" : "reports";
+}
+
+function protoReportSheetDefs(tab = protoReportSheetTab()) {
+  return protoReportDefs().filter((def) => protoReportTabOf(def.type) === tab);
+}
+
+function protoReportFilterGroups(tab = protoReportSheetTab()) {
+  return PROTO_REPORT_FILTERS[tab] || PROTO_REPORT_FILTERS.reports;
+}
+
+function protoReportFilterIds(raw, tab = protoReportSheetTab()) {
+  const known = new Set(protoReportFilterGroups(tab).flatMap((group) => group.items.map((item) => item.id)));
+  const list = Array.isArray(raw)
+    ? raw
+    : Array.isArray(store.prototypeReportFilters)
+      ? store.prototypeReportFilters
+      : [];
+  return [...new Set(list.map(String))].filter((id) => known.has(id));
+}
+
+function protoReportQuery() {
+  return String(store.prototypeReportQuery || "");
+}
+
+function protoReportLayout() {
+  return store.prototypeReportLayout === "list" ? "list" : "cards";
+}
+
+// What a report is for each filter group. A report can send more than one way.
+function protoReportFacet(def, groupId) {
+  if (groupId === "type") return [def.type];
+  if (groupId === "status") {
+    if (!def.on) return ["paused"];
+    if (def.type === "alert" || def.type === "missing") {
+      return [protoReportFlaggedHours(def) === null ? "clear" : "flagged"];
+    }
+    return [protoReportOnce(def) && !protoReportNextSend(def) ? "sent" : "scheduled"];
+  }
+  if (groupId === "often") return [def.period];
+  if (groupId === "way") return def.type === "billing" ? ["email"] : def.delivery || [];
+  if (groupId === "tell") return def.notify || [];
+  return [];
+}
+
+function protoReportHay(def) {
+  const type = protoReportType(def.type);
+  const people = protoReportRecipientRows(protoReportDraftFrom(def))
+    .filter((row) => !row.fixed)
+    .map((row) => `${row.name} ${row.email}`)
+    .join(" ");
+  return [def.name, type.short, type.name, protoReportSummary(def), people, def.tenant, def.tenantEmail]
+    .join(" ")
+    .toLowerCase();
+}
+
+// Every word must match. Within a filter group any tick matches. Across groups all must.
+function protoReportMatches(def, q, picked, tab) {
+  const words = String(q || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length) {
+    const hay = protoReportHay(def);
+    if (!words.every((word) => hay.includes(word))) return false;
+  }
+  return protoReportFilterGroups(tab).every((group) => {
+    const on = group.items.map((item) => item.id).filter((id) => picked.includes(id));
+    return !on.length || protoReportFacet(def, group.id).some((value) => on.includes(value));
+  });
+}
+
+function protoReportFilterCount(id, tab = protoReportSheetTab()) {
+  const group = protoReportFilterGroups(tab).find((row) => row.items.some((item) => item.id === id));
+  if (!group) return null;
+  return protoReportSheetDefs(tab).filter((def) => protoReportFacet(def, group.id).includes(id)).length;
+}
+
+function protoReportFilterName(id, tab) {
+  for (const group of protoReportFilterGroups(tab)) {
+    const item = group.items.find((row) => row.id === id);
+    if (item) return item.name;
+  }
+  return id;
+}
+
+function protoReportFilterControl(tab) {
+  const picked = protoReportFilterIds(null, tab);
+  return protoFilterShell({
+    hit: 'data-proto-report-filter="toggle"',
+    open: Boolean(store.prototypeReportFilterOpen),
+    count: picked.length,
+    menuId: "astral-report-filter-menu",
+    clear: 'data-proto-report-filter="clear"',
+    canClear: picked.length > 0,
+    menu: protoFilterTickGroups(picked, "data-proto-report-filter", protoReportFilterGroups(tab)),
+  });
+}
+
+function protoReportFilterPills(tab) {
+  const picked = protoReportFilterIds(null, tab);
+  if (!picked.length) return "";
+  const pills = picked
+    .map((id) => {
+      const name = protoReportFilterName(id, tab);
+      return `
+        <span class="astral-filter-pill">
+          <span>${escapeHtml(name)}</span>
+          ${protoClearButton("astral-filter-pill-clear", `data-proto-report-filter="${escapeHtml(id)}"`, `Clear ${name}`)}
+        </span>
+      `;
+    })
+    .join("");
+  return `
+    <div class="astral-filter-pills">
+      ${pills}
+      ${protoTextBtn("Clear", 'data-proto-report-filter="clear"')}
+    </div>
+  `;
+}
+
+function protoReportTools(tab) {
+  return `
+    <div class="astral-sheet-head">
+      <div class="astral-sheet-tools">
+        ${protoSearchField({
+          name: "proto-report-query",
+          value: protoReportQuery(),
+          placeholder: "Search name, site, or person",
+          label: tab === "alerts" ? "Search alerts by name, site, or person" : "Search reports by name, site, or person",
+        })}
+        ${protoReportFilterControl(tab)}
+        ${protoViewSwitch(PROTO_REPORT_LAYOUTS, protoReportLayout(), "data-proto-report-layout", "View")}
+      </div>
+      ${protoReportFilterPills(tab)}
+    </div>
+  `;
+}
+
+function protoReportStatusSort(def) {
+  if (!def.on) return "";
+  if (def.type === "alert" || def.type === "missing") {
+    const hours = protoReportFlaggedHours(def);
+    return hours === null ? "" : hours;
+  }
+  const when = protoReportNextSend(def) || protoFromUkDate(def.start);
+  return when ? when.getTime() : "";
+}
+
+function protoReportRow(def, canEdit) {
+  const type = protoReportType(def.type);
+  const id = escapeHtml(def.id);
+  const edit = protoReportTabOf(def.type) === "alerts" ? "Edit alert" : "Edit report";
+  return `
+    <tr class="${def.on ? "" : "is-off"}" data-proto-report-row="${id}">
+      <th scope="row">${escapeHtml(def.name)}</th>
+      <td>${protoTag(type.short, type.blurb, `is-${def.type}`)}</td>
+      <td class="astral-muted">${escapeHtml(protoReportSummary(def))}</td>
+      <td><span class="astral-report-wait">${protoReportStatusHtml(def)}</span></td>
+      ${
+        canEdit
+          ? `<td class="astral-report-row-acts"><div class="astral-downloads-acts">${protoIconBtn(
+              "settings",
+              edit,
+              `data-proto-report-edit="${id}"`
+            )}<span class="astral-report-row-switch" data-proto-report-toggle="${id}">${protoSwitch(
+              def.on,
+              def.name
+            )}</span></div></td>`
+          : ""
+      }
+    </tr>
+  `;
+}
+
+function protoReportTable(tab, defs) {
+  const canEdit = protoCanEditReports();
+  const tableId = tab === "alerts" ? PROTO_ALERT_RULES_VIEW : "reports";
+  const rows = protoSortedRows(tableId, defs, (def, key) => {
+    if (key === "name") return def.name;
+    if (key === "type") return protoReportType(def.type).short;
+    if (key === "status") return protoReportStatusSort(def);
+    return "";
+  });
+  return `
+    <div class="astral-table-wrap is-tips astral-report-table">
+      <table class="astral-table">
+        <thead>
+          <tr>
+            ${protoSortHead(tableId, "name", "Name")}
+            ${protoSortHead(tableId, "type", "Type")}
+            <th scope="col">${tab === "alerts" ? "What it watches" : "What it sends"}</th>
+            ${protoSortHead(tableId, "status", "Status")}
+            ${canEdit ? '<th scope="col"><span class="sr-only">Actions</span></th>' : ""}
+          </tr>
+        </thead>
+        <tbody>${rows.map((def) => protoReportRow(def, canEdit)).join("")}</tbody>
+      </table>
+    </div>
+  `;
+}
+
 function protoReportsSheet(active, defs, empty) {
   const tab = active === PROTO_ALERT_RULES_VIEW ? "alerts" : "reports";
   const cardTabs = tab === "alerts" ? protoAlertsCardTabs(active) : protoReportsCardTabs(active);
+  const top = `${protoReportsAreaHead(active)}${protoReportNoticeHtml()}${protoReportEditModal()}`;
+  if (!defs.length) {
+    return astralShell(`
+      ${top}
+      <section class="astral-card astral-reports-sheet">${cardTabs}<div class="astral-empty">${empty}</div></section>
+    `);
+  }
+  const q = protoReportQuery();
+  const picked = protoReportFilterIds(null, tab);
+  const narrowed = Boolean(q.trim() || picked.length);
+  const shown = defs.filter((def) => protoReportMatches(def, q, picked, tab));
+  const layout = protoReportLayout();
+  const noun = tab === "alerts" ? "alerts" : "reports";
+  const body = !shown.length
+    ? `<div class="astral-empty"><h3>No ${noun} match</h3><p class="astral-muted">Try another word or fewer filters.</p>${protoTextBtn(
+        "Clear search and filters",
+        'data-proto-report-filter="reset"'
+      )}</div>`
+    : layout === "list"
+      ? protoReportTable(tab, shown)
+      : `<div class="astral-report-grid">${shown.map((def) => protoReportCard(def)).join("")}${
+          narrowed ? "" : protoReportSoonCards(tab)
+        }</div>`;
   return astralShell(`
-    ${protoReportsAreaHead(active)}
-    ${protoReportNoticeHtml()}
-    ${protoReportEditModal()}
-    ${
-      defs.length
-        ? `<section class="astral-card astral-reports-sheet">${cardTabs}<div class="astral-report-grid">${defs
-            .map((def) => protoReportCard(def))
-            .join("")}${protoReportSoonCards(tab)}</div></section>`
-        : `<section class="astral-card astral-reports-sheet">${cardTabs}<div class="astral-empty">${empty}</div></section>`
-    }
+    ${top}
+    <section class="astral-card astral-reports-sheet is-${layout}">${cardTabs}${protoReportTools(tab)}${body}</section>
   `);
 }
 
@@ -20518,6 +20813,8 @@ function onPrototype(event) {
               ? { prototypeCompareQuery: "" }
               : name === "proto-download-query"
                 ? { prototypeDownloadQuery: "" }
+              : name === "proto-report-query"
+                ? { prototypeReportQuery: "" }
               : null;
     if (!patch) return;
     setProto(patch);
@@ -21129,7 +21426,7 @@ function onPrototype(event) {
     const switchEl = toggleHost.querySelector(".astral-switch");
     switchEl?.classList.toggle("is-on", nextOn);
     switchEl?.setAttribute("aria-checked", nextOn ? "true" : "false");
-    const card = toggleHost.closest(".astral-card");
+    const card = toggleHost.closest(".astral-card, tr");
     card?.classList.toggle("is-off", !nextOn);
     const wait = card?.querySelector(".astral-report-wait");
     if (wait) wait.innerHTML = protoReportStatusHtml({ ...def, on: nextOn });
@@ -22139,6 +22436,61 @@ function onPrototype(event) {
     );
     return;
   }
+  const reportFilterBtn = event.target.closest("[data-proto-report-filter], [data-proto-report-filter-all]");
+  if (reportFilterBtn) {
+    const groupAll = reportFilterBtn.dataset.protoReportFilterAll;
+    if (groupAll) {
+      protoToggleReportFilterGroup(groupAll);
+      return;
+    }
+    const act = reportFilterBtn.dataset.protoReportFilter;
+    if (act === "toggle") {
+      setProto({
+        prototypeReportFilterOpen: !store.prototypeReportFilterOpen,
+        prototypeDateOpen: false,
+        prototypeExportOpen: false,
+        prototypeSelectOpen: "",
+        prototypeAckOpen: "",
+      });
+      protoRestoreFocus("#astral-fs [data-proto-report-filter='toggle']");
+      return;
+    }
+    if (act === "clear" || act === "reset") {
+      setProto({
+        prototypeReportFilters: [],
+        prototypeReportFilterOpen: false,
+        ...(act === "reset" ? { prototypeReportQuery: "" } : {}),
+      });
+      protoRestoreFocus(
+        act === "reset" ? "#astral-fs input[name='proto-report-query']" : "#astral-fs [data-proto-report-filter='toggle']"
+      );
+      return;
+    }
+    const fromPill = Boolean(reportFilterBtn.closest(".astral-filter-pill"));
+    const cur = protoReportFilterIds();
+    const next = fromPill
+      ? cur.filter((id) => id !== act)
+      : cur.includes(act)
+        ? cur.filter((id) => id !== act)
+        : [...cur, act];
+    setProto({
+      prototypeReportFilterOpen: fromPill ? Boolean(store.prototypeReportFilterOpen) : true,
+      prototypeReportFilters: protoReportFilterIds(next),
+    });
+    protoRestoreFocus(
+      fromPill
+        ? "#astral-fs [data-proto-report-filter='toggle']"
+        : `#astral-report-filter-menu [data-proto-report-filter="${CSS.escape(act)}"]`
+    );
+    return;
+  }
+  const reportLayoutBtn = event.target.closest("[data-proto-report-layout]");
+  if (reportLayoutBtn) {
+    const next = reportLayoutBtn.dataset.protoReportLayout === "list" ? "list" : "cards";
+    if (next !== protoReportLayout()) setProto({ prototypeReportLayout: next, prototypeReportFilterOpen: false });
+    protoRestoreFocus(`#astral-fs [data-proto-report-layout="${next}"]`);
+    return;
+  }
   const downloadsBtn = event.target.closest("[data-proto-downloads]");
   if (downloadsBtn) {
     const act = downloadsBtn.dataset.protoDownloads;
@@ -22235,6 +22587,12 @@ function protoOutsideClosePatch(target) {
     !inside(".astral-downloads .astral-filter, .astral-filter-menu")
   ) {
     patch.prototypeDownloadFilterOpen = false;
+  }
+  if (
+    store.prototypeReportFilterOpen &&
+    !inside(".astral-sheet-tools .astral-filter, .astral-filter-menu")
+  ) {
+    patch.prototypeReportFilterOpen = false;
   }
   if (
     store.prototypeUserRoleFilterOpen &&
@@ -22485,6 +22843,16 @@ function onPrototypeInput(event) {
     const start = compareSearch.selectionStart;
     render();
     if (active) protoRestoreFocus("#astral-fs input[name='proto-compare-query']", start);
+    return;
+  }
+  const reportSearch = event.target.closest("input[name='proto-report-query']");
+  if (reportSearch) {
+    store.prototypeReportQuery = reportSearch.value.slice(0, 120);
+    persistChrome();
+    const active = document.activeElement === reportSearch;
+    const start = reportSearch.selectionStart;
+    render();
+    if (active) protoRestoreFocus("#astral-fs input[name='proto-report-query']", start);
     return;
   }
   const downloadSearch = event.target.closest("input[name='proto-download-query']");
@@ -23130,6 +23498,11 @@ function onPrototypeKey(event) {
     }
     if (store.prototypeDownloadFilterOpen) {
       setProto({ prototypeDownloadFilterOpen: false });
+      return;
+    }
+    if (store.prototypeReportFilterOpen) {
+      setProto({ prototypeReportFilterOpen: false });
+      protoRestoreFocus("#astral-fs [data-proto-report-filter='toggle']");
       return;
     }
     if (store.prototypeUserRoleFilterOpen) {

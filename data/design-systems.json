@@ -2413,7 +2413,7 @@
           "file": "src/components/Search.tsx",
           "family": "forms",
           "summary": "A 36px field for finding a site, a meter, a person, or a download. The label is for the screen reader. Filter sits to the right of Search site or meter. A cross clears the query. Same mark as Filter pills. Focus is a 2px black edge.",
-          "usage": "The parent holds the query. Debounce on the page, not inside Search. Tree Search says Search site or meter. Users Search says Search people, and Search departments or Search companies on the list. Compare Search is the same control. Downloads Search says Search downloads. Add a team Search says Search people, in the people Select. All search bars use the 36px height.",
+          "usage": "The parent holds the query. Debounce on the page, not inside Search. Tree Search says Search site or meter. Users Search says Search people, and Search departments or Search companies on the list. Compare Search is the same control. Downloads Search says Search downloads. Reports and Alerts Settings Search says Search name, site, or person. Add a team Search says Search people, in the people Select. All search bars use the 36px height.",
           "variants": [
             "default"
           ],
@@ -3262,6 +3262,48 @@
             "updatedAt": "2026-09-07T14:01:43Z",
             "tabKey": "58d8f9867ef2dc4c94a041e9d4b897fcaae6edb9"
           }
+        },
+        {
+          "id": "view-switch",
+          "name": "View switch",
+          "react": "ViewSwitch",
+          "file": "src/components/ViewSwitch.tsx",
+          "family": "navigation",
+          "summary": "Two icon buttons in a white pill with a 1px Infra Grey B outline. The selected one is a black pill. Each has a tip with its name. It sits at the end of the Search row, after Filter.",
+          "usage": "The parent holds the choice. Card view and List view on Reports and on Alerts Settings. Card view is the default. The choice stays after a refresh. Both buttons say their name to a screen reader and say which is pressed.",
+          "variants": [
+            "default"
+          ],
+          "states": [
+            "default",
+            "hover",
+            "selected",
+            "focus"
+          ],
+          "tokens": [
+            "semantic.color.action.primary-border",
+            "semantic.color.nav",
+            "semantic.color.on-nav",
+            "semantic.space.4"
+          ],
+          "props": [
+            {
+              "name": "value",
+              "type": "string",
+              "note": "The selected view."
+            },
+            {
+              "name": "options",
+              "type": "{ id: string; label: string; icon: IconName }[]",
+              "note": "The views. The label is the tip and the name."
+            },
+            {
+              "name": "onChange",
+              "type": "(id: string) => void",
+              "note": "The page owns the choice."
+            }
+          ],
+          "snippet": "<ViewSwitch value={view} options={[{ id: \"cards\", label: \"Card view\", icon: \"grid\" }, { id: \"list\", label: \"List view\", icon: \"list\" }]} onChange={setView} />"
         },
         {
           "id": "breadcrumbs",
@@ -4251,6 +4293,12 @@
                 "name": "Tabs",
                 "status": "brand",
                 "note": "A white pill with a 1px Infra Grey B outline. The selected tab is a black pill. The pill slides to the tab they pick. Consumption, Cost, Carbon, Site profile, Alerts, and Queries."
+              },
+              {
+                "id": "view-switch",
+                "name": "View switch",
+                "status": "brand",
+                "note": "Card view and List view on Reports and Alerts Settings. Same outline as Tabs. The selected icon is a black pill."
               },
               {
                 "id": "header",
@@ -6158,7 +6206,7 @@
             "status": "working",
             "say": "Report",
             "avoid": "Excel. Say XLSX. Add a custom report on the customer side.",
-            "note": "Reports sit under Reports and compliance. Tabs are Reports and Downloads. Reports holds Data extract, DC and DA, and Tenant billing. Data alert and Missing data sit on Alerts in the rail. Alerts has two tabs: Activity and Settings. Activity lists what went off. Settings holds the alerts people set up, with Add an alert. A Data alert goes off when use goes Above or Below a threshold. The threshold is a daily kWh or a percentage of the portfolio average. Missing data waits 1 to 48 hours. Tell people is In Astral, Email, or both. In Astral shows it on Alerts for everyone on the list. Tenant billing splits each utility on the site: Electricity, Gas, and Water. Each has a standing charge share and a usage share, from 0 to 100%. VAT (%) adds tax on top. The bill shows each charge, the tenant share, the VAT, and the amount payable. A Data extract holds Interval data, Meter reads, or Missing data. Pick the sites, or All sites for the portfolio. Utility is All utilities, Electricity, Gas, or Water. Channel is Import and export, Import, or Export. Format is CSV or XLSX, one or the other. CSV is for a system to read in. XLSX is for a spreadsheet. Export from a graph gives CSV or PDF. Times are UTC or UK time. Send at picks the hour, 06:00 to 22:00. It starts at 09:00. Meter data comes in through the day, so a later send holds more of it. The card shows the next date and hour. UTC is the default. Send by Email, SFTP, or FTP. SFTP and FTP ask for the server, port, folder, and username. SFTP signs in with a password or an SSH key. With a key, add IMSERV's public key to the user on your server. SFTP needs the server's SSH fingerprint. It starts with SHA256. Astral checks it before every send. FTP says it is unencrypted. Test connection sends a small test file. It says Connected, or why the server turned it away. A failed test warns. It does not block Save. More than one person can get it. Attach the file to the email is on by default. Off, the email links to the file on Downloads. Each email has an opt-out link. The tick sits above Save. It reads I have permission to send this data to everyone on the list, the SFTP server, or both. It asks again when someone new joins, the server changes, or what it sends changes. Save waits for it. You and people already on the list skip it. After Save, a banner says the new recipients get an email that names who added them. Send me a test sends a sample to you. Four cards a row on a wide screen. Three below that. Fewer only on a narrow screen. The card is the name, the type Tag, one line on what it sends, and the next send. Who gets it and where it goes sit in Settings, not on the card. Settings is the cog. It sits on the report card, and next to Download on a Report in Downloads. First send on is dd/mm/yyyy. A calendar overlay picks the day. Files sit on Downloads. The card shows a Scheduled Tag, then the date of the next send, as Wed 1 Oct. Add the year if it is not this year. Not a countdown. Off shows a Paused Tag and no date. Data alert and Missing data cards show a Tag for how long ago the alert went off, then the count, as 3 hours ago, 3 sites flagged. The Tag reads Just now under an hour, then hours, days, weeks or months. With nothing flagged, no Tag. No sites flagged. Coming soon cards have no status line. Coming soon cards sit at the end. You cannot open them.",
+            "note": "Reports sit under Reports and compliance. Tabs are Reports and Downloads. Reports holds Data extract, DC and DA, and Tenant billing. Data alert and Missing data sit on Alerts in the rail. Alerts has two tabs: Activity and Settings. Activity lists what went off. Settings holds the alerts people set up, with Add an alert. A Data alert goes off when use goes Above or Below a threshold. The threshold is a daily kWh or a percentage of the portfolio average. Missing data waits 1 to 48 hours. Tell people is In Astral, Email, or both. In Astral shows it on Alerts for everyone on the list. Tenant billing splits each utility on the site: Electricity, Gas, and Water. Each has a standing charge share and a usage share, from 0 to 100%. VAT (%) adds tax on top. The bill shows each charge, the tenant share, the VAT, and the amount payable. A Data extract holds Interval data, Meter reads, or Missing data. Pick the sites, or All sites for the portfolio. Utility is All utilities, Electricity, Gas, or Water. Channel is Import and export, Import, or Export. Format is CSV or XLSX, one or the other. CSV is for a system to read in. XLSX is for a spreadsheet. Export from a graph gives CSV or PDF. Times are UTC or UK time. Send at picks the hour, 06:00 to 22:00. It starts at 09:00. Meter data comes in through the day, so a later send holds more of it. The card shows the next date and hour. UTC is the default. Send by Email, SFTP, or FTP. SFTP and FTP ask for the server, port, folder, and username. SFTP signs in with a password or an SSH key. With a key, add IMSERV's public key to the user on your server. SFTP needs the server's SSH fingerprint. It starts with SHA256. Astral checks it before every send. FTP says it is unencrypted. Test connection sends a small test file. It says Connected, or why the server turned it away. A failed test warns. It does not block Save. More than one person can get it. Attach the file to the email is on by default. Off, the email links to the file on Downloads. Each email has an opt-out link. The tick sits above Save. It reads I have permission to send this data to everyone on the list, the SFTP server, or both. It asks again when someone new joins, the server changes, or what it sends changes. Save waits for it. You and people already on the list skip it. After Save, a banner says the new recipients get an email that names who added them. Send me a test sends a sample to you. Four cards a row on a wide screen. Three below that. Fewer only on a narrow screen. The card is the name, the type Tag, one line on what it sends, and the next send. Who gets it and where it goes sit in Settings, not on the card. Settings is the cog. It sits on the report card, and next to Download on a Report in Downloads. First send on is dd/mm/yyyy. A calendar overlay picks the day. Files sit on Downloads. The card shows a Scheduled Tag, then the date of the next send, as Wed 1 Oct. Add the year if it is not this year. Not a countdown. Off shows a Paused Tag and no date. Data alert and Missing data cards show a Tag for how long ago the alert went off, then the count, as 3 hours ago, 3 sites flagged. The Tag reads Just now under an hour, then hours, days, weeks or months. With nothing flagged, no Tag. No sites flagged. Coming soon cards have no status line. Coming soon cards sit at the end. You cannot open them. Search, Filter, and View switch sit under the tabs on Reports and on Alerts Settings. Search finds a name, a site, or a person. Every word must match. Reports filters by Type, Status, How often, and Send by. Alerts filters by Type, Status, and Tell people. Card view is the default. List view is a table of Name, Type, What it sends, and Status. Alerts says What it watches. Sort by Name, Type, or Status. The cog and the switch end each row. The view stays after a refresh. With no match it says No reports match, or No alerts match, with Clear search and filters.",
             "from": "Shaun on Reports, 22 Sep, and version one scope register, 24 Sep"
           },
           {
@@ -6720,6 +6768,26 @@
             "avoid": "Wait as the tag. v1.1 on a screen. A date. Beta.",
             "note": "A Tag on a report card for work after version one. The card looks like a live report card, in its disabled state. The title and line are grey. The foot says Not ready yet. Settings and the switch are disabled. Disabled is grey, not a faded colour. No click. It sits at the end of the list, under a Coming soon heading.",
             "from": "Version one scope register, 24 Sep"
+          },
+          {
+            "id": "view-switch-labels",
+            "kind": "labels",
+            "name": "Card view and List view",
+            "status": "working",
+            "say": "Card view. List view.",
+            "avoid": "Grid. Tiles. Table view. Compact.",
+            "note": "The tips on View switch. Name the view, not the icon.",
+            "from": "Shaun on Reports and Alerts, search and view"
+          },
+          {
+            "id": "no-match",
+            "kind": "labels",
+            "name": "No reports match",
+            "status": "working",
+            "say": "No reports match. Try another word or fewer filters. Clear search and filters.",
+            "avoid": "No results found. Oops. Nothing here.",
+            "note": "When Search or Filter hides every report or alert. Alerts says No alerts match. The button clears both at once.",
+            "from": "Shaun on Reports and Alerts, search and view"
           },
           {
             "id": "dc-da-report",
@@ -7289,7 +7357,7 @@
               "table",
               "search"
             ],
-            "note": "Coming soon cards cannot be opened. They sit under the type cards until a type is picked, and at the end of Reports and Settings. Each shows only its own. GSOP reporting is version one in the requirements register but not in the 86 functions. The DV totals, export, and multi-site reports still need a name."
+            "note": "Coming soon cards cannot be opened. They sit under the type cards until a type is picked, and at the end of Reports and Settings. Each shows only its own. They hide while a search or a filter is on. GSOP reporting is version one in the requirements register but not in the 86 functions. The DV totals, export, and multi-site reports still need a name."
           },
           {
             "id": "downloads-on-reports",
