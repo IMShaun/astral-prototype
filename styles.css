@@ -8657,15 +8657,15 @@ button.astral-state {
 }
 
 .astral-zone-edge {
-  stroke: #a8a8a8;
+  stroke: var(--color-text-secondary);
   stroke-width: 1;
   stroke-dasharray: 3 3;
 }
 
-.astral-zone-label {
-  fill: #525252;
-  font-size: 11px;
-  font-weight: 500;
+.astral-chart .astral-zone-label {
+  fill: var(--color-text-secondary);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-medium);
 }
 
 .astral-tou.is-peak {
@@ -8673,20 +8673,20 @@ button.astral-state {
 }
 
 .astral-tou.is-off {
-  fill: #e0e0e0;
+  fill: var(--color-border-default);
 }
 
-.astral-tou-label {
-  font-size: 10px;
-  font-weight: 500;
+.astral-chart .astral-tou-label {
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-medium);
 }
 
-.astral-tou-label.is-peak {
+.astral-chart .astral-tou-label.is-peak {
   fill: var(--color-on-nav);
 }
 
-.astral-tou-label.is-off {
-  fill: #000;
+.astral-chart .astral-tou-label.is-off {
+  fill: var(--color-text-primary);
 }
 
 .astral-chart .is-dim {
@@ -8698,55 +8698,41 @@ button.astral-state {
   flex: none;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 16px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 12px;
-  line-height: 16px;
+  gap: var(--space-4);
+}
+
+.astral-zone-hint {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-12);
   white-space: nowrap;
 }
 
-.astral-zone-key li {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.astral-chart-key-mark.is-zone {
+  background: var(--color-background-surface);
 }
 
-.astral-zone-swatch {
-  flex: none;
-  width: 16px;
-  height: 10px;
-  border: 1px solid var(--color-border-control);
-  border-radius: 2px;
-  background: #fff;
-}
-
-.astral-zone-swatch.is-non {
+.astral-chart-key-mark.is-non {
   background: var(--color-background-subtle);
 }
 
-.astral-zone-swatch.is-closed {
-  background: repeating-linear-gradient(45deg, #efefef 0 3px, #d0d0d0 3px 5px);
+.astral-chart-key-mark.is-closed {
+  background: repeating-linear-gradient(45deg, var(--color-background-subtle) 0 2px, var(--color-border-default) 2px 4px);
 }
 
-.astral-zone-swatch.is-peak {
-  border-color: var(--color-nav);
+.astral-chart-key-mark.is-peak {
   background: var(--color-nav);
 }
 
-.astral-zone-swatch.is-off {
-  border-color: #e0e0e0;
-  background: #e0e0e0;
+.astral-chart-key-mark.is-off {
+  background: var(--color-border-default);
 }
 
-.astral-zone-swatch.is-picked,
-.astral-zone-swatch.is-rest {
-  border: 0;
-}
-
-.astral-zone-swatch.is-rest {
+.astral-chart-key-mark.is-rest {
   opacity: 0.28;
+}
+
+.astral-query-pin-reading.is-part {
+  padding-inline-start: 16px;
 }
 
 .astral-axis {
@@ -8758,8 +8744,8 @@ button.astral-state {
 .astral-axis-y,
 .astral-axis-x,
 .astral-axis-unit {
-  fill: #737373;
-  font-size: 11px;
+  fill: var(--color-text-secondary);
+  font-size: var(--font-size-12);
 }
 
 .astral-hit {
