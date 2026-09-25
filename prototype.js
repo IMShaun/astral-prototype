@@ -667,6 +667,7 @@ function protoPageFilterReset() {
     prototypeMeterOpen: "none",
     prototypeMeterSettings: "",
     prototypeMeterFold: "",
+    prototypeMeterAttrTab: "",
     prototypeBreakdownOpen: false,
     prototypeChartPoint: null,
     prototypeChartView: "total",
@@ -714,6 +715,7 @@ function protoPortfolioHomePatch() {
     prototypeMeterOpen: "none",
     prototypeMeterSettings: "",
     prototypeMeterFold: "",
+    prototypeMeterAttrTab: "",
     prototypeGroupSites: [],
     prototypeSiteMeters: [],
     prototypePaneMeterKinds: null,
@@ -12428,6 +12430,24 @@ function protoMeterAttrGroup(name, fields) {
   `;
 }
 
+// Tabs chunk a form once it holds more than PROTO_FORM_TAB_AT inputs across more than one group.
+const PROTO_FORM_TAB_AT = 7;
+
+function protoMeterAttrTabId(groups) {
+  const raw = String(store.prototypeMeterAttrTab || "");
+  return groups.some((item) => item.id === raw) ? raw : groups[0]?.id || "";
+}
+
+function protoMeterAttrPanel(group, on) {
+  return `
+    <div class="astral-meter-attr-panel" role="tabpanel" id="astral-meter-attr-${escapeHtml(group.id)}" aria-label="${escapeHtml(
+      group.name
+    )}" data-proto-meter-attr-panel="${escapeHtml(group.id)}"${on ? "" : " hidden"}>
+      <div class="astral-meter-attr-grid">${group.fields.join("")}</div>
+    </div>
+  `;
+}
+
 function protoMeterAttrFields(meter, attrs) {
   const order = ["electricity", "gas", "water"];
   const kinds = [...new Set(protoProfileMeters(meter?.id).map((item) => protoMeterKind(item)))].sort(
@@ -12437,15 +12457,23 @@ function protoMeterAttrFields(meter, attrs) {
     protoMeterAttrField("area", "Floor area", attrs.area, "m²"),
     protoMeterAttrField("employees", "Number of employees", attrs.employees, "people"),
   ];
-  return [
-    protoMeterAttrGroup("Site", site),
-    ...kinds.map((kind) =>
-      protoMeterAttrGroup(
-        kind === "water" ? "Water" : kind === "gas" ? "Gas" : "Electricity",
-        protoMeterAttrKindFields(kind, attrs)
-      )
-    ),
-  ].join("");
+  const groups = [
+    { id: "site", name: "Site", fields: site },
+    ...kinds.map((kind) => ({
+      id: kind,
+      name: kind === "water" ? "Water" : kind === "gas" ? "Gas" : "Electricity",
+      fields: protoMeterAttrKindFields(kind, attrs),
+    })),
+  ];
+  const total = groups.reduce((sum, group) => sum + group.fields.length, 0);
+  if (groups.length < 2 || total <= PROTO_FORM_TAB_AT) {
+    return groups.map((group) => protoMeterAttrGroup(group.name, group.fields)).join("");
+  }
+  const active = protoMeterAttrTabId(groups);
+  return `
+    <div class="astral-meter-attr-tabs">${protoTabs(groups, active, "data-proto-meter-attr-tab", "Attributes")}</div>
+    ${groups.map((group) => protoMeterAttrPanel(group, group.id === active)).join("")}
+  `;
 }
 
 function protoMeterAttrKindFields(kind, attrs) {
@@ -12496,6 +12524,7 @@ function protoMeterSettingsReset() {
   return {
     prototypeMeterSettings: "",
     prototypeMeterFold: "",
+    prototypeMeterAttrTab: "",
   };
 }
 
@@ -20756,7 +20785,7 @@ function protoMeasurePillsSoon() {
   }
 }
 
-const protoSlideMemory = { tabs: null, links: null, reportTabs: null };
+const protoSlideMemory = { tabs: null, links: null, reportTabs: null, attrTabs: null };
 
 function protoSlideNavPillsSoon() {
   requestAnimationFrame(() => protoSlideNavPills());
@@ -20779,6 +20808,27 @@ function protoSlideNavPills(options) {
     snap
   );
   protoSlideHost(root.querySelector("nav.astral-links"), ".astral-link[aria-current='page']", "links", snap);
+  protoSlideHost(root.querySelector(".astral-meter-attr-tabs .astral-tabs"), "button.is-on", "attrTabs", snap);
+}
+
+function protoPickMeterAttrTab(id) {
+  store.prototypeMeterAttrTab = id;
+  persistChrome();
+  const root = document.querySelector("#astral-fs .astral-meter-attrs");
+  if (!root) {
+    render();
+    return;
+  }
+  root.querySelectorAll("[data-proto-meter-attr-tab]").forEach((tab) => {
+    const on = tab.dataset.protoMeterAttrTab === id;
+    tab.classList.toggle("is-on", on);
+    tab.setAttribute("aria-selected", on ? "true" : "false");
+    tab.tabIndex = on ? 0 : -1;
+  });
+  root.querySelectorAll("[data-proto-meter-attr-panel]").forEach((panel) => {
+    panel.hidden = panel.dataset.protoMeterAttrPanel !== id;
+  });
+  protoSlideHost(root.querySelector(".astral-meter-attr-tabs .astral-tabs"), "button.is-on", "attrTabs", false);
 }
 
 function protoSlideHost(host, currentSel, key, snap) {
@@ -22361,10 +22411,16 @@ function onPrototype(event) {
         prototypeMeterSettings: id,
         prototypeMeterOpen: id,
         prototypeMeterFold: "",
+        prototypeMeterAttrTab: "",
         prototypePane: "profile",
       },
       { pane: true }
     );
+    return;
+  }
+  const meterAttrTab = event.target.closest("[data-proto-meter-attr-tab]");
+  if (meterAttrTab) {
+    protoPickMeterAttrTab(String(meterAttrTab.dataset.protoMeterAttrTab || ""));
     return;
   }
   const meterFold = event.target.closest("[data-proto-meter-fold]");
