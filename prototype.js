@@ -14144,6 +14144,46 @@ function protoScrollRestore(root, saved) {
   });
 }
 
+// A refresh keeps the scroll. Saved on the way out, put back once the real content shows.
+const PROTO_SCROLL_STASH = "astral-proto-scroll";
+let protoScrollBootDone = false;
+
+function protoScrollStash() {
+  const root = document.querySelector("#astral-fs");
+  if (!root || root.hidden || protoLibraryOn()) return;
+  const saved = [];
+  root.querySelectorAll("*").forEach((node) => {
+    if (!node.scrollTop && !node.scrollLeft) return;
+    saved.push({ key: protoScrollNodeKey(node, root), top: node.scrollTop, left: node.scrollLeft });
+  });
+  try {
+    sessionStorage.setItem(
+      PROTO_SCROLL_STASH,
+      JSON.stringify({ page: protoScrollPageKey(), pane: protoScrollPaneKey(), saved })
+    );
+  } catch {
+    /* Private mode can refuse storage. The place still comes back, just not the scroll. */
+  }
+}
+
+function protoScrollBootTake() {
+  if (protoScrollBootDone || protoSkel) return null;
+  protoScrollBootDone = true;
+  let stash = null;
+  try {
+    stash = JSON.parse(sessionStorage.getItem(PROTO_SCROLL_STASH) || "null");
+    sessionStorage.removeItem(PROTO_SCROLL_STASH);
+  } catch {
+    return null;
+  }
+  if (!stash || stash.page !== protoScrollPageKey() || !Array.isArray(stash.saved)) return null;
+  const keepPane = stash.pane === protoScrollPaneKey();
+  const saved = stash.saved.filter((item) => item && typeof item.key === "string" && (keepPane || !/astral-pane/.test(item.key)));
+  return saved.length ? saved : null;
+}
+
+window.addEventListener("pagehide", protoScrollStash);
+
 function protoPaintPortfolioPane() {
   const pane = document.querySelector("#astral-fs section.astral-pane");
   if (!pane) {
@@ -19268,6 +19308,7 @@ function renderPrototype() {
       }
       protoPaintWalkFs(fs);
       protoScrollRestore(fs, scroll);
+      protoScrollRestore(fs, protoScrollBootTake());
     }
   }
   document.body.classList.toggle("is-proto-fs", full);

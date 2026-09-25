@@ -3777,6 +3777,19 @@ const CHROME_FIELDS = [
   "prototypeMeExpiresOn",
   "prototypeMeContractName",
   "prototypeTableSort",
+  "prototypeTeam",
+  "prototypeMeterSettings",
+  "prototypeMeterFold",
+  "prototypeReportEdit",
+  "prototypeReportFrom",
+  "prototypeReportDraft",
+  "prototypeReportDraftStart",
+  "prototypeReportDraftFrom",
+  "prototypeReportDraftTo",
+  "prototypeReportGroup",
+  "prototypeReportQuery",
+  "prototypeReportFilters",
+  "prototypeReportLayout",
 ];
 
 function persistChrome() {
@@ -3872,7 +3885,28 @@ function applyChrome() {
     ? store.researchSeverity
     : "all";
   store.activePrototypeView = protoViewId(store.activePrototypeView);
-  Object.assign(store, protoPortfolioHomePatch());
+  // A refresh keeps the place. Opening Portfolio from the rail still lands on All.
+  store.prototypeScope = store.prototypeScope === "site" ? "site" : "group";
+  store.prototypeGroup = String(store.prototypeGroup || (store.prototypeScope === "group" ? "all" : ""));
+  store.prototypeMeterSettings = String(store.prototypeMeterSettings || "");
+  store.prototypeMeterFold = String(store.prototypeMeterFold || "");
+  store.prototypeTeam = String(store.prototypeTeam || "");
+  store.prototypeReportEdit = String(store.prototypeReportEdit || "");
+  store.prototypeReportFrom = String(store.prototypeReportFrom || "");
+  store.prototypeReportDraft =
+    store.prototypeReportDraft && typeof store.prototypeReportDraft === "object" && !Array.isArray(store.prototypeReportDraft)
+      ? store.prototypeReportDraft
+      : null;
+  ["prototypeReportDraftStart", "prototypeReportDraftFrom", "prototypeReportDraftTo"].forEach((key) => {
+    store[key] = String(store[key] || "");
+  });
+  store.prototypeReportGroup = String(store.prototypeReportGroup || "details");
+  store.prototypeReportQuery = String(store.prototypeReportQuery || "").slice(0, 120);
+  store.prototypeReportFilters = Array.isArray(store.prototypeReportFilters)
+    ? store.prototypeReportFilters.filter((id) => typeof id === "string")
+    : [];
+  store.prototypeReportFilterOpen = false;
+  store.prototypeReportLayout = store.prototypeReportLayout === "list" ? "list" : "cards";
   store.prototypeGroupClosed = Array.isArray(store.prototypeGroupClosed)
     ? store.prototypeGroupClosed
     : [];

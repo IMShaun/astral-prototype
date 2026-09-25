@@ -7099,7 +7099,7 @@
             "name": "Dashboard cards",
             "status": "waiting",
             "summary": "How many cards, and what area means.",
-            "now": "Home cards open the place they refer to. Sites that need action open Alerts. Use opens Portfolio. Finance is highest spend. Data health opens Portfolio. The card is the hit target. Many extra widgets still show no data. Admin overview cards open Servicing on the right tab, or Inbox on the right filter.",
+            "now": "Home cards open the place they refer to. Sites that need action open Alerts. Use opens Portfolio. Finance is highest spend. Data health opens Portfolio. The card is the hit target. A refresh keeps the page, the site, the tab, an open report, and the scroll. Portfolio from the rail still opens on All. Many extra widgets still show no data. Admin overview cards open Servicing on the right tab, or Inbox on the right filter.",
             "later": "A snapshot of several views at once, then drill down.",
             "uses": [
               "card"
