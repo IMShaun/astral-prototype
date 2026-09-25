@@ -6425,7 +6425,7 @@ button.astral-state {
 .astral-meter-list-head,
 .astral-meter-row-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 6rem 12rem 10rem;
+  grid-template-columns: minmax(0, 1fr) 6rem 11rem 12rem 9rem;
   gap: 8px;
   align-items: center;
   width: 100%;
@@ -9796,6 +9796,82 @@ button.astral-state {
 
 .astral-report-type-label {
   font-weight: 600;
+}
+
+.astral-tag.is-own {
+  background: var(--color-brand-cyan);
+  color: #000;
+}
+
+.astral-meter-src-cell {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.astral-meter-src-cell .astral-tag {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  line-height: 24px;
+}
+
+.astral-meter-src-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.astral-meter-own {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.astral-meter-src {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+
+.astral-meter-src-item {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.astral-meter-src-item:disabled {
+  cursor: default;
+}
+
+.astral-meter-src-item:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
+
+.astral-meter-rates {
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+}
+
+.astral-meter-own p.astral-muted,
+.astral-meter-own-note {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.astral-meter-own-note {
+  margin-bottom: 16px;
 }
 
 .astral-accordion-note {

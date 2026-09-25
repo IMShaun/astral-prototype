@@ -7150,6 +7150,21 @@
             "note": "Do not use pill buttons for cards with a line of help. Do not grey out later types as cards they might click."
           },
           {
+            "id": "follow-the-site",
+            "name": "Follow the site",
+            "status": "working",
+            "summary": "A meter follows its site's settings until someone sets its own.",
+            "now": "Operational hours, time of use and unit rates belong to the site. Every meter on it follows them. A meter can set its own for any of the three. Each part says where it comes from. From site is a grey tag. Set on this meter is a cyan tag. The meter list has a Settings column that names what a meter sets itself. Pick one meter and the overview shows each value with its tag. Meter settings opens from the row or the overview. Each part is an accordion with two radios, Follow the site or Set for this meter. Following shows the site's values read only. Setting its own starts from the site's values. Site settings names the meters that set their own, so a change there doesn't surprise anyone. Charts and filters read the meter's own values, which is why two meters on one site can shade differently.",
+            "later": "Opening hours as their own part, separate from operational hours.",
+            "uses": [
+              "accordion",
+              "control",
+              "tag",
+              "table"
+            ],
+            "note": "Say why a meter behaves differently at the point someone sees the difference."
+          },
+          {
             "id": "actual-or-estimated",
             "name": "Actual or estimated",
             "status": "working",

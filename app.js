@@ -3641,6 +3641,8 @@ const CHROME_FIELDS = [
   "prototypeMeterOpen",
   "prototypeMeterProfiles",
   "prototypeMeterDrafts",
+  "prototypeMeterOverrides",
+  "prototypeMeterOwnDrafts",
   "prototypeBreakdownOpen",
   "prototypeChartPoint",
   "prototypePointTags",
@@ -3779,6 +3781,7 @@ const CHROME_FIELDS = [
   "prototypeTableSort",
   "prototypeTeam",
   "prototypeMeterSettings",
+  "prototypeMeterOwn",
   "prototypeMeterFold",
   "prototypeMeterAttrTab",
   "prototypeMeterUpload",
@@ -3892,6 +3895,14 @@ function applyChrome() {
   store.prototypeScope = store.prototypeScope === "site" ? "site" : "group";
   store.prototypeGroup = String(store.prototypeGroup || (store.prototypeScope === "group" ? "all" : ""));
   store.prototypeMeterSettings = String(store.prototypeMeterSettings || "");
+  store.prototypeMeterOwn = String(store.prototypeMeterOwn || "");
+  if (store.prototypeMeterOverrides != null && (typeof store.prototypeMeterOverrides !== "object" || Array.isArray(store.prototypeMeterOverrides))) {
+    delete store.prototypeMeterOverrides;
+  }
+  store.prototypeMeterOwnDrafts =
+    store.prototypeMeterOwnDrafts && typeof store.prototypeMeterOwnDrafts === "object" && !Array.isArray(store.prototypeMeterOwnDrafts)
+      ? store.prototypeMeterOwnDrafts
+      : {};
   store.prototypeMeterFold = String(store.prototypeMeterFold || "");
   store.prototypeTeam = String(store.prototypeTeam || "");
   store.prototypeReportEdit = String(store.prototypeReportEdit || "");
@@ -4145,6 +4156,7 @@ async function persist() {
   delete save.prototypeProfileDraftJobTitle;
   delete save.prototypeMeterProfiles;
   delete save.prototypeMeterDrafts;
+  delete save.prototypeMeterOwnDrafts;
   delete save.prototypeInvitedUsers;
   delete save.prototypeUserDrafts;
   const body = JSON.stringify(save, null, 2) + "\n";
