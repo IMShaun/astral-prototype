@@ -34,26 +34,7 @@ const PROTO_TREE_FILTERS = [
     ],
   },
 ];
-const PROTO_PANE_FILTERS = [
-  ...PROTO_TREE_FILTERS,
-  {
-    id: "hours",
-    name: "Hours",
-    items: [
-      { id: "hours-on", name: "Operational" },
-      { id: "hours-non", name: "Non-operational" },
-      { id: "hours-off", name: "Closed" },
-    ],
-  },
-  {
-    id: "tou",
-    name: "Time of use",
-    items: [
-      { id: "tou-on", name: "On peak" },
-      { id: "tou-off", name: "Off peak" },
-    ],
-  },
-];
+const PROTO_PANE_FILTERS = [...PROTO_TREE_FILTERS];
 const PROTO_TREE_FILTER_IDS = PROTO_TREE_FILTERS.flatMap((group) => group.items.map((item) => item.id));
 const PROTO_PANE_FILTER_IDS = PROTO_PANE_FILTERS.flatMap((group) => group.items.map((item) => item.id));
 const PROTO_WEEKDAYS = [
@@ -690,6 +671,8 @@ function protoPageFilterReset() {
     prototypeChartPoint: null,
     prototypeChartView: "total",
     prototypeChartStyle: "bar",
+    prototypeChartShow: "",
+    prototypeChartShowPick: "",
     prototypeChartFlows: null,
     prototypeChartSliceOff: [],
     prototypePaneMeterKinds: null,
@@ -3081,23 +3064,30 @@ function protoHourIsPeak(meter, hour, at) {
   return protoHourInRange(hour, day.onFrom, day.onTo);
 }
 
+// Show puts Hours or Time of use over the graph. It is not a filter. Every reading stays.
+const PROTO_ZONE_TOU = ["tou-on", "tou-off"];
+
+function protoChartShow() {
+  const raw = store.prototypeChartShow;
+  return raw === "hours" || raw === "tou" ? raw : "";
+}
+
+function protoChartShowIds() {
+  const show = protoChartShow();
+  if (show === "hours") return PROTO_ZONE_HOURS.filter((id) => protoPaneHasHourKind(id));
+  if (show === "tou") return PROTO_ZONE_TOU;
+  return [];
+}
+
+function protoChartShowPick() {
+  const ids = protoChartShowIds();
+  const raw = String(store.prototypeChartShowPick || "");
+  return ids.length > 1 && ids.includes(raw) ? raw : "";
+}
+
 function protoChartStackSlices() {
-  const picked = protoPaneFilterIds().filter((id) => protoPaneHasHourKind(id));
-  const hours = protoPickedInGroup(picked, "hours");
-  const tou = protoPickedInGroup(picked, "tou");
-  if (!hours.length && !tou.length) return [];
-  const hourOpts = hours.length ? hours : [null];
-  const touOpts = tou.length ? tou : [null];
-  const slices = [];
-  hourOpts.forEach((hourId) => {
-    touOpts.forEach((touId) => {
-      const slice = { id: [hourId, touId].filter(Boolean).join("|") };
-      if (hourId) slice.hours = hourId;
-      if (touId) slice.tou = touId;
-      slices.push(slice);
-    });
-  });
-  return slices;
+  const show = protoChartShow();
+  return protoChartShowIds().map((id) => (show === "hours" ? { id, hours: id } : { id, tou: id }));
 }
 
 // Hours and Time of use sit on the time axis. Bands behind the bars show hours. A strip under the axis shows tariff.
@@ -3107,12 +3097,14 @@ const PROTO_ZONE_NAMES = { on: "Operational", non: "Non-operational", closed: "C
 let protoZoneCache = null;
 
 function protoChartZones() {
-  const picked = protoPaneFilterIds().filter((id) => protoPaneHasHourKind(id));
-  const hours = protoPickedInGroup(picked, "hours");
-  const tou = protoPickedInGroup(picked, "tou");
-  const allHours = PROTO_ZONE_HOURS.filter((id) => protoPaneHasHourKind(id));
-  const narrowHours = hours.length > 0 && hours.length < allHours.length;
-  const narrowTou = tou.length === 1;
+  const show = protoChartShow();
+  const ids = protoChartShowIds();
+  const pick = protoChartShowPick();
+  const layer = pick ? [pick] : ids;
+  const hours = show === "hours" ? layer : [];
+  const tou = show === "tou" ? layer : [];
+  const narrowHours = show === "hours" && Boolean(pick);
+  const narrowTou = show === "tou" && Boolean(pick);
   return {
     hours,
     tou,
@@ -3130,15 +3122,6 @@ function protoZoneHit(zones, kind, peak) {
   if (zones.narrowHours && !zones.hours.includes(PROTO_ZONE_KIND_ID[kind])) return false;
   if (zones.narrowTou && !zones.tou.includes(peak ? "tou-on" : "tou-off")) return false;
   return true;
-}
-
-function protoZonePickName(zones) {
-  const hours = zones.narrowHours
-    ? zones.hours.map((id) => PROTO_ZONE_NAMES[Object.keys(PROTO_ZONE_KIND_ID).find((k) => PROTO_ZONE_KIND_ID[k] === id)])
-    : [];
-  const tou = zones.narrowTou ? [zones.tou[0] === "tou-on" ? "Peak" : "Off-peak"] : [];
-  const hourText = hours.length > 1 ? `${hours.slice(0, -1).join(", ")} and ${hours[hours.length - 1]}` : hours[0] || "";
-  return [hourText, ...tou].filter(Boolean).join(" \u00b7 ");
 }
 
 // A spread of meters stands in for a big group, so the maths stays quick.
@@ -3291,27 +3274,41 @@ function protoZoneAmount(value, unit) {
   return unit === "\u00a3" ? `\u00a3${amount}` : `${amount} ${unit}`;
 }
 
+const PROTO_ZONE_KEY = {
+  "hours-on": { mark: "is-on", name: "Operational" },
+  "hours-non": { mark: "is-non", name: "Non-operational" },
+  "hours-off": { mark: "is-closed", name: "Closed" },
+  "tou-on": { mark: "is-peak", name: "Peak" },
+  "tou-off": { mark: "is-off", name: "Off-peak" },
+};
+
+// The key under the graph names each zone. Click one to pick it out. The rest of each bar fades.
 function protoZoneKey(zones, buckets, rows, options = {}) {
-  if (!zones.on) return "";
-  const live = (buckets || []).filter(Boolean);
-  const item = (cls, name, style = "") =>
-    `<span class="astral-meter-pill is-on" role="listitem"><span class="astral-chart-key-mark is-zone ${cls}"${
-      style ? ` style="${style}"` : ""
-    } aria-hidden="true"></span><span class="astral-meter-pill-label">${escapeHtml(name)}</span></span>`;
-  const items = [];
-  if (live.length && zones.showHours) {
-    const kinds = new Set(live.map((b) => b.kind));
-    const shut = new Set(live.filter((b) => b.shut >= 0.05).map((b) => (b.kind === "on" ? "non" : b.kind)));
-    if (kinds.has("on")) items.push(item("is-on", "Operational"));
-    if (kinds.has("non") || shut.has("non")) items.push(item("is-non", "Non-operational"));
-    if (kinds.has("closed") || shut.has("closed")) items.push(item("is-closed", "Closed"));
-  }
-  if (live.length && zones.showTou) {
-    items.push(item("is-peak", "Peak"));
-    items.push(item("is-off", "Off-peak"));
-  }
+  const show = protoChartShow();
+  if (!show) return "";
+  const pick = protoChartShowPick();
+  const live = protoChartShowIds();
+  const ids = show === "hours" ? PROTO_ZONE_HOURS : PROTO_ZONE_TOU;
+  const canPick = live.length > 1;
+  const pills = ids
+    .map((id) => {
+      const row = PROTO_ZONE_KEY[id];
+      const mark = `<span class="astral-chart-key-mark is-zone ${row.mark}" aria-hidden="true"></span>`;
+      const label = `<span class="astral-meter-pill-label">${escapeHtml(row.name)}</span>`;
+      if (!live.includes(id)) {
+        return `<button type="button" class="astral-meter-pill is-on is-none" aria-disabled="true" aria-label="${escapeHtml(
+          `${row.name}, none in this view`
+        )}">${mark}${label}</button>`;
+      }
+      if (!canPick) return `<span class="astral-meter-pill is-on" role="listitem">${mark}${label}</span>`;
+      const on = pick === id;
+      return `<button type="button" class="astral-meter-pill is-on${on ? " is-picked" : pick ? " is-rest" : ""}" aria-pressed="${
+        on ? "true" : "false"
+      }" data-proto-chart-show-pick="${escapeHtml(id)}">${mark}${label}</button>`;
+    })
+    .join("");
   let sum = "";
-  if (zones.narrow) {
+  if (pick) {
     let total = 0;
     let picked = 0;
     (rows || []).forEach((point) => {
@@ -3321,16 +3318,15 @@ function protoZoneKey(zones, buckets, rows, options = {}) {
     });
     const unit = (rows || []).find((point) => point.unit)?.unit || "kWh";
     if (total > 0) {
-      const ink = options.stacked ? "#000" : protoIncomingInk();
-      sum = `${item("is-picked", `${protoZonePickName(zones)} ${protoZoneAmount(picked, unit)}, ${Math.round(
-        (picked / total) * 100
-      )}% of the total`, `background:${ink}`)}${options.line ? "" : item("is-rest", "Other times", `background:${ink}`)}`;
+      sum = `<span class="astral-zone-hint is-sum" role="status">${escapeHtml(
+        `${PROTO_ZONE_KEY[pick].name} ${protoZoneAmount(picked, unit)}, ${Math.round((picked / total) * 100)}% of the total`
+      )}</span>`;
     }
-  } else if (!live.length) {
-    sum = `<span class="astral-zone-hint" role="listitem">Tick fewer hours or one tariff to see its share of each bar.</span>`;
+  } else if (canPick) {
+    sum = `<span class="astral-zone-hint">${options.line ? "Pick one to see its share of the total." : "Pick one to see its share of each bar."}</span>`;
   }
-  const body = `${items.join("")}${sum}`;
-  return body ? `<div class="astral-zone-key" role="list" aria-label="Hours and time of use">${body}</div>` : "";
+  const aria = show === "hours" ? "Hours" : "Time of use";
+  return `<div class="astral-zone-key" role="group" aria-label="${aria}">${pills}${sum}</div>`;
 }
 
 function protoSliceHoursName(slice) {
@@ -4238,7 +4234,14 @@ function protoPointFromHit(hit, chart) {
     lastQuality: hit.getAttribute("data-tip-last-quality") || "",
     stacks: protoReadStacks(hit.getAttribute("data-tip-stacks")),
     lastStacks: protoReadStacks(hit.getAttribute("data-tip-last-stacks")),
+    zone: hit.getAttribute("data-tip-zone") || "",
   };
+}
+
+// The time, then the zone it sits in when Show is on.
+function protoChartAtZone(point) {
+  const at = protoChartAt(point?.time || "");
+  return point?.zone ? `${at} \u00b7 ${point.zone}` : at;
 }
 
 function protoChartPoint() {
@@ -4264,6 +4267,7 @@ function protoChartPoint() {
     lastQuality: String(raw.lastQuality || ""),
     stacks: protoReadStacks(raw.stacks),
     lastStacks: protoReadStacks(raw.lastStacks),
+    zone: String(raw.zone || ""),
   };
 }
 
@@ -4847,7 +4851,7 @@ function protoAnalyseControl(point) {
 
 function protoChartPointTitle(point) {
   if (!point) return "";
-  const time = `<p class="astral-muted">${escapeHtml(protoChartAt(point.time))}</p>`;
+  const time = `<p class="astral-muted">${escapeHtml(protoChartAtZone(point))}</p>`;
   const slicesHtml = protoHoverSlices(point, { all: true, drill: true });
   const rows = `<div class="astral-query-pin-readings${slicesHtml.rest ? " is-scroll" : ""}">${slicesHtml.html}</div>`;
   const tags = protoPointTagsOn(point);
@@ -4952,6 +4956,19 @@ function protoChartViewSelect() {
     options: [
       { value: "total", label: total, note: totalNote },
       { value: "individual", label: individual, note: `Which ${parts} made that total` },
+    ],
+  });
+}
+
+function protoChartShowSelect() {
+  return protoSelect({
+    id: "chart-show",
+    label: "Show hours or time of use",
+    value: protoChartShow() || "none",
+    options: [
+      { value: "none", label: "No overlay", note: "Readings only" },
+      { value: "hours", label: "Hours", note: "Operational, Non-operational, and Closed" },
+      { value: "tou", label: "Time of use", note: "Peak and Off-peak" },
     ],
   });
 }
@@ -5077,6 +5094,7 @@ function protoChartNav(pan) {
     <div class="astral-chart-nav">
       ${protoChartViewSelect()}
       ${protoChartStyleSelect()}
+      ${protoChartShowSelect()}
       ${arrows}
     </div>
   `;
@@ -5547,6 +5565,8 @@ function protoChartFinger(label, points) {
     store.prototypeChannel || "",
     protoChartFlowIds().join(","),
     protoChartSliceOffIds().join(","),
+    protoChartShow(),
+    protoChartShowPick(),
     (protoPaneMeterKindIds() || ["*"]).join(","),
     protoPaneFilterIds().join(","),
     protoTreeFilterIds().join(","),
@@ -6120,6 +6140,7 @@ function protoBarChart(points, label, options = {}) {
               }${protoZoneWords(buckets[i], zones)}${mark ? ". Query" : ""}${flag ? ". Alert" : ""}`
             )}"
             data-proto-hit
+            data-tip-zone="${escapeHtml(protoZoneWords(buckets[i], zones).replace(/^\. /, ""))}"
             ${protoHitAttrs(p)}
           />
           ${protoBarFocusMarkup(p, scale, pad, h, x1, x2, bw, paired)}
@@ -6319,6 +6340,7 @@ function protoLineChart(tracks, label, options = {}) {
                   }${protoZoneWords(buckets[i], zones)}${mark ? ". Query" : ""}${flag ? ". Alert" : ""}`
                 )}"
                 data-proto-hit
+                data-tip-zone="${escapeHtml(protoZoneWords(buckets[i], zones).replace(/^\. /, ""))}"
                 ${protoHitAttrs(hit)}
               />
               ${point}
@@ -6875,6 +6897,16 @@ function protoPickSelect(id, value) {
     setProto({
       prototypeSelectOpen: "",
       prototypeChartView: value === "individual" ? "individual" : "total",
+      prototypeChartPoint: null,
+    });
+    return;
+  }
+  if (id === "chart-show") {
+    setProto({
+      prototypeSelectOpen: "",
+      prototypeChartShow: value === "hours" || value === "tou" ? value : "",
+      prototypeChartShowPick: "",
+      prototypeChartSliceOff: [],
       prototypeChartPoint: null,
     });
     return;
@@ -11466,7 +11498,6 @@ function protoTogglePaneFilterGroup(groupId) {
     ).filter((id) =>
       PROTO_PANE_FILTER_IDS.includes(id)
     );
-    if (groupId === "hours" || groupId === "tou") patch.prototypeChartSliceOff = [];
   }
   setProto(patch);
   protoRestoreFocus(`#astral-pane-filter-menu [data-proto-pane-filter-all="${CSS.escape(groupId)}"]`);
@@ -20585,7 +20616,7 @@ function fillProtoTip(hit) {
   tip.dataset.tipTime = point.time;
   tip.dataset.tipChart = chart;
   const timeEl = tip.querySelector(".astral-tip-time");
-  if (timeEl) timeEl.textContent = protoChartAt(point.time);
+  if (timeEl) timeEl.textContent = protoChartAtZone(point);
   const markEl = tip.querySelector(".astral-tip-marks");
   if (markEl) {
     const marks = protoHoverAttachHtml(point, hit);
@@ -22426,6 +22457,16 @@ function onPrototype(event) {
   const chartFlow = event.target.closest("[data-proto-chart-flow]");
   if (chartFlow) {
     protoToggleChartFlow(chartFlow.dataset.protoChartFlow);
+    return;
+  }
+  const showPick = event.target.closest("[data-proto-chart-show-pick]");
+  if (showPick) {
+    const id = showPick.dataset.protoChartShowPick;
+    setProto({
+      prototypeChartShowPick: protoChartShowPick() === id ? "" : id,
+      prototypeChartPoint: null,
+    });
+    protoRestoreFocus(`#astral-fs [data-proto-chart-show-pick="${CSS.escape(id)}"]`);
     return;
   }
   const chartSlice = event.target.closest("[data-proto-chart-slice]");
