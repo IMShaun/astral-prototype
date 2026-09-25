@@ -3100,6 +3100,237 @@ function protoChartStackSlices() {
   return slices;
 }
 
+// Hours and Time of use sit on the time axis. Bands behind the bars show hours. A strip under the axis shows tariff.
+const PROTO_ZONE_HOURS = ["hours-on", "hours-non", "hours-off"];
+const PROTO_ZONE_KIND_ID = { on: "hours-on", non: "hours-non", closed: "hours-off" };
+const PROTO_ZONE_NAMES = { on: "Operational", non: "Non-operational", closed: "Closed" };
+let protoZoneCache = null;
+
+function protoChartZones() {
+  const picked = protoPaneFilterIds().filter((id) => protoPaneHasHourKind(id));
+  const hours = protoPickedInGroup(picked, "hours");
+  const tou = protoPickedInGroup(picked, "tou");
+  const allHours = PROTO_ZONE_HOURS.filter((id) => protoPaneHasHourKind(id));
+  const narrowHours = hours.length > 0 && hours.length < allHours.length;
+  const narrowTou = tou.length === 1;
+  return {
+    hours,
+    tou,
+    on: hours.length > 0 || tou.length > 0,
+    showHours: hours.length > 0,
+    showTou: tou.length > 0,
+    narrowHours,
+    narrowTou,
+    narrow: narrowHours || narrowTou,
+    key: `${hours.join(",")}/${tou.join(",")}/${narrowHours ? 1 : 0}${narrowTou ? 1 : 0}`,
+  };
+}
+
+function protoZoneHit(zones, kind, peak) {
+  if (zones.narrowHours && !zones.hours.includes(PROTO_ZONE_KIND_ID[kind])) return false;
+  if (zones.narrowTou && !zones.tou.includes(peak ? "tou-on" : "tou-off")) return false;
+  return true;
+}
+
+function protoZonePickName(zones) {
+  const hours = zones.narrowHours
+    ? zones.hours.map((id) => PROTO_ZONE_NAMES[Object.keys(PROTO_ZONE_KIND_ID).find((k) => PROTO_ZONE_KIND_ID[k] === id)])
+    : [];
+  const tou = zones.narrowTou ? [zones.tou[0] === "tou-on" ? "Peak" : "Off-peak"] : [];
+  const hourText = hours.length > 1 ? `${hours.slice(0, -1).join(", ")} and ${hours[hours.length - 1]}` : hours[0] || "";
+  return [hourText, ...tou].filter(Boolean).join(" \u00b7 ");
+}
+
+// A spread of meters stands in for a big group, so the maths stays quick.
+function protoZoneSample(meters, max = 24) {
+  const list = (meters || []).filter(Boolean);
+  if (list.length <= max) return list;
+  const step = list.length / max;
+  return Array.from({ length: max }, (_, i) => list[Math.floor(i * step)]);
+}
+
+function protoZoneMeterShare(meter, point, zones) {
+  if (!protoZoneCache) {
+    protoZoneCache = new Map();
+    queueMicrotask(() => {
+      protoZoneCache = null;
+    });
+  }
+  const at = protoPointDate(point);
+  const hour = protoPointHour(point);
+  const key = `${zones.key}|${meter.id}|${at ? at.toDateString() : ""}|${hour ?? point.label}`;
+  if (protoZoneCache.has(key)) return protoZoneCache.get(key);
+  const day = protoHoursDay(meter, at);
+  let share;
+  if (hour != null) {
+    share = protoZoneHit(zones, protoHourKind(meter, hour, day), protoHourIsPeak(meter, hour, at)) ? 1 : 0;
+  } else {
+    const hours = protoSiteHours(meter, day);
+    let total = 0;
+    let hit = 0;
+    for (let i = 0; i < 48; i += 1) {
+      const slot = i / 2;
+      const weight = protoShape(slot, hours);
+      total += weight;
+      if (protoZoneHit(zones, protoHourKind(meter, slot, day), protoHourIsPeak(meter, slot, at))) hit += weight;
+    }
+    share = total ? hit / total : 0;
+  }
+  protoZoneCache.set(key, share);
+  return share;
+}
+
+// How much of a reading falls in the picked hours and tariff, from 0 to 1.
+function protoZoneShare(point, meters, zones) {
+  const list = protoZoneSample(meters);
+  if (!list.length) return 1;
+  return list.reduce((n, meter) => n + protoZoneMeterShare(meter, point, zones), 0) / list.length;
+}
+
+// One entry per bar or point. Null when the point is a day or a month, not a time of day.
+function protoZoneBuckets(rows, meters) {
+  const list = protoZoneSample(meters, 40);
+  return (rows || []).map((point) => {
+    const hour = protoPointHour(point);
+    if (hour == null || !list.length) return null;
+    const at = protoPointDate(point);
+    const n = { on: 0, non: 0, closed: 0, peak: 0 };
+    list.forEach((meter) => {
+      n[protoHourKind(meter, hour, protoHoursDay(meter, at))] += 1;
+      if (protoHourIsPeak(meter, hour, at)) n.peak += 1;
+    });
+    const kind = n.on >= n.non && n.on >= n.closed ? "on" : n.closed > n.non ? "closed" : "non";
+    return { kind, shut: 1 - n.on / list.length, peak: n.peak * 2 >= list.length };
+  });
+}
+
+function protoZoneWords(bucket, zones) {
+  if (!bucket) return "";
+  const bits = [];
+  if (zones.showHours) bits.push(PROTO_ZONE_NAMES[bucket.kind]);
+  if (zones.showTou) bits.push(bucket.peak ? "Peak" : "Off-peak");
+  return bits.length ? `. ${bits.join(", ")}` : "";
+}
+
+function protoZoneLayer(buckets, zones, pad, w, h, spanOf) {
+  const out = { back: "", strip: "" };
+  if (!zones.on || !(buckets || []).some(Boolean)) return out;
+  const bottom = h - pad.b;
+  const runs = (keyOf) => {
+    const list = [];
+    buckets.forEach((bucket, i) => {
+      if (!bucket) return;
+      const k = keyOf(bucket);
+      const last = list[list.length - 1];
+      if (last && last.k === k && last.end === i) last.end = i + 1;
+      else list.push({ k, start: i, end: i + 1 });
+    });
+    return list.map((run) => {
+      const x0 = Math.max(pad.l, spanOf(run.start)[0]);
+      const x1 = Math.min(w - pad.r, spanOf(run.end - 1)[1]);
+      return { ...run, x0, x1, width: Math.max(0, x1 - x0) };
+    });
+  };
+  if (zones.showHours) {
+    const bands = runs((b) => (b.shut < 0.05 ? "on" : `${b.kind === "on" ? "non" : b.kind}:${Math.round(b.shut * 10)}`))
+      .filter((run) => run.k !== "on")
+      .map((run, n) => {
+        const [kind, tenth] = run.k.split(":");
+        const opacity = Math.max(0.35, Number(tenth) / 10);
+        return `<rect class="astral-zone-band is-${kind}" data-m="zb|${n}" x="${run.x0.toFixed(1)}" y="${pad.t}" width="${run.width.toFixed(
+          1
+        )}" height="${(bottom - pad.t).toFixed(1)}" style="opacity:${opacity.toFixed(2)}" />`;
+      })
+      .join("");
+    const named = runs((b) => b.kind);
+    const edges = named
+      .slice(1)
+      .map(
+        (run, n) =>
+          `<line class="astral-zone-edge" data-m="ze|${n}" x1="${run.x0.toFixed(1)}" y1="${pad.t - 6}" x2="${run.x0.toFixed(
+            1
+          )}" y2="${bottom}" />`
+      )
+      .join("");
+    const labels = named
+      .map((run, n) =>
+        run.width < 76
+          ? ""
+          : `<text class="astral-zone-label" data-m="zl|${n}" x="${(run.x0 + run.width / 2).toFixed(1)}" y="${
+              pad.t - 10
+            }" text-anchor="middle">${PROTO_ZONE_NAMES[run.k]}</text>`
+      )
+      .join("");
+    out.back = `<g class="astral-zone" aria-hidden="true"><defs><pattern id="astral-zone-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#efefef" /><line x1="0" y1="0" x2="0" y2="6" stroke="#d0d0d0" stroke-width="2.5" /></pattern></defs>${bands}${edges}${labels}</g>`;
+  }
+  if (zones.showTou) {
+    const y = bottom + 6;
+    const segs = runs((b) => (b.peak ? "peak" : "off"))
+      .map((run, n) => {
+        const x0 = run.x0 + 1;
+        const width = Math.max(0, run.width - 2);
+        const label =
+          width < 56
+            ? ""
+            : `<text class="astral-tou-label is-${run.k}" data-m="tl|${n}" x="${(x0 + width / 2).toFixed(1)}" y="${(
+                y + 10.5
+              ).toFixed(1)}" text-anchor="middle">${run.k === "peak" ? "Peak" : "Off-peak"}</text>`;
+        return `<rect class="astral-tou is-${run.k}" data-m="tou|${n}" x="${x0.toFixed(1)}" y="${y}" width="${width.toFixed(
+          1
+        )}" height="14" rx="3" />${label}`;
+      })
+      .join("");
+    out.strip = `<g class="astral-tou-strip" aria-hidden="true">${segs}</g>`;
+  }
+  return out;
+}
+
+function protoZoneAmount(value, unit) {
+  const n = Number(value) || 0;
+  const amount = n.toLocaleString("en-GB", { maximumFractionDigits: n >= 100 ? 0 : 1 });
+  return unit === "\u00a3" ? `\u00a3${amount}` : `${amount} ${unit}`;
+}
+
+function protoZoneKey(zones, buckets, rows) {
+  if (!zones.on) return "";
+  const live = (buckets || []).filter(Boolean);
+  const item = (cls, name, style = "") =>
+    `<li><span class="astral-zone-swatch ${cls}"${style ? ` style="${style}"` : ""} aria-hidden="true"></span>${escapeHtml(name)}</li>`;
+  const items = [];
+  if (live.length && zones.showHours) {
+    const kinds = new Set(live.map((b) => b.kind));
+    const shut = new Set(live.filter((b) => b.shut >= 0.05).map((b) => (b.kind === "on" ? "non" : b.kind)));
+    if (kinds.has("on")) items.push(item("is-on", "Operational"));
+    if (kinds.has("non") || shut.has("non")) items.push(item("is-non", "Non-operational"));
+    if (kinds.has("closed") || shut.has("closed")) items.push(item("is-closed", "Closed"));
+  }
+  if (live.length && zones.showTou) {
+    items.push(item("is-peak", "Peak"));
+    items.push(item("is-off", "Off-peak"));
+  }
+  let sum = "";
+  if (zones.narrow) {
+    let total = 0;
+    let picked = 0;
+    (rows || []).forEach((point) => {
+      const v = Number(point.value) || 0;
+      total += v;
+      picked += v * (point.share ?? 1);
+    });
+    const unit = (rows || []).find((point) => point.unit)?.unit || "kWh";
+    if (total > 0) {
+      const ink = protoIncomingInk();
+      sum = `${item("is-picked", `${protoZonePickName(zones)} ${protoZoneAmount(picked, unit)}, ${Math.round(
+        (picked / total) * 100
+      )}% of the total`, `background:${ink}`)}${item("is-rest", "Other times", `background:${ink}`)}`;
+    }
+  } else if (!live.length) {
+    sum = `<li class="astral-muted">Tick fewer hours or one tariff to see its share of each bar.</li>`;
+  }
+  const body = `${items.join("")}${sum}`;
+  return body ? `<ul class="astral-zone-key" aria-label="Hours and time of use">${body}</ul>` : "";
+}
+
 function protoSliceHoursName(slice) {
   if (slice.hours === "hours-on") return "Operational";
   if (slice.hours === "hours-non") return "Non-operational";
@@ -3294,26 +3525,17 @@ function protoToggleChartSlice(id) {
   protoRestoreFocus(`#astral-fs [data-proto-chart-slice="${CSS.escape(id)}"]`);
 }
 
+// Readings keep their full value. Share says how much sits in the picked hours and tariff.
 function protoFilterProfilePoints(points, meters) {
-  const slices = protoChartStackSlices();
+  const zones = protoChartZones();
+  const list = points || [];
   const meter = (meters || []).find(Boolean);
-  if (!slices.length || !meter) return points || [];
-  return (points || []).map((point) => {
-    const stacks = protoVisibleStacks(protoPointStacks(point, meter, slices, "value"));
-    const lastStacks =
-      point.last != null ? protoVisibleStacks(protoPointStacks(point, meter, slices, "last")) : [];
-    const unit = point.unit || "kWh";
-    const value = point.value == null ? null : protoRoundReading(protoStacksSum(stacks) || 0, 1);
-    const last = point.last == null ? point.last : protoRoundReading(protoStacksSum(lastStacks) || 0, 1);
-    const note = protoStacksNote(stacks, unit) || point.note;
-    return {
-      ...point,
-      stacks,
-      lastStacks,
-      value: point.value == null ? null : value || 0,
-      last: point.last == null ? point.last : last || 0,
-      note,
-    };
+  if (!zones.on || !meter) return list;
+  const slices = protoChartStackSlices();
+  return list.map((point) => {
+    const zoneStacks = protoVisibleStacks(protoPointStacks(point, meter, slices, "value"));
+    const share = point.value == null && point.last == null ? 1 : protoZoneShare(point, meters, zones);
+    return { ...point, zoneStacks, share };
   });
 }
 
@@ -4785,16 +5007,63 @@ function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing }) {
       : dualTotal
         ? protoDualLineTracks(scaledPoints)
         : protoCombinedLineTracks(scaledPoints);
-    return lineTracks.length ? protoLineChart(lineTracks, name, { dual: dualTotal }) : protoChartEmpty(pool);
+    return lineTracks.length
+      ? protoLineChart(lineTracks, name, { dual: dualTotal, zoneMeters: list })
+      : protoChartEmpty(pool);
   }
   if (breakdown && scaledTracks.length && !dualTotal) {
-    return protoBarChart(protoTracksToStackPoints(scaledTracks), name, { seriesStack: true });
+    return protoBarChart(protoTracksToStackPoints(protoTopTracks(scaledTracks)), name, {
+      seriesStack: true,
+      zoneMeters: list,
+    });
   }
   if (!scaledPoints.length) return protoChartEmpty(pool);
   return protoBarChart(scaledPoints, name, {
     dual: dualTotal,
     outgoing: Boolean(outgoing),
+    zoneMeters: list,
   });
+}
+
+// Stacked bars keep the five biggest in their own colour. The rest join one grey Other.
+const PROTO_STACK_KEEP = 5;
+
+function protoTopTracks(tracks) {
+  const list = tracks || [];
+  if (list.length <= PROTO_STACK_KEEP + 3) return list;
+  const total = (track) => (track.points || []).reduce((n, point) => n + (Number(point.value) || 0), 0);
+  const top = new Set(
+    list
+      .map((track) => ({ track, n: total(track) }))
+      .sort((a, b) => b.n - a.n)
+      .slice(0, PROTO_STACK_KEEP)
+      .map((row) => row.track)
+  );
+  const rest = list.filter((track) => !top.has(track));
+  const len = Math.max(0, ...rest.map((track) => (track.points || []).length));
+  const points = Array.from({ length: len }, (_, i) => {
+    const cells = rest.map((track) => track.points?.[i]).filter(Boolean);
+    const present = cells.filter((cell) => cell.value != null);
+    const label = cells.map((cell) => cell.label).find(Boolean) || "";
+    const unit = cells.find((cell) => cell.unit)?.unit || "";
+    if (!present.length) return { label, value: null, quality: "missing", unit };
+    const value = present.reduce((n, cell) => n + Number(cell.value), 0);
+    const shared = present.some((cell) => cell.share != null);
+    return {
+      label,
+      value: protoRoundReading(value, 1),
+      quality: present.some((cell) => cell.quality === "estimated") ? "estimated" : "actual",
+      unit,
+      ...(shared && value
+        ? { share: present.reduce((n, cell) => n + Number(cell.value) * (cell.share ?? 1), 0) / value }
+        : {}),
+    };
+  });
+  const noun = rest.every((track) => track.meter) ? "meters" : "sites";
+  return [
+    ...list.filter((track) => top.has(track)),
+    { id: "other", ref: `Other ${rest.length} ${noun}`, color: "#8D8D8D", dash: "", points },
+  ];
 }
 
 function protoChartNav(pan) {
@@ -4922,7 +5191,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
       ${svg}
       <div class="astral-chart-keys">
         ${dual ? protoChartKey(true) : ""}
-        ${extras.stackKey ? protoChartProfileKey() : ""}
+        ${extras.zoneKey || ""}
       </div>
       <div class="astral-tip" hidden>
         <div class="astral-tip-head">
@@ -5433,6 +5702,7 @@ function protoMorphSnap(svg) {
       if (!read) return;
       item.geo = el.__morphGeo ? el.__morphGeo.slice() : read.geo;
       item.round = read.round;
+      item.dim = el.classList.contains("is-dim");
       protoMorphAddFamily(families, key, item.geo);
     } else if (tag === "polyline" || tag === "polygon") {
       item.pts = protoMorphReadPoints(el.getAttribute("points"));
@@ -5465,6 +5735,13 @@ function protoMorphStart(oldSvg) {
   queueMicrotask(() => {
     if (protoMorph === m) protoMorphTick(performance.now());
   });
+}
+
+const PROTO_MORPH_DIM = 0.28;
+
+// Faded parts of a bar appear in place and fade, rather than growing from the baseline.
+function protoMorphDimPart(key) {
+  return /(~dim|\|dim)$/.test(key);
 }
 
 function protoMorphBarPath(geo, round) {
@@ -5500,6 +5777,12 @@ function protoMorphBind(m, svg) {
       if (!read) return;
       const to = read.geo;
       let start = from?.geo;
+      const toOp = el.classList.contains("is-dim") ? PROTO_MORPH_DIM : 1;
+      let fromOp = from ? (from.dim ? PROTO_MORPH_DIM : 1) : toOp;
+      if (!start && protoMorphDimPart(key)) {
+        start = to.slice();
+        fromOp = 1;
+      }
       if (!start) {
         const { family } = protoMorphFamilyOf(key);
         const was = families.get(family);
@@ -5512,7 +5795,15 @@ function protoMorphBind(m, svg) {
           start = [to[0], to[1] + to[3], to[2], 0];
         }
       }
-      m.tracks.push({ el, type: "geo", from: start, to, round: read.round, final: el.getAttribute("d") });
+      m.tracks.push({
+        el,
+        type: "geo",
+        from: start,
+        to,
+        round: read.round,
+        final: el.getAttribute("d"),
+        op: fromOp !== toOp ? [fromOp, toOp] : null,
+      });
       return;
     }
     if (tag === "polyline" || tag === "polygon") {
@@ -5541,6 +5832,10 @@ function protoMorphBind(m, svg) {
     if (seen.has(key)) return;
     if (item.geo) {
       if (flipped(protoMorphFamilyOf(key).family)) return;
+      if (item.dim && protoMorphDimPart(key)) {
+        ghosts.push({ item, type: "geo", from: item.geo, to: item.geo, round: item.round, op: [PROTO_MORPH_DIM, 1] });
+        return;
+      }
       const [x, y, w, h] = item.geo;
       ghosts.push({ item, type: "geo", from: item.geo, to: [x, y + h, w, 0], round: item.round });
       return;
@@ -5572,6 +5867,7 @@ function protoMorphPaint(m, t) {
       const geo = track.from.map((v, i) => protoMorphLerp(v, track.to[i], t));
       if (!el.classList.contains("astral-morph-ghost")) el.__morphGeo = geo;
       el.setAttribute("d", protoMorphBarPath(geo, track.round));
+      if (track.op) el.style.opacity = String(protoMorphLerp(track.op[0], track.op[1], t));
     } else if (track.type === "points") {
       el.setAttribute(
         "points",
@@ -5600,6 +5896,7 @@ function protoMorphFinish(m) {
     if (track.type === "geo") {
       delete el.__morphGeo;
       if (track.final) el.setAttribute("d", track.final);
+      if (track.op) el.style.opacity = "";
     } else if (track.type === "points") {
       el.setAttribute("points", track.final);
     } else if (track.type === "attrs") {
@@ -5675,9 +5972,13 @@ function protoBarChart(points, label, options = {}) {
   const view = protoBarFlowView(source, dual);
   const rows = view.points;
   const { w, h } = protoChartBox();
-  const pad = { l: 52, r: 16, t: 32, b: 36 };
+  const zones = options.zoneMeters ? protoChartZones() : { on: false, narrow: false };
+  const buckets = zones.on ? protoZoneBuckets(rows, options.zoneMeters) : [];
+  const hourly = buckets.some(Boolean);
+  const pad = { l: 52, r: 16, t: 32, b: 36 + (hourly && zones.showTou ? 20 : 0) };
   const scale = protoChartScale(rows, w, h, pad);
   const gap = scale.innerW / Math.max(1, rows.length);
+  const layer = protoZoneLayer(buckets, zones, pad, w, h, (i) => [pad.l + i * gap, pad.l + (i + 1) * gap]);
   const paired = view.paired;
   const barClass = view.outgoing || options.outgoing ? "astral-bar-out" : "astral-bar";
   const picked = protoChartPoint();
@@ -5712,9 +6013,50 @@ function protoBarChart(points, label, options = {}) {
               bh
             )}" />`;
           };
+          // With a narrow Hours or Time of use pick, the picked part is solid and the rest fades.
+          const zoneBar = (value, quality, cls, bx) => {
+            const share = p.share;
+            if (value == null || !zones.narrow || share == null || share >= 0.995) return bar(value, quality, cls, bx);
+            if (share <= 0.005) return bar(value, quality, `${cls} is-dim`, bx);
+            const side = bx === x1 ? "in" : "out";
+            const est = quality === "estimated" ? " is-est" : "";
+            const bh = Math.max((value / scale.max) * scale.innerH, 1);
+            const inH = bh * share;
+            const base = pad.t + scale.innerH;
+            const top = base - bh;
+            return `<g class="astral-bar-stack"><path class="${cls}${est}" data-m="${i}|${side}|" data-g="${protoMorphGeoAttr(
+              bx,
+              base - inH,
+              bw,
+              inH,
+              false
+            )}" d="${protoBarBlock(bx, base - inH, bw, inH)}" /><path class="${cls}${est} is-dim" data-m="${i}|${side}|dim" data-g="${protoMorphGeoAttr(
+              bx,
+              top,
+              bw,
+              bh - inH,
+              true
+            )}" d="${protoBarPath(bx, top, bw, bh - inH)}" /></g>`;
+          };
           const stackBar = (segments, cls, bx, outgoing) => {
             const side = bx === x1 ? "in" : "out";
-            const visible = (segments || []).filter((slice) => slice.value > 0);
+            const whole = (segments || []).filter((slice) => slice.value > 0);
+            const shareOf = (slice) => Math.min(1, Math.max(0, slice.share ?? 1));
+            const visible = zones.narrow
+              ? [
+                  ...whole
+                    .filter((slice) => shareOf(slice) > 0.005)
+                    .map((slice) => ({ ...slice, value: slice.value * shareOf(slice) })),
+                  ...whole
+                    .filter((slice) => shareOf(slice) < 0.995)
+                    .map((slice) => ({
+                      ...slice,
+                      id: shareOf(slice) > 0.005 ? `${slice.id || ""}~dim` : slice.id,
+                      value: slice.value * (shareOf(slice) > 0.005 ? 1 - shareOf(slice) : 1),
+                      dim: true,
+                    })),
+                ].filter((slice) => slice.value > 0)
+              : whole;
             if (!visible.length) return "";
             let yBottom = h - pad.b;
             return visible
@@ -5727,13 +6069,13 @@ function protoBarChart(points, label, options = {}) {
                 yBottom = y;
                 return `<path class="${cls} is-stack${
                   slice.quality === "estimated" ? " is-est" : ""
-                }" style="--stack-fill:${protoSliceFill(slice, outgoing)}" data-m="${i}|${side}|${escapeHtml(
+                }${slice.dim ? " is-dim" : ""}" style="--stack-fill:${protoSliceFill(slice, outgoing)}" data-m="${i}|${side}|${escapeHtml(
                   slice.id || `s${si}`
                 )}" data-g="${protoMorphGeoAttr(bx, y, bw, bh, top)}" d="${d}" />`;
               })
               .join("");
           };
-          const slicing = Boolean(options.seriesStack) || protoChartStackSlices().length > 0;
+          const slicing = Boolean(options.seriesStack);
           const inMarkup = slicing
             ? p.value == null
               ? bar(null, p.quality, barClass, x1)
@@ -5743,13 +6085,13 @@ function protoBarChart(points, label, options = {}) {
                   x1,
                   Boolean(view.outgoing || options.outgoing)
                 )}</g>`
-            : bar(p.value, p.quality, barClass, x1);
+            : zoneBar(p.value, p.quality, barClass, x1);
           const outMarkup = paired
             ? slicing
               ? p.last == null
                 ? bar(null, p.lastQuality, "astral-bar-out", x2)
                 : `<g class="astral-bar-stack">${stackBar(p.lastStacks, "astral-bar-out", x2, true)}</g>`
-              : bar(p.last, p.lastQuality, "astral-bar-out", x2)
+              : zoneBar(p.last, p.lastQuality, "astral-bar-out", x2)
             : "";
           const inCap = protoBarCap(x1 + bw / 2, p.value, scale, pad, h);
           const outCap = paired ? protoBarCap(x2 + bw / 2, p.last, scale, pad, h) : null;
@@ -5777,7 +6119,7 @@ function protoBarChart(points, label, options = {}) {
                 paired && p.lastQuality === "estimated" && p.last != null ? ", outgoing estimated" : ""
               }${
                 p.note && options.seriesStack ? `. ${protoHoverAriaNote(p)}` : ""
-              }${mark ? ". Query" : ""}${flag ? ". Alert" : ""}`
+              }${protoZoneWords(buckets[i], zones)}${mark ? ". Query" : ""}${flag ? ". Alert" : ""}`
             )}"
             data-proto-hit
             ${protoHitAttrs(p)}
@@ -5791,12 +6133,14 @@ function protoBarChart(points, label, options = {}) {
   const svg = `
     <svg class="astral-chart${protoChartDrawClass(label, rows)}" style="--bar-step:${barStep}ms" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMinYMin meet">
       ${protoEstDefs()}
+      ${layer.back}
       ${protoChartAxes(rows, scale, w, h, pad, scale.xBar)}
+      ${layer.strip}
       ${bars}
     </svg>
   `;
   return protoChartWrap(svg, label, dual && !options.seriesStack, view.empty, {
-    stackKey: !options.seriesStack && protoChartStackSlices().length > 0,
+    zoneKey: view.empty ? "" : protoZoneKey(zones, buckets, rows),
     heading: options.heading,
   });
 }
@@ -5914,12 +6258,17 @@ function protoLineChart(tracks, label, options = {}) {
   const list = (tracks || []).filter((track) => (track.points || []).length);
   if (!list.length) return "";
   const { w, h } = protoChartBox();
-  const pad = { l: 52, r: 16, t: 32, b: 36 };
   const points = list[0].points;
+  const zones = options.zoneMeters ? protoChartZones() : { on: false, narrow: false };
+  const buckets = zones.on ? protoZoneBuckets(points, options.zoneMeters) : [];
+  const hourly = buckets.some(Boolean);
+  const pad = { l: 52, r: 16, t: 32, b: 36 + (hourly && zones.showTou ? 20 : 0) };
   const finger = list.flatMap((track) =>
     (track.points || []).map((p) => ({ ...p, label: `${track.id || ""}:${p.label}` }))
   );
   const scale = protoTracksScale(list, w, h, pad);
+  const step = scale.innerW / Math.max(1, points.length - 1);
+  const layer = protoZoneLayer(buckets, zones, pad, w, h, (i) => [scale.x(i) - step / 2, scale.x(i) + step / 2]);
   const picked = protoChartPoint();
   const lines = list.map((track) => protoLinePath(track, scale)).join("");
   const hits = list
@@ -5969,7 +6318,7 @@ function protoLineChart(tracks, label, options = {}) {
                 aria-label="${escapeHtml(
                   `${p.label}, ${track.ref}, ${protoFormatReading(p.value, p.unit || "kWh")}${
                     p.quality === "estimated" ? ", estimated" : ""
-                  }${mark ? ". Query" : ""}${flag ? ". Alert" : ""}`
+                  }${protoZoneWords(buckets[i], zones)}${mark ? ". Query" : ""}${flag ? ". Alert" : ""}`
                 )}"
                 data-proto-hit
                 ${protoHitAttrs(hit)}
@@ -5984,14 +6333,18 @@ function protoLineChart(tracks, label, options = {}) {
   const svg = `
     <svg class="astral-chart${protoChartDrawClass(label, finger)}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMinYMin meet">
       ${protoEstDefs()}
+      ${layer.back}
       ${protoChartAxes(points, scale, w, h, pad, scale.x)}
+      ${layer.strip}
       <g class="astral-chart-grow">
       ${lines}
       ${hits}
       </g>
     </svg>
   `;
-  return protoChartWrap(svg, label, Boolean(options.dual));
+  return protoChartWrap(svg, label, Boolean(options.dual), false, {
+    zoneKey: protoZoneKey(zones, buckets, list.length === 1 ? points : protoTracksToStackPoints(list)),
+  });
 }
 
 function protoChartEmpty(seedMeters) {
@@ -6413,18 +6766,22 @@ function protoTracksToStackPoints(tracks) {
         color: track.color,
         value: cell.value == null ? 0 : protoRoundReading(Number(cell.value) || 0, 1),
         quality: cell.quality,
+        ...(cell.share != null ? { share: cell.share } : {}),
       }))
       .filter((slice) => slice.value > 0);
     const present = cells.filter(({ cell }) => cell.value != null);
     const missing = !present.length;
     const estimated = present.some(({ cell }) => cell.quality === "estimated");
+    const sum = protoStacksSum(stacks);
+    const shared = stacks.some((slice) => slice.share != null);
     return {
       label,
-      value: missing ? null : protoRoundReading(protoStacksSum(stacks), 1),
+      value: missing ? null : protoRoundReading(sum, 1),
       quality: missing ? "missing" : estimated ? "estimated" : "actual",
       unit,
       stacks,
       note: protoStacksNote(stacks, unit),
+      ...(shared && sum ? { share: stacks.reduce((n, slice) => n + slice.value * (slice.share ?? 1), 0) / sum } : {}),
     };
   });
 }
@@ -11770,7 +12127,7 @@ function protoScalePoints(points, meters) {
 function protoScaleTracks(tracks, meters) {
   return (tracks || []).map((track) => ({
     ...track,
-    points: protoScalePoints(track.points, track.meter ? [track.meter] : meters),
+    points: protoScalePoints(track.points, track.meter ? [track.meter] : track.meters?.length ? track.meters : meters),
   }));
 }
 
@@ -14409,7 +14766,7 @@ function protoBreakdownSliceCols() {
 }
 
 function protoSliceCellAmount(point, slice) {
-  const hit = (point?.stacks || []).find((item) => item.id === slice.id);
+  const hit = (point?.zoneStacks || point?.stacks || []).find((item) => item.id === slice.id);
   if (!hit) return 0;
   const n = Number(hit.value);
   return Number.isFinite(n) ? n : 0;

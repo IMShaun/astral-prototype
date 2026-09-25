@@ -8642,6 +8642,113 @@ button.astral-state {
   stroke-width: 1;
 }
 
+/* Hours bands and the Time of use strip. Time categories sit on the time axis. Colour stays for sites. */
+.astral-zone,
+.astral-tou-strip {
+  pointer-events: none;
+}
+
+.astral-zone-band.is-non {
+  fill: var(--color-background-subtle);
+}
+
+.astral-zone-band.is-closed {
+  fill: url(#astral-zone-hatch);
+}
+
+.astral-zone-edge {
+  stroke: #a8a8a8;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.astral-zone-label {
+  fill: #525252;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.astral-tou.is-peak {
+  fill: var(--color-nav);
+}
+
+.astral-tou.is-off {
+  fill: #e0e0e0;
+}
+
+.astral-tou-label {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.astral-tou-label.is-peak {
+  fill: var(--color-on-nav);
+}
+
+.astral-tou-label.is-off {
+  fill: #000;
+}
+
+.astral-chart .is-dim {
+  opacity: 0.28;
+}
+
+.astral-zone-key {
+  display: flex;
+  flex: none;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.astral-zone-key li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.astral-zone-swatch {
+  flex: none;
+  width: 16px;
+  height: 10px;
+  border: 1px solid var(--color-border-control);
+  border-radius: 2px;
+  background: #fff;
+}
+
+.astral-zone-swatch.is-non {
+  background: var(--color-background-subtle);
+}
+
+.astral-zone-swatch.is-closed {
+  background: repeating-linear-gradient(45deg, #efefef 0 3px, #d0d0d0 3px 5px);
+}
+
+.astral-zone-swatch.is-peak {
+  border-color: var(--color-nav);
+  background: var(--color-nav);
+}
+
+.astral-zone-swatch.is-off {
+  border-color: #e0e0e0;
+  background: #e0e0e0;
+}
+
+.astral-zone-swatch.is-picked,
+.astral-zone-swatch.is-rest {
+  border: 0;
+}
+
+.astral-zone-swatch.is-rest {
+  opacity: 0.28;
+}
+
 .astral-axis {
   stroke: #737373;
   stroke-width: 1;
