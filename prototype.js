@@ -16197,7 +16197,7 @@ function protoReportRow(def, canEdit) {
   const id = escapeHtml(def.id);
   const edit = protoReportTabOf(def.type) === "alerts" ? "Edit alert" : "Edit report";
   return `
-    <tr class="${def.on ? "" : "is-off"}" data-proto-report-row="${id}">
+    <tr class="${[def.on ? "" : "is-off", canEdit ? "is-link" : ""].filter(Boolean).join(" ")}" data-proto-report-row="${id}">
       <th scope="row">${escapeHtml(def.name)}</th>
       <td>${protoTag(type.short, type.blurb, `is-${def.type}`)}</td>
       <td class="astral-muted">${escapeHtml(protoReportSummary(def))}</td>
@@ -21785,6 +21785,11 @@ function onPrototype(event) {
     if (wait) wait.innerHTML = protoReportStatusHtml({ ...def, on: nextOn });
     Object.assign(store, protoReportDefsPatch(next));
     persistChrome();
+    return;
+  }
+  const reportRow = event.target.closest("tr[data-proto-report-row]");
+  if (reportRow && !event.target.closest("button, a, input, label")) {
+    protoReportOpenEdit(reportRow.dataset.protoReportRow);
     return;
   }
   const userBtn = event.target.closest("[data-proto-user]");
