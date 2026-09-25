@@ -8731,10 +8731,6 @@ button.astral-state {
   opacity: 0.28;
 }
 
-.astral-query-pin-reading.is-part {
-  padding-inline-start: 16px;
-}
-
 .astral-axis {
   stroke: #737373;
   stroke-width: 1;

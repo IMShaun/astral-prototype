@@ -3486,7 +3486,6 @@ function protoPackStacks(stacks, outgoing) {
         color: String(slice.color || protoSliceFill(slice, Boolean(outgoing)) || ""),
         value: protoFormatAmount(n),
         quality,
-        ...(Array.isArray(slice.parts) && slice.parts.length ? { parts: protoPackParts(slice.parts) } : {}),
       };
     })
     .filter(Boolean);
@@ -4138,20 +4137,16 @@ function protoMeterPills(meters, options = {}) {
   );
 }
 
-function protoSitePills(viewSites, allSites, keep) {
+function protoSitePills(viewSites, allSites) {
   const all = allSites?.length ? allSites : viewSites || [];
   const view = viewSites || [];
   if (!all.length) return "";
   const colour = protoPillsNeedColour();
-  const items = all.map((site, i) => {
-    const id = protoSiteId(site);
-    const folded = keep && protoChartFoldsOther() && !keep.has(id);
-    return {
-      id,
-      label: site.name,
-      color: colour ? (folded ? PROTO_STACK_OTHER : protoLineStyle(i).color) : "",
-    };
-  });
+  const items = all.map((site, i) => ({
+    id: protoSiteId(site),
+    label: site.name,
+    color: colour ? protoLineStyle(i).color : "",
+  }));
   return protoGraphPills(
     items,
     view.map((site) => protoSiteId(site)),
@@ -4185,7 +4180,7 @@ function protoHitAttrs(point) {
   const value = point.value == null ? "" : protoFormatAmount(point.value);
   const last = point.last == null ? "" : protoFormatAmount(point.last);
   const unit = point.unit || "kWh";
-  const stacks = protoPackStacks((point.stacks || []).map(({ parts, ...slice }) => slice));
+  const stacks = protoPackStacks(point.stacks || []);
   const lastStacks = protoPackStacks(point.lastStacks, true);
   const note = point.quality === "missing" ? protoTipQuality("missing") : "";
   const compare = point.last != null || Boolean(point.nowLabel || point.lastLabel);
@@ -4241,7 +4236,7 @@ function protoPointFromHit(hit, chart) {
     meterColor: hit.getAttribute("data-tip-meter-color") || "",
     quality: hit.getAttribute("data-tip-quality") || "",
     lastQuality: hit.getAttribute("data-tip-last-quality") || "",
-    stacks: protoAttachStackParts(protoReadStacks(hit.getAttribute("data-tip-stacks")), chart || "", time),
+    stacks: protoReadStacks(hit.getAttribute("data-tip-stacks")),
     lastStacks: protoReadStacks(hit.getAttribute("data-tip-last-stacks")),
   };
 }
@@ -4267,7 +4262,7 @@ function protoChartPoint() {
     meterColor: String(raw.meterColor || ""),
     quality: String(raw.quality || ""),
     lastQuality: String(raw.lastQuality || ""),
-    stacks: protoAttachStackParts(protoReadStacks(raw.stacks), chart, time),
+    stacks: protoReadStacks(raw.stacks),
     lastStacks: protoReadStacks(raw.lastStacks),
   };
 }
@@ -4399,8 +4394,6 @@ function protoHoverAriaNote(point) {
   const unit = point?.unit || "kWh";
   const slices = protoPointSliceRows(point);
   if (!slices.length) return "";
-  const inner = slices.reduce((n, row) => n + (row.parts?.length || 0), 0);
-  if (inner) return `${protoStacksNote(slices, unit)} ${protoHoverMoreLabel(point, inner)}.`;
   const rest = Math.max(0, slices.length - PROTO_HOVER_SLICE_MAX);
   const shown = rest ? slices.slice(0, PROTO_HOVER_SLICE_MAX) : slices;
   const note = protoStacksNote(shown, unit);
@@ -4413,25 +4406,6 @@ function protoHoverSlices(point, opts = {}) {
   const slices = protoPointSliceRows(point);
   if (!slices.length) {
     return { html: protoChartPointReading("", point?.value, unit, "", point?.quality), rest: 0 };
-  }
-  const inner = slices.reduce((n, row) => n + (row.parts?.length || 0), 0);
-  if (inner) {
-    const amount = (row) => Number(String(row.value ?? "").replace(/,/g, "")) || 0;
-    const rows = opts.flat
-      ? slices
-          .flatMap((row) => (row.parts?.length ? row.parts : [row]))
-          .sort((a, b) => amount(b) - amount(a))
-      : opts.all
-      ? slices.flatMap((row) => [row, ...(row.parts || []).map((part) => ({ ...part, part: true }))])
-      : slices;
-    const html = rows
-      .map((row) =>
-        row.part
-          ? protoChartPointReading(row.name, row.value, unit, row.color || "", row.quality, "is-part")
-          : protoChartPointReading(row.name, row.value, unit, row.color || protoSliceFill(row), row.quality)
-      )
-      .join("");
-    return { html, rest: inner };
   }
   const rest = Math.max(0, slices.length - PROTO_HOVER_SLICE_MAX);
   const shown = opts.all || !rest ? slices : slices.slice(0, PROTO_HOVER_SLICE_MAX);
@@ -4835,7 +4809,7 @@ function protoAnalyseControl(point) {
 function protoChartPointTitle(point) {
   if (!point) return "";
   const time = `<p class="astral-muted">${escapeHtml(protoChartAt(point.time))}</p>`;
-  const slicesHtml = protoHoverSlices(point, { all: true, flat: true });
+  const slicesHtml = protoHoverSlices(point, { all: true });
   const rows = `<div class="astral-query-pin-readings${slicesHtml.rest ? " is-scroll" : ""}">${slicesHtml.html}</div>`;
   const tags = protoPointTagsOn(point);
   const tagRow = tags.length
@@ -5038,9 +5012,7 @@ function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing }) {
       : protoChartEmpty(pool);
   }
   if (breakdown && scaledTracks.length && !dualTotal) {
-    const stackPoints = protoTracksToStackPoints(protoTopTracks(scaledTracks, protoStackKeepIds(tracks)));
-    protoRememberStackParts(name, stackPoints);
-    return protoBarChart(stackPoints, name, {
+    return protoBarChart(protoTracksToStackPoints(scaledTracks), name, {
       seriesStack: true,
       zoneMeters: list,
     });
@@ -5051,102 +5023,6 @@ function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing }) {
     outgoing: Boolean(outgoing),
     zoneMeters: list,
   });
-}
-
-// Stacked bars keep the five biggest in their own colour. The rest join one grey Other.
-const PROTO_STACK_KEEP = 5;
-const PROTO_STACK_OTHER = "#737373";
-const protoStackParts = new Map();
-
-// The ids that keep their own colour. Null when every track keeps its colour.
-function protoStackKeepIds(tracks) {
-  const list = tracks || [];
-  if (list.length <= PROTO_STACK_KEEP + 3) return null;
-  const total = (track) => (track.points || []).reduce((n, point) => n + (Number(point.value) || 0), 0);
-  return new Set(
-    list
-      .map((track) => ({ id: track.id, n: total(track) }))
-      .sort((a, b) => b.n - a.n)
-      .slice(0, PROTO_STACK_KEEP)
-      .map((row) => row.id)
-  );
-}
-
-function protoChartFoldsOther() {
-  return !protoChartIsLine() && protoChartIsIndividual();
-}
-
-// Other hides its sites on the bar. The readings stay here so hover and the pin can list them.
-function protoRememberStackParts(chart, points) {
-  const map = new Map();
-  (points || []).forEach((point) => {
-    const other = (point.stacks || []).find((slice) => slice.parts?.length);
-    if (other) map.set(point.label, other.parts);
-  });
-  protoStackParts.set(chart, map);
-}
-
-function protoAttachStackParts(stacks, chart, time) {
-  const parts = protoStackParts.get(chart)?.get(time);
-  if (!parts?.length) return stacks;
-  return stacks.map((slice) => (slice.id === "other" ? { ...slice, parts: protoPackParts(parts) } : slice));
-}
-
-function protoPackParts(parts) {
-  return (parts || [])
-    .map((part) => {
-      const n = Number(part?.value);
-      const name = String(part?.name || "").trim();
-      if (!name || !Number.isFinite(n) || n <= 0) return null;
-      const quality = part.quality === "estimated" || part.quality === "missing" ? part.quality : "";
-      const color = /^#[0-9a-f]{3,8}$/i.test(String(part.color || "")) ? part.color : "";
-      return { name, color, value: protoFormatAmount(n), quality };
-    })
-    .filter(Boolean);
-}
-
-function protoTopTracks(tracks, keep) {
-  const list = tracks || [];
-  const ids = keep || protoStackKeepIds(list);
-  if (!ids) return list;
-  const top = new Set(list.filter((track) => ids.has(track.id)));
-  const rest = list.filter((track) => !top.has(track));
-  if (!rest.length) return list;
-  const len = Math.max(0, ...rest.map((track) => (track.points || []).length));
-  const points = Array.from({ length: len }, (_, i) => {
-    const cells = rest.map((track) => track.points?.[i]).filter(Boolean);
-    const present = cells.filter((cell) => cell.value != null);
-    const label = cells.map((cell) => cell.label).find(Boolean) || "";
-    const unit = cells.find((cell) => cell.unit)?.unit || "";
-    if (!present.length) return { label, value: null, quality: "missing", unit };
-    const value = present.reduce((n, cell) => n + Number(cell.value), 0);
-    const shared = present.some((cell) => cell.share != null);
-    const parts = rest
-      .map((track) => ({ track, cell: track.points?.[i] }))
-      .filter(({ cell }) => cell && Number(cell.value) > 0)
-      .map(({ track, cell }) => ({
-        name: track.ref,
-        color: track.color || "",
-        value: protoRoundReading(Number(cell.value), 1),
-        quality: cell.quality,
-      }))
-      .sort((a, b) => b.value - a.value);
-    return {
-      label,
-      parts,
-      value: protoRoundReading(value, 1),
-      quality: present.some((cell) => cell.quality === "estimated") ? "estimated" : "actual",
-      unit,
-      ...(shared && value
-        ? { share: present.reduce((n, cell) => n + Number(cell.value) * (cell.share ?? 1), 0) / value }
-        : {}),
-    };
-  });
-  const noun = rest.every((track) => track.meter) ? "meters" : "sites";
-  return [
-    ...list.filter((track) => top.has(track)),
-    { id: "other", ref: `Other ${rest.length} ${noun}`, color: PROTO_STACK_OTHER, dash: "", points },
-  ];
 }
 
 function protoChartNav(pan) {
@@ -6850,7 +6726,6 @@ function protoTracksToStackPoints(tracks) {
         value: cell.value == null ? 0 : protoRoundReading(Number(cell.value) || 0, 1),
         quality: cell.quality,
         ...(cell.share != null ? { share: cell.share } : {}),
-        ...(cell.parts?.length ? { parts: cell.parts } : {}),
       }))
       .filter((slice) => slice.value > 0);
     const present = cells.filter(({ cell }) => cell.value != null);
@@ -14202,7 +14077,7 @@ function protoGroupDetail(group) {
         ${protoDetailTools(`group:${group.id}`)}
       </div>
       ${protoPaneFilterPills()}
-      ${protoSitePills(viewSites, paneSites, protoStackKeepIds(siteTracks))}
+      ${protoSitePills(viewSites, paneSites)}
       ${protoPaneTabs(protoPaneAlertCount(alerts), protoPaneQueryCount(queries))}
     `,
     pane === "alerts"
@@ -14336,7 +14211,7 @@ function protoCompareDetail() {
       ${protoPaneFilterPills()}
       ${
         bundle.level === "group"
-          ? protoSitePills(viewSites, allSites, protoStackKeepIds(tracks))
+          ? protoSitePills(viewSites, allSites)
           : protoMeterPills(meters, { all: allMeters, toggle: true })
       }
       ${protoPaneTabs(protoPaneAlertCount(alerts), protoPaneQueryCount(protoQueriesForCompare(bundle)))}
