@@ -8721,67 +8721,6 @@ button.astral-state {
   opacity: 0.28;
 }
 
-.astral-zone-key {
-  display: flex;
-  flex: none;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.astral-zone-hint {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-12);
-  white-space: nowrap;
-}
-
-.astral-zone-hint.is-sum {
-  color: var(--color-text-primary);
-  font-weight: 600;
-}
-
-.astral-zone-key .astral-meter-pill.is-picked {
-  border-color: var(--color-text-primary);
-  box-shadow: inset 0 0 0 1px var(--color-text-primary);
-}
-
-.astral-zone-key .astral-meter-pill.is-rest .astral-chart-key-mark {
-  opacity: 0.28;
-}
-
-.astral-zone-key .astral-meter-pill.is-none {
-  color: var(--color-text-secondary);
-  background: var(--color-background-subtle);
-}
-
-.astral-zone-key .astral-meter-pill.is-none .astral-chart-key-mark {
-  opacity: 0.5;
-}
-
-.astral-chart-key-mark.is-zone {
-  background: var(--color-background-surface);
-}
-
-.astral-chart-key-mark.is-non {
-  background: var(--color-background-subtle);
-}
-
-.astral-chart-key-mark.is-closed {
-  background: repeating-linear-gradient(45deg, var(--color-background-subtle) 0 2px, var(--color-border-default) 2px 4px);
-}
-
-.astral-chart-key-mark.is-peak {
-  background: var(--color-nav);
-}
-
-.astral-chart-key-mark.is-off {
-  background: var(--color-border-default);
-}
-
-.astral-chart-key-mark.is-rest {
-  opacity: 0.28;
-}
-
 .astral-axis {
   stroke: #737373;
   stroke-width: 1;

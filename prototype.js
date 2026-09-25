@@ -671,8 +671,7 @@ function protoPageFilterReset() {
     prototypeChartPoint: null,
     prototypeChartView: "total",
     prototypeChartStyle: "bar",
-    prototypeChartShow: "",
-    prototypeChartShowPick: "",
+    prototypeChartShow: [],
     prototypeChartFlows: null,
     prototypeChartSliceOff: [],
     prototypePaneMeterKinds: null,
@@ -3069,25 +3068,32 @@ const PROTO_ZONE_TOU = ["tou-on", "tou-off"];
 
 function protoChartShow() {
   const raw = store.prototypeChartShow;
-  return raw === "hours" || raw === "tou" ? raw : "";
+  const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  return ["hours", "tou"].filter((id) => list.includes(id));
 }
 
-function protoChartShowIds() {
-  const show = protoChartShow();
-  if (show === "hours") return PROTO_ZONE_HOURS.filter((id) => protoPaneHasHourKind(id));
-  if (show === "tou") return PROTO_ZONE_TOU;
-  return [];
+function protoChartShowHours() {
+  return protoChartShow().includes("hours") ? PROTO_ZONE_HOURS.filter((id) => protoPaneHasHourKind(id)) : [];
 }
 
-function protoChartShowPick() {
-  const ids = protoChartShowIds();
-  const raw = String(store.prototypeChartShowPick || "");
-  return ids.length > 1 && ids.includes(raw) ? raw : "";
+function protoChartShowTou() {
+  return protoChartShow().includes("tou") ? PROTO_ZONE_TOU : [];
 }
 
 function protoChartStackSlices() {
-  const show = protoChartShow();
-  return protoChartShowIds().map((id) => (show === "hours" ? { id, hours: id } : { id, tou: id }));
+  const hours = protoChartShowHours();
+  const tou = protoChartShowTou();
+  if (!hours.length && !tou.length) return [];
+  const slices = [];
+  (hours.length ? hours : [null]).forEach((hourId) => {
+    (tou.length ? tou : [null]).forEach((touId) => {
+      const slice = { id: [hourId, touId].filter(Boolean).join("|") };
+      if (hourId) slice.hours = hourId;
+      if (touId) slice.tou = touId;
+      slices.push(slice);
+    });
+  });
+  return slices;
 }
 
 // Hours and Time of use sit on the time axis. Bands behind the bars show hours. A strip under the axis shows tariff.
@@ -3097,14 +3103,10 @@ const PROTO_ZONE_NAMES = { on: "Operational", non: "Non-operational", closed: "C
 let protoZoneCache = null;
 
 function protoChartZones() {
-  const show = protoChartShow();
-  const ids = protoChartShowIds();
-  const pick = protoChartShowPick();
-  const layer = pick ? [pick] : ids;
-  const hours = show === "hours" ? layer : [];
-  const tou = show === "tou" ? layer : [];
-  const narrowHours = show === "hours" && Boolean(pick);
-  const narrowTou = show === "tou" && Boolean(pick);
+  const hours = protoChartShowHours();
+  const tou = protoChartShowTou();
+  const narrowHours = false;
+  const narrowTou = false;
   return {
     hours,
     tou,
@@ -3266,67 +3268,6 @@ function protoZoneLayer(buckets, zones, pad, w, h, spanOf) {
     out.strip = `<g class="astral-tou-strip" aria-hidden="true">${segs}</g>`;
   }
   return out;
-}
-
-function protoZoneAmount(value, unit) {
-  const n = Number(value) || 0;
-  const amount = n.toLocaleString("en-GB", { maximumFractionDigits: n >= 100 ? 0 : 1 });
-  return unit === "\u00a3" ? `\u00a3${amount}` : `${amount} ${unit}`;
-}
-
-const PROTO_ZONE_KEY = {
-  "hours-on": { mark: "is-on", name: "Operational" },
-  "hours-non": { mark: "is-non", name: "Non-operational" },
-  "hours-off": { mark: "is-closed", name: "Closed" },
-  "tou-on": { mark: "is-peak", name: "Peak" },
-  "tou-off": { mark: "is-off", name: "Off-peak" },
-};
-
-// The key under the graph names each zone. Click one to pick it out. The rest of each bar fades.
-function protoZoneKey(zones, buckets, rows, options = {}) {
-  const show = protoChartShow();
-  if (!show) return "";
-  const pick = protoChartShowPick();
-  const live = protoChartShowIds();
-  const ids = show === "hours" ? PROTO_ZONE_HOURS : PROTO_ZONE_TOU;
-  const canPick = live.length > 1;
-  const pills = ids
-    .map((id) => {
-      const row = PROTO_ZONE_KEY[id];
-      const mark = `<span class="astral-chart-key-mark is-zone ${row.mark}" aria-hidden="true"></span>`;
-      const label = `<span class="astral-meter-pill-label">${escapeHtml(row.name)}</span>`;
-      if (!live.includes(id)) {
-        return `<button type="button" class="astral-meter-pill is-on is-none" aria-disabled="true" aria-label="${escapeHtml(
-          `${row.name}, none in this view`
-        )}">${mark}${label}</button>`;
-      }
-      if (!canPick) return `<span class="astral-meter-pill is-on" role="listitem">${mark}${label}</span>`;
-      const on = pick === id;
-      return `<button type="button" class="astral-meter-pill is-on${on ? " is-picked" : pick ? " is-rest" : ""}" aria-pressed="${
-        on ? "true" : "false"
-      }" data-proto-chart-show-pick="${escapeHtml(id)}">${mark}${label}</button>`;
-    })
-    .join("");
-  let sum = "";
-  if (pick) {
-    let total = 0;
-    let picked = 0;
-    (rows || []).forEach((point) => {
-      const v = Number(point.value) || 0;
-      total += v;
-      picked += v * (point.share ?? 1);
-    });
-    const unit = (rows || []).find((point) => point.unit)?.unit || "kWh";
-    if (total > 0) {
-      sum = `<span class="astral-zone-hint is-sum" role="status">${escapeHtml(
-        `${PROTO_ZONE_KEY[pick].name} ${protoZoneAmount(picked, unit)}, ${Math.round((picked / total) * 100)}% of the total`
-      )}</span>`;
-    }
-  } else if (canPick) {
-    sum = `<span class="astral-zone-hint">${options.line ? "Pick one to see its share of the total." : "Pick one to see its share of each bar."}</span>`;
-  }
-  const aria = show === "hours" ? "Hours" : "Time of use";
-  return `<div class="astral-zone-key" role="group" aria-label="${aria}">${pills}${sum}</div>`;
 }
 
 function protoSliceHoursName(slice) {
@@ -4963,10 +4904,12 @@ function protoChartViewSelect() {
 function protoChartShowSelect() {
   return protoSelect({
     id: "chart-show",
-    label: "Show hours or time of use",
-    value: protoChartShow() || "none",
+    label: "Overlay",
+    multi: true,
+    values: protoChartShow(),
+    placeholder: "No overlay",
+    allLabel: "Hours and time of use",
     options: [
-      { value: "none", label: "No overlay", note: "Readings only" },
       { value: "hours", label: "Hours", note: "Operational, Non-operational, and Closed" },
       { value: "tou", label: "Time of use", note: "Peak and Off-peak" },
     ],
@@ -5207,7 +5150,6 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
       ${svg}
       <div class="astral-chart-keys">
         ${dual ? protoChartKey(true) : ""}
-        ${extras.zoneKey || ""}
       </div>
       <div class="astral-tip" hidden>
         <div class="astral-tip-head">
@@ -5565,8 +5507,7 @@ function protoChartFinger(label, points) {
     store.prototypeChannel || "",
     protoChartFlowIds().join(","),
     protoChartSliceOffIds().join(","),
-    protoChartShow(),
-    protoChartShowPick(),
+    protoChartShow().join(","),
     (protoPaneMeterKindIds() || ["*"]).join(","),
     protoPaneFilterIds().join(","),
     protoTreeFilterIds().join(","),
@@ -6159,7 +6100,6 @@ function protoBarChart(points, label, options = {}) {
     </svg>
   `;
   return protoChartWrap(svg, label, dual && !options.seriesStack, view.empty, {
-    zoneKey: view.empty ? "" : protoZoneKey(zones, buckets, rows, { stacked: Boolean(options.seriesStack) }),
     heading: options.heading,
   });
 }
@@ -6274,6 +6214,10 @@ function protoLineLooseAt(list, time, kind) {
 }
 
 function protoLineChart(tracks, label, options = {}) {
+  return protoWithViewMemo(() => protoLineChartBuild(tracks, label, options));
+}
+
+function protoLineChartBuild(tracks, label, options) {
   const list = (tracks || []).filter((track) => (track.points || []).length);
   if (!list.length) return "";
   const { w, h } = protoChartBox();
@@ -6363,7 +6307,6 @@ function protoLineChart(tracks, label, options = {}) {
     </svg>
   `;
   return protoChartWrap(svg, label, Boolean(options.dual), false, {
-    zoneKey: protoZoneKey(zones, buckets, list.length === 1 ? points : protoTracksToStackPoints(list), { line: true }),
   });
 }
 
@@ -6902,13 +6845,14 @@ function protoPickSelect(id, value) {
     return;
   }
   if (id === "chart-show") {
+    if (value !== "hours" && value !== "tou") return;
+    const cur = protoChartShow();
     setProto({
-      prototypeSelectOpen: "",
-      prototypeChartShow: value === "hours" || value === "tou" ? value : "",
-      prototypeChartShowPick: "",
+      prototypeChartShow: cur.includes(value) ? cur.filter((item) => item !== value) : [...cur, value],
       prototypeChartSliceOff: [],
       prototypeChartPoint: null,
     });
+    protoRestoreFocus(`#astral-fs [data-proto-select-option="chart-show"][data-proto-select-value="${value}"]`);
     return;
   }
   if (id === "chart-style") {
@@ -13506,7 +13450,30 @@ function protoFlowChartName(flow) {
   return flow?.channel === "all" && flow.both ? "Incoming and outgoing" : "Consumption";
 }
 
+// A chart asks for the view many times per point, so one paint shares one answer.
+let protoViewContextMemo = null;
+
+function protoWithViewMemo(build) {
+  if (protoViewContextMemo) return build();
+  protoViewContextMemo = { has: false, value: null };
+  try {
+    return build();
+  } finally {
+    protoViewContextMemo = null;
+  }
+}
+
 function protoQueryViewContext() {
+  const memo = protoViewContextMemo;
+  if (!memo) return protoQueryViewContextFresh();
+  if (!memo.has) {
+    memo.value = protoQueryViewContextFresh();
+    memo.has = true;
+  }
+  return memo.value;
+}
+
+function protoQueryViewContextFresh() {
   if (protoCompareOn()) {
     const bundle = protoCompareBundle();
     const all = bundle.meters || [];
@@ -22457,16 +22424,6 @@ function onPrototype(event) {
   const chartFlow = event.target.closest("[data-proto-chart-flow]");
   if (chartFlow) {
     protoToggleChartFlow(chartFlow.dataset.protoChartFlow);
-    return;
-  }
-  const showPick = event.target.closest("[data-proto-chart-show-pick]");
-  if (showPick) {
-    const id = showPick.dataset.protoChartShowPick;
-    setProto({
-      prototypeChartShowPick: protoChartShowPick() === id ? "" : id,
-      prototypeChartPoint: null,
-    });
-    protoRestoreFocus(`#astral-fs [data-proto-chart-show-pick="${CSS.escape(id)}"]`);
     return;
   }
   const chartSlice = event.target.closest("[data-proto-chart-slice]");
