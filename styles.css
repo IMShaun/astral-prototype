@@ -6694,7 +6694,8 @@ button.astral-state {
 }
 
 .astral-meter-row.is-open:has(.astral-select-menu:not([hidden])) > .astral-fold-clip,
-.astral-meter-fold.is-open:has(.astral-select-menu:not([hidden])) > .astral-fold-clip {
+.astral-meter-fold.is-open:has(.astral-select-menu:not([hidden])) > .astral-fold-clip,
+.astral-report-tenant.is-open:has(.astral-select-menu:not([hidden])) > .astral-fold-clip {
   overflow: visible;
 }
 
@@ -9527,7 +9528,8 @@ button.astral-state {
 
 .astral-people-fold.is-open > .astral-fold-clip:focus-within,
 .astral-meter-row.is-open > .astral-fold-clip:focus-within,
-.astral-meter-fold.is-open > .astral-fold-clip:focus-within {
+.astral-meter-fold.is-open > .astral-fold-clip:focus-within,
+.astral-report-tenant.is-open > .astral-fold-clip:focus-within {
   overflow: visible;
 }
 
@@ -9794,6 +9796,49 @@ button.astral-state {
 
 .astral-report-type-label {
   font-weight: 600;
+}
+
+.astral-accordion-note {
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+}
+
+.astral-report-tenants {
+  display: grid;
+  gap: 8px;
+}
+
+.astral-report-tenants-head {
+  display: grid;
+  gap: 4px;
+}
+
+.astral-report-tenant-list {
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+}
+
+.astral-report-tenant +  .astral-report-tenant {
+  border-top: 1px solid var(--color-border-strong);
+}
+
+.astral-report-tenant-head {
+  padding: 8px 16px;
+}
+
+.astral-report-tenant-body {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  padding: 8px 16px 16px;
+}
+
+.astral-report-tenant-remove {
+  justify-self: start;
 }
 
 .astral-report-types {
