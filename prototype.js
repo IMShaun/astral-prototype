@@ -4267,7 +4267,7 @@ function protoChartPoint() {
     meterColor: String(raw.meterColor || ""),
     quality: String(raw.quality || ""),
     lastQuality: String(raw.lastQuality || ""),
-    stacks: protoReadStacks(raw.stacks),
+    stacks: protoAttachStackParts(protoReadStacks(raw.stacks), chart, time),
     lastStacks: protoReadStacks(raw.lastStacks),
   };
 }
@@ -4830,10 +4830,8 @@ function protoAnalyseControl(point) {
 function protoChartPointTitle(point) {
   if (!point) return "";
   const time = `<p class="astral-muted">${escapeHtml(protoChartAt(point.time))}</p>`;
-  const slicesHtml = protoHoverSlices(point);
-  const rows = `<div class="astral-query-pin-readings">${
-    slicesHtml.html
-  }</div>${protoHoverMoreMarkup(point, slicesHtml.rest, false)}`;
+  const slicesHtml = protoHoverSlices(point, { all: true });
+  const rows = `<div class="astral-query-pin-readings${slicesHtml.rest ? " is-scroll" : ""}">${slicesHtml.html}</div>`;
   const tags = protoPointTagsOn(point);
   const tagRow = tags.length
     ? `<div class="astral-query-pin-tags">${tags.map((name) => protoPointTagPill(name)).join("")}</div>`

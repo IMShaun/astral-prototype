@@ -8317,7 +8317,7 @@ button.astral-state {
   padding-inline-end: 0;
 }
 
-.astral-query-pin.is-more .astral-query-pin-readings,
+.astral-query-pin-readings.is-scroll,
 .astral-tip.is-more .astral-tip-slices {
   max-height: 12.5rem;
   overflow-y: auto;
