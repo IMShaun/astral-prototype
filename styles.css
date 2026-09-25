@@ -6425,7 +6425,7 @@ button.astral-state {
 .astral-meter-list-head,
 .astral-meter-row-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 7rem 9rem 6rem;
+  grid-template-columns: minmax(0, 1fr) 6rem 12rem 10rem;
   gap: 8px;
   align-items: center;
   width: 100%;
@@ -6496,6 +6496,38 @@ button.astral-state {
   display: grid;
   gap: 8px;
   padding: 0 0 24px;
+  border-bottom: 1px solid var(--color-border-strong);
+  margin-bottom: 24px;
+}
+
+.astral-meter-summary {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  min-width: 0;
+}
+
+.astral-meter-summary > p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.astral-meter-list-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.astral-meter-list-title > span {
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.astral-meter-list-empty {
+  margin: 0;
 }
 
 .astral-meter-row.is-open > .astral-meter-row-head {

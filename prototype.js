@@ -12508,15 +12508,32 @@ function protoMeterSettingsBtn(meter) {
   );
 }
 
+function protoSiteAttrSummary(meter) {
+  const attrs = protoMeterProfile(meter?.id)?.attrs || {};
+  const area = Number(attrs.area);
+  const people = Number(attrs.employees);
+  const parts = [
+    attrs.area && Number.isFinite(area) ? `${area.toLocaleString("en-GB")} m²` : "",
+    attrs.employees && Number.isFinite(people) ? `${people.toLocaleString("en-GB")} ${people === 1 ? "person" : "people"}` : "",
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : "Not set";
+}
+
+function protoMeterRateSummary(meter) {
+  const kind = protoMeterKind(meter);
+  const attrs = protoMeterProfile(meter?.id)?.attrs || {};
+  if (kind === "water") return attrs.unitWater ? `${attrs.unitWater}p/m³` : "Not set";
+  const key = kind === "gas" ? "Gas" : "Elec";
+  const on = attrs[`on${key}`];
+  const off = attrs[`off${key}`];
+  const parts = [on ? `Peak ${on}p` : "", off ? `Off-peak ${off}p` : ""].filter(Boolean);
+  return parts.length ? parts.join(" · ") : "Not set";
+}
+
 function protoSiteOverview(site) {
   const meter = site?.meters?.[0];
   if (!meter) return "";
-  return `
-    <div class="astral-site-overview">
-      ${protoMeterOverview(meter)}
-      <p class="astral-muted">These settings apply to every meter on this site.</p>
-    </div>
-  `;
+  return `<div class="astral-site-overview">${protoMeterOverview(meter)}</div>`;
 }
 
 function protoMeterOverview(meter) {
@@ -12525,20 +12542,23 @@ function protoMeterOverview(meter) {
   return `
     <div class="astral-meter-overview">
       ${protoMeterMap(site?.name || facts.site)}
-      <dl class="astral-meter-meta">
-        <div>
-          <dt>${protoProfileFactMark("hours")}Operational hours</dt>
-          <dd>${escapeHtml(facts.hours)}</dd>
-        </div>
-        <div>
-          <dt>${protoProfileFactMark("tou")}Time of use</dt>
-          <dd>${escapeHtml(facts.tou)}</dd>
-        </div>
-        <div>
-          <dt>${protoProfileFactMark("rates")}Attributes</dt>
-          <dd>${escapeHtml(facts.tariff)}</dd>
-        </div>
-      </dl>
+      <div class="astral-meter-summary">
+        <dl class="astral-meter-meta">
+          <div>
+            <dt>${protoProfileFactMark("hours")}Operational hours</dt>
+            <dd>${escapeHtml(facts.hours)}</dd>
+          </div>
+          <div>
+            <dt>${protoProfileFactMark("tou")}Time of use</dt>
+            <dd>${escapeHtml(facts.tou)}</dd>
+          </div>
+          <div>
+            <dt>${protoProfileFactMark("rates")}Attributes</dt>
+            <dd>${escapeHtml(protoSiteAttrSummary(meter))}</dd>
+          </div>
+        </dl>
+        <p class="astral-muted">These settings apply to every meter on this site.</p>
+      </div>
       ${protoMeterSettingsBtn(meter)}
     </div>
   `;
@@ -12694,8 +12714,8 @@ function protoMeterRow(meter) {
       <div class="astral-meter-row-head">
         <span class="astral-meter-ref">${protoMeterMark(meter.commodity)}<span>${escapeHtml(title)}</span></span>
         <span class="astral-meter-channel">${protoFlowPill(protoFlowKind(channel) || "in")}</span>
-        <span class="astral-meter-hours">${escapeHtml(facts.tariff)}</span>
-        <span class="astral-meter-use">${escapeHtml(facts.use)}</span>
+        <span class="astral-meter-hours">${escapeHtml(protoMeterRateSummary(meter))}</span>
+        <span class="astral-meter-use">${escapeHtml(facts.use === "Partial" ? "Partial data" : facts.use)}</span>
       </div>
     </article>
   `;
@@ -12703,14 +12723,17 @@ function protoMeterRow(meter) {
 
 function protoMeterList(meters) {
   const rows = (meters || []).filter(Boolean);
-  if (!rows.length) return "";
+  if (!rows.length) {
+    return `<p class="astral-muted astral-meter-list-empty">No meters match these filters.</p>`;
+  }
   return `
     <div class="astral-meter-list">
+      <h4 class="astral-meter-list-title">Meters <span>${rows.length}</span></h4>
       <div class="astral-meter-list-head">
         <span>Meter</span>
         <span>Channel</span>
-        <span>Tariff</span>
-        <span>Use</span>
+        <span>Unit rate</span>
+        <span>Use, last 24 hours</span>
       </div>
       ${rows.map((meter) => protoMeterRow(meter)).join("")}
     </div>
@@ -12723,7 +12746,8 @@ function protoProfileFactMark(kind) {
 }
 
 function protoSiteFacts(site) {
-  return protoMeterFacts(site?.meters?.[0]);
+  const meter = site?.meters?.[0];
+  return { ...protoMeterFacts(meter), attrs: protoSiteAttrSummary(meter) };
 }
 
 function protoProfilePane(sites) {
@@ -12732,26 +12756,26 @@ function protoProfilePane(sites) {
     if (key === "site") return site.name;
     if (key === "hours") return facts.hours;
     if (key === "time-of-use") return facts.tou;
-    if (key === "rates") return facts.tariff;
+    if (key === "rates") return facts.attrs;
     return "";
   });
   if (!rows.length) {
-    return `<p class="astral-muted">Hours, time of use, and rates sit on a site.</p>`;
+    return `<p class="astral-muted">No sites match these filters.</p>`;
   }
   if (rows.length === 1) {
     const meters = protoSiteViewMeters(rows[0]);
     return `${protoSiteOverview(rows[0])}${protoMeterList(meters)}`;
   }
   return `
-    <p class="astral-muted">Hours, time of use, and rates for each site.</p>
+    <p class="astral-muted">Hours, time of use, and attributes for each site. Open a site to change them.</p>
     <div class="astral-table-wrap">
       <table class="astral-table">
         <thead>
           <tr>
             ${protoSortHead("site-profile", "site", "Site")}
-            ${protoSortHead("site-profile", "hours", "Hours")}
+            ${protoSortHead("site-profile", "hours", "Operational hours")}
             ${protoSortHead("site-profile", "time-of-use", "Time of use")}
-            ${protoSortHead("site-profile", "rates", "Rates")}
+            ${protoSortHead("site-profile", "rates", "Attributes")}
           </tr>
         </thead>
         <tbody>
@@ -12763,7 +12787,7 @@ function protoProfilePane(sites) {
                   <td>${escapeHtml(site.name)}</td>
                   <td>${escapeHtml(facts.hours)}</td>
                   <td>${escapeHtml(facts.tou)}</td>
-                  <td>${escapeHtml(facts.tariff)}</td>
+                  <td>${escapeHtml(facts.attrs)}</td>
                 </tr>
               `;
             })
@@ -14303,7 +14327,7 @@ function protoCompareDetail() {
         ? bundle.level === "meter"
           ? meters.length
             ? protoMeterList(meters)
-            : `<p class="astral-muted">Hours, time of use, and rates sit on a site.</p>`
+            : `<p class="astral-muted">Pick a meter to see its site hours, time of use, and attributes.</p>`
           : protoProfilePane(profileSites)
         : pane === "queries"
           ? protoQueryPane(profileSites, noun, null, meters)
