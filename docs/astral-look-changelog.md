@@ -10,7 +10,7 @@ First versioned export. Earlier zips were unversioned and are called pre-v2 by d
 
 - `@keyframes` for the rail, menus, chevron, progress, bar graphs and skeletons. pre-v2 dropped every at-rule. Every animation and transition reads `--motion-control`, `--motion-panel` or `--motion-slide`, or a literal. None reads a retired token.
 - `@media` rules: the responsive nav and rail, and a `prefers-reduced-motion` rule for each animation.
-- Page header rules: `.astral-page-head` (sticky surface) and `.astral-page-tools` (grid). Use both on one `<header>`.
+- Page header rules: `.astral-page-head` (canvas surface: `position: relative`, `flex: none`. It is not sticky) and `.astral-page-tools` (grid). Use both on one `<header>`.
 - `.astral-root` scope hook. Put it on the app root. It stands in for the prototype's `#astral-fs`.
 - Product hook classes that replace the prototype's `data-proto-*` selectors:
   - `tr.is-link` on `.astral-table` rows that open something
