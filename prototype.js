@@ -4422,7 +4422,7 @@ function protoHoverSlices(point, opts = {}) {
     const html = rows
       .map((row) =>
         row.part
-          ? protoChartPointReading(row.name, row.value, unit, "", row.quality, "is-part")
+          ? protoChartPointReading(row.name, row.value, unit, row.color || "", row.quality, "is-part")
           : protoChartPointReading(row.name, row.value, unit, row.color || protoSliceFill(row), row.quality)
       )
       .join("");
@@ -5094,7 +5094,8 @@ function protoPackParts(parts) {
       const name = String(part?.name || "").trim();
       if (!name || !Number.isFinite(n) || n <= 0) return null;
       const quality = part.quality === "estimated" || part.quality === "missing" ? part.quality : "";
-      return { name, value: protoFormatAmount(n), quality };
+      const color = /^#[0-9a-f]{3,8}$/i.test(String(part.color || "")) ? part.color : "";
+      return { name, color, value: protoFormatAmount(n), quality };
     })
     .filter(Boolean);
 }
@@ -5118,7 +5119,12 @@ function protoTopTracks(tracks, keep) {
     const parts = rest
       .map((track) => ({ track, cell: track.points?.[i] }))
       .filter(({ cell }) => cell && Number(cell.value) > 0)
-      .map(({ track, cell }) => ({ name: track.ref, value: protoRoundReading(Number(cell.value), 1), quality: cell.quality }))
+      .map(({ track, cell }) => ({
+        name: track.ref,
+        color: track.color || "",
+        value: protoRoundReading(Number(cell.value), 1),
+        quality: cell.quality,
+      }))
       .sort((a, b) => b.value - a.value);
     return {
       label,
