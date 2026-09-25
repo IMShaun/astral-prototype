@@ -4416,7 +4416,12 @@ function protoHoverSlices(point, opts = {}) {
   }
   const inner = slices.reduce((n, row) => n + (row.parts?.length || 0), 0);
   if (inner) {
-    const rows = opts.all
+    const amount = (row) => Number(String(row.value ?? "").replace(/,/g, "")) || 0;
+    const rows = opts.flat
+      ? slices
+          .flatMap((row) => (row.parts?.length ? row.parts : [row]))
+          .sort((a, b) => amount(b) - amount(a))
+      : opts.all
       ? slices.flatMap((row) => [row, ...(row.parts || []).map((part) => ({ ...part, part: true }))])
       : slices;
     const html = rows
@@ -4830,7 +4835,7 @@ function protoAnalyseControl(point) {
 function protoChartPointTitle(point) {
   if (!point) return "";
   const time = `<p class="astral-muted">${escapeHtml(protoChartAt(point.time))}</p>`;
-  const slicesHtml = protoHoverSlices(point, { all: true });
+  const slicesHtml = protoHoverSlices(point, { all: true, flat: true });
   const rows = `<div class="astral-query-pin-readings${slicesHtml.rest ? " is-scroll" : ""}">${slicesHtml.html}</div>`;
   const tags = protoPointTagsOn(point);
   const tagRow = tags.length
