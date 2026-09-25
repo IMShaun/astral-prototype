@@ -6425,7 +6425,7 @@ button.astral-state {
 .astral-meter-list-head,
 .astral-meter-row-head {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) 7rem 9rem 6rem;
+  grid-template-columns: minmax(0, 1fr) 7rem 9rem 6rem;
   gap: 8px;
   align-items: center;
   width: 100%;
@@ -6482,6 +6482,20 @@ button.astral-state {
 .astral-meter-list .astral-meter-row-head:hover,
 .astral-meter-list .astral-meter-row-head:focus-visible {
   background: var(--color-background-hover);
+}
+
+.astral-meter-list .astral-meter-row.is-static > .astral-meter-row-head {
+  cursor: default;
+}
+
+.astral-meter-list .astral-meter-row.is-static > .astral-meter-row-head:hover {
+  background: transparent;
+}
+
+.astral-site-overview {
+  display: grid;
+  gap: 8px;
+  padding: 0 0 24px;
 }
 
 .astral-meter-row.is-open > .astral-meter-row-head {
@@ -6569,7 +6583,12 @@ button.astral-state {
   border-bottom: 1px solid var(--color-border-strong);
 }
 
-.astral-meter-fold-head {
+/* Accordion. One component for Breakdown, Site settings sections, and Recipients. */
+.astral-accordion {
+  min-width: 0;
+}
+
+.astral-accordion-head {
   appearance: none;
   display: flex;
   align-items: center;
@@ -6577,7 +6596,8 @@ button.astral-state {
   width: 100%;
   min-height: 44px;
   margin: 0;
-  padding: 8px 0;
+  padding: 8px;
+  box-sizing: border-box;
   border: 0;
   background: transparent;
   color: #000;
@@ -6585,33 +6605,42 @@ button.astral-state {
   font-weight: 600;
   text-align: left;
   cursor: pointer;
+  transition: background-color var(--motion-control) ease;
 }
 
-.astral-meter-fold-head:hover {
+.astral-accordion-head:hover {
   background: var(--color-background-hover);
 }
 
-.astral-meter-fold.is-open > .astral-meter-fold-head {
+.astral-accordion.is-open > .astral-accordion-head {
   color: var(--color-brand-extra-2);
 }
 
-.astral-meter-fold-head:focus-visible {
+.astral-accordion-head:focus-visible {
   outline: 2px solid #000;
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
-.astral-meter-fold-name {
+.astral-accordion-name {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
-.astral-meter-fold.is-open > .astral-meter-fold-head .astral-meter-row-toggle svg {
+.astral-accordion-name > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.astral-accordion.is-open > .astral-accordion-head .astral-meter-row-toggle svg {
   transform: none;
 }
 
-.astral-meter-fold.is-open > .astral-fold-clip {
+.astral-accordion.is-open > .astral-fold-clip {
   height: auto;
 }
 
@@ -8932,50 +8961,6 @@ button.astral-state {
   border-top: 1px solid var(--color-border-strong);
 }
 
-.astral-breakdown-head {
-  appearance: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 44px;
-  margin: 0;
-  padding: 8px 0;
-  border: 0;
-  background: transparent;
-  color: #000;
-  font: inherit;
-  font-weight: 600;
-  text-align: left;
-  cursor: pointer;
-}
-
-.astral-breakdown-head:focus-visible {
-  outline: 2px solid #000;
-  outline-offset: 2px;
-}
-
-.astral-breakdown-head .astral-meter-row-toggle svg {
-  transform: rotate(-90deg);
-  transition: transform var(--motion-panel) ease;
-}
-
-.astral-breakdown.is-open .astral-breakdown-head .astral-meter-row-toggle svg {
-  transform: none;
-}
-
-.astral-breakdown-clip {
-  display: grid;
-  interpolate-size: allow-keywords;
-  height: 0;
-  overflow: hidden;
-  transition: height var(--motion-panel) ease;
-}
-
-.astral-breakdown.is-open .astral-breakdown-clip {
-  height: auto;
-}
-
 .astral-breakdown-body {
   display: flex;
   flex-direction: column;
@@ -9443,46 +9428,11 @@ button.astral-state {
 }
 
 .astral-people-fold-head {
-  appearance: none;
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) max-content;
   gap: 12px;
-  align-items: center;
-  width: 100%;
-  margin: 0;
   padding: 12px 16px;
-  box-sizing: border-box;
-  border: 0;
-  background: #fff;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
 }
 
-.astral-people-fold-head:hover {
-  background: var(--color-background-hover);
-}
-
-.astral-people-fold.is-open > .astral-people-fold-head {
-  background: var(--color-background-subtle);
-  color: var(--color-brand-extra-2);
-}
-
-.astral-people-fold-head:focus-visible {
-  outline: 2px solid #000;
-  outline-offset: -2px;
-}
-
-.astral-people-fold-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 600;
-}
-
-.astral-people-fold-head .astral-count {
+.astral-accordion-head .astral-count {
   width: auto;
   min-width: 22px;
   height: 22px;
@@ -9491,10 +9441,6 @@ button.astral-state {
   background: var(--color-border-default);
   color: var(--color-text-primary);
   font-size: 0.75rem;
-}
-
-.astral-people-fold.is-open > .astral-people-fold-head .astral-meter-row-toggle svg {
-  transform: none;
 }
 
 .astral-people-fold-body {

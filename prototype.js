@@ -2240,19 +2240,53 @@ function protoCloneProfile(profile) {
   return JSON.parse(JSON.stringify(profile || {}));
 }
 
-function protoMeterProfile(id) {
+// Hours, time of use, and attributes belong to the site. Every meter on it shares one profile.
+let protoProfileSiteMemo = null;
+
+function protoProfileSiteMap() {
+  const raw = teamSystem()?.prototype || null;
+  const walk = protoWalkPortfolio();
+  if (protoProfileSiteMemo && protoProfileSiteMemo.raw === raw && protoProfileSiteMemo.walk === walk) {
+    return protoProfileSiteMemo.map;
+  }
+  const map = new Map();
+  protoSites().forEach((site) => {
+    const entry = { key: `site:${protoSiteId(site)}`, site, meters: site.meters || [] };
+    entry.meters.forEach((meter) => map.set(meter.id, entry));
+  });
+  protoProfileSiteMemo = { raw, walk, map };
+  return map;
+}
+
+function protoProfileKey(id) {
+  return protoProfileSiteMap().get(id)?.key || String(id || "");
+}
+
+function protoProfileMeters(id) {
+  const meters = protoProfileSiteMap().get(id)?.meters;
+  if (meters?.length) return meters;
   const meter = protoMeter(id);
-  const saved = protoMeterProfiles()[id];
-  const profile = protoCloneProfile(saved || protoMeterProfileDefault(meter));
-  profile.attrs = { ...protoMeterAttrDefaults(meter), ...(profile.attrs || {}) };
+  return meter ? [meter] : [];
+}
+
+function protoProfileAttrDefaults(id) {
+  return Object.assign({}, ...protoProfileMeters(id).map((meter) => protoMeterAttrDefaults(meter)));
+}
+
+function protoMeterProfile(id) {
+  const meters = protoProfileMeters(id);
+  const saved = protoMeterProfiles();
+  const found = saved[protoProfileKey(id)] || meters.map((meter) => saved[meter.id]).find(Boolean);
+  const profile = protoCloneProfile(found || protoMeterProfileDefault(meters[0] || protoMeter(id)));
+  profile.attrs = { ...protoProfileAttrDefaults(id), ...(profile.attrs || {}) };
   return profile;
 }
 
 function protoMeterDraft(id) {
-  const draft = protoMeterDrafts()[id];
+  const draft = protoMeterDrafts()[protoProfileKey(id)];
   if (!draft) return protoMeterProfile(id);
   const next = protoCloneProfile(draft);
-  next.attrs = { ...protoMeterAttrDefaults(protoMeter(id)), ...(next.attrs || {}) };
+  next.attrs = { ...protoProfileAttrDefaults(id), ...(next.attrs || {}) };
   return next;
 }
 
@@ -2318,7 +2352,7 @@ function protoPatchMeterDraft(id, patch) {
   patch(next);
   setProto({
     prototypeSelectOpen: "",
-    prototypeMeterDrafts: { ...protoMeterDrafts(), [id]: next },
+    prototypeMeterDrafts: { ...protoMeterDrafts(), [protoProfileKey(id)]: next },
   });
 }
 
@@ -2403,8 +2437,8 @@ function protoReadMeterProfileForm(form, meter) {
 function protoSaveMeterProfile(meter, draft) {
   const next = protoCloneProfile(draft);
   setProto({
-    prototypeMeterProfiles: { ...protoMeterProfiles(), [meter.id]: next },
-    prototypeMeterDrafts: { ...protoMeterDrafts(), [meter.id]: protoCloneProfile(next) },
+    prototypeMeterProfiles: { ...protoMeterProfiles(), [protoProfileKey(meter.id)]: next },
+    prototypeMeterDrafts: { ...protoMeterDrafts(), [protoProfileKey(meter.id)]: protoCloneProfile(next) },
     prototypeSelectOpen: "",
   });
 }
@@ -6432,10 +6466,10 @@ function protoDetailTitle(name, meta) {
   `;
 }
 
-function protoFoldClip(open, id, inner) {
+function protoFoldClip(open, id, inner, extra = "") {
   return `
     <div
-      class="astral-fold-clip"
+      class="astral-fold-clip${extra ? ` ${escapeHtml(extra)}` : ""}"
       ${id ? `id="${escapeHtml(id)}"` : ""}
       aria-hidden="${open ? "false" : "true"}"
       ${open ? "" : "inert"}
@@ -6445,11 +6479,33 @@ function protoFoldClip(open, id, inner) {
   `;
 }
 
+// Every accordion is this one component. The modifier class keeps each place's spacing.
+function protoAccordion({ id, open, name, attr = "", lead = "", count, nested, modifier = "", clipClass = "", inner = "" }) {
+  const mod = modifier ? ` ${modifier}` : "";
+  return `
+    <div class="astral-accordion${mod}${open ? " is-open" : ""}${nested ? " is-nested" : ""}">
+      <button
+        type="button"
+        class="astral-accordion-head${modifier ? ` ${modifier}-head` : ""}"
+        ${attr}
+        aria-expanded="${open ? "true" : "false"}"
+        aria-controls="${escapeHtml(id)}"
+        title="${escapeHtml(name)}"
+      >
+        <span class="astral-meter-row-toggle" aria-hidden="true">${protoChevronMark("down")}</span>
+        <span class="astral-accordion-name${modifier ? ` ${modifier}-name` : ""}">${lead}<span>${escapeHtml(name)}</span></span>
+        ${count == null ? "" : `<span class="astral-count">${count}</span>`}
+      </button>
+      ${protoFoldClip(open, id, `<div class="astral-accordion-body${modifier ? ` ${modifier}-body` : ""}">${inner}</div>`, clipClass)}
+    </div>
+  `;
+}
+
 function protoSyncFoldClip(root, open) {
   if (!root) return;
   root.classList.toggle("is-open", open);
   const btn = root.querySelector(
-    ":scope > .astral-people-fold-head, :scope > .astral-meter-row-head, :scope > .astral-meter-fold-head"
+    ":scope > .astral-accordion-head, :scope > .astral-meter-row-head"
   );
   btn?.setAttribute("aria-expanded", open ? "true" : "false");
   const clip = root.querySelector(":scope > .astral-fold-clip");
@@ -12373,13 +12429,28 @@ function protoMeterAttrGroup(name, fields) {
 }
 
 function protoMeterAttrFields(meter, attrs) {
-  const kind = protoMeterKind(meter);
-  const key = kind === "water" ? "Water" : kind === "gas" ? "Gas" : "Elec";
-  const useUnit = kind === "water" ? "m³" : "kWh";
+  const order = ["electricity", "gas", "water"];
+  const kinds = [...new Set(protoProfileMeters(meter?.id).map((item) => protoMeterKind(item)))].sort(
+    (a, b) => order.indexOf(a) - order.indexOf(b)
+  );
   const site = [
     protoMeterAttrField("area", "Floor area", attrs.area, "m²"),
     protoMeterAttrField("employees", "Number of employees", attrs.employees, "people"),
   ];
+  return [
+    protoMeterAttrGroup("Site", site),
+    ...kinds.map((kind) =>
+      protoMeterAttrGroup(
+        kind === "water" ? "Water" : kind === "gas" ? "Gas" : "Electricity",
+        protoMeterAttrKindFields(kind, attrs)
+      )
+    ),
+  ].join("");
+}
+
+function protoMeterAttrKindFields(kind, attrs) {
+  const key = kind === "water" ? "Water" : kind === "gas" ? "Gas" : "Elec";
+  const useUnit = kind === "water" ? "m³" : "kWh";
   const supply = [
     ...(kind === "electricity"
       ? [protoMeterAttrField("capacity", "Supply capacity", attrs.capacity, "kVA")]
@@ -12400,11 +12471,7 @@ function protoMeterAttrFields(meter, attrs) {
           protoMeterAttrField(`off${key}`, "Off-peak unit rate", attrs[`off${key}`], "p/kWh"),
         ]),
   ];
-  return [
-    protoMeterAttrGroup("Site", site),
-    protoMeterAttrGroup(kind === "electricity" ? "Supply and carbon" : "Carbon", supply),
-    protoMeterAttrGroup("Rates", rates),
-  ].join("");
+  return [...supply, ...rates];
 }
 
 function protoMeterFoldId() {
@@ -12417,9 +12484,7 @@ function protoMeterSettingsId() {
   if (!id) return "";
   const meter = protoMeter(id);
   if (!meter) return "";
-  const site = protoSiteByMeter(id);
-  const visible = protoMetersForPane(site?.meters || []);
-  return visible.some((item) => item.id === id) ? id : "";
+  return protoProfileSiteMap().has(id) ? id : "";
 }
 
 function protoMeterSettingsMeter() {
@@ -12437,10 +12502,21 @@ function protoMeterSettingsReset() {
 function protoMeterSettingsBtn(meter) {
   if (!meter?.id || !protoCanAct()) return "";
   return protoGhost(
-    `${protoIconMark("settings")}<span>Settings</span>`,
+    `${protoIconMark("settings")}<span>Site settings</span>`,
     `data-proto-meter-settings="${escapeHtml(meter.id)}"`,
     { html: true }
   );
+}
+
+function protoSiteOverview(site) {
+  const meter = site?.meters?.[0];
+  if (!meter) return "";
+  return `
+    <div class="astral-site-overview">
+      ${protoMeterOverview(meter)}
+      <p class="astral-muted">These settings apply to every meter on this site.</p>
+    </div>
+  `;
 }
 
 function protoMeterOverview(meter) {
@@ -12470,41 +12546,33 @@ function protoMeterOverview(meter) {
 
 function protoMeterSettingsPage(meter, site) {
   const facts = protoMeterFacts(meter);
-  const title = [facts.refName, facts.ref].filter(Boolean).join(" ");
+  const title = site?.name || facts.site;
   return protoPaneShell(
     `
         <div class="astral-detail-head">
           <div class="astral-detail-lead">
             ${protoIconBtn("prev", "Back", "data-proto-meter-close")}
             <div>
-              ${protoPaneKicker(protoPaneAbove("meter", meter) || site?.name || facts.site)}
+              ${protoPaneKicker(protoPaneAbove("site", site) || "Site settings")}
               <h3>${escapeHtml(title)}</h3>
             </div>
           </div>
         </div>
           `,
-    protoMeterProfileForm(meter)
+    `<p class="astral-muted">These settings apply to every meter on this site.</p>${protoMeterProfileForm(meter)}`
   );
 }
 
 function protoMeterSectionFold(id, name, kind, inner) {
-  const open = protoMeterFoldId() === id;
-  const clipId = `astral-meter-fold-${id}`;
-  return `
-    <article class="astral-meter-fold${open ? " is-open" : ""}">
-      <button
-        type="button"
-        class="astral-meter-fold-head"
-        data-proto-meter-fold="${escapeHtml(id)}"
-        aria-expanded="${open ? "true" : "false"}"
-        aria-controls="${escapeHtml(clipId)}"
-      >
-        <span class="astral-meter-row-toggle" aria-hidden="true">${protoChevronMark("down")}</span>
-        <span class="astral-meter-fold-name">${protoProfileFactMark(kind)}${escapeHtml(name)}</span>
-      </button>
-      ${protoFoldClip(open, clipId, `<div class="astral-meter-fold-body">${inner}</div>`)}
-    </article>
-  `;
+  return protoAccordion({
+    id: `astral-meter-fold-${id}`,
+    open: protoMeterFoldId() === id,
+    name,
+    attr: `data-proto-meter-fold="${escapeHtml(id)}"`,
+    lead: protoProfileFactMark(kind),
+    modifier: "astral-meter-fold",
+    inner,
+  });
 }
 
 function protoMeterProfileForm(meter) {
@@ -12621,34 +12689,14 @@ function protoMeterRow(meter) {
   const facts = protoMeterFacts(meter);
   const channel = facts.channel;
   const title = [facts.refName, facts.ref].filter(Boolean).join(" ");
-  const open = protoOpenMeter()?.id === meter.id;
-  const clipId = `astral-meter-row-${meter.id}`;
-  const spoken = [title, facts.commodity, facts.channel, facts.hours, facts.use].filter(Boolean).join(", ");
   return `
-    <article class="astral-meter-row${open ? " is-open" : ""}">
-      <button
-        type="button"
-        class="astral-meter-row-head"
-        data-proto-meter-open="${escapeHtml(meter.id)}"
-        aria-expanded="${open ? "true" : "false"}"
-        aria-controls="${escapeHtml(clipId)}"
-        aria-label="${escapeHtml(spoken)}"
-      >
-        <span class="astral-meter-row-toggle" aria-hidden="true">${protoChevronMark("down")}</span>
+    <article class="astral-meter-row is-static">
+      <div class="astral-meter-row-head">
         <span class="astral-meter-ref">${protoMeterMark(meter.commodity)}<span>${escapeHtml(title)}</span></span>
         <span class="astral-meter-channel">${protoFlowPill(protoFlowKind(channel) || "in")}</span>
-        <span class="astral-meter-hours">${escapeHtml(facts.hours)}</span>
+        <span class="astral-meter-hours">${escapeHtml(facts.tariff)}</span>
         <span class="astral-meter-use">${escapeHtml(facts.use)}</span>
-      </button>
-      ${
-        open
-          ? protoFoldClip(
-              true,
-              clipId,
-              `<div class="astral-meter-row-body">${protoMeterOverview(meter)}</div>`
-            )
-          : protoFoldClip(false, clipId, "")
-      }
+      </div>
     </article>
   `;
 }
@@ -12659,10 +12707,9 @@ function protoMeterList(meters) {
   return `
     <div class="astral-meter-list">
       <div class="astral-meter-list-head">
-        <span class="astral-meter-row-toggle" aria-hidden="true"></span>
         <span>Meter</span>
         <span>Channel</span>
-        <span>Hours</span>
+        <span>Tariff</span>
         <span>Use</span>
       </div>
       ${rows.map((meter) => protoMeterRow(meter)).join("")}
@@ -12693,10 +12740,7 @@ function protoProfilePane(sites) {
   }
   if (rows.length === 1) {
     const meters = protoSiteViewMeters(rows[0]);
-    if (!meters.length) {
-      return `<p class="astral-muted">Hours, time of use, and rates sit on a site.</p>`;
-    }
-    return protoMeterList(meters);
+    return `${protoSiteOverview(rows[0])}${protoMeterList(meters)}`;
   }
   return `
     <p class="astral-muted">Hours, time of use, and rates for each site.</p>
@@ -14930,31 +14974,15 @@ function protoToggleBreakdown(btn) {
 }
 
 function protoBreakdownPanel(inner) {
-  const open = protoBreakdownOpen();
-  return `
-    <div class="astral-breakdown${open ? " is-open" : ""}">
-      <button
-        type="button"
-        class="astral-breakdown-head"
-        data-proto-breakdown="toggle"
-        aria-expanded="${open ? "true" : "false"}"
-        aria-controls="astral-breakdown-panel"
-      >
-        <span class="astral-meter-row-toggle" aria-hidden="true">${protoChevronMark("down")}</span>
-        <span>Breakdown</span>
-      </button>
-      <div
-        class="astral-breakdown-clip"
-        id="astral-breakdown-panel"
-        aria-hidden="${open ? "false" : "true"}"
-        ${open ? "" : "inert"}
-      >
-        <div class="astral-breakdown-body">
-          ${inner}
-        </div>
-      </div>
-    </div>
-  `;
+  return protoAccordion({
+    id: "astral-breakdown-panel",
+    open: protoBreakdownOpen(),
+    name: "Breakdown",
+    attr: 'data-proto-breakdown="toggle"',
+    modifier: "astral-breakdown",
+    clipClass: "astral-breakdown-clip",
+    inner,
+  });
 }
 
 function protoPaneListTable(headers, rows) {
@@ -18260,24 +18288,16 @@ function protoUsersTable(people, pool, showTeam) {
 }
 
 function protoPeopleFold({ id, attr, name, count, open, nested, inner }) {
-  const clipId = `astral-people-fold-${id}`;
-  return `
-    <article class="astral-people-fold${open ? " is-open" : ""}${nested ? " is-nested" : ""}">
-      <button
-        type="button"
-        class="astral-people-fold-head"
-        ${attr}
-        aria-expanded="${open ? "true" : "false"}"
-        aria-controls="${escapeHtml(clipId)}"
-        title="${escapeHtml(name)}"
-      >
-        <span class="astral-meter-row-toggle" aria-hidden="true">${protoChevronMark("down")}</span>
-        <span class="astral-people-fold-name">${escapeHtml(name)}</span>
-        <span class="astral-count">${count}</span>
-      </button>
-      ${protoFoldClip(open, clipId, `<div class="astral-people-fold-body">${inner || ""}</div>`)}
-    </article>
-  `;
+  return protoAccordion({
+    id: `astral-people-fold-${id}`,
+    open,
+    name,
+    attr,
+    count,
+    nested,
+    modifier: "astral-people-fold",
+    inner: inner || "",
+  });
 }
 
 function protoUsersList(q, picked) {
@@ -23315,7 +23335,7 @@ function onPrototypeInput(event) {
       }
     }
     const draft = protoReadMeterProfileForm(form, meter);
-    store.prototypeMeterDrafts = { ...protoMeterDrafts(), [meter.id]: draft };
+    store.prototypeMeterDrafts = { ...protoMeterDrafts(), [protoProfileKey(meter.id)]: draft };
     persistChrome();
     const btn = form.querySelector("button[type='submit']");
     if (btn) btn.disabled = !protoMeterDirty(meter.id);
@@ -23572,7 +23592,7 @@ function onPrototypeSubmit(event) {
     const meter = protoMeters().find((item) => item.id === id);
     if (!meter) return;
     const draft = protoReadMeterProfileForm(meterProfileForm, meter);
-    store.prototypeMeterDrafts = { ...protoMeterDrafts(), [meter.id]: draft };
+    store.prototypeMeterDrafts = { ...protoMeterDrafts(), [protoProfileKey(meter.id)]: draft };
     if (!protoMeterDirty(meter.id)) return;
     protoSaveMeterProfile(meter, draft);
     return;
