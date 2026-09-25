@@ -21,6 +21,7 @@ const PROTO_ICON_MARKS = {
   notice: `<path d="M12 4a5 5 0 0 1 5 5v3.2l1.6 3.2H5.4L7 12.2V9a5 5 0 0 1 5-5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /><path d="M9.6 18.2a2.4 2.4 0 0 0 4.8 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />`,
   filter: `<path d="M4 6h16l-5.5 7.2V20l-5 1.5v-8.3L4 6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />`,
   export: `<path d="M12 3v12m0 0-4-4m4 4 4-4M5 20h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
+  upload: `<path d="M12 15V3m0 0-4 4m4-4 4 4M5 20h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
   meter: `<rect x="5" y="4" width="14" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2" /><path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />`,
   expand: `<path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
   prev: `<path d="M14 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,

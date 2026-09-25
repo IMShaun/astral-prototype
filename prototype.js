@@ -668,6 +668,7 @@ function protoPageFilterReset() {
     prototypeMeterSettings: "",
     prototypeMeterFold: "",
     prototypeMeterAttrTab: "",
+    prototypeMeterUpload: null,
     prototypeBreakdownOpen: false,
     prototypeChartPoint: null,
     prototypeChartView: "total",
@@ -716,6 +717,7 @@ function protoPortfolioHomePatch() {
     prototypeMeterSettings: "",
     prototypeMeterFold: "",
     prototypeMeterAttrTab: "",
+    prototypeMeterUpload: null,
     prototypeGroupSites: [],
     prototypeSiteMeters: [],
     prototypePaneMeterKinds: null,
@@ -2441,6 +2443,7 @@ function protoSaveMeterProfile(meter, draft) {
   setProto({
     prototypeMeterProfiles: { ...protoMeterProfiles(), [protoProfileKey(meter.id)]: next },
     prototypeMeterDrafts: { ...protoMeterDrafts(), [protoProfileKey(meter.id)]: protoCloneProfile(next) },
+    prototypeMeterUpload: null,
     prototypeSelectOpen: "",
   });
 }
@@ -6503,8 +6506,39 @@ function protoAccordion({ id, open, name, attr = "", lead = "", count, nested, m
   `;
 }
 
+// Every fold animates its height in script, so the motion does not depend on CSS height: auto support.
+const PROTO_FOLD_MS = 200;
+
+function protoFoldHeight(clip) {
+  return clip ? clip.getBoundingClientRect().height : 0;
+}
+
+function protoFoldMotion(clip, from, open) {
+  if (!clip || typeof clip.animate !== "function") return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  clip.getAnimations().forEach((item) => item.cancel());
+  const start = from;
+  const end = open ? clip.scrollHeight : 0;
+  if (Math.abs(start - end) < 1) return;
+  clip.classList.add("is-folding");
+  const anim = clip.animate([{ height: `${start}px` }, { height: `${end}px` }], {
+    duration: PROTO_FOLD_MS,
+    easing: "ease",
+  });
+  const body = clip.firstElementChild;
+  if (open && body && typeof body.animate === "function") {
+    body.animate([{ opacity: 0 }, { opacity: 1 }], { duration: PROTO_FOLD_MS, easing: "ease" });
+  }
+  const done = () => clip.classList.remove("is-folding");
+  anim.onfinish = done;
+  anim.oncancel = done;
+}
+
 function protoSyncFoldClip(root, open) {
   if (!root) return;
+  const was = root.classList.contains("is-open");
+  const clipNow = root.querySelector(":scope > .astral-fold-clip");
+  const from = was === open ? null : protoFoldHeight(clipNow);
   root.classList.toggle("is-open", open);
   const btn = root.querySelector(
     ":scope > .astral-accordion-head, :scope > .astral-meter-row-head"
@@ -6514,6 +6548,7 @@ function protoSyncFoldClip(root, open) {
   if (!clip) return;
   clip.setAttribute("aria-hidden", open ? "false" : "true");
   clip.toggleAttribute("inert", !open);
+  if (from !== null) protoFoldMotion(clip, from, open);
 }
 
 function protoPinClose() {
@@ -11706,13 +11741,15 @@ function protoToggleFilterSection(key) {
     const root = protoFilterSectionDom(item);
     if (!root) return;
     const open = item === next;
+    const clip = root.querySelector(":scope > .astral-fold-clip");
+    const from = protoFoldHeight(clip);
     root.classList.toggle("is-open", open);
     root
       .querySelector(":scope > .astral-filter-section-btn")
       ?.setAttribute("aria-expanded", open ? "true" : "false");
-    const clip = root.querySelector(":scope > .astral-fold-clip");
     clip?.setAttribute("aria-hidden", open ? "false" : "true");
     clip?.toggleAttribute("inert", !open);
+    protoFoldMotion(clip, from, open);
   });
   const menu = protoFilterSectionDom(key)?.closest(".astral-filter-menu");
   const ms = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 420;
@@ -12449,19 +12486,13 @@ function protoMeterAttrPanel(group, on) {
 }
 
 function protoMeterAttrFields(meter, attrs) {
-  const order = ["electricity", "gas", "water"];
-  const kinds = [...new Set(protoProfileMeters(meter?.id).map((item) => protoMeterKind(item)))].sort(
-    (a, b) => order.indexOf(a) - order.indexOf(b)
-  );
-  const site = [
-    protoMeterAttrField("area", "Floor area", attrs.area, "m²"),
-    protoMeterAttrField("employees", "Number of employees", attrs.employees, "people"),
-  ];
+  const kinds = protoMeterAttrKinds(meter?.id);
+  const site = protoMeterAttrKindFields("site", attrs);
   const groups = [
     { id: "site", name: "Site", fields: site },
     ...kinds.map((kind) => ({
       id: kind,
-      name: kind === "water" ? "Water" : kind === "gas" ? "Gas" : "Electricity",
+      name: protoMeterAttrGroupName(kind),
       fields: protoMeterAttrKindFields(kind, attrs),
     })),
   ];
@@ -12476,30 +12507,235 @@ function protoMeterAttrFields(meter, attrs) {
   `;
 }
 
-function protoMeterAttrKindFields(kind, attrs) {
+// One list of attribute inputs per group. The form, the CSV template, and the upload all read it.
+function protoMeterAttrSpec(kind) {
+  if (kind === "site") {
+    return [
+      { key: "area", label: "Floor area", unit: "m²" },
+      { key: "employees", label: "Number of employees", unit: "people" },
+    ];
+  }
   const key = kind === "water" ? "Water" : kind === "gas" ? "Gas" : "Elec";
   const useUnit = kind === "water" ? "m³" : "kWh";
-  const supply = [
-    ...(kind === "electricity"
-      ? [protoMeterAttrField("capacity", "Supply capacity", attrs.capacity, "kVA")]
-      : []),
-    protoMeterAttrField(
-      `emissions${key}`,
-      "Emissions factor",
-      attrs[`emissions${key}`],
-      `kgCO2e/${useUnit}`
-    ),
-  ];
-  const rates = [
-    protoMeterAttrField(`standing${key}`, "Daily standing charge", attrs[`standing${key}`], "£/day"),
+  return [
+    ...(kind === "electricity" ? [{ key: "capacity", label: "Supply capacity", unit: "kVA" }] : []),
+    { key: `emissions${key}`, label: "Emissions factor", unit: `kgCO2e/${useUnit}` },
+    { key: `standing${key}`, label: "Daily standing charge", unit: "£/day" },
     ...(kind === "water"
-      ? [protoMeterAttrField("unitWater", "Unit rate", attrs.unitWater, "p/m³")]
+      ? [{ key: "unitWater", label: "Unit rate", unit: "p/m³" }]
       : [
-          protoMeterAttrField(`on${key}`, "On-peak unit rate", attrs[`on${key}`], "p/kWh"),
-          protoMeterAttrField(`off${key}`, "Off-peak unit rate", attrs[`off${key}`], "p/kWh"),
+          { key: `on${key}`, label: "On-peak unit rate", unit: "p/kWh" },
+          { key: `off${key}`, label: "Off-peak unit rate", unit: "p/kWh" },
         ]),
   ];
-  return [...supply, ...rates];
+}
+
+function protoMeterAttrKindFields(kind, attrs) {
+  return protoMeterAttrSpec(kind).map((item) => protoMeterAttrField(item.key, item.label, attrs[item.key], item.unit));
+}
+
+function protoMeterAttrKinds(id) {
+  const order = ["electricity", "gas", "water"];
+  return [...new Set(protoProfileMeters(id).map((item) => protoMeterKind(item)))].sort(
+    (a, b) => order.indexOf(a) - order.indexOf(b)
+  );
+}
+
+function protoMeterAttrGroupName(kind) {
+  return kind === "site" ? "Site" : kind === "water" ? "Water" : kind === "gas" ? "Gas" : "Electricity";
+}
+
+const PROTO_SITE_CSV_HEAD = ["Section", "Group", "Setting", "Value", "Unit"];
+
+function protoCsvCellOut(value) {
+  const text = String(value ?? "");
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function protoSiteSettingsCsv(meter) {
+  const draft = protoMeterDraft(meter.id);
+  const rows = [PROTO_SITE_CSV_HEAD];
+  const statusName = (id) => PROTO_DAY_STATUS.find((item) => item.id === id)?.name || id;
+  draft.hours.forEach((row) => {
+    rows.push(["Operational hours", row.day, "Status", statusName(row.status), ""]);
+    rows.push(["Operational hours", row.day, "From", protoClockShow(row.from), "HH:MM"]);
+    rows.push(["Operational hours", row.day, "To", protoClockShow(row.to), "HH:MM"]);
+  });
+  draft.tou.forEach((row) => {
+    rows.push(["Time of use", row.day, "On peak from", protoClockShow(row.onFrom), "HH:MM"]);
+    rows.push(["Time of use", row.day, "On peak to", protoClockShow(row.onTo), "HH:MM"]);
+    rows.push(["Time of use", row.day, "Off peak from", protoClockShow(row.offFrom), "HH:MM"]);
+    rows.push(["Time of use", row.day, "Off peak to", protoClockShow(row.offTo), "HH:MM"]);
+  });
+  ["site", ...protoMeterAttrKinds(meter.id)].forEach((kind) => {
+    protoMeterAttrSpec(kind).forEach((item) => {
+      rows.push(["Attributes", protoMeterAttrGroupName(kind), item.label, draft.attrs[item.key] ?? "", item.unit]);
+    });
+  });
+  return rows.map((row) => row.map(protoCsvCellOut).join(","));
+}
+
+function protoSiteSettingsCsvName(meter) {
+  const site = protoSiteByMeter(meter.id)?.name || "site";
+  const slug = site.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "site";
+  return `${slug}-site-settings.csv`;
+}
+
+function protoParseCsv(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let quoted = false;
+  const src = String(text || "").replace(/^\uFEFF/, "");
+  for (let i = 0; i < src.length; i += 1) {
+    const ch = src[i];
+    if (quoted) {
+      if (ch === '"' && src[i + 1] === '"') {
+        cell += '"';
+        i += 1;
+      } else if (ch === '"') {
+        quoted = false;
+      } else {
+        cell += ch;
+      }
+    } else if (ch === '"') {
+      quoted = true;
+    } else if (ch === ",") {
+      row.push(cell);
+      cell = "";
+    } else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && src[i + 1] === "\n") i += 1;
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += ch;
+    }
+  }
+  if (cell || row.length) {
+    row.push(cell);
+    rows.push(row);
+  }
+  return rows.filter((item) => item.some((value) => String(value).trim()));
+}
+
+function protoCsvClock(raw) {
+  const match = String(raw || "").trim().match(/^(\d{1,2})[:.](\d{2})$/);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 24 || minute > 59 || (hour === 24 && minute > 0)) return null;
+  return `${String(hour).padStart(2, "0")}.${match[2]}`;
+}
+
+// Fill the draft from a CSV in the template layout. Returns how many settings changed and how many lines were skipped.
+function protoApplySiteSettingsCsv(meter, text) {
+  const rows = protoParseCsv(text);
+  const norm = (value) => String(value || "").trim().toLowerCase();
+  if (rows.length && norm(rows[0][0]) === "section") rows.shift();
+  if (!rows.length) return { changed: 0, skipped: 0, read: 0 };
+  const draft = protoMeterDraft(meter.id);
+  const kinds = ["site", ...protoMeterAttrKinds(meter.id)];
+  const hourFields = { status: "status", from: "from", to: "to" };
+  const touFields = { "on peak from": "onFrom", "on peak to": "onTo", "off peak from": "offFrom", "off peak to": "offTo" };
+  let changed = 0;
+  let skipped = 0;
+  rows.forEach((cells) => {
+    const [section, group, setting, rawValue] = cells;
+    const value = String(rawValue ?? "").trim();
+    const where = norm(section);
+    if (where === "operational hours" || where === "time of use") {
+      const list = where === "time of use" ? draft.tou : draft.hours;
+      const row = list.find((item) => norm(item.day) === norm(group));
+      const field = (where === "time of use" ? touFields : hourFields)[norm(setting)];
+      if (!row || !field) {
+        skipped += 1;
+        return;
+      }
+      if (field === "status") {
+        const status = PROTO_DAY_STATUS.find((item) => norm(item.name) === norm(value) || item.id === norm(value));
+        if (!status) {
+          skipped += 1;
+          return;
+        }
+        if (row.status !== status.id) {
+          row.status = status.id;
+          row.profile = "";
+          if (status.id !== "operational") {
+            row.from = "";
+            row.to = "";
+          }
+          changed += 1;
+        }
+        return;
+      }
+      if (where === "operational hours" && row.status !== "operational") {
+        if (value) skipped += 1;
+        return;
+      }
+      const clock = protoCsvClock(value);
+      if (!clock) {
+        skipped += 1;
+        return;
+      }
+      if (row[field] !== clock) {
+        row[field] = clock;
+        row.profile = "";
+        changed += 1;
+      }
+      return;
+    }
+    if (where === "attributes") {
+      const kind = kinds.find((item) => norm(protoMeterAttrGroupName(item)) === norm(group));
+      const item = kind ? protoMeterAttrSpec(kind).find((spec) => norm(spec.label) === norm(setting)) : null;
+      if (!item || (value && !/^\d+(\.\d+)?$/.test(value))) {
+        skipped += 1;
+        return;
+      }
+      if (String(draft.attrs[item.key] ?? "") !== value) {
+        draft.attrs[item.key] = value;
+        changed += 1;
+      }
+      return;
+    }
+    skipped += 1;
+  });
+  if (changed) {
+    store.prototypeMeterDrafts = { ...protoMeterDrafts(), [protoProfileKey(meter.id)]: draft };
+  }
+  return { changed, skipped, read: rows.length };
+}
+
+function protoMeterUploadNote() {
+  const raw = store.prototypeMeterUpload;
+  if (!raw || typeof raw !== "object") return "";
+  const file = escapeHtml(String(raw.name || "your file"));
+  const skipped = Number(raw.skipped) || 0;
+  const skipLine = skipped
+    ? ` Skipped ${skipped} ${skipped === 1 ? "line that doesn't" : "lines that don't"} match the template.`
+    : "";
+  if (raw.error === "type") return `<p class="astral-banner" role="status">Upload a CSV file. Save a spreadsheet as CSV first.</p>`;
+  if (raw.error === "empty") {
+    return `<p class="astral-banner" role="status">No settings found in ${file}. Download the template to see the layout.</p>`;
+  }
+  if (!raw.changed) {
+    return `<p class="astral-banner" role="status">${file} matches these settings. Nothing changed.${skipLine}</p>`;
+  }
+  const count = Number(raw.changed);
+  return `<p class="astral-banner" role="status">${count} ${count === 1 ? "setting" : "settings"} filled from ${file}. Check them, then Save changes.${skipLine}</p>`;
+}
+
+function protoMeterUploadBtn(meter) {
+  if (!meter?.id || !protoCanAct()) return "";
+  return `
+    <div class="astral-detail-tools">
+      <label class="astral-ghost astral-upload astral-meter-upload">
+        ${protoIconMark("upload")}<span>Upload CSV</span>
+        <input class="sr-only" type="file" accept=".csv,text/csv" data-proto-meter-upload="${escapeHtml(meter.id)}" />
+      </label>
+    </div>
+  `;
 }
 
 function protoMeterFoldId() {
@@ -12525,6 +12761,7 @@ function protoMeterSettingsReset() {
     prototypeMeterSettings: "",
     prototypeMeterFold: "",
     prototypeMeterAttrTab: "",
+    prototypeMeterUpload: null,
   };
 }
 
@@ -12606,9 +12843,17 @@ function protoMeterSettingsPage(meter, site) {
               <h3>${escapeHtml(title)}</h3>
             </div>
           </div>
+          ${protoMeterUploadBtn(meter)}
         </div>
           `,
-    `<p class="astral-muted">These settings apply to every meter on this site.</p>${protoMeterProfileForm(meter)}`
+    `<p class="astral-muted astral-meter-settings-lead">These settings apply to every meter on this site.${
+      protoCanAct()
+        ? ` Already have them in a spreadsheet? ${protoTextBtn(
+            "Download the template",
+            `data-proto-meter-template="${escapeHtml(meter.id)}"`
+          )}, fill it in, then Upload CSV.`
+        : ""
+    }</p>${protoMeterUploadNote()}${protoMeterProfileForm(meter)}`
   );
 }
 
@@ -15004,6 +15249,7 @@ function protoToggleBreakdown(btn) {
     return;
   }
   const panel = document.getElementById("astral-breakdown-panel");
+  const from = protoFoldHeight(panel);
   btn.setAttribute("aria-expanded", next ? "true" : "false");
   if (next) {
     if (panel) {
@@ -15023,6 +15269,7 @@ function protoToggleBreakdown(btn) {
     panel.setAttribute("aria-hidden", "true");
     panel.setAttribute("inert", "");
   }
+  protoFoldMotion(panel, from, next);
   btn.focus();
 }
 
@@ -22412,10 +22659,22 @@ function onPrototype(event) {
         prototypeMeterOpen: id,
         prototypeMeterFold: "",
         prototypeMeterAttrTab: "",
+    prototypeMeterUpload: null,
         prototypePane: "profile",
       },
       { pane: true }
     );
+    return;
+  }
+  const meterTemplate = event.target.closest("[data-proto-meter-template]");
+  if (meterTemplate) {
+    const meter = protoMeter(String(meterTemplate.dataset.protoMeterTemplate || ""));
+    if (!meter) return;
+    const form = document.querySelector("#astral-fs [data-proto-meter-profile]");
+    if (form) {
+      store.prototypeMeterDrafts = { ...protoMeterDrafts(), [protoProfileKey(meter.id)]: protoReadMeterProfileForm(form, meter) };
+    }
+    protoCsvDownload(protoSiteSettingsCsv(meter), protoSiteSettingsCsvName(meter));
     return;
   }
   const meterAttrTab = event.target.closest("[data-proto-meter-attr-tab]");
@@ -23454,6 +23713,36 @@ function onPrototypeInput(event) {
     if (active) {
       protoRestoreFocus(`#astral-fs [data-proto-user-draft="${index}"]`, start);
     }
+    return;
+  }
+  const meterUpload = event.target.closest("[data-proto-meter-upload]");
+  if (meterUpload) {
+    if (event.type !== "change" || !meterUpload.files || !meterUpload.files[0] || !protoCanAct()) return;
+    const meter = protoMeter(String(meterUpload.dataset.protoMeterUpload || ""));
+    const blob = meterUpload.files[0];
+    const name = String(blob.name || "").slice(0, 120);
+    meterUpload.value = "";
+    if (!meter) return;
+    if (!/\.csv$/i.test(name) && blob.type !== "text/csv") {
+      setProto({ prototypeMeterUpload: { name, error: "type" } });
+      return;
+    }
+    const form = document.querySelector("#astral-fs [data-proto-meter-profile]");
+    if (form) {
+      store.prototypeMeterDrafts = { ...protoMeterDrafts(), [protoProfileKey(meter.id)]: protoReadMeterProfileForm(form, meter) };
+    }
+    blob.text().then((text) => {
+      const result = protoApplySiteSettingsCsv(meter, text);
+      if (!result.read || result.skipped === result.read) {
+        setProto({ prototypeMeterUpload: { name, error: "empty" }, prototypeSelectOpen: "" });
+        return;
+      }
+      setProto({
+        prototypeMeterUpload: { name, changed: result.changed, skipped: result.skipped },
+        prototypeMeterDrafts: protoMeterDrafts(),
+        prototypeSelectOpen: "",
+      });
+    });
     return;
   }
   const pictureFile = event.target.closest("[data-proto-picture='file']");

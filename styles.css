@@ -9501,10 +9501,13 @@ button.astral-state {
   width: 100%;
   min-width: 0;
   justify-items: stretch;
-  interpolate-size: allow-keywords;
   height: 0;
   overflow: hidden;
-  transition: height var(--motion-panel) ease;
+}
+
+/* Script animates the height. Keep the clip closed to spill while it moves. */
+.astral-fold-clip.is-folding {
+  overflow: hidden !important;
 }
 
 .astral-people-fold.is-open > .astral-fold-clip,
@@ -10686,6 +10689,35 @@ button.astral-state {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.astral-upload:focus-within {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
+
+.astral-meter-upload {
+  gap: 8px;
+  cursor: pointer;
+}
+
+.astral-meter-upload svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex: none;
+}
+
+.astral-meter-settings-lead {
+  margin: 0;
+}
+
+.astral-meter-settings-lead .astral-text-btn {
+  display: inline;
+  min-height: 0;
+  height: auto;
+  padding: 0;
+  vertical-align: baseline;
 }
 
 .astral-brand-colours {

@@ -3781,6 +3781,7 @@ const CHROME_FIELDS = [
   "prototypeMeterSettings",
   "prototypeMeterFold",
   "prototypeMeterAttrTab",
+  "prototypeMeterUpload",
   "prototypeReportEdit",
   "prototypeReportFrom",
   "prototypeReportDraft",
