@@ -8814,6 +8814,28 @@ button.astral-state {
   opacity: 1;
 }
 
+.astral-hit-group.is-found > .astral-hit-focus {
+  animation: astral-hit-found 900ms ease-out 350ms both;
+}
+
+@keyframes astral-hit-found {
+  0% {
+    stroke-width: 2;
+  }
+  35% {
+    stroke-width: 6;
+  }
+  100% {
+    stroke-width: 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .astral-hit-group.is-found > .astral-hit-focus {
+    animation: none;
+  }
+}
+
 .astral-hit-focus {
   fill: none;
   stroke: #000;

@@ -20904,6 +20904,40 @@ function protoPinChart() {
   return document.querySelector("#astral-fs .astral-chart");
 }
 
+// A Breakdown row takes the user up to its point on the graph, with the pin open.
+// It waits two frames so the kept scroll is put back first.
+function protoRevealRowPoint() {
+  protoPlaceQueryPinSoon();
+  requestAnimationFrame(() => requestAnimationFrame(protoRevealRowPointNow));
+}
+
+function protoRevealRowPointNow() {
+  const hit = protoPinHit();
+  const wrap = hit?.closest(".astral-chart-wrap");
+  if (!hit || !wrap) {
+    protoPlaceQueryPinSoon();
+    return;
+  }
+  const calm = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  hit.focus({ preventScroll: true });
+  const scroller = wrap.closest(".astral-pane-body, .astral-stage");
+  const follow = () => protoPlaceQueryPin();
+  scroller?.addEventListener("scroll", follow, { passive: true });
+  setTimeout(() => {
+    scroller?.removeEventListener("scroll", follow);
+    protoPlaceQueryPinSoon();
+  }, calm ? 0 : 900);
+  wrap.scrollIntoView({ block: "start", inline: "nearest", behavior: calm ? "auto" : "smooth" });
+  const group = hit.closest(".astral-hit-group");
+  if (group && !calm) {
+    group.classList.remove("is-found");
+    void group.getBoundingClientRect();
+    group.classList.add("is-found");
+    group.addEventListener("animationend", () => group.classList.remove("is-found"), { once: true });
+  }
+  protoPlaceQueryPinSoon();
+}
+
 function protoPlaceQueryPinSoon() {
   protoPlaceQueryPin();
   requestAnimationFrame(() => {
@@ -22021,7 +22055,8 @@ function onPrototype(event) {
     );
     protoPinUser = null;
     if (same) {
-      protoPlaceQueryPinSoon();
+      if (hitAct.matches("tr")) protoRevealRowPoint();
+      else protoPlaceQueryPinSoon();
       return;
     }
     const found = protoQueriesOnThisGraph().filter(
@@ -22040,9 +22075,7 @@ function onPrototype(event) {
       prototypeQuerySite: "",
       prototypeQueryCommentOpen: false,
     });
-    if (hitAct.matches("tr")) {
-      protoRestoreFocus(`#astral-fs tr[data-proto-hit][data-tip-time="${CSS.escape(time)}"]`);
-    }
+    if (hitAct.matches("tr")) protoRevealRowPoint();
     return;
   }
   const queryOpen = event.target.closest("[data-proto-query-open]");
