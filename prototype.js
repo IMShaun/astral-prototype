@@ -18450,7 +18450,7 @@ function protoExpiryLeft(raw) {
   const end = protoDayStamp(raw || PROTO_TEMP_TO);
   const now = protoDayStamp(new Date());
   const days = Math.round((end - now) / 86400000);
-  if (days <= 0) return { count: 0, unit: "days" };
+  if (days <= 0) return { count: 0, unit: "days", ended: true };
   const endDate = new Date(end);
   const nowDate = new Date(now);
   let months =
@@ -18464,6 +18464,7 @@ function protoExpiryLeft(raw) {
 
 function protoExpiryLabel(raw) {
   const left = protoExpiryLeft(raw);
+  if (left.ended) return "Ended";
   const unit = left.count === 1 ? left.unit.slice(0, -1) : left.unit;
   return `${left.count} ${unit}`;
 }
@@ -19519,7 +19520,7 @@ function protoPersonDetail(person) {
   const offDay = person.offAt ? protoFormatFullDay(protoFromIso(person.offAt)) : "";
   const stateNote =
     state === "off"
-      ? `<div class="astral-note astral-alert-call astral-person-state-note" role="status">
+      ? `<div class="astral-note astral-alert-call astral-person-state-note">
           <p>Turned off on ${escapeHtml(offDay)}${person.offBy ? ` by ${escapeHtml(person.offBy)}` : ""}. They cannot sign in.</p>
           ${
             protoCanTurnOffPerson(person)
@@ -19531,8 +19532,8 @@ function protoPersonDetail(person) {
           }
         </div>`
       : state === "ended"
-        ? `<div class="astral-note astral-alert-call astral-person-state-note" role="status">
-            <p>Access ended on ${escapeHtml(toLine)}. Renew access to let them back in.</p>
+        ? `<div class="astral-note astral-alert-call astral-person-state-note">
+            <p>Access ended on ${escapeHtml(toLine)}. They cannot sign in until it is renewed.</p>
             ${
               protoCanAdminCompany()
                 ? `<div class="astral-alert-call-actions">${protoBtn("Renew access", 'data-proto-renew="open"')}</div>`
@@ -19540,16 +19541,9 @@ function protoPersonDetail(person) {
             }
           </div>`
         : "";
-  const stateLine =
-    state === "quiet"
-      ? "Quiet. No sign-in for 90 days or more. They still have access."
-      : state === "not-joined"
-        ? "Not joined. Invited but never signed in."
-        : state === "off"
-          ? "Turned off"
-          : state === "ended"
-            ? "Access ended"
-            : "Active. Signed in within 90 days.";
+  const stateLine = state === "quiet" ? "Quiet. They still have access." : protoPersonStateName(state);
+  const lastSignIn = you ? "Now" : protoUsageDays(person.lastActive) == null ? "Not yet" : person.lastActive;
+  const showState = !you && !person.imserv;
   const fact = (label, value, wide) => `
     <div class="astral-field${wide ? " is-wide" : ""}">
       <span>${escapeHtml(label)}</span>
@@ -19570,12 +19564,15 @@ function protoPersonDetail(person) {
       </div>
       <div class="astral-profile-fields">
         ${stateNote}
-        ${fact("Name", person.name)}
-        ${fact("Email address", person.email)}
+        ${you ? fact("Name", person.name) : ""}
+        ${fact("Email address", person.email, !you)}
         ${you && disciplineName ? fact("Discipline", disciplineName) : ""}
         ${you && jobTitle ? fact("Job title", jobTitle) : ""}
-        ${fact("Last active", person.lastActive, true)}
-        ${you || person.imserv ? "" : fact("State", stateLine, true)}
+        ${
+          showState
+            ? `<div class="astral-profile-row">${fact("State", stateLine)}${fact("Last sign-in", lastSignIn)}</div>`
+            : fact("Last sign-in", lastSignIn, true)
+        }
         <div class="astral-profile-row">
           <div class="astral-field">
             <span>Role</span>
@@ -19630,7 +19627,7 @@ function protoPersonDetail(person) {
             <div class="astral-expiry-row">
               ${protoExpiryPill(person.expiresOn)}
               ${
-                protoCanAdminCompany()
+                protoCanAdminCompany() && state !== "ended"
                   ? protoBtn("Renew", 'data-proto-renew="open"')
                   : ""
               }
@@ -20157,7 +20154,13 @@ function protoUsersPane() {
     : "";
   const kicker = openPerson ? "" : cap.kicker;
   const title = openPerson ? openPerson.name : cap.title;
-  const meta = openPerson ? protoUserRoleName(openPerson.role) : cap.meta;
+  const meta = openPerson
+    ? protoShowsImserv() && !openPerson.you
+      ? openPerson.imserv
+        ? "IMSERV"
+        : openPerson.company || ""
+      : protoUserRoleName(openPerson.role)
+    : cap.meta;
   return `
     <section class="astral-card astral-pane">
       ${protoPaneShell(
