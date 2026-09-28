@@ -11524,154 +11524,18 @@ button.astral-state:focus-visible,
   background: var(--color-brand-primary);
 }
 
-/* Usage Growth: Joined up from the line, Left down from it, one scale. */
-.astral-growth {
-  display: grid;
-  gap: var(--space-16);
-  margin: 0 0 var(--space-24);
+/* Usage Growth reuses the Consumption bar chart, a little shorter so the table shows. */
+.astral-usage .astral-pane-body > .astral-chart-wrap {
+  --astral-chart-height: 400px;
+  margin-bottom: var(--space-24);
 }
 
-.astral-growth-head {
-  display: grid;
-  gap: var(--space-8);
+.astral-usage-lead {
+  margin: 0 0 var(--space-16);
 }
 
-.astral-growth-head > p {
-  margin: 0;
-}
-
-.astral-growth-key {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-16);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 0.875rem;
-}
-
-.astral-growth-key li {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-8);
-}
-
-.astral-growth-swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
-}
-
-.astral-growth-plot {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--space-8);
-}
-
-.astral-growth-col {
-  display: grid;
-  min-width: 0;
-}
-
-.astral-growth-up,
-.astral-growth-down {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  min-height: 0;
-}
-
-.astral-growth-up {
-  align-items: flex-end;
-  border-bottom: 1px solid var(--color-border-strong);
-  padding-top: 20px;
-}
-
-.astral-growth-down {
-  align-items: flex-start;
-  padding-bottom: 20px;
-}
-
-.astral-growth-bar {
-  position: relative;
-  width: min(100%, 40px);
-  height: var(--h);
-}
-
-.astral-growth-bar.is-joined,
-.astral-growth-swatch.is-joined {
-  background: var(--color-brand-primary);
-}
-
-.astral-growth-bar.is-joined {
-  border-radius: 4px 4px 0 0;
-}
-
-.astral-growth-bar.is-left,
-.astral-growth-swatch.is-left {
-  background: var(--color-text-secondary);
-}
-
-.astral-growth-bar.is-left {
-  border-radius: 0 0 4px 4px;
-}
-
-.astral-growth-n {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.is-joined > .astral-growth-n {
-  bottom: calc(100% + 4px);
-}
-
-.is-left > .astral-growth-n {
-  top: calc(100% + 4px);
-}
-
-.astral-growth-month {
-  padding-top: var(--space-8);
-  text-align: center;
-  font-size: 0.8125rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.astral-growth-col.is-current .astral-growth-bar {
-  opacity: 0.6;
-}
-
-.astral-growth.is-draw .astral-growth-bar {
-  animation: astral-growth-draw 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(var(--bar-i, 0) * 40ms);
-}
-
-.astral-growth.is-morph .astral-growth-bar {
-  animation: astral-growth-morph 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes astral-growth-draw {
-  from {
-    height: 0;
-  }
-}
-
-@keyframes astral-growth-morph {
-  from {
-    height: var(--from);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .astral-growth.is-draw .astral-growth-bar,
-  .astral-growth.is-morph .astral-growth-bar {
-    animation: none;
-  }
+.astral-meter-pill.is-still {
+  cursor: default;
 }
 
 .astral-rail-link .astral-count {

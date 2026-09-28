@@ -4400,6 +4400,7 @@ function protoFormatReading(value, unit) {
   const amount = protoFormatAmount(value);
   const u = String(unit || "").trim();
   if (u === "£") return `£${amount}`;
+  if (u === "people" && amount === "1") return "1 person";
   return u ? `${amount} ${u}` : amount;
 }
 
@@ -5251,8 +5252,25 @@ function protoChartKeyPill({ on, label, spoken, hit, fill, ink }) {
   `;
 }
 
-function protoChartKey(dual) {
+// names swaps In and Out for other pairs, such as Joined and Left. Those keys are labels, not toggles.
+function protoChartKey(dual, names) {
   if (!dual) return "";
+  if (names) {
+    const still = (kind) => {
+      const fill = protoChartFlowFill(kind);
+      return `<span class="astral-meter-pill is-on is-still" role="listitem" style="--slice:${escapeHtml(
+        fill
+      )};--slice-ink:${escapeHtml(protoSliceInk(fill))}"><span class="astral-meter-pill-label">${escapeHtml(
+        names[kind]
+      )}</span></span>`;
+    };
+    return `
+    <div class="astral-chart-key" role="list" aria-label="${escapeHtml(`${names.in} and ${names.out}`)}">
+      ${still("in")}
+      ${still("out")}
+    </div>
+  `;
+  }
   const item = (kind) => {
     const on = protoChartFlowOn(kind);
     const short = kind === "out" ? "Out" : "In";
@@ -5300,7 +5318,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
   const heading = extras.heading || null;
   const titled = protoChartIsGraph(label);
   return `
-    <div class="astral-chart-wrap" data-proto-chart="${escapeHtml(label)}">
+    <div class="astral-chart-wrap" data-proto-chart="${escapeHtml(label)}"${extras.still ? " data-proto-chart-still" : ""}>
       ${
         heading
           ? `<div class="astral-chart-head">
@@ -5327,12 +5345,12 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
         empty
           ? ""
           : heading
-          ? `<p class="sr-only">${escapeHtml(label)}. Hover or focus a bar for the reading.</p>`
+          ? `<p class="sr-only">${escapeHtml(label)}. Hover or focus a bar for the ${extras.still ? "numbers" : "reading"}.</p>`
           : `<p class="sr-only">${titled ? "" : `${escapeHtml(label)}. `}Hover or focus a point for the reading. Click a point to raise a query.</p>`
       }
       ${svg}
       <div class="astral-chart-keys">
-        ${dual ? protoChartKey(true) : ""}
+        ${dual ? protoChartKey(true, extras.keyNames) : ""}
       </div>
       <div class="astral-tip" hidden>
         <div class="astral-tip-head">
@@ -6255,6 +6273,7 @@ function protoBarChart(points, label, options = {}) {
             tabindex="0"
             role="img"
             aria-label="${escapeHtml(
+              p.spoken ||
               `${p.label}, ${p.value == null ? "no reading" : protoFormatReading(p.value, p.unit || "kWh")}${
                 p.quality === "estimated" && p.value != null ? ", estimated" : ""
               }${
@@ -6284,6 +6303,8 @@ function protoBarChart(points, label, options = {}) {
   `;
   return protoChartWrap(svg, label, dual && !options.seriesStack, view.empty, {
     heading: options.heading,
+    keyNames: options.keyNames,
+    still: options.still,
   });
 }
 
@@ -11529,76 +11550,51 @@ function protoUsageGrowthSummary(growth) {
   const invited = growth.invited
     ? ` ${growth.invited} more ${growth.invited === 1 ? "is" : "are"} invited but not joined yet.`
     : "";
-  return `${growth.now} have joined and still have access, ${protoUsageNetWords(diff).toLowerCase()} in 12 months. ${growth.joined} joined and ${growth.left} left.${invited}`;
+  return `${growth.now} ${growth.now === 1 ? "person has" : "people have"} joined and still ${
+    growth.now === 1 ? "has" : "have"
+  } access, ${protoUsageNetWords(diff).toLowerCase()} in 12 months.${invited}`;
 }
 
-function protoUsageNice(n) {
-  if (n <= 4) return Math.max(1, n);
-  const step = n <= 10 ? 2 : n <= 25 ? 5 : 10;
-  return Math.ceil(n / step) * step;
-}
-
-// Joined grows up from the line, Left grows down, on one scale. Tabbing in draws the bars. A filter change moves them from where they were.
-function protoUsageGrowthChart(growth) {
-  const prev = {};
-  const old = document.querySelector("#astral-fs .astral-growth");
-  const cameFromSkeleton = Boolean(old && old.classList.contains("is-skel"));
-  (cameFromSkeleton ? [] : document.querySelectorAll("#astral-fs .astral-growth-col")).forEach((col) => {
-    prev[col.dataset.month] = {
-      up: col.querySelector(".is-joined")?.style.getPropertyValue("--h") || "0px",
-      down: col.querySelector(".is-left")?.style.getPropertyValue("--h") || "0px",
-    };
-  });
-  const morph = Object.keys(prev).length > 0;
-  const up = protoUsageNice(Math.max(0, ...growth.months.map((row) => row.joined)));
-  const down = protoUsageNice(Math.max(0, ...growth.months.map((row) => row.left)));
-  const area = 180;
-  const upPx = Math.round((area * up) / (up + down));
-  const downPx = area - upPx;
-  const px = (n, of, room) => `${Math.round((n / of) * room)}px`;
-  const cols = growth.months
-    .map((row, i) => {
-      const was = prev[row.key] || { up: "0px", down: "0px" };
-      const label = `${row.full}${row.current ? " so far" : ""}: ${row.joined} joined, ${row.left} left, ${row.access} joined with access`;
-      return `
-        <div class="astral-growth-col${row.current ? " is-current" : ""}" data-month="${escapeHtml(row.key)}"         title="${escapeHtml(label)}" style="--bar-i:${i};grid-template-rows:${upPx + 20}px ${downPx + 20}px auto">
-          <div class="astral-growth-up">
-            <span class="astral-growth-bar is-joined" style="--h:${px(row.joined, up, upPx)};--from:${was.up}">${
-              row.joined ? `<span class="astral-growth-n">${row.joined}</span>` : ""
-            }</span>
-          </div>
-          <div class="astral-growth-down">
-            <span class="astral-growth-bar is-left" style="--h:${px(row.left, down, downPx)};--from:${was.down}">${
-              row.left ? `<span class="astral-growth-n">${row.left}</span>` : ""
-            }</span>
-          </div>
-          <span class="astral-growth-month">${escapeHtml(row.short)}${
-            row.short === "Jan" || i === 0 ? `<span class="astral-muted"> ${row.year}</span>` : ""
-          }</span>
-        </div>
-      `;
-    })
-    .join("");
+function protoUsageGrowthBody(growth, tab, people, q) {
   return `
-    <figure class="astral-growth${morph ? " is-morph" : " is-draw"}">
-      <figcaption class="astral-growth-head">
-        <div class="astral-chart-heading">
-          <h3 class="astral-chart-title">People who have joined</h3>
-          <p class="astral-chart-when">${escapeHtml(`${growth.from} to ${growth.to}`)}</p>
-        </div>
-        <p class="astral-muted">${escapeHtml(protoUsageGrowthSummary(growth))}</p>
-        <ul class="astral-growth-key">
-          <li><span class="astral-growth-swatch is-joined" aria-hidden="true"></span>Joined, above the line</li>
-          <li><span class="astral-growth-swatch is-left" aria-hidden="true"></span>Left, below the line</li>
-        </ul>
-      </figcaption>
-      <div class="astral-growth-plot" role="img" aria-label="${escapeHtml(
-        `Joined and left each month, ${growth.from} to ${growth.to}. ${protoUsageGrowthSummary(growth)} The table below has every month.`
-      )}">
-        ${cols}
-      </div>
-    </figure>
+    <p class="astral-usage-lead">${escapeHtml(protoUsageGrowthSummary(growth))}</p>
+    ${protoUsageGrowthChart(growth)}
+    ${protoUsageTable(tab, people, q)}
   `;
+}
+
+// Growth uses the same bar chart as Consumption. Joined and Left are the pair, so each month reads side by side.
+function protoUsageGrowthChart(growth) {
+  const points = growth.months.map((row) => ({
+    label: `${row.short} ${row.year}`,
+    value: row.joined,
+    last: row.left,
+    nowLabel: "Joined",
+    lastLabel: "Left",
+    quality: "actual",
+    lastQuality: "actual",
+    unit: "people",
+    spoken: `${row.full}${row.current ? " so far" : ""}. ${row.joined} joined. ${row.left} left. ${row.access} joined with access.`,
+  }));
+  return protoWithStore(
+    {
+      prototypePane: "consumption",
+      prototypePaneFilters: [],
+      prototypeChartSliceOff: [],
+      prototypeChartFlows: ["in", "out"],
+      prototypeChartPoint: null,
+    },
+    () =>
+      protoBarChart(points, "Joined and left by month", {
+        dual: true,
+        still: true,
+        keyNames: { in: "Joined", out: "Left" },
+        heading: {
+          title: "Joined and left",
+          when: `Last 12 months, ${growth.from} to ${growth.to}`,
+        },
+      })
+  );
 }
 
 function protoUsageScoped(people) {
@@ -11955,7 +11951,7 @@ function protoUsage() {
           <p class="astral-muted astral-usage-note">Updated daily. Log in as user visits do not count.</p>
         `,
         growth
-          ? `${protoUsageGrowthChart(protoUsageGrowth(people))}${protoUsageTable(tab, people, q)}`
+          ? protoUsageGrowthBody(protoUsageGrowth(people), tab, people, q)
           : protoUsageTable(tab, people, q)
       )}
     </section>
@@ -22459,7 +22455,11 @@ function fillProtoTip(hit) {
   tip.dataset.tipTime = point.time;
   tip.dataset.tipChart = chart;
   const timeEl = tip.querySelector(".astral-tip-time");
-  if (timeEl) timeEl.textContent = protoChartAtZone(point);
+  if (timeEl) {
+    timeEl.textContent = wrap.hasAttribute("data-proto-chart-still")
+      ? protoChartTimeLabel(point.time)
+      : protoChartAtZone(point);
+  }
   const markEl = tip.querySelector(".astral-tip-marks");
   if (markEl) {
     const marks = protoHoverAttachHtml(point, hit);
@@ -23993,6 +23993,7 @@ function onPrototype(event) {
     return;
   }
   const hitAct = event.target.closest("[data-proto-hit]");
+  if (hitAct && hitAct.closest("[data-proto-chart-still]")) return;
   if (hitAct) {
     if (hitAct.dataset.protoHit === "clear") {
       setProto({
