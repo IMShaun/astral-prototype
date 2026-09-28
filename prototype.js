@@ -3382,12 +3382,141 @@ function protoZoneBuckets(rows, meters) {
   });
 }
 
-function protoZoneWords(bucket, zones) {
+function protoZoneBits(bucket, zones) {
   if (!bucket) return "";
   const bits = [];
   if (zones.showHours) bits.push(PROTO_ZONE_NAMES[bucket.kind]);
   if (zones.showTou) bits.push(bucket.peak ? "Peak" : "Off-peak");
-  return bits.length ? `. ${bits.join(", ")}` : "";
+  return bits.join(", ");
+}
+
+function protoZoneWords(bucket, zones) {
+  if (!bucket) return "";
+  if (bucket.groups) {
+    return bucket.groups.map((group) => `. ${group.label}: ${protoZoneBits(group.bucket, zones)}`).join("");
+  }
+  const words = protoZoneBits(bucket, zones);
+  return words ? `. ${words}` : "";
+}
+
+function protoZoneTipAttrs(bucket, zones) {
+  if (bucket?.groups) {
+    const lines = bucket.groups.map((group) => [group.label, protoZoneBits(group.bucket, zones)]);
+    return `data-tip-zones="${escapeHtml(JSON.stringify(lines))}"`;
+  }
+  return `data-tip-zone="${escapeHtml(protoZoneWords(bucket, zones).replace(/^\. /, ""))}"`;
+}
+
+function protoReadZones(raw) {
+  let list = raw;
+  if (typeof raw === "string") {
+    try {
+      list = JSON.parse(raw || "[]");
+    } catch {
+      list = [];
+    }
+  }
+  if (!Array.isArray(list)) return [];
+  return list
+    .filter((row) => Array.isArray(row) && row.length === 2)
+    .map((row) => [String(row[0] || ""), String(row[1] || "")]);
+}
+
+function protoChartZoneLines(point) {
+  return (point?.zones || [])
+    .map(
+      ([name, words]) =>
+        `<p class="astral-tip-zone"><span class="astral-tip-zone-name">${escapeHtml(name)}</span> ${escapeHtml(words)}</p>`
+    )
+    .join("");
+}
+
+// Meters that share hours and tariff times sit in one group. The graph shades one group at a time.
+function protoZoneKey(meter, zones) {
+  const profile = protoMeterProfile(meter?.id);
+  const bits = [];
+  if (zones.showHours) {
+    bits.push(
+      (profile.hours || []).map((row) => `${row.day}:${row.status || ""}:${row.from || ""}-${row.to || ""}`).join(",") ||
+        String(meter?.hours || "")
+    );
+  }
+  if (zones.showTou) {
+    bits.push((profile.tou || []).map((row) => `${row.day}:${row.onFrom || ""}-${row.onTo || ""}`).join(",") || "default");
+  }
+  return bits.join("|");
+}
+
+function protoZoneJoin(list) {
+  if (list.length < 2) return list[0] || "";
+  return `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`;
+}
+
+function protoZoneGroupLabel(members, all) {
+  const sites = [];
+  members.forEach((meter) => {
+    const site = meter.site || "";
+    if (!sites.includes(site)) sites.push(site);
+  });
+  let whole = true;
+  const parts = sites.map((site) => {
+    const mine = members.filter((meter) => (meter.site || "") === site);
+    const siteAll = all.filter((meter) => (meter.site || "") === site);
+    if (site && mine.length === siteAll.length) return site;
+    whole = false;
+    const kinds = [...new Set(mine.map((meter) => protoMeterUtility(meter).toLowerCase()))];
+    return [site, protoZoneJoin(kinds)].filter(Boolean).join(" ");
+  });
+  if (parts.length === 1) return parts[0];
+  const more = parts.length - 1;
+  return whole ? `${parts[0]} and ${more} other site${more === 1 ? "" : "s"}` : `${parts[0]} and ${more} more`;
+}
+
+function protoZoneGroupNote(meter, zones) {
+  const profile = protoMeterProfile(meter?.id);
+  const bits = [];
+  if (zones.showHours) {
+    const hours = protoHoursSummary(profile);
+    bits.push(/^\d/.test(hours) ? `Operational ${hours}` : hours === "Varies by day" ? "Hours vary by day" : hours);
+  }
+  if (zones.showTou) {
+    const tou = protoTouSummary(profile);
+    bits.push(tou === "Varies by day" ? "Tariff varies by day" : tou);
+  }
+  return bits.join(" \u00b7 ");
+}
+
+function protoZoneGroups(meters, zones) {
+  const list = (meters || []).filter(Boolean);
+  const map = new Map();
+  list.forEach((meter) => {
+    const key = protoZoneKey(meter, zones);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(meter);
+  });
+  return [...map.values()].map((members) => ({
+    id: members[0].id,
+    meters: members,
+    label: protoZoneGroupLabel(members, list),
+    note: protoZoneGroupNote(members[0], zones),
+  }));
+}
+
+function protoZoneSet(rows, meters, zones) {
+  const hourly = (rows || []).some((point) => protoPointHour(point) != null);
+  const groups = hourly ? protoZoneGroups(meters, zones) : [];
+  if (groups.length < 2) return { zones, groups, pick: null, buckets: protoZoneBuckets(rows, meters) };
+  const want = String(store.prototypeZoneFor || "");
+  const pick = groups.find((group) => group.meters.some((meter) => meter.id === want)) || groups[0];
+  const buckets = protoZoneBuckets(rows, pick.meters);
+  const order = [pick, ...groups.filter((group) => group !== pick)].map((group) => ({
+    label: group.label,
+    buckets: protoZoneBuckets(rows, group.meters.slice(0, 1)),
+  }));
+  buckets.forEach((bucket, i) => {
+    if (bucket) bucket.groups = order.map((group) => ({ label: group.label, bucket: group.buckets[i] }));
+  });
+  return { zones, groups, pick, buckets };
 }
 
 function protoZoneLayer(buckets, zones, pad, w, h, spanOf) {
@@ -4382,6 +4511,7 @@ function protoPointFromHit(hit, chart) {
     stacks: protoReadStacks(hit.getAttribute("data-tip-stacks")),
     lastStacks: protoReadStacks(hit.getAttribute("data-tip-last-stacks")),
     zone: hit.getAttribute("data-tip-zone") || "",
+    zones: protoReadZones(hit.getAttribute("data-tip-zones")),
   };
 }
 
@@ -4415,6 +4545,7 @@ function protoChartPoint() {
     stacks: protoReadStacks(raw.stacks),
     lastStacks: protoReadStacks(raw.lastStacks),
     zone: String(raw.zone || ""),
+    zones: protoReadZones(raw.zones),
   };
 }
 
@@ -4999,7 +5130,10 @@ function protoAnalyseControl(point) {
 
 function protoChartPointTitle(point) {
   if (!point) return "";
-  const time = `<p class="astral-muted">${escapeHtml(protoChartAtZone(point))}</p>`;
+  const zoneLines = protoChartZoneLines(point);
+  const time = `<p class="astral-muted">${escapeHtml(protoChartAtZone(point))}</p>${
+    zoneLines ? `<div class="astral-tip-zones">${zoneLines}</div>` : ""
+  }`;
   const slicesHtml = protoHoverSlices(point, { all: true, drill: true });
   const rows = `<div class="astral-query-pin-readings${slicesHtml.rest ? " is-scroll" : ""}">${slicesHtml.html}</div>`;
   const tags = protoPointTagsOn(point);
@@ -5231,6 +5365,25 @@ function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing }) {
   });
 }
 
+// When meters keep different hours, say so and let the user pick whose hours the graph shades.
+function protoChartZoneRow(set) {
+  if (!set?.pick || set.groups.length < 2) return "";
+  const { showHours, showTou } = set.zones;
+  const lead =
+    showHours && showTou
+      ? "Hours and time of use differ in this view."
+      : showHours
+        ? "Hours differ in this view."
+        : "Time of use differs in this view.";
+  const select = protoSelect({
+    id: "chart-zone-for",
+    label: `Showing ${set.pick.label}`,
+    value: set.pick.id,
+    options: set.groups.map((group) => ({ value: group.id, label: group.label, note: group.note })),
+  });
+  return `<div class="astral-chart-zone-row"><p class="astral-muted">${escapeHtml(lead)} Showing</p>${select}</div>`;
+}
+
 function protoChartNav(pan) {
   const atEnd = protoChartAtLatest();
   const arrows = pan
@@ -5351,7 +5504,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
         </div>
       </div>`
           : titled || pan
-          ? `<div class="astral-chart-head">
+          ? `<div class="astral-chart-head${protoChartZoneRow(extras.zoneSet) ? " has-zone-row" : ""}">
         ${
           titled
             ? `<div class="astral-chart-heading">
@@ -5361,6 +5514,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
             : ""
         }
         ${titled || pan ? protoChartNav(pan) : ""}
+        ${protoChartZoneRow(extras.zoneSet)}
       </div>`
           : ""
       }
@@ -5380,6 +5534,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
           <p class="astral-tip-time astral-muted"></p>
           <div class="astral-tip-marks" hidden></div>
         </div>
+        <div class="astral-tip-zones" hidden></div>
         <div class="astral-query-pin-readings astral-tip-slices" hidden></div>
         <button type="button" class="astral-text astral-tip-more" hidden data-proto-hover-more></button>
         <p class="astral-tip-note" hidden></p>
@@ -6156,7 +6311,8 @@ function protoBarChart(points, label, options = {}) {
   const rows = view.points;
   const { w, h } = protoChartBox();
   const zones = options.zoneMeters ? protoChartZones() : { on: false, narrow: false };
-  const buckets = zones.on ? protoZoneBuckets(rows, options.zoneMeters) : [];
+  const zoneSet = zones.on ? protoZoneSet(rows, options.zoneMeters, zones) : null;
+  const buckets = zoneSet ? zoneSet.buckets : [];
   const hourly = buckets.some(Boolean);
   const pad = { l: 52, r: 16, t: 32, b: 36 + (hourly && zones.showTou ? 20 : 0) };
   const scale = protoChartScale(rows, w, h, pad);
@@ -6306,7 +6462,7 @@ function protoBarChart(points, label, options = {}) {
               }${protoZoneWords(buckets[i], zones)}${mark ? ". Query" : ""}${flag ? ". Alert" : ""}`
             )}"
             data-proto-hit
-            data-tip-zone="${escapeHtml(protoZoneWords(buckets[i], zones).replace(/^\. /, ""))}"
+            ${protoZoneTipAttrs(buckets[i], zones)}
             ${protoHitAttrs(p)}
           />
           ${protoBarFocusMarkup(p, scale, pad, h, x1, x2, bw, paired)}
@@ -6328,6 +6484,7 @@ function protoBarChart(points, label, options = {}) {
     heading: options.heading,
     keyNames: options.keyNames,
     still: options.still,
+    zoneSet,
   });
 }
 
@@ -6450,7 +6607,8 @@ function protoLineChartBuild(tracks, label, options) {
   const { w, h } = protoChartBox();
   const points = list[0].points;
   const zones = options.zoneMeters ? protoChartZones() : { on: false, narrow: false };
-  const buckets = zones.on ? protoZoneBuckets(points, options.zoneMeters) : [];
+  const zoneSet = zones.on ? protoZoneSet(points, options.zoneMeters, zones) : null;
+  const buckets = zoneSet ? zoneSet.buckets : [];
   const hourly = buckets.some(Boolean);
   const pad = { l: 52, r: 16, t: 32, b: 36 + (hourly && zones.showTou ? 20 : 0) };
   const finger = list.flatMap((track) =>
@@ -6511,7 +6669,7 @@ function protoLineChartBuild(tracks, label, options) {
                   }${protoZoneWords(buckets[i], zones)}${mark ? ". Query" : ""}${flag ? ". Alert" : ""}`
                 )}"
                 data-proto-hit
-                data-tip-zone="${escapeHtml(protoZoneWords(buckets[i], zones).replace(/^\. /, ""))}"
+                ${protoZoneTipAttrs(buckets[i], zones)}
                 ${protoHitAttrs(hit)}
               />
               ${point}
@@ -6533,8 +6691,7 @@ function protoLineChartBuild(tracks, label, options) {
       </g>
     </svg>
   `;
-  return protoChartWrap(svg, label, Boolean(options.dual), false, {
-  });
+  return protoChartWrap(svg, label, Boolean(options.dual), false, { zoneSet });
 }
 
 function protoChartEmpty(seedMeters) {
@@ -7178,6 +7335,15 @@ function protoPickSelect(id, value) {
       prototypeChartPoint: null,
     });
     protoRestoreFocus(`#astral-fs [data-proto-select-option="chart-show"][data-proto-select-value="${value}"]`);
+    return;
+  }
+  if (id === "chart-zone-for") {
+    setProto({
+      prototypeSelectOpen: "",
+      prototypeZoneFor: String(value || ""),
+      prototypeChartPoint: null,
+    });
+    protoRestoreFocus(`#astral-fs [data-proto-select="chart-zone-for"] .astral-select-btn`);
     return;
   }
   if (id === "chart-style") {
@@ -24005,6 +24171,12 @@ function fillProtoTip(hit) {
     timeEl.textContent = wrap.hasAttribute("data-proto-chart-still")
       ? protoChartTimeLabel(point.time)
       : protoChartAtZone(point);
+  }
+  const zonesEl = tip.querySelector(".astral-tip-zones");
+  if (zonesEl) {
+    const lines = protoChartZoneLines(point);
+    zonesEl.innerHTML = lines;
+    zonesEl.hidden = !lines;
   }
   const markEl = tip.querySelector(".astral-tip-marks");
   if (markEl) {

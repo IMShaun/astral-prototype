@@ -9004,6 +9004,53 @@ button.astral-state {
   font-size: 0.85rem;
 }
 
+.astral-tip-zones {
+  display: grid;
+  gap: 2px;
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+}
+
+.astral-tip-zones[hidden] {
+  display: none;
+}
+
+.astral-tip-zone {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.astral-tip-zone-name {
+  color: #000;
+}
+
+.astral-chart-head.has-zone-row {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.astral-chart-head.has-zone-row > .astral-chart-heading {
+  flex: 1 1 0;
+}
+
+.astral-chart-zone-row {
+  display: flex;
+  flex-basis: 100%;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.astral-chart-zone-row > p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.astral-chart-zone-row .astral-select-menu {
+  left: 0;
+  right: auto;
+}
+
 .astral-breakdown {
   border-top: 1px solid var(--color-border-strong);
 }
