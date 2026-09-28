@@ -8372,7 +8372,6 @@ button.astral-state {
 
 .astral-query-pin-reading.is-drill:hover .astral-query-pin-series {
   color: var(--color-text-primary);
-  text-decoration: underline;
 }
 
 .astral-query-pin-reading.is-drill:focus-visible {
@@ -9050,6 +9049,35 @@ button.astral-state {
 .astral-chart-zone-row .astral-select-menu {
   left: 0;
   right: auto;
+}
+
+.astral-zone-more {
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border-control);
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  font-size: 0.8rem;
+  cursor: default;
+}
+
+.astral-zone-more:hover {
+  background: var(--color-background-subtle);
+}
+
+.astral-zone-more:focus-visible {
+  outline: 2px solid var(--color-focus-contrast);
+  outline-offset: 2px;
+}
+
+.astral-icon-tip.is-list {
+  text-align: start;
+}
+
+.astral-icon-tip.is-list > span {
+  display: block;
 }
 
 .astral-breakdown {

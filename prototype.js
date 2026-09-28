@@ -3467,12 +3467,12 @@ function protoZoneGroupLabel(members, all) {
     const kinds = [...new Set(mine.map((meter) => protoMeterUtility(meter).toLowerCase()))];
     return [site, protoZoneJoin(kinds)].filter(Boolean).join(" ");
   });
-  if (parts.length === 1) return { label: parts[0], whole };
+  if (parts.length === 1) return { label: parts[0], whole, head: parts[0], rest: [] };
   const more = parts.length - 1;
   const label = whole
     ? `${parts[0]} and ${more} other site${more === 1 ? "" : "s"}`
     : `${parts[0]} and ${more} more`;
-  return { label, whole };
+  return { label, whole, head: parts[0], rest: parts.slice(1) };
 }
 
 function protoZoneGroupNote(meter, zones) {
@@ -3504,6 +3504,8 @@ function protoZoneGroups(meters, zones) {
       meters: members,
       label: name.label,
       whole: name.whole,
+      head: name.head,
+      rest: name.rest,
       note: protoZoneGroupNote(members[0], zones),
     };
   });
@@ -5372,19 +5374,43 @@ function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing }) {
   });
 }
 
+const PROTO_ZONE_MORE_MAX = 12;
+
+// The rest of the picked group sits in a pill; hover or focus lists them.
+function protoChartZoneMore(group) {
+  const rest = group?.rest || [];
+  if (!rest.length) return "";
+  const more = rest.length;
+  const text = group.whole ? `+${more} other site${more === 1 ? "" : "s"}` : `+${more} more`;
+  const shown = rest.slice(0, PROTO_ZONE_MORE_MAX);
+  const left = more - shown.length;
+  const lines = [...shown, ...(left ? [`and ${left} more`] : [])]
+    .map((name) => `<span>${escapeHtml(name)}</span>`)
+    .join("");
+  return `<span class="astral-zone-more astral-tip-host" tabindex="0"><span aria-hidden="true">${escapeHtml(
+    text
+  )}</span><span class="sr-only">Also ${escapeHtml(protoZoneJoin(rest))}</span><span class="astral-icon-tip is-list" aria-hidden="true">${lines}</span></span>`;
+}
+
 // When meters keep different hours, say so and let the user pick whose hours the graph shades.
 function protoChartZoneRow(set) {
   if (!set?.pick || set.groups.length < 2) return "";
   const { showHours, showTou } = set.zones;
   const lead = `Showing ${showHours && showTou ? "hours and time of use" : showHours ? "hours" : "time of use"} for`;
-  const others = set.groups.every((group) => group.whole) ? "sites" : "meters";
   const select = protoSelect({
     id: "chart-zone-for",
     label: `${lead} ${set.pick.label}`,
     value: set.pick.id,
-    options: set.groups.map((group) => ({ value: group.id, label: group.label, note: group.note })),
+    options: set.groups.map((group) => ({
+      value: group.id,
+      label: group.label,
+      short: group.head,
+      note: group.note,
+    })),
   });
-  return `<div class="astral-chart-zone-row"><p class="astral-muted">${escapeHtml(lead)}</p>${select}<p class="astral-muted">Hover the graph to see the other ${others}.</p></div>`;
+  return `<div class="astral-chart-zone-row"><p class="astral-muted">${escapeHtml(lead)}</p>${select}${protoChartZoneMore(
+    set.pick
+  )}</div>`;
 }
 
 function protoChartNav(pan) {
@@ -6991,7 +7017,7 @@ function protoSelect(config) {
       text = `${pickedAll.length} ${config.countLabel || "selected"}`;
     }
   } else if (picked?.label) {
-    text = picked.label;
+    text = picked.short || picked.label;
   }
   const labelled = config.label && config.label !== text && !config.caption;
   const disabled = Boolean(config.disabled);
