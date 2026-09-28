@@ -2304,11 +2304,12 @@ function protoSiteProfile(id) {
   return profile;
 }
 
-const PROTO_METER_OWN_PARTS = ["hours", "tou", "rates"];
+// Operational hours are the site's business hours, so every meter on a site shares them.
+const PROTO_METER_OWN_PARTS = ["tou", "rates"];
 const PROTO_METER_PART_NAMES = { hours: "Operational hours", tou: "Time of use", rates: "Unit rates" };
 const PROTO_METER_PART_WORDS = { hours: "operational hours", tou: "time of use", rates: "unit rates" };
 
-// A meter follows its site. Each part a meter sets for itself replaces the site's for that meter only.
+// A meter follows its site. Time of use and rates it sets for itself replace the site's for that meter only.
 function protoMeterOverridesAll() {
   const raw = store.prototypeMeterOverrides;
   if (raw && typeof raw === "object" && !Array.isArray(raw)) return raw;
@@ -2320,7 +2321,7 @@ function protoMeterOverrideSeed() {
   if (!protoMeter("nr-crewe-depot-gas")) return {};
   return {
     "nr-crewe-depot-gas": {
-      hours: PROTO_WEEKDAYS.map((day) => ({ day, status: "operational", from: "00.00", to: "24.00", profile: "all-day" })),
+      rates: { onGas: "5.5", offGas: "3.5" },
     },
   };
 }
@@ -2346,7 +2347,6 @@ function protoMeterOwnParts(id) {
 function protoMeterProfile(id) {
   const profile = protoSiteProfile(id);
   const own = protoMeterOverride(id);
-  if (Array.isArray(own.hours)) profile.hours = protoCloneProfile(own.hours);
   if (Array.isArray(own.tou)) profile.tou = protoCloneProfile(own.tou);
   if (own.rates && typeof own.rates === "object") profile.attrs = { ...profile.attrs, ...own.rates };
   return profile;
@@ -16006,8 +16006,6 @@ function protoMeterOwnFold(meter, part, draft, site, siteName) {
     body = `${protoMeterSiteView(meter, part, site)}<p class="astral-muted">These come from ${escapeHtml(
       siteName
     )}. Change them in Site settings and every meter that follows the site picks them up.</p>`;
-  } else if (part === "hours") {
-    body = protoMeterHoursTable(`own~${meter.id}`, draft.hours);
   } else if (part === "tou") {
     body = protoMeterTouTable(`own~${meter.id}`, draft.tou);
   } else {
@@ -16056,7 +16054,7 @@ function protoMeterOwnPage(meter, site) {
     `
       <p class="astral-muted astral-meter-settings-lead">This meter follows ${escapeHtml(
         siteName
-      )}'s settings. Set its own where it runs differently, such as a boiler that runs through the night.${
+      )}'s settings. Set its own where it is billed differently, such as a meter on its own tariff.${
         protoCanAct() ? ` ${protoTextBtn("Open site settings", `data-proto-meter-settings="${escapeHtml(id)}"`)}` : ""
       }</p>
       <form class="astral-meter-profile" data-proto-meter-own-form="${escapeHtml(id)}">
