@@ -4068,8 +4068,8 @@ function protoChartMixChoice() {
       <h3>${escapeHtml(copy.title)}</h3>
       <p>${escapeHtml(copy.body)}</p>
       <div class="astral-actions">
-        ${protoBtn("View electricity & gas consumption", 'data-proto-mix-unit="energy"')}
-        ${protoGhost("View water consumption", 'data-proto-mix-unit="water"')}
+        ${protoBtn("View electricity & gas", 'data-proto-mix-unit="energy"')}
+        ${protoGhost("View water", 'data-proto-mix-unit="water"')}
       </div>
     </div>
   `;

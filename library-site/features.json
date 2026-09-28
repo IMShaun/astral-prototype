@@ -532,7 +532,7 @@
             {
               "given": "Electricity, Gas, and Water are on from Cost",
               "when": "I open Consumption",
-              "then": "I see that this combination cannot be shown, and I can View water consumption or View electricity & gas consumption"
+              "then": "I see that this combination cannot be shown, and I can View water or View electricity & gas"
             }
           ],
           "stages": [
