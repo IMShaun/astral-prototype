@@ -6890,6 +6890,16 @@
             "from": "Shaun on the Power BI usage guide, 28 Sep"
           },
           {
+            "id": "usage-growth",
+            "kind": "words",
+            "name": "Growth",
+            "status": "draft",
+            "say": "Growth, Joined, Left, Joined with access",
+            "avoid": "Registered, New users, Churn, Trends, Net adds.",
+            "note": "Joined is the first sign-in. Left is turned off or access ended. Say Up 10 or Down 2 for the change in people, not a percent, because the numbers are small.",
+            "from": "Shaun on the Power BI usage guide, 28 Sep"
+          },
+          {
             "id": "usage-change",
             "kind": "labels",
             "name": "Change",
@@ -7370,8 +7380,8 @@
             "name": "Usage",
             "status": "draft",
             "summary": "Who signs in and what they use. Every company first, then narrow to one.",
-            "now": "IMSERV admin only. It sits under Users in the side menu. Period and Company type sit at the top right and change the whole page. Period is Last 7, 30, or 90 days. Last 30 days is the default. Company type is Customer, Supplier, Broker / TPI, or IMSERV. Four numbers sit at the top: Signed in (only people who still have access), Sign-ins, No sign-in for 90 days, and Not joined yet. Each opens its tab. Tabs are Companies, People, and Features. Each tab is one table. Companies is first. The busiest company sits at the top. IMSERV sits last, so our own use does not crowd customers. A company with nobody on it says No people yet. A company row narrows the page to that company and opens People. A pill shows the company. Clear it to see every company again. Change compares with the same length of time before. Say Up 12% or Down 8%. People shows sign-ins, the last sign-in, and a state: Active, Quiet, Not joined, Turned off, or Access ended. Each name has a presence dot on the avatar. Quiet is no sign-in for 90 days or more but they can still get in. Not joined is invited but never signed in. A person row opens them on Users, where Renew access and Log in as user sit. Features ranks what people open, with a share bar and how many people use it. It only lists what that company type can open, so Finance does not show for suppliers. Search finds a company, person, or feature. Export gives the tab you are on. Updated daily sits under the tabs. Log in as user visits do not count, so admin checks do not look like customer use.",
-            "later": "Invoices once they are live. Use by day of the month, to see the month-end rush. Signed in by month. Each person's own activity on Users.",
+            "now": "IMSERV admin only. It sits under Users in the side menu. Period and Company type sit at the top right and change the whole page. Period is Last 7, 30, or 90 days. Last 30 days is the default. Company type is Customer, Supplier, Broker / TPI, or IMSERV. Four numbers sit at the top: Signed in (only people who still have access), Sign-ins, No sign-in for 90 days, and Not joined yet. Each opens its tab. Tabs are Companies, People, Features, and Growth. Each tab is one table. Companies is first. The busiest company sits at the top. IMSERV sits last, so our own use does not crowd customers. A company with nobody on it says No people yet. A company row narrows the page to that company and opens People. A pill shows the company. Clear it to see every company again. Change compares with the same length of time before. Say Up 12% or Down 8%. People shows sign-ins, the last sign-in, and a state: Active, Quiet, Not joined, Turned off, or Access ended. Each name has a presence dot on the avatar. Quiet is no sign-in for 90 days or more but they can still get in. Not joined is invited but never signed in. A person row opens them on Users, where Renew access and Log in as user sit. Features ranks what people open, with a share bar and how many people use it. It only lists what that company type can open, so Finance does not show for suppliers. Growth shows the last 12 months. It follows Company type and the company pill. The Period select and Search hide on Growth, because it is always 12 months. Joined is the month of their first sign-in, not the invite. Left is the month they were turned off or their access ended. One chart, one scale: Joined grows up from the line and Left grows down. Each bar has its number. The month in progress is lighter and says so far. The summary says how many have joined and still have access, the change in 12 months, how many joined and left, and how many are invited but not joined yet, so it squares with the Signed in number. A monthly table sits under the chart, newest first: Month, Joined, Left, Joined with access, and Change. Opening the tab draws the bars. Changing a filter moves them from where they were. Search finds a company, person, or feature. Export gives the tab you are on. Updated daily sits under the tabs. Log in as user visits do not count, so admin checks do not look like customer use.",
+            "later": "Invoices once they are live. Use by day of the month, to see the month-end rush. Signed in by month. Click a month on Growth to see who joined or left. Each person's own activity on Users.",
             "uses": [
               "page-header",
               "card",

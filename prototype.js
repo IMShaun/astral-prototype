@@ -11327,6 +11327,7 @@ const PROTO_USAGE_TABS = [
   { id: "companies", name: "Companies" },
   { id: "people", name: "People" },
   { id: "features", name: "Features" },
+  { id: "growth", name: "Growth" },
 ];
 
 const PROTO_USAGE_PERIODS = [
@@ -11453,10 +11454,151 @@ function protoUsagePeople() {
       you: Boolean(person.you),
       state: protoPersonState(person),
     };
+    row.leftAt = row.state === "off" ? person.offAt : row.state === "ended" ? person.expiresOn : "";
+    row.joinedAt = protoUsageJoinedAt(row);
     row.signIns = protoUsageSignIns(row, period, "now");
     row.prev = days == null || days >= period * 2 ? 0 : protoUsageSignIns({ ...row, days: 0 }, period, "prev");
     return row;
   });
+}
+
+const PROTO_DAY_MS = 86400000;
+
+function protoUsageIso(stamp) {
+  return new Date(stamp).toISOString().slice(0, 10);
+}
+
+// The day they first signed in. Walk data, so it is seeded from the id and never lands after their last sign-in or the day they left.
+function protoUsageJoinedAt(row) {
+  if (row.days == null) return "";
+  const today = protoDayStamp(new Date());
+  if (row.you) return protoUsageIso(today - 640 * PROTO_DAY_MS);
+  let latest = today - row.days * PROTO_DAY_MS;
+  if (row.leftAt) latest = Math.min(latest, protoDayStamp(row.leftAt) - 14 * PROTO_DAY_MS);
+  const back = Math.round(Math.pow(protoUsageSeed(`${row.id}:joined`), 1.3) * 700);
+  return protoUsageIso(latest - back * PROTO_DAY_MS);
+}
+
+function protoUsageGrowth(people) {
+  const today = protoDayStamp(new Date());
+  const now = new Date(today);
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth();
+  const at = (iso) => (iso ? protoDayStamp(iso) : null);
+  const list = people.map((person) => ({ joined: at(person.joinedAt), left: at(person.leftAt) }));
+  const withAccessBefore = (end) =>
+    list.filter((p) => p.joined != null && p.joined < end && !(p.left != null && p.left < end)).length;
+  const months = [];
+  for (let i = 11; i >= 0; i -= 1) {
+    const start = Date.UTC(y, m - i, 1);
+    const end = Math.min(Date.UTC(y, m - i + 1, 1), today + PROTO_DAY_MS);
+    const d = new Date(start);
+    months.push({
+      key: protoUsageIso(start).slice(0, 7),
+      short: PROTO_MONTHS_SHORT[d.getUTCMonth()],
+      year: d.getUTCFullYear(),
+      full: d.toLocaleString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }),
+      current: i === 0,
+      joined: list.filter((p) => p.joined != null && p.joined >= start && p.joined < end).length,
+      left: list.filter((p) => p.left != null && p.left >= start && p.left < end).length,
+      access: withAccessBefore(end),
+      before: withAccessBefore(start),
+    });
+  }
+  const first = months[0];
+  const last = months[months.length - 1];
+  return {
+    months,
+    now: last.access,
+    start: first.before,
+    joined: months.reduce((sum, row) => sum + row.joined, 0),
+    left: months.reduce((sum, row) => sum + row.left, 0),
+    from: `${first.short} ${first.year}`,
+    to: `${last.short} ${last.year}`,
+    invited: people.filter((person) => person.state === "not-joined").length,
+  };
+}
+
+function protoUsageNetWords(diff) {
+  if (!diff) return "No change";
+  return diff > 0 ? `Up ${diff}` : `Down ${Math.abs(diff)}`;
+}
+
+function protoUsageGrowthSummary(growth) {
+  const diff = growth.now - growth.start;
+  const invited = growth.invited
+    ? ` ${growth.invited} more ${growth.invited === 1 ? "is" : "are"} invited but not joined yet.`
+    : "";
+  return `${growth.now} have joined and still have access, ${protoUsageNetWords(diff).toLowerCase()} in 12 months. ${growth.joined} joined and ${growth.left} left.${invited}`;
+}
+
+function protoUsageNice(n) {
+  if (n <= 4) return Math.max(1, n);
+  const step = n <= 10 ? 2 : n <= 25 ? 5 : 10;
+  return Math.ceil(n / step) * step;
+}
+
+// Joined grows up from the line, Left grows down, on one scale. Tabbing in draws the bars. A filter change moves them from where they were.
+function protoUsageGrowthChart(growth) {
+  const prev = {};
+  const old = document.querySelector("#astral-fs .astral-growth");
+  const cameFromSkeleton = Boolean(old && old.classList.contains("is-skel"));
+  (cameFromSkeleton ? [] : document.querySelectorAll("#astral-fs .astral-growth-col")).forEach((col) => {
+    prev[col.dataset.month] = {
+      up: col.querySelector(".is-joined")?.style.getPropertyValue("--h") || "0px",
+      down: col.querySelector(".is-left")?.style.getPropertyValue("--h") || "0px",
+    };
+  });
+  const morph = Object.keys(prev).length > 0;
+  const up = protoUsageNice(Math.max(0, ...growth.months.map((row) => row.joined)));
+  const down = protoUsageNice(Math.max(0, ...growth.months.map((row) => row.left)));
+  const area = 180;
+  const upPx = Math.round((area * up) / (up + down));
+  const downPx = area - upPx;
+  const px = (n, of, room) => `${Math.round((n / of) * room)}px`;
+  const cols = growth.months
+    .map((row, i) => {
+      const was = prev[row.key] || { up: "0px", down: "0px" };
+      const label = `${row.full}${row.current ? " so far" : ""}: ${row.joined} joined, ${row.left} left, ${row.access} joined with access`;
+      return `
+        <div class="astral-growth-col${row.current ? " is-current" : ""}" data-month="${escapeHtml(row.key)}"         title="${escapeHtml(label)}" style="--bar-i:${i};grid-template-rows:${upPx + 20}px ${downPx + 20}px auto">
+          <div class="astral-growth-up">
+            <span class="astral-growth-bar is-joined" style="--h:${px(row.joined, up, upPx)};--from:${was.up}">${
+              row.joined ? `<span class="astral-growth-n">${row.joined}</span>` : ""
+            }</span>
+          </div>
+          <div class="astral-growth-down">
+            <span class="astral-growth-bar is-left" style="--h:${px(row.left, down, downPx)};--from:${was.down}">${
+              row.left ? `<span class="astral-growth-n">${row.left}</span>` : ""
+            }</span>
+          </div>
+          <span class="astral-growth-month">${escapeHtml(row.short)}${
+            row.short === "Jan" || i === 0 ? `<span class="astral-muted"> ${row.year}</span>` : ""
+          }</span>
+        </div>
+      `;
+    })
+    .join("");
+  return `
+    <figure class="astral-growth${morph ? " is-morph" : " is-draw"}">
+      <figcaption class="astral-growth-head">
+        <div class="astral-chart-heading">
+          <h3 class="astral-chart-title">People who have joined</h3>
+          <p class="astral-chart-when">${escapeHtml(`${growth.from} to ${growth.to}`)}</p>
+        </div>
+        <p class="astral-muted">${escapeHtml(protoUsageGrowthSummary(growth))}</p>
+        <ul class="astral-growth-key">
+          <li><span class="astral-growth-swatch is-joined" aria-hidden="true"></span>Joined, above the line</li>
+          <li><span class="astral-growth-swatch is-left" aria-hidden="true"></span>Left, below the line</li>
+        </ul>
+      </figcaption>
+      <div class="astral-growth-plot" role="img" aria-label="${escapeHtml(
+        `Joined and left each month, ${growth.from} to ${growth.to}. ${protoUsageGrowthSummary(growth)} The table below has every month.`
+      )}">
+        ${cols}
+      </div>
+    </figure>
+  `;
 }
 
 function protoUsageScoped(people) {
@@ -11573,6 +11715,20 @@ function protoUsageShare(pct) {
 }
 
 function protoUsageTableRows(tab, people, q) {
+  if (tab === "growth") {
+    return [...protoUsageGrowth(people).months].reverse().map((row) =>
+      protoUsageRow(
+        [
+          escapeHtml(row.current ? `${row.full} so far` : row.full),
+          String(row.joined),
+          String(row.left),
+          String(row.access),
+          escapeHtml(protoUsageNetWords(row.access - row.before)),
+        ],
+        { month: row.key, change: row.access - row.before }
+      )
+    );
+  }
   if (tab === "features") {
     return protoUsageFeatures(people)
       .filter((row) => protoUsageMatch(q, row.name, row.where))
@@ -11654,11 +11810,14 @@ const PROTO_USAGE_HEADERS = {
   companies: ["Company", "Type", "People", "Signed in", "Sign-ins", "Change", "Last sign-in"],
   people: ["Name", "Company", "Role", "Sign-ins", "Last sign-in", "State"],
   features: ["Feature", "Where", "Uses", "Share", "People"],
+  growth: ["Month", "Joined", "Left", "Joined with access", "Change"],
 };
 
 function protoUsageTable(tab, people, q) {
   const empty =
-    tab === "features"
+    tab === "growth"
+      ? "Nobody has joined yet."
+      : tab === "features"
       ? "No features match."
       : tab === "people"
         ? "Nobody matches."
@@ -11679,7 +11838,7 @@ function protoUsagePack() {
   return {
     file: `usage-${tab}`,
     title: `Usage: ${PROTO_USAGE_TABS.find((item) => item.id === tab)?.name || "Companies"}`,
-    note: `${period}${company ? `, ${company}` : ""}. Updated daily. Log in as user visits do not count.`,
+    note: `${tab === "growth" ? "Last 12 months" : period}${company ? `, ${company}` : ""}. Updated daily. Log in as user visits do not count.`,
     headers: PROTO_USAGE_HEADERS[tab],
     rows: protoUsageTableRows(tab, people, q).map((row) =>
       row.map((cell) => protoPlainSortText(cell).replace(/\s+/g, " ").trim())
@@ -11724,14 +11883,19 @@ function protoUsage() {
     const n = item.id === "companies" ? (company ? 0 : protoUsageCompanies(people).length) : item.id === "people" ? people.length : 0;
     return { id: item.id, name: n ? `${item.name} · ${n}` : item.name };
   });
+  const growth = tab === "growth";
   const picks = `
     <div class="astral-page-actions">
-      ${protoSelect({
-        id: "usage-period",
-        label: "Period",
-        value: String(totals.period),
-        options: PROTO_USAGE_PERIODS,
-      })}
+      ${
+        growth
+          ? ""
+          : protoSelect({
+              id: "usage-period",
+              label: "Period",
+              value: String(totals.period),
+              options: PROTO_USAGE_PERIODS,
+            })
+      }
       ${protoSelect({
         id: "usage-type",
         label: "Company type",
@@ -11774,19 +11938,25 @@ function protoUsage() {
         `
           ${protoTabs(tabs, tab, "data-proto-usage-tab", "Usage")}
           <div class="astral-people-tools">
-            ${protoSearchField({
-              name: "proto-usage-query",
-              value: query,
-              placeholder: searchCopy,
-              label: searchCopy,
-            })}
+            ${
+              growth
+                ? ""
+                : protoSearchField({
+                    name: "proto-usage-query",
+                    value: query,
+                    placeholder: searchCopy,
+                    label: searchCopy,
+                  })
+            }
             ${companyPill}
             ${stateSelect}
             ${protoExportControl("usage")}
           </div>
           <p class="astral-muted astral-usage-note">Updated daily. Log in as user visits do not count.</p>
         `,
-        protoUsageTable(tab, people, q)
+        growth
+          ? `${protoUsageGrowthChart(protoUsageGrowth(people))}${protoUsageTable(tab, people, q)}`
+          : protoUsageTable(tab, people, q)
       )}
     </section>
   `);
