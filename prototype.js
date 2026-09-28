@@ -325,12 +325,22 @@ function protoKnownSeeAsCompany(raw, extra) {
   return protoTeamCompanyNames(extra).includes(name) ? name : "";
 }
 
+let protoSeeAsResolving = false;
+
 function protoSeeAs() {
+  if (protoSeeAsResolving) return null;
   if (protoCompanyId() !== "admin-user") return null;
   if (protoFlowId() !== "product") return null;
   const userId = String(store.prototypeSeeAsUser || "");
   if (userId) {
-    const person = protoUserPeople().find((item) => item.id === userId && !item.you);
+    // Look the person up with the admin's full list, or the lookup recurses.
+    protoSeeAsResolving = true;
+    let person;
+    try {
+      person = protoUserPeople().find((item) => item.id === userId && !item.you);
+    } finally {
+      protoSeeAsResolving = false;
+    }
     if (!person) return null;
     return {
       kind: "user",
@@ -10854,6 +10864,7 @@ const PROTO_HOME_GO = {
   "service-companies": () => protoServiceGo("companies"),
   "inbox-unread": () => protoInboxGo("unread", protoInboxTickets().find((t) => t.unread)?.ref),
   "inbox-oldest": () => protoInboxGo("open", protoInboxOldestOpen()?.ref),
+  "inbox-open": () => protoInboxGo("open"),
   "usage-people": () => protoUsageGo("people", { prototypeUsageCompany: "", prototypeUsageType: "" }),
   "usage-quiet": () => protoUsageGo("people", { prototypeUsageCompany: "", prototypeUsageType: "", prototypeUsageState: "quiet" }),
   "usage-not-joined": () =>
@@ -11013,76 +11024,323 @@ function protoHomeAdmin() {
   const faults = protoServiceFaults();
   const late = faults.filter((item) => item.dueDays < 0).length;
   const risks = protoServiceRisks().length;
-  const unread = protoInboxTickets().filter((item) => item.unread);
+  const tickets = protoInboxTickets();
+  const unread = tickets.filter((item) => item.unread);
+  const open = tickets.filter((item) => !item.resolved);
   const oldest = protoInboxOldestOpen();
   const newest = unread[0];
   const usage = protoUsageTotals(protoUsagePeople());
+  const meters = fleet.meters.toLocaleString("en-GB");
+  const lead = `${companies} ${companies === 1 ? "company" : "companies"}, ${people} ${
+    people === 1 ? "person" : "people"
+  }, and ${fleet.percent}% of ${meters} meters sending.`;
   return `
-    ${astralPageHead("Overview", "Companies, people, meter health, and support on the platform.")}
-    <div class="astral-hero">
-      ${protoStatButton(
-        "companies",
-        companies,
-        companies === 1 ? "Company on the platform" : "Companies on the platform"
-      )}
-      ${protoStatButton(
-        "users",
-        people,
-        people === 1 ? "Person on the platform" : "People on the platform"
-      )}
-      ${protoStatButton(
-        "service-companies",
-        `${fleet.percent}%`,
-        `Of ${fleet.meters.toLocaleString("en-GB")} meters sending`
-      )}
-    </div>
-    <div class="astral-metrics">
-      ${protoHomeCard(
-        "service-not-sending",
-        "Not sending",
-        fleet.down.toLocaleString("en-GB"),
-        "Meters not sending or with missing data"
-      )}
-      ${protoHomeCard(
-        "service-faults",
-        "Open faults",
-        faults.length,
-        `Across ${protoServiceCompanyCount(faults)} companies`
-      )}
-      ${protoHomeCard("service-late", "Late faults", late, "Past the due date")}
-      ${protoHomeCard("service-risk", "At risk", risks, "Still sending, but likely to stop")}
-      ${protoHomeCard(
-        "inbox-unread",
-        "Unread tickets",
-        unread.length,
-        newest ? `Newest came in ${protoAgo(newest.lastAt).toLowerCase()}` : "Nothing new"
-      )}
-      ${protoHomeCard(
-        "inbox-oldest",
-        "Oldest open ticket",
-        oldest ? escapeHtml(protoAgo(oldest.firstAt).replace(/ ago$/, "")) : "None",
-        oldest ? `${oldest.ref} from ${oldest.company}` : "Nothing open"
-      )}
-      ${protoHomeCard(
-        "usage-people",
-        "Signed in",
-        `${usage.percent}%`,
-        `Of ${usage.withAccess} people with access, ${usage.periodWords}`
-      )}
-      ${protoHomeCard(
-        "usage-quiet",
-        "No sign-in for 90 days",
-        usage.quiet,
-        usage.quiet ? "They still have access" : "Everyone has been in lately"
-      )}
-      ${protoHomeCard(
-        "usage-not-joined",
-        "Not joined yet",
-        usage.notJoined,
-        usage.notJoined ? "Invited but never signed in" : "Everyone invited has joined"
-      )}
-    </div>
+    ${astralPageHead("Overview")}
+    <p class="astral-muted astral-home-lead">${escapeHtml(lead)}</p>
+    ${protoFind()}
+    ${protoHomeSection(
+      "support",
+      "Support",
+      [
+        protoHomeCard(
+          "inbox-unread",
+          "Unread tickets",
+          unread.length,
+          newest ? `Newest came in ${protoAgo(newest.lastAt).toLowerCase()}` : "Nothing new"
+        ),
+        protoHomeCard(
+          "inbox-open",
+          "Open tickets",
+          open.length,
+          open.length ? `From ${protoServiceCompanyCount(open)} ${protoServiceCompanyCount(open) === 1 ? "company" : "companies"}` : "Nothing waiting for a reply"
+        ),
+        protoHomeCard(
+          "inbox-oldest",
+          "Oldest open ticket",
+          oldest ? escapeHtml(protoAgo(oldest.firstAt).replace(/ ago$/, "")) : "None",
+          oldest ? `${oldest.ref} from ${oldest.company}` : "Nothing open"
+        ),
+      ]
+    )}
+    ${protoHomeSection(
+      "meters",
+      "Meter data",
+      [
+        protoHomeCard(
+          "service-not-sending",
+          "Not sending",
+          fleet.down.toLocaleString("en-GB"),
+          "Meters not sending or with missing data"
+        ),
+        protoHomeCard(
+          "service-faults",
+          "Open faults",
+          faults.length,
+          `Across ${protoServiceCompanyCount(faults)} companies`
+        ),
+        protoHomeCard("service-late", "Late faults", late, "Past the due date"),
+        protoHomeCard("service-risk", "At risk", risks, "Still sending, but likely to stop"),
+      ],
+      "is-four"
+    )}
+    ${protoHomeSection(
+      "customers",
+      "Customers",
+      [
+        protoHomeCard(
+          "usage-people",
+          "Signed in",
+          `${usage.percent}%`,
+          `Of ${usage.withAccess} people with access, ${usage.periodWords}`
+        ),
+        protoHomeCard(
+          "usage-quiet",
+          "No sign-in for 90 days",
+          usage.quiet,
+          usage.quiet ? "They still have access" : "Everyone has been in lately"
+        ),
+        protoHomeCard(
+          "usage-not-joined",
+          "Not joined yet",
+          usage.notJoined,
+          usage.notJoined ? "Invited but never signed in" : "Everyone invited has joined"
+        ),
+      ]
+    )}
   `;
+}
+
+function protoHomeSection(id, title, cards, className) {
+  return `
+    <section class="astral-home-section" aria-labelledby="astral-home-${id}">
+      <h3 id="astral-home-${id}" class="astral-home-section-title">${escapeHtml(title)}</h3>
+      <div class="astral-metrics${className ? ` ${className}` : ""}">${cards.join("")}</div>
+    </section>
+  `;
+}
+
+// One search on the admin Overview for the places most visits start.
+const PROTO_FIND_LIMIT = 5;
+const PROTO_FIND_LABEL = "Find a company, site, meter, person, or ticket";
+
+function protoFindText(value) {
+  return String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function protoFindHit(q, ...fields) {
+  const tight = q.replace(/\s/g, "");
+  return fields.some((field) => {
+    const text = protoFindText(field);
+    return text.includes(q) || (tight.length > 3 && text.replace(/\s/g, "").includes(tight));
+  });
+}
+
+function protoFindMeterWord(meter) {
+  if (meter.status === "stale") return "Not sending";
+  if (meter.status === "gaps") return "Missing data";
+  return "";
+}
+
+function protoFindGroups(query) {
+  const q = protoFindText(query);
+  if (q.length < 2) return [];
+  const everyone = protoUserPeople().filter((person) => !person.you);
+  const meters = protoServiceMeters();
+  const companies = protoServiceCompanies()
+    .filter((company) => protoFindHit(q, company.name))
+    .map((company) => {
+      const people = everyone.filter((person) => person.company === company.name).length;
+      return {
+        key: `company:${company.name}`,
+        title: company.name,
+        line: `${company.meters.toLocaleString("en-GB")} ${company.meters === 1 ? "meter" : "meters"}, ${people} ${
+          people === 1 ? "person" : "people"
+        }`,
+      };
+    });
+  const sites = [];
+  const seen = new Set();
+  meters.forEach((meter) => {
+    const id = `${meter.company}::${meter.site}`;
+    if (!meter.site || seen.has(id)) return;
+    seen.add(id);
+    if (!protoFindHit(q, meter.site)) return;
+    const count = meters.filter((item) => item.company === meter.company && item.site === meter.site).length;
+    sites.push({
+      key: meter.live ? `site-live:${meter.id}` : `site:${id}`,
+      title: meter.site,
+      line: `${meter.company}, ${count} ${count === 1 ? "meter" : "meters"}`,
+    });
+  });
+  const meterHits = meters
+    .filter((meter) => meter.point && protoFindHit(q, meter.point))
+    .map((meter) => ({
+      key: `meter:${meter.id}`,
+      title: meter.point,
+      line: `${meter.site}, ${meter.company}`,
+      tag: protoFindMeterWord(meter),
+    }));
+  const people = everyone
+    .filter((person) => protoFindHit(q, person.name, person.email))
+    .map((person) => ({
+      key: `person:${person.id}`,
+      title: person.name,
+      line: [person.email, person.company].filter(Boolean).join(", "),
+      loginAs:
+        protoCanLoginAsUser() && protoPersonHasAccess(protoPersonState(person)) ? person : null,
+    }));
+  const tickets = protoInboxTickets()
+    .filter((ticket) => protoFindHit(q, ticket.ref, ticket.subject, ticket.name, ticket.email))
+    .map((ticket) => ({
+      key: `ticket:${ticket.ref}`,
+      title: `${ticket.ref} ${ticket.subject}`,
+      line: `${ticket.company}, ${ticket.name}`,
+      tag: ticket.resolved ? "Resolved" : ticket.unread ? "Unread" : "Open",
+    }));
+  return [
+    { id: "companies", name: "Companies", items: companies },
+    { id: "sites", name: "Sites", items: sites },
+    { id: "meters", name: "Meters", items: meterHits },
+    { id: "people", name: "People", items: people },
+    { id: "tickets", name: "Tickets", items: tickets },
+  ].filter((group) => group.items.length);
+}
+
+function protoFindItem(item) {
+  const login = item.loginAs
+    ? protoGhost(
+        "Log in as",
+        `data-proto-see-as-user="${escapeHtml(item.loginAs.id)}" aria-label="Log in as ${escapeHtml(item.loginAs.name)}"`,
+        { className: "astral-find-login" }
+      )
+    : "";
+  return `
+    <li class="astral-find-item">
+      <button type="button" class="astral-find-open" data-proto-find="${escapeHtml(item.key)}">
+        <span class="astral-find-title">${escapeHtml(item.title)}</span>
+        <span class="astral-muted">${escapeHtml(item.line)}</span>
+      </button>
+      ${item.tag ? protoTag(item.tag) : ""}
+      ${login}
+    </li>
+  `;
+}
+
+function protoFind() {
+  const query = String(store.prototypeFindQuery || "");
+  const q = query.trim();
+  const groups = protoFindGroups(query);
+  const total = groups.reduce((sum, group) => sum + group.items.length, 0);
+  const status = q.length < 2 ? "" : total ? `${total} ${total === 1 ? "result" : "results"}` : "No results";
+  const body =
+    q.length < 2
+      ? ""
+      : groups.length
+        ? `<div class="astral-card astral-find-results">${groups
+            .map((group) => {
+              const more = group.items.length - PROTO_FIND_LIMIT;
+              return `
+                <section class="astral-find-group" aria-labelledby="astral-find-${group.id}">
+                  <h4 id="astral-find-${group.id}">${escapeHtml(group.name)}</h4>
+                  <ul>${group.items.slice(0, PROTO_FIND_LIMIT).map(protoFindItem).join("")}</ul>
+                  ${more > 0 ? `<p class="astral-muted astral-find-more">${more} more. Keep typing to narrow it down.</p>` : ""}
+                </section>
+              `;
+            })
+            .join("")}</div>`
+        : `<p class="astral-card astral-find-empty">Nothing matches “${escapeHtml(
+            q
+          )}”. Try a name, email, meter point, or ticket number.</p>`;
+  return `
+    <section class="astral-find" aria-label="Find">
+      ${protoSearchField({ name: "proto-find-query", value: query, placeholder: PROTO_FIND_LABEL, label: PROTO_FIND_LABEL })}
+      <p class="sr-only" role="status">${escapeHtml(status)}</p>
+      ${body}
+    </section>
+  `;
+}
+
+function protoFindOpen(key) {
+  const at = String(key || "").indexOf(":");
+  if (at < 0) return;
+  const kind = key.slice(0, at);
+  const id = key.slice(at + 1);
+  store.prototypeFindQuery = "";
+  if (kind === "company") {
+    protoOpenCompany(id);
+    return;
+  }
+  if (kind === "person") {
+    if (!protoUserPeople().some((person) => person.id === id)) return;
+    setProto({
+      ...protoSeeAsClear(),
+      activePrototypeView: "users",
+      prototypeUserQuery: "",
+      prototypeUserOpen: id,
+      prototypeUserMenu: "",
+      prototypePersonTeamQuery: "",
+      prototypePersonSitesQuery: "",
+      prototypeContractFileError: false,
+      ...protoRenewClear(),
+    });
+    return;
+  }
+  if (kind === "ticket") {
+    const ticket = protoInboxTickets().find((item) => item.ref === id);
+    if (ticket) setProto(protoInboxGo(ticket.resolved ? "resolved" : "open", ticket.ref));
+    return;
+  }
+  if (kind === "site") {
+    const [company, site] = id.split("::");
+    const down = protoServiceMeters().some(
+      (meter) => meter.company === company && meter.site === site && protoFindMeterWord(meter)
+    );
+    setProto({ ...protoServiceGo(down ? "not-sending" : "companies"), prototypeServiceQuery: site });
+    return;
+  }
+  const meter = protoServiceMeterMap().get(id);
+  if (!meter) return;
+  if (kind === "meter" && !meter.live) {
+    const fault = protoServiceFaults().some((item) => item.meterId === meter.id);
+    setProto({ ...protoServiceGo(fault ? "faults" : "not-sending"), prototypeServiceQuery: meter.point });
+    return;
+  }
+  const seeAs = { ...protoSeeAsClear(), prototypeSeeAsCompany: meter.company, prototypeCompanyQuery: "" };
+  const site = protoSiteByMeter(meter.id);
+  if (kind === "site-live") {
+    const parent = protoGroupForSite(site);
+    setProto({
+      ...seeAs,
+      activePrototypeMeter: meter.id,
+      prototypeScope: "site",
+      prototypeGroup: parent?.id || "",
+      prototypeGroupClosed: parent ? protoClosedExcept(parent.id) : protoGroupClosed(),
+      prototypeChannel: "all",
+      ...protoSiteMeterPatch([], site),
+      prototypePaneMeterKinds: null,
+      prototypePane: "consumption",
+      prototypeChartPoint: null,
+      activePrototypeView: "portfolio",
+      prototypeFullscreen: true,
+      prototypeMeterOpen: "none",
+      ...protoMeterSettingsReset(),
+      ...protoComparePatch("site", meter.id),
+    });
+    return;
+  }
+  const live = protoMeter(meter.id);
+  setProto({
+    ...seeAs,
+    activePrototypeMeter: meter.id,
+    prototypeScope: "site",
+    ...protoSiteMeterPatch([meter.id], site),
+    prototypeChannel: live?.direction === "Export" ? "out" : "in",
+    prototypePane: "consumption",
+    prototypeChartPoint: null,
+    activePrototypeView: "portfolio",
+    prototypeFullscreen: true,
+    ...protoComparePatch("meter", meter.id),
+  });
 }
 
 const PROTO_SERVICE_TABS = [
@@ -24277,6 +24535,11 @@ function onPrototypeBeforeInput(event) {
 }
 
 function onPrototype(event) {
+  const findBtn = event.target.closest("[data-proto-find]");
+  if (findBtn) {
+    protoFindOpen(findBtn.dataset.protoFind);
+    return;
+  }
   const homeGo = event.target.closest("[data-proto-home-go]");
   if (homeGo && PROTO_HOME_GO[homeGo.dataset.protoHomeGo]) {
     setProto({
@@ -24315,6 +24578,8 @@ function onPrototype(event) {
             ? { prototypeCompanyQuery: "" }
             : name === "proto-service-query"
             ? { prototypeServiceQuery: "" }
+            : name === "proto-find-query"
+            ? { prototypeFindQuery: "" }
             : name === "proto-inbox-query"
             ? { prototypeInboxQuery: "" }
             : name === "proto-usage-query"
@@ -26433,11 +26698,13 @@ function onPrototypeInput(event) {
   }
   const companySearch = event.target.closest("input[name='proto-company-query']");
   const pageSearch = event.target.closest(
-    "input[name='proto-service-query'], input[name='proto-inbox-query'], input[name='proto-usage-query']"
+    "input[name='proto-service-query'], input[name='proto-inbox-query'], input[name='proto-usage-query'], input[name='proto-find-query']"
   );
   if (pageSearch) {
     const key =
-      pageSearch.name === "proto-service-query"
+      pageSearch.name === "proto-find-query"
+        ? "prototypeFindQuery"
+        : pageSearch.name === "proto-service-query"
         ? "prototypeServiceQuery"
         : pageSearch.name === "proto-usage-query"
           ? "prototypeUsageQuery"
@@ -27230,6 +27497,20 @@ function onPrototypeSubmit(event) {
 }
 
 function onPrototypeKey(event) {
+  const findInput = event.target.closest("input[name='proto-find-query']");
+  if (findInput && event.key === "Enter") {
+    event.preventDefault();
+    document.querySelector("#astral-fs [data-proto-find]")?.click();
+    return;
+  }
+  if (findInput && event.key === "Escape" && findInput.value) {
+    event.preventDefault();
+    store.prototypeFindQuery = "";
+    persistChrome();
+    render();
+    protoRestoreFocus("#astral-fs input[name='proto-find-query']");
+    return;
+  }
   const peopleAdd = event.target.closest(".astral-search-add input[name='proto-report-people-query']");
   if (peopleAdd && event.key === "Enter") {
     event.preventDefault();

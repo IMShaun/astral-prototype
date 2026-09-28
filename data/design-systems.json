@@ -5080,6 +5080,16 @@
             "from": "Max Mailtrap walkthrough, 4 Sep"
           },
           {
+            "id": "admin-find",
+            "kind": "labels",
+            "name": "Find",
+            "status": "working",
+            "say": "Find a company, site, meter, person, or ticket",
+            "avoid": "Search everything. Global search. Type to search.",
+            "note": "The label names what it finds, in the order people look for them. Groups are Companies, Sites, Meters, People, and Tickets. Past 5 in a group, say \"3 more. Keep typing to narrow it down.\" With no match, say \"Nothing matches “x”. Try a name, email, meter point, or ticket number.\" On a person row the button says Log in as, and its accessible name says Log in as and the person's name.",
+            "from": "Top Tasks study, 28 Sep"
+          },
+          {
             "id": "log-out",
             "kind": "labels",
             "name": "Log out",
@@ -7476,14 +7486,15 @@
             "id": "admin-overview",
             "name": "Admin overview",
             "status": "draft",
-            "summary": "The picture of the platform. Every card opens the place it counts.",
-            "now": "The top row is Companies, People, and Meters sending. Cards are Not sending, Open faults, Late faults, At risk, Unread tickets, and Oldest open ticket. The last row is people: Signed in, No sign-in for 90 days, and Not joined yet. Each card opens Servicing on the right tab, Inbox on the right filter, or Usage on the right tab. The card is the hit target. No Open button.",
+            "summary": "Find first, then the work. Ordered by the Top Tasks study of September 2026.",
+            "now": "A quiet line under the title gives the totals: companies, people, and meters sending. Find comes next. It searches companies, sites, meters, people, and tickets, and groups what it finds. Each group shows 5, then says how many more. Enter opens the first result. Escape clears it. A company opens its estate. A live site or meter opens in Portfolio. A meter that is not sending opens Servicing. A person opens their page, with Log in as beside them. A ticket opens in Inbox. Then three sections. Support: Unread tickets, Open tickets, and Oldest open ticket. Meter data: Not sending, Open faults, Late faults, and At risk. Customers: Signed in, No sign-in for 90 days, and Not joined yet. Each card opens the place it counts. The card is the hit target. No Open button.",
             "later": "Change since last week. Brokers when the list is live.",
             "uses": [
               "card",
-              "page-header"
+              "page-header",
+              "search"
             ],
-            "note": "Only cards with data. A Wait card does not sit on the admin overview."
+            "note": "Only cards with data. A Wait card does not sit on the admin overview. Support comes first because replying to tickets and logging in as a customer were the most common tasks."
           },
           {
             "id": "customer-vs-admin",

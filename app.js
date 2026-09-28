@@ -3689,6 +3689,7 @@ const CHROME_FIELDS = [
   "prototypeCompanyQuery",
   "prototypeServiceTab",
   "prototypeServiceQuery",
+  "prototypeFindQuery",
   "prototypeUsageTab",
   "prototypeUsageQuery",
   "prototypeUsagePeriod",

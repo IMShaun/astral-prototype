@@ -11582,8 +11582,137 @@ button.astral-state:focus-visible,
   padding-bottom: 0;
 }
 
-.astral-hero.is-four {
+.astral-hero.is-four,
+.astral-metrics.is-four {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.astral-home-lead {
+  margin: calc(-1 * var(--space-12)) 0 0;
+  font-size: 0.875rem;
+}
+
+.astral-home-section {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.astral-home-section-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.astral-find {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.astral-find-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: var(--space-16) var(--space-24);
+  margin: 0;
+  padding: var(--space-16);
+}
+
+.astral-find-group {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.astral-find-group h4 {
+  margin: 0 0 var(--space-4);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.astral-find-group ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.astral-find-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.astral-find-open {
+  flex: 1 1 auto;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  margin: 0;
+  padding: 6px var(--space-8);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.astral-find-open:hover {
+  background: var(--color-background-hover);
+}
+
+.astral-find-open:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+.astral-find-open > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.astral-find-title {
+  font-weight: 600;
+}
+
+.astral-find-open .astral-muted {
+  font-size: 0.8125rem;
+}
+
+.astral-find-item > .astral-tag,
+.astral-find-login {
+  flex: 0 0 auto;
+}
+
+.astral-find-more {
+  margin: var(--space-4) 0 0;
+  padding: 0 var(--space-8);
+  font-size: 0.8125rem;
+}
+
+.astral-find-empty {
+  margin: 0;
+  padding: var(--space-16);
+}
+
+@media (max-width: 1100px) {
+  .astral-metrics.is-four {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .astral-metrics.is-four,
+  .astral-home-section .astral-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .astral-service .astral-pane-head {
