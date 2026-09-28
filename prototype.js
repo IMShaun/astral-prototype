@@ -10993,7 +10993,7 @@ function protoHomeAdmin() {
         "usage-people",
         "Signed in",
         `${usage.percent}%`,
-        `Of ${usage.people} people in the ${usage.periodWords}`
+        `Of ${usage.withAccess} people with access, ${usage.periodWords}`
       )}
       ${protoHomeCard(
         "usage-quiet",
@@ -11348,6 +11348,8 @@ const PROTO_USAGE_STATES = [
   { value: "active", label: "Active" },
   { value: "quiet", label: "Quiet" },
   { value: "not-joined", label: "Not joined" },
+  { value: "off", label: "Turned off" },
+  { value: "ended", label: "Access ended" },
 ];
 
 const PROTO_USAGE_QUIET_DAYS = 90;
@@ -11449,10 +11451,10 @@ function protoUsagePeople() {
       days,
       lastActive: person.you ? "Now" : person.lastActive,
       you: Boolean(person.you),
+      state: protoPersonState(person),
     };
     row.signIns = protoUsageSignIns(row, period, "now");
     row.prev = days == null || days >= period * 2 ? 0 : protoUsageSignIns({ ...row, days: 0 }, period, "prev");
-    row.state = days == null ? "not-joined" : days >= PROTO_USAGE_QUIET_DAYS ? "quiet" : "active";
     return row;
   });
 }
@@ -11471,12 +11473,15 @@ function protoUsagePeriodWords(days) {
 
 function protoUsageTotals(people) {
   const list = people || [];
-  const signedIn = list.filter((person) => person.signIns > 0).length;
+  const withAccess = list.filter((person) => protoPersonHasAccess(person.state));
+  const signedIn = withAccess.filter((person) => person.signIns > 0).length;
   const period = protoUsagePeriod();
   return {
     people: list.length,
+    withAccess: withAccess.length,
     signedIn,
-    percent: list.length ? Math.round((signedIn / list.length) * 100) : 0,
+    percent: withAccess.length ? Math.round((signedIn / withAccess.length) * 100) : 0,
+    off: list.filter((person) => !protoPersonHasAccess(person.state)).length,
     signIns: list.reduce((sum, person) => sum + person.signIns, 0),
     prev: list.reduce((sum, person) => sum + person.prev, 0),
     quiet: list.filter((person) => person.state === "quiet").length,
@@ -11593,11 +11598,15 @@ function protoUsageTableRows(tab, people, q) {
       .map((person) =>
         protoUsageRow(
           [
-            `<span class="astral-usage-person"><span>${escapeHtml(person.you ? `${person.name} (you)` : person.name)}</span>${
+            `<span class="astral-usage-who"><span class="astral-person-avatar"><span class="astral-person-mark" aria-hidden="true">${escapeHtml(
+              protoUserInitials(person)
+            )}</span>${protoPresenceDot(person.state)}</span><span class="astral-usage-person"><span>${escapeHtml(
+              person.you ? `${person.name} (you)` : person.name
+            )}</span>${
               person.email && person.email !== person.name
                 ? `<span class="astral-muted">${escapeHtml(person.email)}</span>`
                 : ""
-            }</span>`,
+            }</span></span>`,
             escapeHtml(person.company),
             escapeHtml(protoUserRoleName(person.role)),
             person.signIns.toLocaleString("en-GB"),
@@ -11624,14 +11633,14 @@ function protoUsageTableRows(tab, people, q) {
           escapeHtml(row.name),
           escapeHtml(protoUsageTypeName(row.type)),
           none ? `<span class="astral-muted">No people yet</span>` : String(row.people),
-          none ? "" : `${row.signedIn} of ${row.people}`,
+          none ? "" : `${row.signedIn} of ${row.withAccess}`,
           none ? "" : row.signIns.toLocaleString("en-GB"),
           none ? "" : escapeHtml(protoUsageChangeWords(row.signIns, row.prev)),
           none ? "" : protoUsageLastCell(row.latest),
         ],
         {
           people: row.people,
-          "signed-in": row.people ? row.signedIn / row.people : -1,
+          "signed-in": row.withAccess ? row.signedIn / row.withAccess : -1,
           "sign-ins": row.signIns,
           change: Number.isFinite(pct) ? pct : 1e6,
           "last-sign-in": row.latest ? row.latest.days : 1e6,
@@ -11754,7 +11763,7 @@ function protoUsage() {
       ${protoUsageStat(
         "people",
         `${totals.percent}%`,
-        `Of ${totals.people} ${totals.people === 1 ? "person" : "people"} signed in`
+        `Of ${totals.withAccess} ${totals.withAccess === 1 ? "person" : "people"} with access signed in`
       )}
       ${protoUsageStat("companies", totals.signIns.toLocaleString("en-GB"), changeLine)}
       ${protoUsageStat("quiet", totals.quiet, "No sign-in for 90 days", totals.quiet)}
@@ -18336,14 +18345,70 @@ function protoUserInitials(person) {
   return protoProfileInitials(person?.name || person?.email || "?");
 }
 
-function protoPersonFace(initials, name, helper, tag = "") {
+function protoPersonFace(initials, name, helper, tag = "", dot = "") {
+  const mark = `<span class="astral-person-mark" aria-hidden="true">${escapeHtml(initials)}</span>`;
   return `
-    <span class="astral-person-mark" aria-hidden="true">${escapeHtml(initials)}</span>
+    ${dot ? `<span class="astral-person-avatar">${mark}${dot}</span>` : mark}
     <span class="astral-person-copy">
       <strong><span class="astral-people-name">${escapeHtml(name)}</span>${tag ? ` ${tag}` : ""}</strong>
       ${helper ? `<span class="astral-muted">${escapeHtml(helper)}</span>` : ""}
     </span>
   `;
+}
+
+const PROTO_PERSON_STATES = {
+  active: { name: "Active", line: "Signed in within 90 days" },
+  quiet: { name: "Quiet", line: "No sign-in for 90 days or more" },
+  "not-joined": { name: "Not joined", line: "Invited but never signed in" },
+  off: { name: "Turned off", line: "Cannot sign in" },
+  ended: { name: "Access ended", line: "Their access end date has passed" },
+};
+
+// Turned off and Access ended win over how recently they signed in.
+function protoPersonState(person) {
+  if (!person || person.you) return "active";
+  if (person.offAt) return "off";
+  if (!person.imserv && person.expiresOn && protoDayStamp(person.expiresOn) < protoDayStamp(new Date())) {
+    return "ended";
+  }
+  const days = protoUsageDays(person.lastActive);
+  if (days == null) return "not-joined";
+  return days >= PROTO_USAGE_QUIET_DAYS ? "quiet" : "active";
+}
+
+function protoPersonStateName(state) {
+  return PROTO_PERSON_STATES[state]?.name || "Active";
+}
+
+function protoPersonHasAccess(state) {
+  return state !== "off" && state !== "ended";
+}
+
+const PROTO_PRESENCE_GLYPHS = {
+  active: `<path d="M3.2 6.2 5.1 8l3.7-4" />`,
+  quiet: `<path d="M6 3.4V6l1.8 1.1" />`,
+  ended: `<path d="M6 3.4V6l1.8 1.1" />`,
+  off: `<path d="M3.8 3.8l4.4 4.4M8.2 3.8 3.8 8.2" />`,
+  "not-joined": "",
+};
+
+// A Teams-style dot. Each state has its own colour and mark, so colour is never the only cue.
+function protoPresenceDot(state) {
+  const info = PROTO_PERSON_STATES[state] || PROTO_PERSON_STATES.active;
+  const glyph = PROTO_PRESENCE_GLYPHS[state] || "";
+  return `<span class="astral-presence is-${escapeHtml(state)}" title="${escapeHtml(
+    `${info.name}. ${info.line}`
+  )}">${
+    glyph
+      ? `<svg viewBox="0 0 12 12" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${glyph}</g></svg>`
+      : ""
+  }<span class="sr-only">, ${escapeHtml(info.name)}</span></span>`;
+}
+
+function protoCanTurnOffPerson(person) {
+  if (!person || person.you || person.imserv || person.role === "super-admin") return false;
+  if (protoShowsImserv()) return true;
+  return protoMeRole() === "admin";
 }
 
 function protoUserDrafts() {
@@ -18364,6 +18429,8 @@ function protoInvitedUsers() {
       expiresOn: String(item.expiresOn || PROTO_TEMP_TO),
       expiresFrom: String(item.expiresFrom || PROTO_TEMP_FROM),
       contractName: String(item.contractName || ""),
+      offAt: /^\d{4}-\d{2}-\d{2}$/.test(String(item.offAt || "")) ? String(item.offAt) : "",
+      offBy: String(item.offBy || "").trim(),
     }));
 }
 
@@ -18442,6 +18509,8 @@ function protoUserPeople() {
       expiresOn: item.expiresOn,
       expiresFrom: item.expiresFrom,
       contractName: item.contractName,
+      offAt: item.offAt,
+      offBy: item.offBy,
       you: false,
     })),
   ];
@@ -18574,7 +18643,7 @@ function protoCanPickTeamCompany() {
   return protoSeesCompanies() && protoTeamCompanyChoices().length > 1;
 }
 
-const PROTO_WALK_USERS = "companies-5";
+const PROTO_WALK_USERS = "companies-6";
 const PROTO_WALK_STUB_TEAMS = new Set(["test team", "energy reporting", "test"]);
 const PROTO_WALK_PEOPLE = [
   {
@@ -18683,9 +18752,11 @@ const PROTO_WALK_PEOPLE = [
     email: "owen.reid@networkrail.co.uk",
     company: "Network Rail",
     role: "contributor",
-    lastActive: "Yesterday",
+    lastActive: "2 months ago",
     expiresOn: "2027-07-14",
     expiresFrom: "2026-06-01",
+    offAt: "2026-08-14",
+    offBy: "Priya Shah",
   },
   {
     id: "u-claire",
@@ -18703,9 +18774,10 @@ const PROTO_WALK_PEOPLE = [
     email: "marcus.cole@networkrail.co.uk",
     company: "Network Rail",
     role: "contributor",
-    lastActive: "5 days ago",
-    expiresOn: "2026-12-18",
-    expiresFrom: "2026-06-01",
+    lastActive: "5 weeks ago",
+    expiresOn: "2026-08-31",
+    expiresFrom: "2026-03-01",
+    resetExpiry: true,
   },
   {
     id: "u-dylan",
@@ -19025,8 +19097,8 @@ function protoSeedWalkUsers() {
             ...item,
             role: have.role || item.role,
             company: item.company,
-            expiresOn: have.expiresOn || item.expiresOn,
-            expiresFrom: have.expiresFrom || item.expiresFrom,
+            expiresOn: item.resetExpiry ? item.expiresOn : have.expiresOn || item.expiresOn,
+            expiresFrom: item.resetExpiry ? item.expiresFrom : have.expiresFrom || item.expiresFrom,
             contractName: have.contractName || "",
           }
         : { ...item };
@@ -19442,6 +19514,42 @@ function protoPersonDetail(person) {
   const sites = protoEstateSites();
   const siteNames = protoPersonSiteNames(person.id);
   const canManage = protoCanManagePeople();
+  const state = protoPersonState(person);
+  const dots = protoShowsImserv();
+  const offDay = person.offAt ? protoFormatFullDay(protoFromIso(person.offAt)) : "";
+  const stateNote =
+    state === "off"
+      ? `<div class="astral-note astral-alert-call astral-person-state-note" role="status">
+          <p>Turned off on ${escapeHtml(offDay)}${person.offBy ? ` by ${escapeHtml(person.offBy)}` : ""}. They cannot sign in.</p>
+          ${
+            protoCanTurnOffPerson(person)
+              ? `<div class="astral-alert-call-actions">${protoBtn(
+                  "Turn on access",
+                  `data-proto-user-access="on" data-proto-user-id="${escapeHtml(person.id)}"`
+                )}</div>`
+              : ""
+          }
+        </div>`
+      : state === "ended"
+        ? `<div class="astral-note astral-alert-call astral-person-state-note" role="status">
+            <p>Access ended on ${escapeHtml(toLine)}. Renew access to let them back in.</p>
+            ${
+              protoCanAdminCompany()
+                ? `<div class="astral-alert-call-actions">${protoBtn("Renew access", 'data-proto-renew="open"')}</div>`
+                : ""
+            }
+          </div>`
+        : "";
+  const stateLine =
+    state === "quiet"
+      ? "Quiet. No sign-in for 90 days or more. They still have access."
+      : state === "not-joined"
+        ? "Not joined. Invited but never signed in."
+        : state === "off"
+          ? "Turned off"
+          : state === "ended"
+            ? "Access ended"
+            : "Active. Signed in within 90 days.";
   const fact = (label, value, wide) => `
     <div class="astral-field${wide ? " is-wide" : ""}">
       <span>${escapeHtml(label)}</span>
@@ -19451,18 +19559,23 @@ function protoPersonDetail(person) {
   return `
     <div class="astral-person-detail">
       <div class="astral-profile-mark">
+        <div class="astral-person-avatar is-large">
         <div class="astral-profile-preview${picture ? " has-photo" : ""}${you ? " is-you" : ""}">${
           you
             ? protoAvatarMark(picture ? "Profile picture" : previewName, previewName)
             : escapeHtml(protoUserInitials(person))
         }</div>
+        ${dots ? protoPresenceDot(state) : ""}
+        </div>
       </div>
       <div class="astral-profile-fields">
+        ${stateNote}
         ${fact("Name", person.name)}
         ${fact("Email address", person.email)}
         ${you && disciplineName ? fact("Discipline", disciplineName) : ""}
         ${you && jobTitle ? fact("Job title", jobTitle) : ""}
         ${fact("Last active", person.lastActive, true)}
+        ${you || person.imserv ? "" : fact("State", stateLine, true)}
         <div class="astral-profile-row">
           <div class="astral-field">
             <span>Role</span>
@@ -19729,8 +19842,14 @@ function protoUsersTable(people, pool, showTeam) {
       .map((person) => {
         const open = menu === person.id;
         const teamNames = protoTeamsForPerson(person.id);
+        const state = protoPersonState(person);
+        const dots = protoShowsImserv();
+        const tags = [
+          person.role === "manager" ? protoTag("Manager") : "",
+          !dots && !protoPersonHasAccess(state) ? protoTag(protoPersonStateName(state)) : "",
+        ].join("");
         return `
-          <tr>
+          <tr${protoPersonHasAccess(state) ? "" : ' class="is-off"'}>
             <th scope="row" class="astral-people-col-name">
               ${
                 canManage
@@ -19747,7 +19866,8 @@ function protoUsersTable(people, pool, showTeam) {
                     : person.name === person.email
                       ? ""
                       : person.email,
-                  person.role === "manager" ? protoTag("Manager") : ""
+                  tags,
+                  dots ? protoPresenceDot(state) : ""
                 )}
               ${canManage ? "</button>" : "</span>"}
             </th>
@@ -19787,6 +19907,15 @@ function protoUsersTable(people, pool, showTeam) {
                         { className: "is-plain", tipLabel: "More" }
                       )}
                       <div class="astral-people-menu${open ? protoMenuEnterClass(`people:${person.id}`) : ""}" role="menu"${open ? "" : " hidden"}>
+                        ${
+                          protoCanTurnOffPerson(person) && state !== "ended"
+                            ? `<button type="button" role="menuitem" data-proto-user-access="${
+                                state === "off" ? "on" : "off"
+                              }" data-proto-user-id="${escapeHtml(person.id)}">${
+                                state === "off" ? "Turn on access" : "Turn off access"
+                              }</button>`
+                            : ""
+                        }
                         <button type="button" role="menuitem" data-proto-user-withdraw="${escapeHtml(
                           person.id
                         )}">Withdraw</button>
@@ -20041,12 +20170,20 @@ function protoUsersPane() {
             ${openPerson
               ? `<div class="astral-detail-tools">
             ${
-              openPerson.you || !protoCanLoginAsUser()
+              openPerson.you || !protoCanLoginAsUser() || !protoPersonHasAccess(protoPersonState(openPerson))
                 ? ""
                 : protoBtn(
                     "Log in as user",
                     `data-proto-see-as-user="${escapeHtml(openPerson.id)}"`
                   )
+            }
+            ${
+              protoCanTurnOffPerson(openPerson) && protoPersonHasAccess(protoPersonState(openPerson))
+                ? protoGhost(
+                    "Turn off access",
+                    `data-proto-user-access="off" data-proto-user-id="${escapeHtml(openPerson.id)}"`
+                  )
+                : ""
             }
             ${protoIconBtn("close", "Close", "data-proto-person-close")}
           </div>`
@@ -23629,6 +23766,24 @@ function onPrototype(event) {
       protoCloseModal("renew");
       return;
     }
+    return;
+  }
+  const userAccessBtn = event.target.closest("[data-proto-user-access]");
+  if (userAccessBtn) {
+    const id = userAccessBtn.dataset.protoUserId;
+    const person = protoUserPeople().find((item) => item.id === id);
+    if (!protoCanTurnOffPerson(person)) return;
+    const off = userAccessBtn.dataset.protoUserAccess === "off";
+    const now = new Date();
+    const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    setProto({
+      prototypeInvitedUsers: protoInvitedUsers().map((item) =>
+        item.id === id
+          ? { ...item, offAt: off ? day : "", offBy: off ? protoProfileName() || "you" : "" }
+          : item
+      ),
+      prototypeUserMenu: "",
+    });
     return;
   }
   const withdrawBtn = event.target.closest("[data-proto-user-withdraw]");

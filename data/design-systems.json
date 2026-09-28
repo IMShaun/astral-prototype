@@ -6862,11 +6862,31 @@
           {
             "id": "usage-states",
             "kind": "labels",
-            "name": "Active, Quiet, Not joined",
+            "name": "Active, Quiet, Not joined, Turned off, Access ended",
             "status": "draft",
-            "say": "Active, Quiet, Not joined",
+            "say": "Active, Quiet, Not joined, Turned off, Access ended",
             "avoid": "Live, Silent, Dormant, Inactive, Pending.",
-            "note": "Quiet is no sign-in for 90 days or more. They can still get in, so check they still need access. Not joined is invited but never signed in. Say the 90 days in the number label.",
+            "note": "Quiet is no sign-in for 90 days or more. They can still get in, so check they still need access. Not joined is invited but never signed in. Turned off is switched off by an admin. Access ended is when their end date has passed. Say the 90 days in the number label.",
+            "from": "Shaun on the Power BI usage guide, 28 Sep"
+          },
+          {
+            "id": "turn-off-access",
+            "kind": "words",
+            "name": "Turn off access",
+            "status": "draft",
+            "say": "Turn off access, Turn on access",
+            "avoid": "Disable, Deactivate, Suspend, Block, Enable.",
+            "note": "Say what happens to the person. Turned off on 14 August 2026 by Priya Shah. They cannot sign in.",
+            "from": "Shaun on the Power BI usage guide, 28 Sep"
+          },
+          {
+            "id": "signed-in-with-access",
+            "kind": "labels",
+            "name": "Of 30 people with access signed in",
+            "status": "draft",
+            "say": "Of 30 people with access signed in",
+            "avoid": "Of 38 people signed in, when some cannot sign in.",
+            "note": "Leave out Turned off and Access ended people, so the percentage is fair.",
             "from": "Shaun on the Power BI usage guide, 28 Sep"
           },
           {
@@ -7350,8 +7370,8 @@
             "name": "Usage",
             "status": "draft",
             "summary": "Who signs in and what they use. Every company first, then narrow to one.",
-            "now": "IMSERV admin only. It sits under Users in the side menu. Period and Company type sit at the top right and change the whole page. Period is Last 7, 30, or 90 days. Last 30 days is the default. Company type is Customer, Supplier, Broker / TPI, or IMSERV. Four numbers sit at the top: Signed in, Sign-ins, No sign-in for 90 days, and Not joined yet. Each opens its tab. Tabs are Companies, People, and Features. Each tab is one table. Companies is first. The busiest company sits at the top. IMSERV sits last, so our own use does not crowd customers. A company with nobody on it says No people yet. A company row narrows the page to that company and opens People. A pill shows the company. Clear it to see every company again. Change compares with the same length of time before. Say Up 12% or Down 8%. People shows sign-ins, the last sign-in, and a state: Active, Quiet, or Not joined. Quiet is no sign-in for 90 days or more but they can still get in. Not joined is invited but never signed in. A person row opens them on Users, where Renew access and Log in as user sit. Features ranks what people open, with a share bar and how many people use it. It only lists what that company type can open, so Finance does not show for suppliers. Search finds a company, person, or feature. Export gives the tab you are on. Updated daily sits under the tabs. Log in as user visits do not count, so admin checks do not look like customer use.",
-            "later": "Invoices once they are live. Use by day of the month, to see the month-end rush. Turn off access from the Quiet list. Signed in by month. Each person's own activity on Users.",
+            "now": "IMSERV admin only. It sits under Users in the side menu. Period and Company type sit at the top right and change the whole page. Period is Last 7, 30, or 90 days. Last 30 days is the default. Company type is Customer, Supplier, Broker / TPI, or IMSERV. Four numbers sit at the top: Signed in (only people who still have access), Sign-ins, No sign-in for 90 days, and Not joined yet. Each opens its tab. Tabs are Companies, People, and Features. Each tab is one table. Companies is first. The busiest company sits at the top. IMSERV sits last, so our own use does not crowd customers. A company with nobody on it says No people yet. A company row narrows the page to that company and opens People. A pill shows the company. Clear it to see every company again. Change compares with the same length of time before. Say Up 12% or Down 8%. People shows sign-ins, the last sign-in, and a state: Active, Quiet, Not joined, Turned off, or Access ended. Each name has a presence dot on the avatar. Quiet is no sign-in for 90 days or more but they can still get in. Not joined is invited but never signed in. A person row opens them on Users, where Renew access and Log in as user sit. Features ranks what people open, with a share bar and how many people use it. It only lists what that company type can open, so Finance does not show for suppliers. Search finds a company, person, or feature. Export gives the tab you are on. Updated daily sits under the tabs. Log in as user visits do not count, so admin checks do not look like customer use.",
+            "later": "Invoices once they are live. Use by day of the month, to see the month-end rush. Signed in by month. Each person's own activity on Users.",
             "uses": [
               "page-header",
               "card",
@@ -7360,9 +7380,26 @@
               "select",
               "tag",
               "search",
-              "export"
+              "export",
+              "presence-dot"
             ],
             "note": "Say sign-in and sign-ins. Do not say hits, clicks, or logins. No doughnut. A table sorts and a doughnut does not. Customers never see this page."
+          },
+          {
+            "id": "person-states",
+            "name": "Person states",
+            "status": "draft",
+            "summary": "Every person is in one of five states. IMSERV admins see it as a dot on the avatar, like Teams.",
+            "now": "States in order of what wins: Turned off, Access ended, Not joined, Quiet, Active. Turned off is someone an admin switched off by hand. Access ended is when their access end date has passed. Not joined is invited but never signed in. Quiet is no sign-in for 90 days or more. They still have access and nothing turns off by itself. An admin decides. Active is signed in within 90 days. You are always Active. The dot sits top right of the avatar with a white ring. Each state has its own colour and mark, so colour is never the only cue: Active is green with a tick, Quiet is amber with a clock, Not joined is a hollow grey ring, Turned off is grey with a cross, Access ended is grey with a clock. The dot has a tooltip and screen reader text. Dots show for IMSERV admins only, on Users, the person, and Usage People. Company admins see a Turned off or Access ended tag next to the name instead. A person who cannot sign in has a faded avatar in the list. The person shows a State line. Turned off shows a note with when, who, and Turn on access. Access ended shows a note with Renew access. Turn off access sits in the person's tools and in the row's More menu. IMSERV super admins can turn anyone off. Company Admins can turn off their own people. Nobody can turn off themselves, IMSERV staff, or a super admin. Log in as user hides while someone cannot sign in.",
+            "later": "Turn off many people at once from the Quiet list. A reason when turning someone off. Email them when access is turned back on.",
+            "uses": [
+              "avatar",
+              "tag",
+              "note",
+              "button",
+              "menu"
+            ],
+            "note": "Do not use Live, Silent, or Inactive. Do not turn people off automatically after 90 days. Turning off is undone with one click, so it needs no confirm."
           },
           {
             "id": "admin-overview",

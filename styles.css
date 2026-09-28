@@ -9599,6 +9599,81 @@ button.astral-state {
   min-width: 0;
 }
 
+/* Presence dot: IMSERV admin only. Shape and mark change with the state, not just colour. */
+.astral-person-avatar {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+}
+
+.astral-presence {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid var(--color-background-surface);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: var(--color-status-success);
+}
+
+.astral-presence svg {
+  width: 10px;
+  height: 10px;
+}
+
+.astral-presence.is-quiet {
+  background: var(--color-status-warning);
+}
+
+.astral-presence.is-off,
+.astral-presence.is-ended {
+  background: var(--color-text-secondary);
+}
+
+.astral-presence.is-not-joined {
+  background: var(--color-background-surface);
+  box-shadow: inset 0 0 0 2px var(--color-text-secondary);
+}
+
+.astral-person-avatar.is-large .astral-presence {
+  top: 0;
+  right: 0;
+  width: 22px;
+  height: 22px;
+  border-width: 3px;
+}
+
+.astral-person-avatar.is-large .astral-presence svg {
+  width: 14px;
+  height: 14px;
+}
+
+tr.is-off .astral-person-mark {
+  opacity: 0.55;
+}
+
+.astral-person-state-note {
+  grid-column: 1 / -1;
+}
+
+.astral-usage-who {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.astral-usage-who .astral-person-mark {
+  width: 28px;
+  height: 28px;
+  font-size: 0.7rem;
+}
+
 .astral-person-copy strong {
   display: inline-flex;
   flex-wrap: wrap;
