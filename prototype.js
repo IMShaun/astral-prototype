@@ -7301,6 +7301,7 @@ function protoPickSelect(id, value) {
     "report-content": "content",
     "report-utility": "utility",
     "report-channel": "channel",
+    "report-quality": "quality",
     "report-format": "format",
     "report-time": "time",
     "report-send-at": "sendAt",
@@ -7601,6 +7602,22 @@ const PROTO_REPORT_CHANNEL = [
   { id: "export", name: "Export" },
 ];
 
+const PROTO_REPORT_QUALITY = [
+  { id: "all", name: "Actual and estimated", note: "Every reading" },
+  { id: "actual", name: "Actual only", note: "Leaves out estimated readings" },
+  { id: "estimated", name: "Estimated only", note: "Just the estimated readings" },
+];
+
+// Data quality only means something when the file holds readings.
+function protoReportHasQuality(def) {
+  return def.type === "extract" && def.content !== "missing";
+}
+
+// reading is "actual", "estimated" or "missing". A gap is neither actual nor estimated.
+function protoReportQualityOk(pick, reading) {
+  return pick === "actual" || pick === "estimated" ? reading === pick : true;
+}
+
 const PROTO_REPORT_FORMAT = [
   { id: "csv", name: "CSV", note: "For a system to read in" },
   { id: "xlsx", name: "XLSX", note: "For a spreadsheet" },
@@ -7872,6 +7889,7 @@ function protoReportNormalize(raw) {
     content: protoReportPick(PROTO_REPORT_CONTENT, raw.content),
     utility: protoReportPick(PROTO_REPORT_UTILITY, raw.utility),
     channel: protoReportPick(PROTO_REPORT_CHANNEL, raw.channel),
+    quality: protoReportPick(PROTO_REPORT_QUALITY, raw.quality),
     format: protoReportPick(PROTO_REPORT_FORMAT, raw.format === "xls" ? "xlsx" : raw.format),
     time: protoReportPick(PROTO_REPORT_TIME, raw.time),
     sendAt: PROTO_REPORT_SEND_AT.includes(String(raw.sendAt)) ? String(raw.sendAt) : "09:00",
@@ -7905,7 +7923,7 @@ function protoReportNormalize(raw) {
   if (tpl && !tpl.builtIn) def.template = tpl.id;
   const rule = def.template ? tpl : protoTemplateBuiltIn(type);
   if (rule) {
-    ["utility", "channel", "format"].forEach((key) => {
+    ["utility", "channel", "quality", "format"].forEach((key) => {
       if (rule.settings[key]?.mode === "fixed") def[key] = rule.settings[key].value;
     });
     if (def.template) {
@@ -8218,6 +8236,7 @@ function protoReportFileLine(def) {
   const bits = [protoReportOptionName(PROTO_REPORT_FORMAT, def.format)];
   if (def.utility !== "all") bits.push(protoReportOptionName(PROTO_REPORT_UTILITY, def.utility).toLowerCase());
   if (def.channel !== "all") bits.push(`${protoReportOptionName(PROTO_REPORT_CHANNEL, def.channel).toLowerCase()} only`);
+  if (protoReportHasQuality(def) && def.quality !== "all") bits.push(`${def.quality} readings only`);
   if (def.time === "uk") bits.push("UK time");
   return bits.join(", ");
 }
@@ -9521,9 +9540,15 @@ function protoReportGroups(draft, opts = {}) {
     const rule = protoTemplateBuiltIn(draft.type);
     const pick = (key, label, list, value) =>
       rule?.settings[key]?.mode === "fixed" ? "" : protoReportOptionSelect(`report-${key}`, label, list, value);
-    const lists = { utility: PROTO_REPORT_UTILITY, channel: PROTO_REPORT_CHANNEL, format: PROTO_REPORT_FORMAT };
-    const names = { utility: "Utility", channel: "Channel", format: "Format" };
-    const fixed = (extract ? ["utility", "channel", "format"] : ["format"])
+    const lists = {
+      utility: PROTO_REPORT_UTILITY,
+      channel: PROTO_REPORT_CHANNEL,
+      quality: PROTO_REPORT_QUALITY,
+      format: PROTO_REPORT_FORMAT,
+    };
+    const names = { utility: "Utility", channel: "Channel", quality: "Data quality", format: "Format" };
+    const quality = protoReportHasQuality(draft);
+    const fixed = (extract ? ["utility", "channel", ...(quality ? ["quality"] : []), "format"] : ["format"])
       .filter((key) => rule?.settings[key]?.mode === "fixed")
       .map((key) => `${names[key]}: ${protoReportOptionName(lists[key], rule.settings[key].value)}`);
     const fixedNote = fixed.length ? `<p class="astral-muted">${escapeHtml(`IMSERV set ${fixed.join(", ")}.`)}</p>` : "";
@@ -9543,6 +9568,11 @@ function protoReportGroups(draft, opts = {}) {
               ${pick("utility", "Utility", PROTO_REPORT_UTILITY, draft.utility)}
               ${pick("channel", "Channel", PROTO_REPORT_CHANNEL, draft.channel)}
             </div>
+            ${
+              quality
+                ? `<div class="astral-report-pair">${pick("quality", "Data quality", PROTO_REPORT_QUALITY, draft.quality)}</div>`
+                : ""
+            }
             ${fixedNote}
           `
           : `
@@ -10128,6 +10158,7 @@ function protoReportRows(def) {
       protoReportMeters(def, site).forEach((meter) => fn(site, meter))
     );
   const rows = [];
+  const quality = protoReportHasQuality(def) ? def.quality : "all";
   if (def.type === "dcda" || def.content === "reads") {
     rows.push(
       def.type === "dcda"
@@ -10140,6 +10171,7 @@ function protoReportRows(def) {
         const points = protoSeries(meter, "day", day);
         register += points.reduce((n, point) => n + (Number(point.value) || 0), 0);
         const estimated = points.some((point) => point.quality === "estimated" || point.value == null);
+        if (!protoReportQualityOk(quality, estimated ? "estimated" : "actual")) return;
         const row = [
           site.name,
           meter.name,
@@ -10161,6 +10193,9 @@ function protoReportRows(def) {
     days.forEach((day) => {
       protoSeries(meter, "day", day).forEach((point) => {
         if (missing && point.value != null && point.quality !== "missing") return;
+        const reading =
+          point.value == null || point.quality === "missing" ? "missing" : point.quality === "estimated" ? "estimated" : "actual";
+        if (!missing && !protoReportQualityOk(quality, reading)) return;
         const clock = protoReportClock(day, point.label, def.time);
         rows.push([
           site.name,
@@ -10177,6 +10212,7 @@ function protoReportRows(def) {
     });
   });
   if (missing && rows.length === 1) rows.push(["No missing data in this period."]);
+  if (!missing && rows.length === 1 && quality !== "all") rows.push([`No ${quality} readings in this period.`]);
   return rows;
 }
 
@@ -11758,7 +11794,7 @@ const PROTO_TEMPLATE_SOURCES = [
     ],
     groups: ["meter", "site", "company"],
     steps: ["hh", "day", "week", "month", "whole"],
-    settings: ["utility", "channel", "step", "format"],
+    settings: ["utility", "channel", "quality", "step", "format"],
   },
   {
     id: "reads",
@@ -11771,7 +11807,7 @@ const PROTO_TEMPLATE_SOURCES = [
     ],
     groups: ["meter"],
     steps: ["day", "week", "month"],
-    settings: ["utility", "step", "format"],
+    settings: ["utility", "quality", "step", "format"],
   },
   {
     id: "dcda",
@@ -11847,6 +11883,7 @@ const PROTO_TEMPLATE_SOURCES = [
 const PROTO_TEMPLATE_SETTINGS = [
   { id: "utility", name: "Utility" },
   { id: "channel", name: "Channel" },
+  { id: "quality", name: "Data quality" },
   { id: "step", name: "Time step" },
   { id: "format", name: "Format" },
 ];
@@ -11874,7 +11911,7 @@ function protoTemplateTypes() {
 
 // Built-in types keep their own forms. Only these settings follow the template.
 const PROTO_TEMPLATE_BUILT_IN = {
-  extract: { source: "Interval data, meter reads or missing data", settings: ["utility", "channel", "format"], use: [41, 4] },
+  extract: { source: "Interval data, meter reads or missing data", settings: ["utility", "channel", "quality", "format"], use: [41, 4] },
   dcda: { source: "DC/DA reads", settings: ["format"], use: [12, 3] },
   billing: { source: "Tenant billing", settings: [], use: [9, 2] },
   alert: { source: "Site use against a threshold", settings: [], use: [27, 4] },
@@ -11888,6 +11925,7 @@ function protoTemplateSource(id) {
 function protoTemplateSettingOptions(settingId, source) {
   if (settingId === "utility") return PROTO_REPORT_UTILITY.map((item) => ({ value: item.id, label: item.name }));
   if (settingId === "channel") return PROTO_REPORT_CHANNEL.map((item) => ({ value: item.id, label: item.name }));
+  if (settingId === "quality") return PROTO_REPORT_QUALITY.map((item) => ({ value: item.id, label: item.name, note: item.note }));
   if (settingId === "format") return PROTO_REPORT_FORMAT.map((item) => ({ value: item.id, label: item.name, note: item.note }));
   return PROTO_TEMPLATE_STEPS.filter((item) => source.steps.includes(item.id)).map((item) => ({
     value: item.id,
@@ -12147,6 +12185,7 @@ function protoTemplateRows(tpl, def, limit = 6) {
   const step = protoTemplateStepOf(tpl, def);
   const utility = protoTemplateValue(tpl, "utility", def);
   const channel = protoTemplateValue(tpl, "channel", def);
+  const quality = source.settings.includes("quality") ? protoTemplateValue(tpl, "quality", def) : "all";
   const cols = source.columns.filter((col) => tpl.columns.includes(col.id));
   const head = [...protoTemplateAlwaysIn(tpl, step), ...cols.map((col) => col.name)];
   const sites = def ? protoReportScopeSites({ ...def, type: "extract" }) : protoEstateSites();
@@ -12245,6 +12284,8 @@ function protoTemplateRows(tpl, def, limit = 6) {
         to: protoFormatUkDate(to),
         left: String(Math.max(0, Math.round((to - today) / PROTO_DAY_MS))),
       };
+      const estimated = source.id === "reads" ? value.readType === "Estimated" : value.quality === "Estimated";
+      if (!protoReportQualityOk(quality, estimated ? "estimated" : "actual")) continue;
       rows.push([...lead, ...cols.map((col) => value[col.id] ?? "")]);
       if (!source.steps.length || step === "whole") break;
     }
@@ -12811,7 +12852,7 @@ function protoTemplatePick(id, value) {
 function protoTemplateApply(def, tpl) {
   if (!tpl) return def;
   const out = { ...def };
-  ["utility", "channel", "format"].forEach((id) => {
+  ["utility", "channel", "quality", "format"].forEach((id) => {
     const own = tpl.settings[id];
     if (!own) return;
     if (own.mode === "fixed" || !def[id]) out[id] = own.value;
