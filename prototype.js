@@ -5376,7 +5376,7 @@ function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing }) {
 
 const PROTO_ZONE_MORE_MAX = 12;
 
-// The rest of the picked group sits in a pill; hover or focus lists them.
+// The rest of a group sits in a pill inside the pick; hover lists them. The pick's label says them in full.
 function protoChartZoneMore(group) {
   const rest = group?.rest || [];
   if (!rest.length) return "";
@@ -5387,9 +5387,18 @@ function protoChartZoneMore(group) {
   const lines = [...shown, ...(left ? [`and ${left} more`] : [])]
     .map((name) => `<span>${escapeHtml(name)}</span>`)
     .join("");
-  return `<span class="astral-zone-more astral-tip-host" tabindex="0"><span aria-hidden="true">${escapeHtml(
+  return `<span class="astral-zone-more astral-tip-host" aria-hidden="true">${escapeHtml(
     text
-  )}</span><span class="sr-only">Also ${escapeHtml(protoZoneJoin(rest))}</span><span class="astral-icon-tip is-list" aria-hidden="true">${lines}</span></span>`;
+  )}<span class="astral-icon-tip is-list">${lines}</span></span>`;
+}
+
+function protoChartZoneName(group, spoken) {
+  const pill = protoChartZoneMore(group);
+  if (!pill) return `<span class="astral-zone-name"><span>${escapeHtml(group.label)}</span></span>`;
+  const sr = spoken ? `<span class="sr-only">${escapeHtml(group.label)}</span>` : "";
+  return `<span class="astral-zone-name"><span${spoken ? ` aria-hidden="true"` : ""}>${escapeHtml(
+    group.head
+  )}</span>${pill}${sr}</span>`;
 }
 
 // When meters keep different hours, say so and let the user pick whose hours the graph shades.
@@ -5404,13 +5413,14 @@ function protoChartZoneRow(set) {
     options: set.groups.map((group) => ({
       value: group.id,
       label: group.label,
-      short: group.head,
-      note: group.note,
+      face: protoChartZoneName(group, false),
+      html: `<span class="astral-select-option-copy">${protoChartZoneName(
+        group,
+        true
+      )}<span class="astral-muted">${escapeHtml(group.note)}</span></span>`,
     })),
   });
-  return `<div class="astral-chart-zone-row"><p class="astral-muted">${escapeHtml(lead)}</p>${select}${protoChartZoneMore(
-    set.pick
-  )}</div>`;
+  return `<div class="astral-chart-zone-row"><p class="astral-muted">${escapeHtml(lead)}</p>${select}</div>`;
 }
 
 function protoChartNav(pan) {
@@ -7017,7 +7027,7 @@ function protoSelect(config) {
       text = `${pickedAll.length} ${config.countLabel || "selected"}`;
     }
   } else if (picked?.label) {
-    text = picked.short || picked.label;
+    text = picked.label;
   }
   const labelled = config.label && config.label !== text && !config.caption;
   const disabled = Boolean(config.disabled);
@@ -7088,8 +7098,9 @@ function protoSelect(config) {
         multi ? values.join(",") : value
       )}" />`
     : "";
-  const face =
-    !multi && (pickedAll[0]?.html || picked?.html)
+  const face = !multi && picked?.face
+    ? picked.face
+    : !multi && (pickedAll[0]?.html || picked?.html)
       ? pickedAll[0]?.html || picked.html
       : `<span>${escapeHtml(text)}</span>`;
   const list = `
