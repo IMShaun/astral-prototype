@@ -7055,6 +7055,32 @@ function protoToggleSiteMeter(value) {
   protoRestoreFocus(`#astral-fs [data-proto-meter-pill="${CSS.escape(value)}"]`);
 }
 
+function protoReportAddEmail(raw) {
+  const draft = protoReportDraft();
+  const email = protoReportEmails([String(raw || "").trim()])[0];
+  if (!draft || !email || !protoCanEditReports()) return false;
+  const known = new Set(protoReportRecipientRows(draft).flatMap((row) => [row.name, row.email].map((item) => String(item).toLowerCase())));
+  store.prototypeReportPeopleQuery = "";
+  if (known.has(email.toLowerCase())) {
+    setProto({ prototypeSelectOpen: "" });
+  } else {
+    const ways = draft.delivery || [];
+    const emailOn = protoReportSends(draft.type) && !ways.includes("email");
+    setProto({
+      prototypeSelectOpen: "",
+      prototypeReportDraft: {
+        ...draft,
+        emails: [...protoReportEmails(draft.emails), email].join(", "),
+        ...(emailOn
+          ? { delivery: PROTO_REPORT_DELIVERY.map((item) => item.id).filter((item) => item === "email" || ways.includes(item)) }
+          : {}),
+      },
+    });
+  }
+  protoRestoreFocus("#astral-fs input[name='proto-report-people-query']");
+  return true;
+}
+
 function protoPickSelect(id, value) {
   if (String(id).startsWith("meter-hours-status-") || String(id).startsWith("meter-hours-profile-") || String(id).startsWith("meter-tou-profile-")) {
     protoPickMeterProfileSelect(id, value);
@@ -7134,6 +7160,19 @@ function protoPickSelect(id, value) {
         value
       )}"]`
     );
+    return;
+  }
+  if (id.startsWith("report-role:")) {
+    const draft = protoReportDraft();
+    if (!draft || !protoCanEditReports()) return;
+    const key = id.slice("report-role:".length);
+    const roles = { ...(draft.roles || {}), [key]: value };
+    setProto({ prototypeSelectOpen: "", prototypeReportDraft: { ...draft, roles: protoReportRoles(roles) } });
+    protoRestoreFocus(`#astral-fs [data-proto-select="${CSS.escape(id)}"] .astral-select-btn`);
+    return;
+  }
+  if (id === "report-people" && String(value).startsWith("email:")) {
+    protoReportAddEmail(String(value).slice(6));
     return;
   }
   if (id === "report-people") {
@@ -7639,6 +7678,37 @@ function protoReportSiteById(id) {
   return protoEstateSites().find((site) => protoSiteId(site) === id) || null;
 }
 
+// What each recipient can do with this report. It is separate from their role in Astral.
+const PROTO_REPORT_ACCESS = [
+  { id: "copy", name: "Gets a copy", note: "Gets each one" },
+  { id: "edit", name: "Can edit", note: "Gets each one and can change it" },
+];
+
+function protoReportRoleDefault(key) {
+  return key === "person:me" ? "edit" : "copy";
+}
+
+function protoReportRoles(raw) {
+  const out = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  Object.entries(raw).forEach(([key, value]) => {
+    const k = String(key);
+    if (!/^(person|email):./.test(k)) return;
+    if (!PROTO_REPORT_ACCESS.some((item) => item.id === value)) return;
+    if (value !== protoReportRoleDefault(k)) out[k] = value;
+  });
+  return out;
+}
+
+function protoReportRoleOf(draft, key) {
+  const role = draft?.roles?.[key];
+  return PROTO_REPORT_ACCESS.some((item) => item.id === role) ? role : protoReportRoleDefault(key);
+}
+
+function protoReportRoleName(id) {
+  return PROTO_REPORT_ACCESS.find((item) => item.id === id)?.name || PROTO_REPORT_ACCESS[0].name;
+}
+
 function protoReportEmails(raw) {
   const list = Array.isArray(raw) ? raw : String(raw || "").split(/[\s,;]+/);
   return [
@@ -7741,6 +7811,7 @@ function protoReportNormalize(raw) {
     to: protoFromUkDate(to) ? to : range.to,
     people: [...new Set((Array.isArray(raw.people) ? raw.people : []).map(String).filter(Boolean))],
     emails: protoReportEmails(raw.emails),
+    roles: protoReportRoles(raw.roles),
     sites,
     period: protoReportPeriod(type, raw.period).id,
     delivery: delivery.length ? delivery : ["email"],
@@ -8301,6 +8372,7 @@ function protoReportDraftFrom(def) {
   return {
     ...def,
     emails: def.emails.join(", "),
+    roles: { ...(def.roles || {}) },
     tenants: (def.tenants || []).map(protoReportTenantDraft),
     vat: String(def.vat),
     amount: String(def.amount),
@@ -8632,7 +8704,8 @@ function protoReportRecipientRows(draft) {
       key: `person:${person.id}`,
       name: person.you && person.name !== "You" ? `${person.name} (you)` : person.name,
       email: person.email || "",
-      role: protoUserRoleName(person.role),
+      role: protoReportRoleName(protoReportRoleOf(draft, `person:${person.id}`)),
+      roleId: protoReportRoleOf(draft, `person:${person.id}`),
       initials: protoUserInitials(person),
     }));
   rows.unshift(...tenant);
@@ -8642,8 +8715,9 @@ function protoReportRecipientRows(draft) {
     rows.push({
       key: `email:${email}`,
       name: email,
-      email: "",
-      role: "Email only",
+      email: "Outside your company",
+      role: protoReportRoleName(protoReportRoleOf(draft, `email:${email}`)),
+      roleId: protoReportRoleOf(draft, `email:${email}`),
       initials: protoProfileInitials(email),
     });
   });
@@ -8672,7 +8746,24 @@ function protoReportPeopleSearch(pool) {
   const shown = protoReportPeopleOptions(pool).filter(
     (item) => !q || `${item.label} ${item.search}`.toLowerCase().includes(q)
   );
-  const options = shown
+  const typed = protoReportEmails([query.trim()])[0] || "";
+  const draft = protoReportDraft();
+  const have = new Set(
+    (draft ? protoReportRecipientRows(draft) : []).flatMap((row) => [row.name, row.email].map((item) => String(item).toLowerCase()))
+  );
+  const addEmail =
+    typed && !have.has(typed.toLowerCase()) && !shown.some((item) => item.search.toLowerCase().includes(typed.toLowerCase()))
+      ? `
+        <button
+          type="button"
+          role="option"
+          aria-selected="false"
+          class="astral-search-add-email"
+          data-proto-select-option="${id}"
+          data-proto-select-value="${escapeHtml(`email:${typed}`)}"
+        ><span class="astral-select-person"><span>Add ${escapeHtml(typed)}</span><span class="astral-muted">Outside your company</span></span></button>`
+      : "";
+  const options = addEmail + shown
     .map(
       (item) => `
         <button
@@ -8686,14 +8777,22 @@ function protoReportPeopleSearch(pool) {
     .join("");
   const empty = options
     ? ""
-    : `<p class="astral-muted">${pool.length ? "No one in your company matches." : "Everyone in your company already gets it."}</p>`;
+    : `<p class="astral-muted">${
+        typed && have.has(typed.toLowerCase())
+          ? `${escapeHtml(typed)} already gets it.`
+          : q.includes("@")
+            ? "Finish the email address to add them."
+            : pool.length
+              ? "No one in your company matches. Type an email to add someone else."
+              : "Everyone in your company already gets it. Type an email to add someone else."
+      }</p>`;
   return `
     <div class="astral-select astral-search-add is-wide has-search${open && protoMenuEnter.has(`select:${id}`) ? " is-enter" : ""}" data-proto-select="${id}">
       ${protoSearchField({
         name: "proto-report-people-query",
         value: query,
-        placeholder: "Search people in your company to add",
-        label: "Search people in your company to add",
+        placeholder: "Search people or type an email",
+        label: "Search people in your company or type an email to add",
       })}
       <div class="astral-select-menu${open ? protoMenuEnterClass(`select:${id}`) : ""}"${open ? "" : " hidden"}>
         <div id="astral-select-${id}" class="astral-select-options" role="listbox" aria-label="People in your company">${options}${empty}</div>
@@ -8718,7 +8817,14 @@ function protoReportRecipientList(draft) {
             row.name,
             row.email
           )}</span>`,
-          escapeHtml(row.role),
+          row.fixed || !protoCanEditReports()
+            ? escapeHtml(row.role)
+            : protoSelect({
+                id: `report-role:${row.key}`,
+                label: `What ${row.name} can do`,
+                value: row.roleId,
+                options: PROTO_REPORT_ACCESS.map((item) => ({ value: item.id, label: item.name, note: item.note })),
+              }),
           row.fixed
             ? ""
             : protoIconBtn("close", `Remove ${row.name}`, `data-proto-report-remove="${escapeHtml(row.key)}"`, {
@@ -8731,13 +8837,15 @@ function protoReportRecipientList(draft) {
     ),
     {
       id: "report-recipients",
-      empty: "No one gets this yet. Search for people to add them.",
+      empty: "No one gets this yet. Search for people or type an email to add them.",
     }
   );
   return `
     <div class="astral-people-tools">${protoReportPeopleSearch(pool)}</div>
     <div class="astral-people astral-report-recipients">${table}</div>
-    <p class="astral-people-count">${rows.length} ${rows.length === 1 ? "recipient" : "recipients"}. Each email has an opt-out link.</p>
+    <p class="astral-people-count">${rows.length} ${rows.length === 1 ? "recipient" : "recipients"}. Each email has an opt-out link. People who can edit can change this ${
+      protoReportTabOf(draft.type) === "alerts" ? "alert" : "report"
+    } and who gets it.</p>
   `;
 }
 
@@ -22789,7 +22897,9 @@ function onPrototype(event) {
     const btns = [...document.querySelectorAll("#astral-fs [data-proto-report-remove]")];
     const at = btns.indexOf(reportRemoveBtn);
     const next = btns[at + 1] || btns[at - 1];
-    setProto({ prototypeReportDraft: { ...draft, ...patch } });
+    const roles = { ...(draft.roles || {}) };
+    delete roles[key];
+    setProto({ prototypeReportDraft: { ...draft, ...patch, roles } });
     protoRestoreFocus(
       next
         ? `#astral-fs [data-proto-report-remove="${CSS.escape(next.dataset.protoReportRemove)}"]`
@@ -24927,6 +25037,13 @@ function onPrototypeSubmit(event) {
 }
 
 function onPrototypeKey(event) {
+  const peopleAdd = event.target.closest(".astral-search-add input[name='proto-report-people-query']");
+  if (peopleAdd && event.key === "Enter") {
+    event.preventDefault();
+    if (protoReportAddEmail(peopleAdd.value)) return;
+    document.querySelector("#astral-fs .astral-search-add [data-proto-select-option]")?.click();
+    return;
+  }
   if (event.key === "Enter" && event.target.closest("input[name='proto-team-people-query'], input[name='proto-report-people-query'], input[name='proto-report-site-query'], input[name='proto-person-team-query'], input[name='proto-person-sites-query']")) {
     event.preventDefault();
     return;

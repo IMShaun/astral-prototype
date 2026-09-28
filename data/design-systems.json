@@ -6826,8 +6826,18 @@
             "status": "firm",
             "say": "Recipients",
             "avoid": "Distribution list, Subscribers, Mailing list.",
-            "note": "The people who get a report by email. The pane meta is 3 people get this by email. Empty is No one gets this yet. Search for people to add them. Remove takes one person off.",
+            "note": "The people who get a report by email. The pane meta is 3 people get this by email. Search finds people in the company. Type a full email to add someone outside it. Enter adds the email. Their line says Outside your company. Empty is No one gets this yet. Search for people or type an email to add them. Remove takes one person off.",
             "from": "Shaun on Edit report, 24 Sep"
+          },
+          {
+            "id": "report-access",
+            "kind": "labels",
+            "name": "Report roles",
+            "status": "working",
+            "say": "Gets a copy, Can edit",
+            "avoid": "Subscriber, Owner, Viewer. Viewer is an Astral role, not a report role.",
+            "note": "What someone can do with one report. It is separate from their role in Astral. Everyone gets a copy. Can edit also changes the report and who gets it. The person who adds a report can edit it. Tenants show Tenant and cannot change.",
+            "from": "Shaun on Recipients, 28 Sep"
           }
         ]
       },

@@ -10144,7 +10144,17 @@ button.astral-state {
 
 .astral-report-recipients th:nth-child(2),
 .astral-report-recipients td:nth-child(2) {
-  width: 9rem;
+  width: 11rem;
+}
+
+.astral-report-recipients .astral-select-btn {
+  min-width: 0;
+}
+
+.astral-report-recipients .astral-select-menu {
+  min-width: 15rem;
+  right: 0;
+  left: auto;
 }
 
 .astral-report-recipients th:nth-child(3),
