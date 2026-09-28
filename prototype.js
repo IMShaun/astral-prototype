@@ -4187,6 +4187,11 @@ function protoMeterRef(meter) {
   return meter?.mpan || meter?.name || "";
 }
 
+function protoMeterUtility(meter) {
+  const kind = protoMeterKind(meter);
+  return kind === "water" ? "Water" : kind === "gas" ? "Gas" : "Electricity";
+}
+
 function protoMeterMark(commodity) {
   const kind = protoMeterKind({ commodity });
   const label = kind === "water" ? "Water" : kind === "gas" ? "Gas" : "Electricity";
@@ -4214,24 +4219,31 @@ function protoGraphPills(all, viewIds, options = {}) {
                 )}" aria-hidden="true"></span>`
               : `<span class="astral-chart-key-mark" aria-hidden="true"></span>`
             : "";
-          const label = `<span class="astral-meter-pill-label">${escapeHtml(item.label)}</span>`;
+          const tipText = item.tip ? String(item.tip) : "";
+          const label = `${
+            tipText ? `<span class="sr-only">${escapeHtml(tipText)}. </span>` : ""
+          }<span class="astral-meter-pill-label">${escapeHtml(item.label)}</span>`;
+          const tip = tipText ? protoTip(tipText) : "";
+          const host = tipText ? " astral-tip-host" : "";
           if (!toggle) {
             return `
-            <span class="astral-meter-pill is-on" role="listitem">
+            <span class="astral-meter-pill is-on${host}" role="listitem">
               ${mark}
               ${label}
+              ${tip}
             </span>
           `;
           }
           return `
             <button
               type="button"
-              class="astral-meter-pill${on ? " is-on" : ""}"
+              class="astral-meter-pill${on ? " is-on" : ""}${host}"
               aria-pressed="${on ? "true" : "false"}"
               ${attr}="${escapeHtml(item.id)}"
             >
               ${mark}
               ${label}
+              ${tip}
             </button>
           `;
         })
@@ -4254,6 +4266,7 @@ function protoMeterPills(meters, options = {}) {
   const items = all.map((meter, i) => ({
     id: meter.id,
     label: protoMeterRef(meter),
+    tip: protoMeterUtility(meter),
     color: protoMeterSwatch(meter, i, list),
   }));
   return protoGraphPills(
