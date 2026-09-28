@@ -6838,6 +6838,46 @@
             "avoid": "Subscriber, Owner, Viewer. Viewer is an Astral role, not a report role.",
             "note": "What someone can do with one report. It is separate from their role in Astral. Everyone gets a copy. Can edit also changes the report and who gets it. The person who adds a report can edit it. Tenants show Tenant and cannot change.",
             "from": "Shaun on Recipients, 28 Sep"
+          },
+          {
+            "id": "usage",
+            "kind": "words",
+            "name": "Usage",
+            "status": "draft",
+            "say": "Usage",
+            "avoid": "Analytics, Insights, Engagement, Adoption.",
+            "note": "The admin page for who signs in and what they use, across every company. Customers do not see it.",
+            "from": "Shaun on the Power BI usage guide, 28 Sep"
+          },
+          {
+            "id": "sign-in-count",
+            "kind": "words",
+            "name": "Sign-ins",
+            "status": "draft",
+            "say": "Sign in, Sign-ins, Last sign-in",
+            "avoid": "Login, Log on, Hits, Clicks, Sessions.",
+            "note": "Sign in is the verb. Sign-in is the noun. Log in as user stays, because that is a different act by an admin.",
+            "from": "Shaun on the Power BI usage guide, 28 Sep"
+          },
+          {
+            "id": "usage-states",
+            "kind": "labels",
+            "name": "Active, Quiet, Not joined",
+            "status": "draft",
+            "say": "Active, Quiet, Not joined",
+            "avoid": "Live, Silent, Dormant, Inactive, Pending.",
+            "note": "Quiet is no sign-in for 90 days or more. They can still get in, so check they still need access. Not joined is invited but never signed in. Say the 90 days in the number label.",
+            "from": "Shaun on the Power BI usage guide, 28 Sep"
+          },
+          {
+            "id": "usage-change",
+            "kind": "labels",
+            "name": "Change",
+            "status": "draft",
+            "say": "Up 12%, Down 8%, No change, New",
+            "avoid": "+12%, -8%, a green or red arrow alone.",
+            "note": "Compare with the same length of time before. New means nothing to compare with.",
+            "from": "Shaun on the Power BI usage guide, 28 Sep"
           }
         ]
       },
@@ -7258,8 +7298,8 @@
             "id": "admin-side-map",
             "name": "Admin side map",
             "status": "working",
-            "summary": "Overview, Companies, Servicing, Inbox, and Users down the left. Open a company for their data.",
-            "now": "IMSERV admin side menu is Overview, Companies, Servicing, Inbox, Users, and Reports. Overview is the picture of the platform. Companies is the list. Add a company sits there. Pick a company to see their product. Servicing is meter health across every company. Inbox is support tickets. Inbox shows how many are unread. On Users, IMSERV sits first. It lists every super admin, you too. Companies follow. Back to admin returns to Companies. Brokers still wait.",
+            "summary": "Overview, Companies, Servicing, Inbox, Users, and Usage down the left. Open a company for their data.",
+            "now": "IMSERV admin side menu is Overview, Companies, Servicing, Inbox, Users, Usage, and Reports. Overview is the picture of the platform. Companies is the list. Add a company sits there. Pick a company to see their product. Servicing is meter health across every company. Inbox is support tickets. Inbox shows how many are unread. Usage is who signs in and what they use. On Users, IMSERV sits first. It lists every super admin, you too. Companies follow. Back to admin returns to Companies. Brokers still wait.",
             "later": "",
             "uses": [
               "list",
@@ -7306,11 +7346,30 @@
             "note": "A ticket is not a query. A query is a customer question on a graph. A ticket is anything they send to support. The side menu shows how many are unread."
           },
           {
+            "id": "usage",
+            "name": "Usage",
+            "status": "draft",
+            "summary": "Who signs in and what they use. Every company first, then narrow to one.",
+            "now": "IMSERV admin only. It sits under Users in the side menu. Period and Company type sit at the top right and change the whole page. Period is Last 7, 30, or 90 days. Last 30 days is the default. Company type is Customer, Supplier, Broker / TPI, or IMSERV. Four numbers sit at the top: Signed in, Sign-ins, No sign-in for 90 days, and Not joined yet. Each opens its tab. Tabs are Companies, People, and Features. Each tab is one table. Companies is first. The busiest company sits at the top. IMSERV sits last, so our own use does not crowd customers. A company with nobody on it says No people yet. A company row narrows the page to that company and opens People. A pill shows the company. Clear it to see every company again. Change compares with the same length of time before. Say Up 12% or Down 8%. People shows sign-ins, the last sign-in, and a state: Active, Quiet, or Not joined. Quiet is no sign-in for 90 days or more but they can still get in. Not joined is invited but never signed in. A person row opens them on Users, where Renew access and Log in as user sit. Features ranks what people open, with a share bar and how many people use it. It only lists what that company type can open, so Finance does not show for suppliers. Search finds a company, person, or feature. Export gives the tab you are on. Updated daily sits under the tabs. Log in as user visits do not count, so admin checks do not look like customer use.",
+            "later": "Invoices once they are live. Use by day of the month, to see the month-end rush. Turn off access from the Quiet list. Signed in by month. Each person's own activity on Users.",
+            "uses": [
+              "page-header",
+              "card",
+              "tabs",
+              "table",
+              "select",
+              "tag",
+              "search",
+              "export"
+            ],
+            "note": "Say sign-in and sign-ins. Do not say hits, clicks, or logins. No doughnut. A table sorts and a doughnut does not. Customers never see this page."
+          },
+          {
             "id": "admin-overview",
             "name": "Admin overview",
             "status": "draft",
             "summary": "The picture of the platform. Every card opens the place it counts.",
-            "now": "The top row is Companies, People, and Meters sending. Cards are Not sending, Open faults, Late faults, At risk, Unread tickets, and Oldest open ticket. Each card opens Servicing on the right tab, or Inbox on the right filter. The card is the hit target. No Open button.",
+            "now": "The top row is Companies, People, and Meters sending. Cards are Not sending, Open faults, Late faults, At risk, Unread tickets, and Oldest open ticket. The last row is people: Signed in, No sign-in for 90 days, and Not joined yet. Each card opens Servicing on the right tab, Inbox on the right filter, or Usage on the right tab. The card is the hit target. No Open button.",
             "later": "Change since last week. Brokers when the list is live.",
             "uses": [
               "card",
@@ -8945,7 +9004,77 @@
               }
             ]
           }
-        ]
+        ],
+        "usageLead": "Who signs in and what they use, across every company.",
+        "usage": {
+          "companyTypes": {
+            "EDF": "supplier"
+          },
+          "features": [
+            {
+              "id": "graph",
+              "name": "Graph",
+              "where": "Portfolio",
+              "weight": 30
+            },
+            {
+              "id": "downloads",
+              "name": "Downloads",
+              "where": "Reports",
+              "weight": 16
+            },
+            {
+              "id": "alerts",
+              "name": "Alerts",
+              "where": "Alerts",
+              "weight": 12
+            },
+            {
+              "id": "site-profile",
+              "name": "Site profile",
+              "where": "Portfolio",
+              "weight": 10
+            },
+            {
+              "id": "reports",
+              "name": "Reports",
+              "where": "Reports",
+              "weight": 9
+            },
+            {
+              "id": "export",
+              "name": "Export data",
+              "where": "Portfolio",
+              "weight": 8
+            },
+            {
+              "id": "queries",
+              "name": "Queries",
+              "where": "Queries",
+              "weight": 6
+            },
+            {
+              "id": "finance",
+              "name": "Finance",
+              "where": "Finance",
+              "weight": 5,
+              "types": [
+                "customer"
+              ]
+            },
+            {
+              "id": "users",
+              "name": "Users",
+              "where": "Users",
+              "weight": 4,
+              "roles": [
+                "super-admin",
+                "admin",
+                "manager"
+              ]
+            }
+          ]
+        }
       }
     },
     "off-axis": null,

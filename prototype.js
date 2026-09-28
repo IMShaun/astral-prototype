@@ -215,7 +215,7 @@ const PROTO_COMPANIES = [
     id: "admin-user",
     name: "IMSERV admin",
     home: "admin",
-    nav: ["home", "companies", "servicing", "inbox", "users", "reports"],
+    nav: ["home", "companies", "servicing", "inbox", "users", "usage", "reports"],
     access: ["super-admin"],
     see: [],
   },
@@ -293,6 +293,12 @@ const PROTO_LENS_EXTRA = {
     name: "Inbox",
     kicker: "Support",
     blurb: "Support tickets from customers.",
+  },
+  usage: {
+    id: "usage",
+    name: "Usage",
+    kicker: "Platform",
+    blurb: "Who signs in and what they use.",
   },
 };
 
@@ -7094,6 +7100,15 @@ function protoPickSelect(id, value) {
     protoSetFlow(value);
     return;
   }
+  if (id === "usage-period" || id === "usage-type" || id === "usage-state") {
+    const key =
+      id === "usage-period" ? "prototypeUsagePeriod" : id === "usage-type" ? "prototypeUsageType" : "prototypeUsageState";
+    const patch = { prototypeSelectOpen: "", [key]: String(value || "") };
+    if (id === "usage-type") patch.prototypeUsageCompany = "";
+    setProto(patch);
+    protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
+    return;
+  }
   if (id === "chart-view") {
     setProto({
       prototypeSelectOpen: "",
@@ -10309,7 +10324,7 @@ function protoRailIcon(id) {
   if (id === "reports" || id === "downloads") return "report";
   if (id === "profile" || id === "settings" || id === "users") return id;
   if (id === "companies") return "companies";
-  if (id === "servicing" || id === "inbox") return id;
+  if (id === "servicing" || id === "inbox" || id === "usage") return id;
   return "home";
 }
 
@@ -10765,6 +10780,10 @@ const PROTO_HOME_GO = {
   "service-companies": () => protoServiceGo("companies"),
   "inbox-unread": () => protoInboxGo("unread", protoInboxTickets().find((t) => t.unread)?.ref),
   "inbox-oldest": () => protoInboxGo("open", protoInboxOldestOpen()?.ref),
+  "usage-people": () => protoUsageGo("people", { prototypeUsageCompany: "", prototypeUsageType: "" }),
+  "usage-quiet": () => protoUsageGo("people", { prototypeUsageCompany: "", prototypeUsageType: "", prototypeUsageState: "quiet" }),
+  "usage-not-joined": () =>
+    protoUsageGo("people", { prototypeUsageCompany: "", prototypeUsageType: "", prototypeUsageState: "not-joined" }),
 };
 
 function protoHomeEstate(facts) {
@@ -10923,6 +10942,7 @@ function protoHomeAdmin() {
   const unread = protoInboxTickets().filter((item) => item.unread);
   const oldest = protoInboxOldestOpen();
   const newest = unread[0];
+  const usage = protoUsageTotals(protoUsagePeople());
   return `
     ${astralPageHead("Overview", "Companies, people, meter health, and support on the platform.")}
     <div class="astral-hero">
@@ -10968,6 +10988,24 @@ function protoHomeAdmin() {
         "Oldest open ticket",
         oldest ? escapeHtml(protoAgo(oldest.firstAt).replace(/ ago$/, "")) : "None",
         oldest ? `${oldest.ref} from ${oldest.company}` : "Nothing open"
+      )}
+      ${protoHomeCard(
+        "usage-people",
+        "Signed in",
+        `${usage.percent}%`,
+        `Of ${usage.people} people in the ${usage.periodWords}`
+      )}
+      ${protoHomeCard(
+        "usage-quiet",
+        "No sign-in for 90 days",
+        usage.quiet,
+        usage.quiet ? "They still have access" : "Everyone has been in lately"
+      )}
+      ${protoHomeCard(
+        "usage-not-joined",
+        "Not joined yet",
+        usage.notJoined,
+        usage.notJoined ? "Invited but never signed in" : "Everyone invited has joined"
       )}
     </div>
   `;
@@ -11280,6 +11318,466 @@ function protoServicing() {
           </div>
         `,
         protoServiceTable(tab, q)
+      )}
+    </section>
+  `);
+}
+
+const PROTO_USAGE_TABS = [
+  { id: "companies", name: "Companies" },
+  { id: "people", name: "People" },
+  { id: "features", name: "Features" },
+];
+
+const PROTO_USAGE_PERIODS = [
+  { value: "7", label: "Last 7 days" },
+  { value: "30", label: "Last 30 days" },
+  { value: "90", label: "Last 90 days" },
+];
+
+const PROTO_USAGE_TYPES = [
+  { value: "", label: "All company types" },
+  { value: "customer", label: "Customer" },
+  { value: "supplier", label: "Supplier" },
+  { value: "broker", label: "Broker / TPI" },
+  { value: "imserv", label: "IMSERV" },
+];
+
+const PROTO_USAGE_STATES = [
+  { value: "", label: "Everyone" },
+  { value: "active", label: "Active" },
+  { value: "quiet", label: "Quiet" },
+  { value: "not-joined", label: "Not joined" },
+];
+
+const PROTO_USAGE_QUIET_DAYS = 90;
+const PROTO_USAGE_RATE = { "super-admin": 8, admin: 5, manager: 4, contributor: 3, viewer: 1.5 };
+
+function protoUsageTab() {
+  const id = String(store.prototypeUsageTab || "");
+  return PROTO_USAGE_TABS.some((item) => item.id === id) ? id : "companies";
+}
+
+function protoUsagePeriod() {
+  const id = String(store.prototypeUsagePeriod || "");
+  return PROTO_USAGE_PERIODS.some((item) => item.value === id) ? Number(id) : 30;
+}
+
+function protoUsageType() {
+  const id = String(store.prototypeUsageType || "");
+  return PROTO_USAGE_TYPES.some((item) => item.value === id) ? id : "";
+}
+
+function protoUsageState() {
+  const id = String(store.prototypeUsageState || "");
+  return PROTO_USAGE_STATES.some((item) => item.value === id) ? id : "";
+}
+
+function protoUsageCompanyNames() {
+  return ["IMSERV", ...protoTeamCompanyNames()];
+}
+
+function protoUsageCompany() {
+  const name = String(store.prototypeUsageCompany || "");
+  return protoUsageCompanyNames().includes(name) ? name : "";
+}
+
+function protoUsageGo(tab, extra) {
+  return {
+    activePrototypeView: "usage",
+    prototypeUsageTab: tab,
+    prototypeUsageQuery: "",
+    prototypeUsageState: "",
+    ...protoSeeAsClear(),
+    ...(extra || {}),
+  };
+}
+
+function protoUsageData() {
+  return protoData()?.usage || {};
+}
+
+function protoUsageCompanyType(name) {
+  if (name === "IMSERV") return "imserv";
+  const listed = protoUsageData().companyTypes?.[name];
+  return listed ? protoCompanyTypeId(listed) : protoCompanyTypeForName(name);
+}
+
+function protoUsageTypeName(id) {
+  return PROTO_USAGE_TYPES.find((item) => item.value === id && id)?.label || "Customer";
+}
+
+// Days since the last sign-in, from the Last active words. Null means never signed in.
+function protoUsageDays(lastActive) {
+  const raw = String(lastActive || "").trim().toLowerCase();
+  if (!raw || raw === "invited") return null;
+  if (raw === "now" || raw === "just now" || /(min|mins|hour|hours) ago$/.test(raw)) return 0;
+  if (raw === "yesterday") return 1;
+  const m = raw.match(/^(\d+)\s+(day|week|month|year)s? ago$/);
+  if (!m) return 0;
+  return Number(m[1]) * { day: 1, week: 7, month: 30, year: 365 }[m[2]];
+}
+
+function protoUsageSeed(text) {
+  let h = 2166136261;
+  for (const ch of String(text)) {
+    h ^= ch.charCodeAt(0);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0) / 4294967295;
+}
+
+function protoUsageSignIns(person, days, key) {
+  if (person.days == null || person.days > days) return 0;
+  const rate = PROTO_USAGE_RATE[person.role] || 2;
+  const factor = 0.6 + protoUsageSeed(`${person.id}:${key}:${days}`) * 0.8;
+  return Math.max(1, Math.round((rate * days * factor) / 7));
+}
+
+function protoUsagePeople() {
+  const period = protoUsagePeriod();
+  return protoUserPeople().map((person) => {
+    const company = person.you || person.imserv ? "IMSERV" : person.company;
+    const days = person.you ? 0 : protoUsageDays(person.lastActive);
+    const row = {
+      id: person.id,
+      name: person.name,
+      email: person.email,
+      role: person.role,
+      company,
+      type: protoUsageCompanyType(company),
+      days,
+      lastActive: person.you ? "Now" : person.lastActive,
+      you: Boolean(person.you),
+    };
+    row.signIns = protoUsageSignIns(row, period, "now");
+    row.prev = days == null || days >= period * 2 ? 0 : protoUsageSignIns({ ...row, days: 0 }, period, "prev");
+    row.state = days == null ? "not-joined" : days >= PROTO_USAGE_QUIET_DAYS ? "quiet" : "active";
+    return row;
+  });
+}
+
+function protoUsageScoped(people) {
+  const type = protoUsageType();
+  const company = protoUsageCompany();
+  return (people || protoUsagePeople()).filter(
+    (person) => (!type || person.type === type) && (!company || person.company === company)
+  );
+}
+
+function protoUsagePeriodWords(days) {
+  return `last ${days} days`;
+}
+
+function protoUsageTotals(people) {
+  const list = people || [];
+  const signedIn = list.filter((person) => person.signIns > 0).length;
+  const period = protoUsagePeriod();
+  return {
+    people: list.length,
+    signedIn,
+    percent: list.length ? Math.round((signedIn / list.length) * 100) : 0,
+    signIns: list.reduce((sum, person) => sum + person.signIns, 0),
+    prev: list.reduce((sum, person) => sum + person.prev, 0),
+    quiet: list.filter((person) => person.state === "quiet").length,
+    notJoined: list.filter((person) => person.state === "not-joined").length,
+    period,
+    periodWords: protoUsagePeriodWords(period),
+  };
+}
+
+function protoUsageChangePct(now, prev) {
+  if (!prev) return now ? Infinity : 0;
+  return Math.round(((now - prev) / prev) * 100);
+}
+
+function protoUsageChangeWords(now, prev) {
+  if (!prev && !now) return "None";
+  if (!prev) return "New";
+  const pct = protoUsageChangePct(now, prev);
+  if (pct === 0) return "No change";
+  return pct > 0 ? `Up ${pct}%` : `Down ${Math.abs(pct)}%`;
+}
+
+function protoUsageCompanies(people) {
+  const type = protoUsageType();
+  return protoUsageCompanyNames()
+    .filter((name) => !type || protoUsageCompanyType(name) === type)
+    .map((name) => {
+      const own = people.filter((person) => person.company === name);
+      const totals = protoUsageTotals(own);
+      const latest = own
+        .filter((person) => person.days != null)
+        .sort((a, b) => a.days - b.days)[0];
+      return { name, type: protoUsageCompanyType(name), own, ...totals, latest };
+    })
+    .filter((row) => row.name !== "IMSERV" || row.own.length)
+    .sort((a, b) => (a.name === "IMSERV") - (b.name === "IMSERV") || b.signIns - a.signIns);
+}
+
+function protoUsageFeatures(people) {
+  const rows = (protoUsageData().features || []).map((feature) => {
+    let uses = 0;
+    let users = 0;
+    let open = 0;
+    people.forEach((person) => {
+      if (feature.types && !feature.types.includes(person.type)) return;
+      if (feature.roles && !feature.roles.includes(person.role)) return;
+      open += 1;
+      if (!person.signIns) return;
+      const pick = protoUsageSeed(`${person.id}:${feature.id}`);
+      if (pick < 0.2 && feature.weight < 10) return;
+      uses += Math.max(1, Math.round(person.signIns * (feature.weight / 10) * (0.5 + pick)));
+      users += 1;
+    });
+    return { ...feature, uses, users, open };
+  });
+  const total = rows.reduce((sum, row) => sum + row.uses, 0);
+  return rows
+    .filter((row) => row.open)
+    .map((row) => ({ ...row, share: total ? Math.round((row.uses / total) * 100) : 0 }))
+    .sort((a, b) => b.uses - a.uses);
+}
+
+function protoUsageStateName(id) {
+  return PROTO_USAGE_STATES.find((item) => item.value === id && id)?.label || "Active";
+}
+
+function protoUsageLastCell(person) {
+  if (!person) return `<span class="astral-muted">Not yet</span>`;
+  return escapeHtml(person.days == null ? "Not yet" : person.lastActive);
+}
+
+function protoUsageRow(cells, sortBy, attr) {
+  const row = [...cells];
+  row.sortBy = sortBy || {};
+  row.attr = attr || "";
+  return row;
+}
+
+function protoUsageMatch(q, ...texts) {
+  if (!q) return true;
+  return texts.filter(Boolean).some((text) => String(text).toLowerCase().includes(q));
+}
+
+function protoUsageShare(pct) {
+  return `<span class="astral-usage-share"><span class="astral-usage-bar" aria-hidden="true"><span style="width:${Math.max(
+    0,
+    Math.min(100, pct)
+  )}%"></span></span><span>${pct}%</span></span>`;
+}
+
+function protoUsageTableRows(tab, people, q) {
+  if (tab === "features") {
+    return protoUsageFeatures(people)
+      .filter((row) => protoUsageMatch(q, row.name, row.where))
+      .map((row) =>
+        protoUsageRow(
+          [
+            escapeHtml(row.name),
+            escapeHtml(row.where || ""),
+            row.uses.toLocaleString("en-GB"),
+            protoUsageShare(row.share),
+            row.users ? `${row.users} ${row.users === 1 ? "person" : "people"}` : `<span class="astral-muted">Nobody</span>`,
+          ],
+          { uses: row.uses, share: row.share, people: row.users }
+        )
+      );
+  }
+  if (tab === "people") {
+    const state = protoUsageState();
+    return people
+      .filter((person) => !state || person.state === state)
+      .filter((person) => protoUsageMatch(q, person.name, person.email, person.company))
+      .sort((a, b) => b.signIns - a.signIns || (a.days ?? 1e6) - (b.days ?? 1e6))
+      .map((person) =>
+        protoUsageRow(
+          [
+            `<span class="astral-usage-person"><span>${escapeHtml(person.you ? `${person.name} (you)` : person.name)}</span>${
+              person.email && person.email !== person.name
+                ? `<span class="astral-muted">${escapeHtml(person.email)}</span>`
+                : ""
+            }</span>`,
+            escapeHtml(person.company),
+            escapeHtml(protoUserRoleName(person.role)),
+            person.signIns.toLocaleString("en-GB"),
+            protoUsageLastCell(person),
+            protoTag(protoUsageStateName(person.state)),
+          ],
+          {
+            name: person.name.toLowerCase(),
+            "sign-ins": person.signIns,
+            "last-sign-in": person.days ?? 1e6,
+            state: person.state,
+          },
+          `class="is-link" data-proto-usage-person="${escapeHtml(person.id)}" tabindex="0"`
+        )
+      );
+  }
+  return protoUsageCompanies(people)
+    .filter((row) => protoUsageMatch(q, row.name))
+    .map((row) => {
+      const none = !row.own.length;
+      const pct = protoUsageChangePct(row.signIns, row.prev);
+      return protoUsageRow(
+        [
+          escapeHtml(row.name),
+          escapeHtml(protoUsageTypeName(row.type)),
+          none ? `<span class="astral-muted">No people yet</span>` : String(row.people),
+          none ? "" : `${row.signedIn} of ${row.people}`,
+          none ? "" : row.signIns.toLocaleString("en-GB"),
+          none ? "" : escapeHtml(protoUsageChangeWords(row.signIns, row.prev)),
+          none ? "" : protoUsageLastCell(row.latest),
+        ],
+        {
+          people: row.people,
+          "signed-in": row.people ? row.signedIn / row.people : -1,
+          "sign-ins": row.signIns,
+          change: Number.isFinite(pct) ? pct : 1e6,
+          "last-sign-in": row.latest ? row.latest.days : 1e6,
+        },
+        `class="is-link" data-proto-usage-company="${escapeHtml(row.name)}" tabindex="0"`
+      );
+    });
+}
+
+const PROTO_USAGE_HEADERS = {
+  companies: ["Company", "Type", "People", "Signed in", "Sign-ins", "Change", "Last sign-in"],
+  people: ["Name", "Company", "Role", "Sign-ins", "Last sign-in", "State"],
+  features: ["Feature", "Where", "Uses", "Share", "People"],
+};
+
+function protoUsageTable(tab, people, q) {
+  const empty =
+    tab === "features"
+      ? "No features match."
+      : tab === "people"
+        ? "Nobody matches."
+        : "No companies match.";
+  return protoTable(PROTO_USAGE_HEADERS[tab], protoUsageTableRows(tab, people, q), {
+    id: `usage-${tab}`,
+    empty,
+    rowAttr: (row) => row.attr,
+  });
+}
+
+function protoUsagePack() {
+  const tab = protoUsageTab();
+  const q = String(store.prototypeUsageQuery || "").trim().toLowerCase();
+  const people = protoUsageScoped();
+  const company = protoUsageCompany();
+  const period = protoUsagePeriods().label;
+  return {
+    file: `usage-${tab}`,
+    title: `Usage: ${PROTO_USAGE_TABS.find((item) => item.id === tab)?.name || "Companies"}`,
+    note: `${period}${company ? `, ${company}` : ""}. Updated daily. Log in as user visits do not count.`,
+    headers: PROTO_USAGE_HEADERS[tab],
+    rows: protoUsageTableRows(tab, people, q).map((row) =>
+      row.map((cell) => protoPlainSortText(cell).replace(/\s+/g, " ").trim())
+    ),
+  };
+}
+
+function protoUsagePeriods() {
+  const value = String(protoUsagePeriod());
+  return PROTO_USAGE_PERIODS.find((item) => item.value === value) || PROTO_USAGE_PERIODS[1];
+}
+
+function protoUsageStat(stat, value, label, flag) {
+  return `
+    <button type="button" class="astral-stat${flag ? " is-flag" : ""}" data-proto-usage-stat="${escapeHtml(stat)}">
+      <span class="astral-stat-value">${value}</span>
+      <span>${escapeHtml(protoCardSub(label))}</span>
+    </button>
+  `;
+}
+
+function protoUsageStatPatch(stat) {
+  if (stat === "companies") return { prototypeUsageTab: "companies", prototypeUsageState: "" };
+  if (stat === "quiet") return { prototypeUsageTab: "people", prototypeUsageState: "quiet" };
+  if (stat === "not-joined") return { prototypeUsageTab: "people", prototypeUsageState: "not-joined" };
+  return { prototypeUsageTab: "people", prototypeUsageState: "" };
+}
+
+function protoUsage() {
+  const tab = protoUsageTab();
+  const query = String(store.prototypeUsageQuery || "");
+  const q = query.trim().toLowerCase();
+  const company = protoUsageCompany();
+  const people = protoUsageScoped();
+  const totals = protoUsageTotals(people);
+  const change = protoUsageChangeWords(totals.signIns, totals.prev);
+  const changeLine =
+    change === "None" || change === "New"
+      ? `Sign-ins in the ${totals.periodWords}`
+      : `Sign-ins, ${change.toLowerCase()} on the ${totals.period} days before`;
+  const tabs = PROTO_USAGE_TABS.map((item) => {
+    const n = item.id === "companies" ? (company ? 0 : protoUsageCompanies(people).length) : item.id === "people" ? people.length : 0;
+    return { id: item.id, name: n ? `${item.name} · ${n}` : item.name };
+  });
+  const picks = `
+    <div class="astral-page-actions">
+      ${protoSelect({
+        id: "usage-period",
+        label: "Period",
+        value: String(totals.period),
+        options: PROTO_USAGE_PERIODS,
+      })}
+      ${protoSelect({
+        id: "usage-type",
+        label: "Company type",
+        value: protoUsageType(),
+        options: PROTO_USAGE_TYPES,
+      })}
+    </div>
+  `;
+  const companyPill = company
+    ? `<span class="astral-filter-pill">
+        <span>${escapeHtml(company)}</span>
+        ${protoClearButton("astral-filter-pill-clear", "data-proto-usage-company-clear", `Show every company, not only ${company}`)}
+      </span>`
+    : "";
+  const stateSelect =
+    tab === "people"
+      ? protoSelect({
+          id: "usage-state",
+          label: "State",
+          value: protoUsageState(),
+          options: PROTO_USAGE_STATES,
+        })
+      : "";
+  const searchCopy =
+    tab === "features" ? "Search features" : tab === "people" ? "Search people or company" : "Search companies";
+  return astralShell(`
+    ${astralPageHead("Usage", protoData()?.usageLead || "", picks)}
+    <div class="astral-hero is-four">
+      ${protoUsageStat(
+        "people",
+        `${totals.percent}%`,
+        `Of ${totals.people} ${totals.people === 1 ? "person" : "people"} signed in`
+      )}
+      ${protoUsageStat("companies", totals.signIns.toLocaleString("en-GB"), changeLine)}
+      ${protoUsageStat("quiet", totals.quiet, "No sign-in for 90 days", totals.quiet)}
+      ${protoUsageStat("not-joined", totals.notJoined, "Invited, not joined yet")}
+    </div>
+    <section class="astral-card astral-pane astral-service astral-usage">
+      ${protoPaneShell(
+        `
+          ${protoTabs(tabs, tab, "data-proto-usage-tab", "Usage")}
+          <div class="astral-people-tools">
+            ${protoSearchField({
+              name: "proto-usage-query",
+              value: query,
+              placeholder: searchCopy,
+              label: searchCopy,
+            })}
+            ${companyPill}
+            ${stateSelect}
+            ${protoExportControl("usage")}
+          </div>
+          <p class="astral-muted astral-usage-note">Updated daily. Log in as user visits do not count.</p>
+        `,
+        protoUsageTable(tab, people, q)
       )}
     </section>
   `);
@@ -14092,6 +14590,7 @@ function protoDownloads() {
 
 function protoExportPlaceName(fileId) {
   if (fileId === "users") return "People";
+  if (fileId === "usage") return "Usage";
   if (fileId === "compare") return "Compare";
   const pack = protoIntervalPack(fileId);
   return pack?.title || "Interval";
@@ -18075,7 +18574,7 @@ function protoCanPickTeamCompany() {
   return protoSeesCompanies() && protoTeamCompanyChoices().length > 1;
 }
 
-const PROTO_WALK_USERS = "companies-4";
+const PROTO_WALK_USERS = "companies-5";
 const PROTO_WALK_STUB_TEAMS = new Set(["test team", "energy reporting", "test"]);
 const PROTO_WALK_PEOPLE = [
   {
@@ -18134,7 +18633,7 @@ const PROTO_WALK_PEOPLE = [
     email: "helen.crowe@networkrail.co.uk",
     company: "Network Rail",
     role: "viewer",
-    lastActive: "Yesterday",
+    lastActive: "4 months ago",
     expiresOn: "2026-11-30",
     expiresFrom: "2026-06-01",
   },
@@ -18284,7 +18783,7 @@ const PROTO_WALK_PEOPLE = [
     email: "greg.walsh@tesco.com",
     company: "Tesco",
     role: "viewer",
-    lastActive: "Yesterday",
+    lastActive: "6 months ago",
     expiresOn: "2026-11-15",
     expiresFrom: "2026-04-01",
   },
@@ -18354,7 +18853,7 @@ const PROTO_WALK_PEOPLE = [
     email: "lisa.grant@scottishwater.co.uk",
     company: "Scottish Water",
     role: "viewer",
-    lastActive: "Yesterday",
+    lastActive: "3 months ago",
     expiresOn: "2027-04-12",
     expiresFrom: "2026-03-01",
   },
@@ -18404,7 +18903,7 @@ const PROTO_WALK_PEOPLE = [
     email: "pete.lang@edfenergy.com",
     company: "EDF",
     role: "viewer",
-    lastActive: "2 days ago",
+    lastActive: "5 months ago",
     expiresOn: "2027-06-01",
     expiresFrom: "2026-05-01",
   },
@@ -20528,6 +21027,7 @@ function protoApp() {
   if (view === "companies") return protoCompanies();
   if (view === "servicing") return protoServicing();
   if (view === "inbox") return protoInbox();
+  if (view === "usage") return protoUsage();
   return protoHome();
 }
 
@@ -20803,6 +21303,7 @@ function protoSkelKeys() {
       store.prototypePane || "",
       store.prototypeSettingsSection || "",
       store.prototypeServiceTab || "",
+      store.prototypeUsageTab || "",
       store.prototypeInboxTicket || "",
     ].join("|"),
   };
@@ -21220,6 +21721,15 @@ function protoCsv(id) {
     protoCsvDownload(lines, "users.csv");
     return;
   }
+  if (id === "usage") {
+    const pack = protoUsagePack();
+    const cell = (text) => `"${String(text).replace(/"/g, '""')}"`;
+    protoCsvDownload(
+      [pack.headers.map(cell).join(","), ...pack.rows.map((row) => row.map(cell).join(","))],
+      `${pack.file}.csv`
+    );
+    return;
+  }
   const report = protoReportDef(id);
   if (report && protoReportIsFile(report.type)) {
     protoCsvDownload(protoReportCsv(report), `${protoReportSlug(report)}.csv`);
@@ -21317,6 +21827,10 @@ function protoPdf(id) {
   }
   if (id === "users") {
     protoPdfDownload(protoUsersPack());
+    return;
+  }
+  if (id === "usage") {
+    protoPdfDownload(protoUsagePack());
     return;
   }
   const pack = protoIntervalPack(id);
@@ -22259,6 +22773,8 @@ function onPrototype(event) {
             ? { prototypeServiceQuery: "" }
             : name === "proto-inbox-query"
             ? { prototypeInboxQuery: "" }
+            : name === "proto-usage-query"
+            ? { prototypeUsageQuery: "" }
             : name === "proto-team-query"
             ? { prototypeTeamQuery: "" }
             : name === "proto-team-people-query"
@@ -23292,6 +23808,46 @@ function onPrototype(event) {
     setProto({ prototypeServiceTab: serviceTab.dataset.protoServiceTab });
     return;
   }
+  const usageTab = event.target.closest("[data-proto-usage-tab]");
+  if (usageTab) {
+    setProto({ prototypeUsageTab: usageTab.dataset.protoUsageTab });
+    return;
+  }
+  const usageStat = event.target.closest("[data-proto-usage-stat]");
+  if (usageStat) {
+    setProto(protoUsageStatPatch(usageStat.dataset.protoUsageStat));
+    return;
+  }
+  if (event.target.closest("[data-proto-usage-company-clear]")) {
+    setProto({ prototypeUsageCompany: "" });
+    protoRestoreFocus("#astral-fs input[name='proto-usage-query']");
+    return;
+  }
+  const usageCompany = event.target.closest("tr[data-proto-usage-company]");
+  if (usageCompany) {
+    setProto({
+      prototypeUsageCompany: usageCompany.dataset.protoUsageCompany,
+      prototypeUsageTab: "people",
+      prototypeUsageQuery: "",
+      prototypeUsageState: "",
+    });
+    return;
+  }
+  const usagePerson = event.target.closest("tr[data-proto-usage-person]");
+  if (usagePerson) {
+    if (!protoCanManagePeople()) return;
+    setProto({
+      activePrototypeView: "users",
+      prototypeUserOpen: usagePerson.dataset.protoUsagePerson,
+      prototypeUserMenu: "",
+      prototypePersonTeamQuery: "",
+      prototypePersonSitesQuery: "",
+      prototypeContractFileError: false,
+      ...protoRenewClear(),
+    });
+    protoRestoreFocus("#astral-fs [data-proto-person-close]");
+    return;
+  }
   const serviceMeter = event.target.closest("[data-proto-service-meter]");
   if (serviceMeter) {
     const id = serviceMeter.dataset.protoServiceMeter;
@@ -24263,10 +24819,15 @@ function onPrototypeInput(event) {
   }
   const companySearch = event.target.closest("input[name='proto-company-query']");
   const pageSearch = event.target.closest(
-    "input[name='proto-service-query'], input[name='proto-inbox-query']"
+    "input[name='proto-service-query'], input[name='proto-inbox-query'], input[name='proto-usage-query']"
   );
   if (pageSearch) {
-    const key = pageSearch.name === "proto-service-query" ? "prototypeServiceQuery" : "prototypeInboxQuery";
+    const key =
+      pageSearch.name === "proto-service-query"
+        ? "prototypeServiceQuery"
+        : pageSearch.name === "proto-usage-query"
+          ? "prototypeUsageQuery"
+          : "prototypeInboxQuery";
     store[key] = pageSearch.value;
     persistChrome();
     const active = document.activeElement === pageSearch;
@@ -25060,6 +25621,12 @@ function onPrototypeKey(event) {
   if (breakdownHit && (event.key === "Enter" || event.key === " ")) {
     event.preventDefault();
     breakdownHit.click();
+    return;
+  }
+  const usageRow = event.target.closest("tr[data-proto-usage-company], tr[data-proto-usage-person]");
+  if (usageRow && usageRow === event.target && (event.key === "Enter" || event.key === " ")) {
+    event.preventDefault();
+    usageRow.click();
     return;
   }
   const homeLink = event.target.closest("[data-proto-home-go][role='link']");
