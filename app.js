@@ -3802,6 +3802,12 @@ const CHROME_FIELDS = [
   "prototypeReportQuery",
   "prototypeReportFilters",
   "prototypeReportLayout",
+  "prototypeTemplates",
+  "prototypeTemplateShow",
+  "prototypeTemplateQuery",
+  "prototypeTemplateEdit",
+  "prototypeTemplateDraft",
+  "prototypeTemplateNotice",
 ];
 
 function persistChrome() {

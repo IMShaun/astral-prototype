@@ -1,10 +1,10 @@
 {
-  "updated": "2026-09-23",
+  "updated": "2026-09-29",
   "systems": {
     "imserv": {
       "product": "Astral",
       "team": "imserv",
-      "updated": "2026-09-23",
+      "updated": "2026-09-29",
       "status": "brand",
       "figma": {
         "primitiveCollection": "Astral Primitives",
@@ -6908,6 +6908,66 @@
             "avoid": "+12%, -8%, a green or red arrow alone.",
             "note": "Compare with the same length of time before. New means nothing to compare with.",
             "from": "Shaun on the Power BI usage guide, 28 Sep"
+          },
+          {
+            "id": "report-templates-words",
+            "kind": "words",
+            "name": "Report templates",
+            "status": "draft",
+            "say": "Report templates, Add a template, New template, Back to templates",
+            "avoid": "Report builder, Blueprints, Definitions, Report types (for the admin list).",
+            "note": "Template is the admin's word. Customers still say report and see the template's name as the report type.",
+            "from": "Shaun on report templates, 29 Sep"
+          },
+          {
+            "id": "template-who-sets-it",
+            "kind": "labels",
+            "name": "Who sets it",
+            "status": "draft",
+            "say": "Who sets it: Fixed or Customer picks",
+            "avoid": "Locked / Unlocked, Editable, Customer override, Default only.",
+            "note": "Fixed locks the value. Customer picks shows the setting in Add a report, starting on the value IMSERV chose.",
+            "from": "Shaun on report templates, 29 Sep"
+          },
+          {
+            "id": "template-states",
+            "kind": "labels",
+            "name": "Draft, Live, Retired",
+            "status": "draft",
+            "say": "Draft, Live, Retired, Built in",
+            "avoid": "Published, Active, Archived, Deprecated, System.",
+            "note": "Draft: only IMSERV can see it. Live: customers can pick it. Retired: no new reports, and existing ones keep sending.",
+            "from": "Shaun on report templates, 29 Sep"
+          },
+          {
+            "id": "template-actions",
+            "kind": "labels",
+            "name": "Template actions",
+            "status": "draft",
+            "say": "Make live, Save as draft, Save changes, Retire template, Make live again, Delete template",
+            "avoid": "Publish, Deploy, Archive, Deactivate.",
+            "note": "Delete only shows on a Draft that is not built in. A Live template retires, it does not delete.",
+            "from": "Shaun on report templates, 29 Sep"
+          },
+          {
+            "id": "template-use-line",
+            "kind": "help",
+            "name": "Template use line",
+            "status": "draft",
+            "say": "3 reports at 2 companies use this template. Changes apply from each report's next send.",
+            "avoid": "This template is in use.",
+            "note": "Say 1 report at 1 company uses this template. A Draft says Draft. Only IMSERV can see it.",
+            "from": "Shaun on report templates, 29 Sep"
+          },
+          {
+            "id": "template-fixed-line",
+            "kind": "help",
+            "name": "What IMSERV set",
+            "status": "draft",
+            "say": "IMSERV set Format: XLSX.",
+            "avoid": "This field is locked by your administrator.",
+            "note": "Shows in the customer's form when a template fixes a setting, so they know why it is missing.",
+            "from": "Shaun on report templates, 29 Sep"
           }
         ]
       },
@@ -7506,7 +7566,7 @@
             "name": "Reports in version one",
             "status": "working",
             "summary": "Reports covers the version one scheduled and delivered reports. Later work sits as Coming soon.",
-            "now": "Customers add, name, edit, and pause their own reports. Many reports can share a type. Each has its own name, sites, and recipients. Add a report opens the type cards in a modal. Edit report opens a page for that report, not a modal. Settings sits on the left. Tabs sit under its heading. Details comes first, with the name and sites. Data, Charges, or Trigger comes next, for what the type needs. Schedule and Delivery come last. A type only shows the tabs it uses. Tenant billing always goes by email. Its Delivery tab holds Attach the bill to the email. Recipients sits on the right. Save changes, Cancel, and Delete report sit in the bar under both. Back to reports goes back without saving. An alert opens the same page. Back to alerts goes back to Settings. Reports holds Data extract, DC and DA, and Tenant billing. Data alert and Missing data sit on Alerts, under Settings. A Data alert goes off when use goes Above or Below a threshold. The threshold is a daily kWh or a percentage of the portfolio average. Missing data waits 1 to 48 hours. Tell people is In Astral, Email, or both. In Astral shows it on Alerts for everyone on the list. A Data extract holds Interval data, Meter reads, or Missing data. Pick sites or All sites. Select all sits at the top of the Sites list. It ticks every site that matches the search. Click it again to clear them. Some ticked shows a dash. Filter by utility and by channel. How often is Once, Daily, Weekly, or Monthly. Tenant billing has Quarterly and no Once. Tenant billing splits each utility on the site: Electricity, Gas, and Water. Each has a standing charge share and a usage share, from 0 to 100%. VAT (%) adds tax on top. The bill shows each charge, the tenant share, the VAT, and the amount payable. Once sends one file for a custom range. Data from and Data to go up to today. Send on is the day it goes. After that the card shows a Sent tag and the date. A name says what it holds, not how often, so rename it freely. Format is CSV or XLSX, one or the other. CSV is for a system to read in. XLSX is for a spreadsheet. Export from a graph gives CSV or PDF. Times are UTC or UK time. Send at picks the hour, 06:00 to 22:00. It starts at 09:00. Meter data comes in through the day, so a later send holds more of it. The card shows the next date and hour. Send by Email, SFTP, or FTP. SFTP and FTP ask for the server, port, folder, and username. SFTP signs in with a password or an SSH key. With a key, add IMSERV's public key to the user on your server. SFTP needs the server's SSH fingerprint. It starts with SHA256. Astral checks it before every send. FTP says it is unencrypted. Test connection sends a small test file. It says Connected, or why the server turned it away. A failed test warns. It does not block Save. Many people can get one report. Every report page has Recipients on the right. It is one long list, like Users with no teams. One search box finds people in your company. Picking one adds them and clears the search. Remove takes one off. On Tenant billing, the tenant sits at the top of the list. Change them in Settings. When Email is off in Send by, adding someone turns it on. Attach the file to the email is on by default. Off, the email links to the file on Downloads. Each email has an opt-out link. The tick sits above Save. It reads I have permission to send this data to everyone on the list, the SFTP server, or both. It asks again when someone new joins, the server changes, or what it sends changes. Save waits for it. You and people already on the list skip it. After Save, a banner says the new recipients get an email that names who added them. Send me a test sends a sample to you. The file also sits on Downloads. Power BI reports sit on Downloads as Documents. Export from a graph sits on Downloads. Analysis reports sit on Portfolio. Dashboard widgets sit on Overview.",
+            "now": "Customers add, name, edit, and pause their own reports. Many reports can share a type. Each has its own name, sites, and recipients. Add a report opens the type cards in a modal. Edit report opens a page for that report, not a modal. Settings sits on the left. Tabs sit under its heading. Details comes first, with the name and sites. Data, Charges, or Trigger comes next, for what the type needs. Schedule and Delivery come last. A type only shows the tabs it uses. Tenant billing always goes by email. Its Delivery tab holds Attach the bill to the email. Recipients sits on the right. Save changes, Cancel, and Delete report sit in the bar under both. Back to reports goes back without saving. An alert opens the same page. Back to alerts goes back to Settings. Reports holds Data extract, DC and DA, and Tenant billing. Data alert and Missing data sit on Alerts, under Settings. A Data alert goes off when use goes Above or Below a threshold. The threshold is a daily kWh or a percentage of the portfolio average. Missing data waits 1 to 48 hours. Tell people is In Astral, Email, or both. In Astral shows it on Alerts for everyone on the list. A Data extract holds Interval data, Meter reads, or Missing data. Pick sites or All sites. Select all sits at the top of the Sites list. It ticks every site that matches the search. Click it again to clear them. Some ticked shows a dash. Filter by utility and by channel. How often is Once, Daily, Weekly, or Monthly. Tenant billing has Quarterly and no Once. Tenant billing splits each utility on the site: Electricity, Gas, and Water. Each has a standing charge share and a usage share, from 0 to 100%. VAT (%) adds tax on top. The bill shows each charge, the tenant share, the VAT, and the amount payable. Once sends one file for a custom range. Data from and Data to go up to today. Send on is the day it goes. After that the card shows a Sent tag and the date. A name says what it holds, not how often, so rename it freely. Format is CSV or XLSX, one or the other. CSV is for a system to read in. XLSX is for a spreadsheet. Export from a graph gives CSV or PDF. Times are UTC or UK time. Send at picks the hour, 06:00 to 22:00. It starts at 09:00. Meter data comes in through the day, so a later send holds more of it. The card shows the next date and hour. Send by Email, SFTP, or FTP. SFTP and FTP ask for the server, port, folder, and username. SFTP signs in with a password or an SSH key. With a key, add IMSERV's public key to the user on your server. SFTP needs the server's SSH fingerprint. It starts with SHA256. Astral checks it before every send. FTP says it is unencrypted. Test connection sends a small test file. It says Connected, or why the server turned it away. A failed test warns. It does not block Save. Many people can get one report. Every report page has Recipients on the right. It is one long list, like Users with no teams. One search box finds people in your company. Picking one adds them and clears the search. Remove takes one off. On Tenant billing, the tenant sits at the top of the list. Change them in Settings. When Email is off in Send by, adding someone turns it on. Attach the file to the email is on by default. Off, the email links to the file on Downloads. Each email has an opt-out link. The tick sits above Save. It reads I have permission to send this data to everyone on the list, the SFTP server, or both. It asks again when someone new joins, the server changes, or what it sends changes. Save waits for it. You and people already on the list skip it. After Save, a banner says the new recipients get an email that names who added them. Send me a test sends a sample to you. The file also sits on Downloads. Power BI reports sit on Downloads as Documents. Export from a graph sits on Downloads. Analysis reports sit on Portfolio. Dashboard widgets sit on Overview. The IMSERV admin does not see this page. Their Reports shows Report templates instead. Customers pick from the Live templates they are allowed to use.",
             "later": "Coming soon cards: Data health. Capacity and kVA. League tables across sites. Letter of authority dates, when each letter of authority needs renewing. Reports by meter class, non-HH, HH, and sub-metering. Export and sub-meter channels for an Ofgem claim-back. On Alerts, Letter of authority renewal warns people before a letter of authority runs out, such as three months ahead. The what3words overlay and the company map sit on Portfolio later.",
             "uses": [
               "card",
@@ -7518,6 +7578,23 @@
               "search"
             ],
             "note": "Coming soon cards cannot be opened. They sit at the end of Reports and Settings. In Add a report they fold into a Coming soon accordion under the types, closed at first, until a type is picked. Each shows only its own. They hide while a search or a filter is on. GSOP reporting is version one in the requirements register but not in the 86 functions. The DV totals, export, and multi-site reports still need a name."
+          },
+          {
+            "id": "report-templates",
+            "name": "Report templates",
+            "status": "draft",
+            "summary": "The IMSERV admin defines the report types customers can pick. Customers still make their own reports.",
+            "now": "IMSERV admin only. Reports shows Report templates, not the admin's own reports. Use Log in as user to see a company's reports. The list shows Name, Data source, Who can use it, Used by, and State. Search and a State filter sit at the top. Add a template opens a full page, not a modal. Build sits on the left and Sample on the right. The footer holds the actions. Details holds the name and What it's for. Customers see What it's for under the name in Add a report. There are four steps. 1 Data source: Interval data, Meter reads, DC/DA reads, Cost, Carbon, Data health, or Letters of authority. 2 Columns: tick what goes in each row. Always in lists the columns that are always there. Site and Meter are always in. Meter point is added when rows group by meter. Date is always in when there is a time step. Time is added at Half hour. 3 Rows: Group by Meter, Site, or Company, and a Time step of Half hour, Day, Week, Month, or Whole period. 4 What customers can change: Utility, Channel, Time step, and Format. Each has a value and Who sets it. Fixed locks the value. Customer picks shows it in Add a report, starting on that value. Customers always pick the sites, the schedule, and who gets it. Who can use it is All companies, some company types, or some companies. Sample shows the first rows from one company's data and updates as you change the steps. A template is Draft, Live, or Retired. Draft is only seen by IMSERV. Live shows in Add a report for the companies it is open to. Retired stops new reports, but the reports that use it keep sending. Changes to a Live template apply from each report's next send. The footer says how many reports at how many companies use it. The five built-in types are Live templates tagged Built in. Their source, columns, and rows are fixed. Their defaults and who can use them can change. A Fixed setting hides from the customer's form, and a line says what IMSERV set. The Coming soon report types start as Drafts. When one goes Live it leaves the customer's Coming soon list. A report made from a template carries the template's name as its tag, and its file follows the template's columns and rows.",
+            "later": "Templates for alerts. Letter of authority renewal stays Coming soon on Alerts. A version history for each template. Copy a template.",
+            "uses": [
+              "table",
+              "tag",
+              "search",
+              "select",
+              "banner",
+              "card"
+            ],
+            "note": "Reports only for now. Alerts show as built-in templates but keep their own form. Date and Time are not ticks. The time step decides them, so a column list cannot disagree with the rows."
           },
           {
             "id": "downloads-on-reports",

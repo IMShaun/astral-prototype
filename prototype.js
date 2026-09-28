@@ -7109,6 +7109,14 @@ function protoReportAddEmail(raw) {
 }
 
 function protoPickSelect(id, value) {
+  if (String(id).startsWith("tpl-")) {
+    protoTemplatePick(id, value);
+    return;
+  }
+  if (String(id).startsWith("report-tpl:")) {
+    protoReportPatchDraft({ [id.slice("report-tpl:".length)]: value });
+    return;
+  }
   if (String(id).startsWith("meter-hours-status-") || String(id).startsWith("meter-hours-profile-") || String(id).startsWith("meter-tou-profile-")) {
     protoPickMeterProfileSelect(id, value);
     return;
@@ -7879,7 +7887,22 @@ function protoReportNormalize(raw) {
     percent: protoReportNumber(raw.percent, 25, 0, 1000),
     hours: PROTO_REPORT_SILENCE.includes(Number(raw.hours)) ? Number(raw.hours) : 3,
     owner: String(raw.owner || protoProfileEmail()),
+    template: "",
+    step: PROTO_TEMPLATE_STEPS.some((item) => item.id === raw.step) ? String(raw.step) : "",
   };
+  // A report keeps its template. What IMSERV fixed follows the template from the next send.
+  const tpl = type === "extract" && raw.template ? protoTemplate(String(raw.template)) : null;
+  if (tpl && !tpl.builtIn) def.template = tpl.id;
+  const rule = def.template ? tpl : protoTemplateBuiltIn(type);
+  if (rule) {
+    ["utility", "channel", "format"].forEach((key) => {
+      if (rule.settings[key]?.mode === "fixed") def[key] = rule.settings[key].value;
+    });
+    if (def.template) {
+      def.content = "interval";
+      def.step = protoTemplateStepOf(rule, def);
+    }
+  }
   // Reports saved before the consent tick keep the list they already had.
   def.consentFor = Array.isArray(raw.consentFor)
     ? [...new Set(raw.consentFor.map(String))]
@@ -8193,8 +8216,11 @@ function protoReportSummary(def) {
   if (protoReportSends(def.type)) {
     const names = protoReportScopeSites(def).map((site) => site.name);
     const period = protoReportPeriod(def.type, def.period);
-    const what =
-      def.type === "dcda"
+    const tpl = protoReportTemplateOf(def);
+    const rows = tpl ? protoTemplateRowsLine(tpl, def) : "";
+    const what = tpl
+      ? protoTemplateTitle(tpl).toLowerCase()
+      : def.type === "dcda"
         ? "DC and DA reads"
         : protoReportOptionName(PROTO_REPORT_CONTENT, def.content).toLowerCase();
     const where =
@@ -8204,9 +8230,9 @@ function protoReportSummary(def) {
       const what1 = what.charAt(0).toUpperCase() + what.slice(1);
       return `${what1} for ${where}, ${protoFormatFullDay(range.from)} to ${protoFormatFullDay(
         range.to
-      )}, as ${protoReportFileLine(def)}.`;
+      )}, ${rows}as ${protoReportFileLine(def)}.`;
     }
-    return `${period.name} of ${what} for ${where}, as ${protoReportFileLine(def)}.`;
+    return `${period.name} of ${what} for ${where}, ${rows}as ${protoReportFileLine(def)}.`;
   }
   if (def.type === "billing") {
     const all = protoReportBills(def);
@@ -8416,8 +8442,11 @@ function protoReportDraftFrom(def) {
   };
 }
 
-function protoReportNewDraft(type) {
-  const def = protoReportNormalize({ type, people: ["me"] });
+function protoReportNewDraft(type, templateId = "") {
+  const tpl = templateId ? protoTemplate(templateId) : protoTemplateBuiltIn(type);
+  const base = protoTemplateApply({ type, people: ["me"], template: templateId }, tpl);
+  if (templateId && tpl) base.step = protoTemplateStepOf(tpl);
+  const def = protoReportNormalize(base);
   const draft = { ...protoReportDraftFrom(def), name: "" };
   if (type === "billing") draft.tenants = [protoReportBlankTenant()];
   return draft;
@@ -8440,11 +8469,17 @@ function protoReportDraftDef(draft) {
 }
 
 function protoReportAutoName(def) {
+  const tpl = protoReportTemplateOf(def);
   if (protoReportOnce(def)) {
     const range = protoReportRange(def);
-    const what = def.type === "dcda" ? "DC and DA reads" : protoReportOptionName(PROTO_REPORT_CONTENT, def.content);
+    const what = tpl
+      ? protoTemplateTitle(tpl)
+      : def.type === "dcda"
+        ? "DC and DA reads"
+        : protoReportOptionName(PROTO_REPORT_CONTENT, def.content);
     return range ? `${what}, ${protoFormatFullDay(range.from)} to ${protoFormatFullDay(range.to)}` : what;
   }
+  if (tpl) return `${protoReportPeriod("extract", def.period).every} ${protoTemplateTitle(tpl).toLowerCase()}`;
   if (def.type === "extract") {
     return `${protoReportPeriod("extract", def.period).every} ${protoReportOptionName(
       PROTO_REPORT_CONTENT,
@@ -9084,7 +9119,7 @@ function protoReportPage() {
   const id = protoReportEditId();
   const def = protoReportDef(id);
   const draft = protoReportDraft() || protoReportDraftFrom(def);
-  const type = protoReportType(draft.type);
+  const type = protoReportTypeFor(draft);
   const issue = protoReportDraftIssue(draft);
   const preview = protoReportDraftPreview(draft);
   const alert = protoReportTabOf(draft.type) === "alerts";
@@ -9472,25 +9507,39 @@ function protoReportGroup(id, html) {
 function protoReportGroups(draft, opts = {}) {
   if (draft.type === "extract" || draft.type === "dcda") {
     const extract = draft.type === "extract";
+    const tpl = protoReportTemplateOf(draft);
+    const rule = protoTemplateBuiltIn(draft.type);
+    const pick = (key, label, list, value) =>
+      rule?.settings[key]?.mode === "fixed" ? "" : protoReportOptionSelect(`report-${key}`, label, list, value);
+    const lists = { utility: PROTO_REPORT_UTILITY, channel: PROTO_REPORT_CHANNEL, format: PROTO_REPORT_FORMAT };
+    const names = { utility: "Utility", channel: "Channel", format: "Format" };
+    const fixed = (extract ? ["utility", "channel", "format"] : ["format"])
+      .filter((key) => rule?.settings[key]?.mode === "fixed")
+      .map((key) => `${names[key]}: ${protoReportOptionName(lists[key], rule.settings[key].value)}`);
+    const fixedNote = fixed.length ? `<p class="astral-muted">${escapeHtml(`IMSERV set ${fixed.join(", ")}.`)}</p>` : "";
     return [
       protoReportGroup("details", protoReportSitesSelect(draft)),
       protoReportGroup(
         "data",
-        extract
+        tpl
+          ? protoReportTemplateFields(draft, tpl)
+          : extract
           ? `
             <div class="astral-report-pair">
               ${protoReportOptionSelect("report-content", "What it holds", PROTO_REPORT_CONTENT, draft.content)}
-              ${protoReportOptionSelect("report-format", "Format", PROTO_REPORT_FORMAT, draft.format)}
+              ${pick("format", "Format", PROTO_REPORT_FORMAT, draft.format)}
             </div>
             <div class="astral-report-pair">
-              ${protoReportOptionSelect("report-utility", "Utility", PROTO_REPORT_UTILITY, draft.utility)}
-              ${protoReportOptionSelect("report-channel", "Channel", PROTO_REPORT_CHANNEL, draft.channel)}
+              ${pick("utility", "Utility", PROTO_REPORT_UTILITY, draft.utility)}
+              ${pick("channel", "Channel", PROTO_REPORT_CHANNEL, draft.channel)}
             </div>
+            ${fixedNote}
           `
           : `
             <div class="astral-report-pair">
-              ${protoReportOptionSelect("report-format", "Format", PROTO_REPORT_FORMAT, draft.format)}
+              ${pick("format", "Format", PROTO_REPORT_FORMAT, draft.format)}
             </div>
+            ${fixedNote}
             <p class="astral-muted">Holds the reads your data collector and data aggregator sent.</p>
           `
       ),
@@ -9626,14 +9675,15 @@ function protoReportNotifyFields(draft, opts = {}) {
 // Radio cards. One tab stop. Arrow keys move the pick, like native radios.
 function protoReportTypePicker(draft) {
   const label = protoReportNewTab() === "alerts" ? "Alert type" : "Report type";
-  const types = protoReportTypesFor(protoReportNewTab());
-  const picked = types.some((item) => item.id === draft?.type) ? draft.type : types[0]?.id;
+  const types = protoReportPickTypes(protoReportNewTab());
+  const own = draft ? (draft.template ? `tpl:${draft.template}` : draft.type) : "";
+  const picked = types.some((item) => item.id === own) ? own : types[0]?.id;
   return `
     <div class="astral-report-type-field">
       <span class="astral-report-type-label" id="astral-report-type-label">${label}</span>
       <div class="astral-report-types" role="radiogroup" aria-labelledby="astral-report-type-label">
         ${types.map((item) => {
-          const on = draft?.type === item.id;
+          const on = own === item.id;
           return `
             <button
               type="button"
@@ -9655,7 +9705,8 @@ function protoReportTypePicker(draft) {
 }
 
 function protoReportSoonList(tab) {
-  return PROTO_REPORT_SOON.filter((item) => (item.tab || "reports") === tab);
+  const live = new Set(protoTemplatesForCompany().map((tpl) => tpl.soon).filter(Boolean));
+  return PROTO_REPORT_SOON.filter((item) => (item.tab || "reports") === tab && !live.has(item.id));
 }
 
 let protoReportSoonOpen = false;
@@ -9890,7 +9941,7 @@ function protoReportOpenEdit(id) {
   protoRestoreFocus(
     def
       ? '#astral-fs input[name="proto-report-name"]'
-      : `#astral-fs [data-proto-report-type="${protoReportTypesFor(tab)[0].id}"]`
+      : `#astral-fs [data-proto-report-type="${protoReportPickTypes(tab)[0]?.id || ""}"]`
   );
 }
 
@@ -9981,6 +10032,8 @@ function protoReportClock(day, label, time) {
 
 function protoReportRows(def) {
   const today = protoToday();
+  const tpl = protoReportTemplateOf(def);
+  if (tpl) return protoTemplateRows(tpl, def, 5000);
   if (def.type === "billing") {
     const all = protoReportBills(def);
     const from = protoAddDays(today, -all.period.days);
@@ -11415,6 +11468,1184 @@ function protoUsageGo(tab, extra) {
     ...protoSeeAsClear(),
     ...(extra || {}),
   };
+}
+
+// Report templates. IMSERV builds them from scratch. Customers make reports from the Live ones.
+const PROTO_TEMPLATE_STEPS = [
+  { id: "hh", name: "Half hour" },
+  { id: "day", name: "Day" },
+  { id: "week", name: "Week" },
+  { id: "month", name: "Month" },
+  { id: "whole", name: "Whole period" },
+];
+
+const PROTO_TEMPLATE_GROUPS = [
+  { id: "meter", name: "Meter", note: "One row for each meter" },
+  { id: "site", name: "Site", note: "Meters added up for each site" },
+  { id: "company", name: "Company", note: "Every site added up" },
+];
+
+// Each source lists the columns an admin can tick. Site, Meter, Date and Time follow the rows, so they are always in.
+const PROTO_TEMPLATE_SOURCES = [
+  {
+    id: "interval",
+    name: "Interval data",
+    note: "Half-hourly use from each meter.",
+    columns: [
+      { id: "utility", name: "Utility" },
+      { id: "channel", name: "Channel" },
+      { id: "kwh", name: "kWh" },
+      { id: "kva", name: "kVA" },
+      { id: "quality", name: "Actual or estimated" },
+    ],
+    groups: ["meter", "site", "company"],
+    steps: ["hh", "day", "week", "month", "whole"],
+    settings: ["utility", "channel", "step", "format"],
+  },
+  {
+    id: "reads",
+    name: "Meter reads",
+    note: "Register reads from each meter.",
+    columns: [
+      { id: "register", name: "Register" },
+      { id: "read", name: "Read" },
+      { id: "readType", name: "Read type" },
+    ],
+    groups: ["meter"],
+    steps: ["day", "week", "month"],
+    settings: ["utility", "step", "format"],
+  },
+  {
+    id: "dcda",
+    name: "DC/DA reads",
+    note: "Reads from the data collector and data aggregator.",
+    columns: [
+      { id: "agent", name: "Agent" },
+      { id: "read", name: "Read" },
+      { id: "flow", name: "Flow" },
+    ],
+    groups: ["meter"],
+    steps: ["day", "week", "month"],
+    settings: ["step", "format"],
+  },
+  {
+    id: "cost",
+    name: "Cost",
+    note: "Use priced with each site's tariff.",
+    columns: [
+      { id: "kwh", name: "kWh" },
+      { id: "rate", name: "Unit rate (p/kWh)" },
+      { id: "standing", name: "Standing charge (£)" },
+      { id: "cost", name: "Cost (£)" },
+      { id: "vat", name: "VAT (£)" },
+    ],
+    groups: ["meter", "site", "company"],
+    steps: ["day", "week", "month", "whole"],
+    settings: ["utility", "channel", "step", "format"],
+  },
+  {
+    id: "carbon",
+    name: "Carbon",
+    note: "Use with each site's emissions factor.",
+    columns: [
+      { id: "kwh", name: "kWh" },
+      { id: "factor", name: "Emissions factor (kgCO2e/kWh)" },
+      { id: "co2", name: "kgCO2e" },
+    ],
+    groups: ["meter", "site", "company"],
+    steps: ["day", "week", "month", "whole"],
+    settings: ["utility", "step", "format"],
+  },
+  {
+    id: "health",
+    name: "Data health",
+    note: "How complete and on time each meter's data is.",
+    columns: [
+      { id: "expected", name: "Expected" },
+      { id: "received", name: "Received" },
+      { id: "complete", name: "% complete" },
+      { id: "last", name: "Last data" },
+    ],
+    groups: ["meter", "site", "company"],
+    steps: ["day", "week", "month", "whole"],
+    settings: ["utility", "step", "format"],
+  },
+  {
+    id: "loa",
+    name: "Letters of authority",
+    note: "Who holds a letter of authority for each site, and until when.",
+    columns: [
+      { id: "company", name: "Company" },
+      { id: "from", name: "From" },
+      { id: "to", name: "To" },
+      { id: "left", name: "Days left" },
+    ],
+    groups: ["site", "meter"],
+    steps: [],
+    settings: ["format"],
+  },
+];
+
+const PROTO_TEMPLATE_SETTINGS = [
+  { id: "utility", name: "Utility" },
+  { id: "channel", name: "Channel" },
+  { id: "step", name: "Time step" },
+  { id: "format", name: "Format" },
+];
+
+const PROTO_TEMPLATE_MODES = [
+  { value: "fixed", label: "Fixed", note: "Customers cannot change it" },
+  { value: "pick", label: "Customer picks", note: "Starts on this value" },
+];
+
+const PROTO_TEMPLATE_STATES = [
+  { id: "draft", name: "Draft", note: "Only IMSERV can see it." },
+  { id: "live", name: "Live", note: "Customers can pick it in Add a report." },
+  { id: "retired", name: "Retired", note: "No new reports. Reports that use it keep sending." },
+];
+
+const PROTO_TEMPLATE_WHO = [
+  { value: "all", label: "All companies" },
+  { value: "types", label: "Company types" },
+  { value: "companies", label: "Chosen companies" },
+];
+
+function protoTemplateTypes() {
+  return PROTO_USAGE_TYPES.filter((item) => item.value && item.value !== "imserv");
+}
+
+// Built-in types keep their own forms. Only these settings follow the template.
+const PROTO_TEMPLATE_BUILT_IN = {
+  extract: { source: "Interval data, meter reads or missing data", settings: ["utility", "channel", "format"], use: [41, 4] },
+  dcda: { source: "DC/DA reads", settings: ["format"], use: [12, 3] },
+  billing: { source: "Tenant billing", settings: [], use: [9, 2] },
+  alert: { source: "Site use against a threshold", settings: [], use: [27, 4] },
+  missing: { source: "Sites that stop sending data", settings: [], use: [18, 4] },
+};
+
+function protoTemplateSource(id) {
+  return PROTO_TEMPLATE_SOURCES.find((item) => item.id === id) || PROTO_TEMPLATE_SOURCES[0];
+}
+
+function protoTemplateSettingOptions(settingId, source) {
+  if (settingId === "utility") return PROTO_REPORT_UTILITY.map((item) => ({ value: item.id, label: item.name }));
+  if (settingId === "channel") return PROTO_REPORT_CHANNEL.map((item) => ({ value: item.id, label: item.name }));
+  if (settingId === "format") return PROTO_REPORT_FORMAT.map((item) => ({ value: item.id, label: item.name, note: item.note }));
+  return PROTO_TEMPLATE_STEPS.filter((item) => source.steps.includes(item.id)).map((item) => ({
+    value: item.id,
+    label: item.name,
+  }));
+}
+
+function protoTemplateSettingIds(tpl) {
+  if (tpl.builtIn) return PROTO_TEMPLATE_BUILT_IN[tpl.builtIn]?.settings || [];
+  return protoTemplateSource(tpl.source).settings;
+}
+
+function protoTemplateNormalizeSettings(raw, ids, source) {
+  const out = {};
+  ids.forEach((id) => {
+    const item = raw && typeof raw === "object" ? raw[id] : null;
+    const options = protoTemplateSettingOptions(id, source).map((option) => option.value);
+    const fallback = id === "step" ? (options.includes("day") ? "day" : options[0]) : options[0];
+    out[id] = {
+      mode: item?.mode === "fixed" ? "fixed" : "pick",
+      value: options.includes(String(item?.value)) ? String(item.value) : fallback,
+    };
+  });
+  return out;
+}
+
+function protoTemplateNormalize(raw) {
+  if (!raw || typeof raw !== "object" || !raw.id) return null;
+  const builtIn = PROTO_TEMPLATE_BUILT_IN[raw.builtIn] ? String(raw.builtIn) : "";
+  const source = protoTemplateSource(raw.source);
+  const known = source.columns.map((item) => item.id);
+  const columns = builtIn
+    ? []
+    : known.filter((id) => (Array.isArray(raw.columns) ? raw.columns : known).map(String).includes(id));
+  const who = PROTO_TEMPLATE_WHO.some((item) => item.value === raw.who) ? raw.who : "all";
+  const states = builtIn ? ["live", "retired"] : ["draft", "live", "retired"];
+  const tpl = {
+    id: String(raw.id),
+    builtIn,
+    soon: String(raw.soon || ""),
+    name: String(raw.name || "").replace(/\s+/g, " ").trim().slice(0, 80),
+    blurb: String(raw.blurb || "").replace(/\s+/g, " ").trim().slice(0, 160),
+    source: source.id,
+    columns,
+    group: source.groups.includes(raw.group) ? raw.group : source.groups[0],
+    who,
+    types: (Array.isArray(raw.types) ? raw.types : []).map(String).filter((id) =>
+      protoTemplateTypes().some((item) => item.value === id)
+    ),
+    companies: [...new Set((Array.isArray(raw.companies) ? raw.companies : []).map(String))],
+    state: states.includes(raw.state) ? raw.state : states[0],
+    updatedBy: String(raw.updatedBy || ""),
+    updatedAt: /^\d{4}-\d{2}-\d{2}$/.test(String(raw.updatedAt || "")) ? String(raw.updatedAt) : "",
+  };
+  tpl.settings = protoTemplateNormalizeSettings(raw.settings, protoTemplateSettingIds(tpl), source);
+  return tpl;
+}
+
+function protoTemplateSeed() {
+  const built = PROTO_REPORT_TYPES.map((type) => ({
+    id: `tpl-${type.id}`,
+    builtIn: type.id,
+    name: type.name,
+    blurb: type.blurb,
+    state: "live",
+    who: type.id === "billing" ? "types" : "all",
+    types: type.id === "billing" ? ["customer"] : [],
+    settings: {
+      utility: { mode: "pick", value: "all" },
+      channel: { mode: "pick", value: "all" },
+      format: { mode: "pick", value: "csv" },
+    },
+    updatedBy: "Nadia Brooks",
+    updatedAt: "2026-06-01",
+  }));
+  const pick = (value) => ({ mode: "pick", value });
+  const fixed = (value) => ({ mode: "fixed", value });
+  const draft = (soon, extra) => {
+    const item = PROTO_REPORT_SOON.find((row) => row.id === soon);
+    return {
+      id: `tpl-${soon}`,
+      soon,
+      name: item?.name || "",
+      blurb: item?.blurb || "",
+      state: "draft",
+      who: "all",
+      updatedBy: "Gareth Lloyd",
+      updatedAt: "2026-08-20",
+      ...extra,
+    };
+  };
+  return [
+    ...built,
+    draft("health", {
+      source: "health",
+      columns: ["expected", "received", "complete", "last"],
+      group: "site",
+      settings: { utility: pick("all"), step: fixed("day"), format: pick("csv") },
+    }),
+    draft("capacity", {
+      source: "interval",
+      columns: ["kva"],
+      group: "site",
+      settings: { utility: fixed("electricity"), channel: fixed("import"), step: fixed("month"), format: pick("xlsx") },
+    }),
+    draft("league", {
+      source: "cost",
+      columns: ["kwh", "cost"],
+      group: "site",
+      settings: { utility: pick("all"), channel: fixed("import"), step: fixed("whole"), format: pick("xlsx") },
+    }),
+    draft("loa", {
+      source: "loa",
+      columns: ["company", "from", "to", "left"],
+      group: "site",
+      settings: { format: pick("xlsx") },
+    }),
+    draft("class", {
+      source: "interval",
+      columns: ["utility", "kwh", "quality"],
+      group: "meter",
+      settings: { utility: pick("electricity"), channel: pick("all"), step: pick("hh"), format: pick("csv") },
+    }),
+    draft("claim", {
+      source: "interval",
+      columns: ["channel", "kwh", "quality"],
+      group: "meter",
+      settings: { utility: fixed("electricity"), channel: fixed("export"), step: fixed("hh"), format: pick("csv") },
+    }),
+  ];
+}
+
+function protoTemplates() {
+  const saved = store.prototypeTemplates;
+  return (Array.isArray(saved) ? saved : protoTemplateSeed()).map(protoTemplateNormalize).filter(Boolean);
+}
+
+function protoTemplate(id) {
+  return protoTemplates().find((tpl) => tpl.id === id) || null;
+}
+
+function protoTemplateBuiltIn(type) {
+  return protoTemplates().find((tpl) => tpl.builtIn === type) || null;
+}
+
+function protoTemplateAdmin() {
+  return protoAdminRail() && protoCanEditReports();
+}
+
+function protoTemplateTitle(tpl) {
+  return tpl.name || "Untitled template";
+}
+
+function protoTemplateStateName(id) {
+  return PROTO_TEMPLATE_STATES.find((item) => item.id === id)?.name || "Draft";
+}
+
+function protoTemplateSourceName(tpl) {
+  return tpl.builtIn ? PROTO_TEMPLATE_BUILT_IN[tpl.builtIn].source : protoTemplateSource(tpl.source).name;
+}
+
+function protoTemplateWhoLine(tpl) {
+  if (tpl.who === "types") {
+    const names = protoTemplateTypes().filter((item) => tpl.types.includes(item.value)).map((item) => item.label);
+    return names.length ? protoReportJoin(names) : "No company types yet";
+  }
+  if (tpl.who === "companies") {
+    const names = protoTeamCompanyNames().filter((name) => tpl.companies.includes(name));
+    return names.length ? protoReportJoin(names) : "No companies yet";
+  }
+  return "All companies";
+}
+
+function protoTemplateOpenTo(tpl, company) {
+  if (tpl.who === "types") return tpl.types.includes(protoUsageCompanyType(company));
+  if (tpl.who === "companies") return tpl.companies.includes(company);
+  return true;
+}
+
+// Live templates this company can pick in Add a report.
+function protoTemplatesForCompany(company = protoHomeCompany()) {
+  return protoTemplates().filter((tpl) => tpl.state === "live" && protoTemplateOpenTo(tpl, company));
+}
+
+// Built-in types have walk figures for other companies. Built templates count the reports saved in this walk.
+function protoTemplateUse(tpl) {
+  const stored = protoReportDefsStore();
+  const keys = new Set([...Object.keys(stored), protoReportDefsKey()]);
+  let reports = 0;
+  let companies = 0;
+  keys.forEach((key) => {
+    const list = Array.isArray(stored[key]) ? stored[key] : key === protoReportDefsKey() ? protoReportSeed() : [];
+    const n = list.filter((def) =>
+      tpl.builtIn ? def && def.type === tpl.builtIn && !def.template : def && def.template === tpl.id
+    ).length;
+    reports += n;
+    if (n) companies += 1;
+  });
+  const walk = tpl.builtIn ? PROTO_TEMPLATE_BUILT_IN[tpl.builtIn].use : null;
+  if (walk && tpl.builtIn && reports <= walk[0]) return { reports: walk[0], companies: walk[1] };
+  return { reports, companies };
+}
+
+function protoTemplateUseLine(use) {
+  if (!use.reports) return "No reports use it yet.";
+  const r = `${use.reports} ${use.reports === 1 ? "report" : "reports"}`;
+  const c = `${use.companies} ${use.companies === 1 ? "company" : "companies"}`;
+  return `${r} at ${c} ${use.reports === 1 ? "uses" : "use"} this template.`;
+}
+
+function protoTemplatesPatch(list) {
+  return { prototypeTemplates: list };
+}
+
+// What always sits in the file, from how the rows are grouped and the time step.
+function protoTemplateAlwaysIn(tpl, step) {
+  const source = protoTemplateSource(tpl.source);
+  const out = tpl.group === "company" ? ["Company"] : tpl.group === "site" ? ["Site"] : ["Site", "Meter"];
+  if (tpl.group === "meter" && source.id !== "loa") out.push("Meter point");
+  if (source.steps.length && step !== "whole") out.push("Date");
+  if (step === "hh") out.push("Time");
+  return out;
+}
+
+function protoTemplateStepOf(tpl, def) {
+  const source = protoTemplateSource(tpl.source);
+  if (!source.steps.length) return "";
+  const own = tpl.settings.step;
+  const want = own?.mode === "pick" && def?.step ? def.step : own?.value;
+  return source.steps.includes(want) ? want : source.steps[0];
+}
+
+function protoTemplateValue(tpl, id, def) {
+  const own = tpl.settings[id];
+  if (!own) return id === "format" ? "csv" : "all";
+  if (own.mode === "pick" && def && def[id]) return def[id];
+  return own.value;
+}
+
+// Seeded sample rows in the template's shape. The admin preview uses the walk estate. A customer's file uses their sites.
+// The days a template report's file covers, the same as a built-in extract.
+function protoTemplateSpan(def) {
+  const today = protoToday();
+  const range = protoReportOnce(def) ? protoReportRange(def) : null;
+  const days = [];
+  if (range) {
+    for (let day = range.from; day <= range.to && days.length < 800; day = protoAddDays(day, 1)) days.push(day);
+    days.splice(0, Math.max(0, days.length - PROTO_REPORT_FILE_DAYS));
+  } else {
+    for (let back = protoReportPeriod("extract", def.period).days; back >= 1; back -= 1) days.push(protoAddDays(today, -back));
+  }
+  return days;
+}
+
+function protoTemplateRows(tpl, def, limit = 6) {
+  const source = protoTemplateSource(tpl.source);
+  const step = protoTemplateStepOf(tpl, def);
+  const utility = protoTemplateValue(tpl, "utility", def);
+  const channel = protoTemplateValue(tpl, "channel", def);
+  const cols = source.columns.filter((col) => tpl.columns.includes(col.id));
+  const head = [...protoTemplateAlwaysIn(tpl, step), ...cols.map((col) => col.name)];
+  const sites = def ? protoReportScopeSites({ ...def, type: "extract" }) : protoEstateSites();
+  const meterOk = (meter) => {
+    if (utility && utility !== "all" && protoMeterKind(meter) !== utility) return false;
+    const out = meter.direction === "Export";
+    if (channel === "import" && out) return false;
+    if (channel === "export" && !out) return false;
+    return true;
+  };
+  const units = [];
+  sites.forEach((site) => {
+    const meters = (site.meters || []).filter(meterOk);
+    if (!meters.length) return;
+    if (tpl.group === "meter") meters.forEach((meter) => units.push({ site, meters: [meter], meter }));
+    else units.push({ site, meters });
+  });
+  const list = tpl.group === "company" && units.length ? [{ company: true, meters: units.flatMap((u) => u.meters) }] : units;
+  const today = protoToday();
+  const times = [];
+  const span = def && limit > 50 ? protoTemplateSpan(def) : null;
+  if (!source.steps.length || step === "whole") times.push({ day: today });
+  else if (span) {
+    if (step === "hh") span.forEach((day) => { for (let i = 0; i < 48; i += 1) times.push({ day, slot: i }); });
+    else if (step === "day") span.forEach((day) => times.push({ day }));
+    else if (step === "week") span.forEach((day, i) => { if (i % 7 === 0) times.push({ day }); });
+    else {
+      const seen = new Set();
+      span.forEach((day) => {
+        const key = `${day.getFullYear()}-${day.getMonth()}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          times.push({ day: new Date(day.getFullYear(), day.getMonth(), 1) });
+        }
+      });
+    }
+  } else if (step === "hh") for (let i = 0; i < 4; i += 1) times.push({ day: protoAddDays(today, -1), slot: i });
+  else if (step === "day") for (let i = 3; i >= 1; i -= 1) times.push({ day: protoAddDays(today, -i) });
+  else if (step === "week") for (let i = 3; i >= 1; i -= 1) times.push({ day: protoAddDays(today, -7 * i) });
+  else for (let i = 3; i >= 1; i -= 1) times.push({ day: new Date(today.getFullYear(), today.getMonth() - i, 1) });
+  const scale = { hh: 1 / 48, day: 1, week: 7, month: 30, whole: 90 }[step] || 1;
+  const rows = [head];
+  const company = protoSeesCompanies() || protoAdminRail() ? "Network Rail" : protoHomeCompany();
+  for (const unit of list) {
+    for (const time of times) {
+      if (rows.length > limit) break;
+      const key = `${tpl.id}:${unit.meter?.id || unit.site?.name || "all"}:${protoIso(time.day)}:${time.slot || 0}`;
+      const r = protoUsageSeed(key);
+      const day = unit.meters.reduce((n, meter) => n + (protoDayKwh(meter) || 0), 0);
+      const kwh = Math.max(0, day * scale * (0.85 + r * 0.3));
+      const lead =
+        tpl.group === "company"
+          ? [company]
+          : tpl.group === "site"
+            ? [unit.site.name]
+            : [unit.site.name, unit.meter.name, ...(source.id === "loa" ? [] : [unit.meter.mpan || unit.meter.serial || ""])];
+      if (source.steps.length && step !== "whole") {
+        lead.push(
+          step === "month"
+            ? `${PROTO_MONTHS_SHORT[time.day.getMonth()]} ${time.day.getFullYear()}`
+            : protoFormatUkDate(time.day)
+        );
+      }
+      if (step === "hh") lead.push(`${String(Math.floor(time.slot / 2)).padStart(2, "0")}:${time.slot % 2 ? "30" : "00"}`);
+      const rate = 24 + Math.round(r * 90) / 10;
+      const standing = 1.35 * ({ hh: 1 / 48, day: 1, week: 7, month: 30, whole: 90 }[step] || 1) * unit.meters.length;
+      const cost = (kwh * rate) / 100 + standing;
+      const factor = 0.207;
+      const expected = { hh: 1, day: 48, week: 336, month: 1440, whole: 4320 }[step] * unit.meters.length;
+      const received = Math.round(expected * (0.92 + r * 0.08));
+      const from = new Date(today.getFullYear() - 1, (Math.floor(r * 12) + 3) % 12, 1);
+      const to = new Date(from.getFullYear() + 2, from.getMonth(), 0);
+      const value = {
+        utility: unit.meter ? unit.meter.commodity || "Electricity" : "Mixed",
+        channel: unit.meter ? (unit.meter.direction === "Export" ? "Export" : "Import") : channel === "export" ? "Export" : "Import",
+        kwh: kwh.toFixed(1),
+        kva: (kwh / Math.max(1, scale * 24) / 0.95).toFixed(1),
+        quality: r < 0.12 ? "Estimated" : "Actual",
+        register: "1",
+        read: Math.round(40000 + r * 60000).toFixed(0),
+        readType: r < 0.15 ? "Estimated" : r < 0.3 ? "Customer" : "Actual",
+        agent: r < 0.5 ? "DC" : "DA",
+        flow: r < 0.5 ? "D0010" : "D0030",
+        rate: rate.toFixed(2),
+        standing: standing.toFixed(2),
+        cost: cost.toFixed(2),
+        vat: (cost * 0.2).toFixed(2),
+        factor: String(factor),
+        co2: (kwh * factor).toFixed(1),
+        expected: String(expected),
+        received: String(received),
+        complete: `${((received / Math.max(1, expected)) * 100).toFixed(1)}%`,
+        last: protoFormatUkDate(protoAddDays(today, r < 0.2 ? -2 : -1)),
+        company: r < 0.5 ? "EDF" : "IMSERV",
+        from: protoFormatUkDate(from),
+        to: protoFormatUkDate(to),
+        left: String(Math.max(0, Math.round((to - today) / PROTO_DAY_MS))),
+      };
+      rows.push([...lead, ...cols.map((col) => value[col.id] ?? "")]);
+      if (!source.steps.length || step === "whole") break;
+    }
+    if (rows.length > limit) break;
+  }
+  return rows;
+}
+
+function protoTemplateDraft() {
+  const raw = store.prototypeTemplateDraft;
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? protoTemplateNormalize(raw) : null;
+}
+
+function protoTemplateEditId() {
+  return String(store.prototypeTemplateEdit || "");
+}
+
+function protoTemplatePageOpen() {
+  const id = protoTemplateEditId();
+  return Boolean(protoTemplateAdmin() && id && (id === "new" || protoTemplate(id)) && protoTemplateDraft());
+}
+
+function protoTemplateNew() {
+  return protoTemplateNormalize({
+    id: `tpl-${Date.now()}`,
+    name: "",
+    blurb: "",
+    source: "interval",
+    columns: ["kwh", "quality"],
+    group: "meter",
+    state: "draft",
+    who: "all",
+  });
+}
+
+function protoTemplateOpen(id) {
+  if (!protoTemplateAdmin()) return;
+  const tpl = id === "new" ? protoTemplateNew() : protoTemplate(id);
+  if (!tpl) return;
+  setProto({
+    prototypeTemplateEdit: id,
+    prototypeTemplateDraft: tpl,
+    prototypeTemplateNotice: null,
+    prototypeSelectOpen: "",
+  });
+  document.querySelector("#astral-fs .astral-stage-body")?.scrollTo(0, 0);
+  protoPageSlide("in");
+  protoRestoreFocus('#astral-fs input[name="proto-template-name"]');
+}
+
+function protoTemplateLeave(patch = {}) {
+  setProto({
+    prototypeTemplateEdit: "",
+    prototypeTemplateDraft: null,
+    prototypeSelectOpen: "",
+    ...patch,
+  });
+  protoPageSlide("back");
+}
+
+function protoTemplatePatchDraft(patch, keepOpen) {
+  const draft = protoTemplateDraft();
+  if (!draft || !protoTemplateAdmin()) return;
+  const next = protoTemplateNormalize({ ...draft, ...patch });
+  setProto({ prototypeTemplateDraft: next, prototypeSelectOpen: keepOpen || "" });
+}
+
+function protoTemplateIssue(draft) {
+  if (!draft) return "";
+  if (!draft.name) return "Add a name.";
+  if (!draft.builtIn && !draft.columns.length) return "Tick at least one column.";
+  if (draft.who === "types" && !draft.types.length) return "Pick at least one company type.";
+  if (draft.who === "companies" && !draft.companies.length) return "Pick at least one company.";
+  return "";
+}
+
+function protoTemplateSave(state) {
+  const draft = protoTemplateDraft();
+  if (!draft || protoTemplateIssue(draft)) return;
+  const id = protoTemplateEditId();
+  const next = {
+    ...draft,
+    state: state || draft.state,
+    updatedBy: protoProfileName() || "You",
+    updatedAt: protoIso(protoToday()),
+  };
+  const list = protoTemplates();
+  const saved = id === "new" ? [...list, next] : list.map((tpl) => (tpl.id === draft.id ? next : tpl));
+  const name = protoTemplateTitle(next);
+  const text =
+    next.state === "live" && draft.state !== "live"
+      ? `${name} is live. Customers can now pick it in Add a report.`
+      : next.state === "retired" && draft.state !== "retired"
+        ? `${name} is retired. Reports that use it keep sending.`
+        : next.state === "draft"
+          ? `${name} is saved as a draft. Only IMSERV can see it.`
+          : `Saved. Changes to ${name} apply from each report's next send.`;
+  protoTemplateLeave({ ...protoTemplatesPatch(saved), prototypeTemplateNotice: { text } });
+}
+
+function protoTemplateDelete() {
+  const draft = protoTemplateDraft();
+  if (!draft || draft.builtIn || draft.state !== "draft") return;
+  const name = protoTemplateTitle(draft);
+  protoTemplateLeave({
+    ...protoTemplatesPatch(protoTemplates().filter((tpl) => tpl.id !== draft.id)),
+    prototypeTemplateNotice: { text: `${name} is deleted.` },
+  });
+}
+
+function protoTemplateStateTag(tpl) {
+  const state = PROTO_TEMPLATE_STATES.find((item) => item.id === tpl.state) || PROTO_TEMPLATE_STATES[0];
+  return protoTag(state.name, state.note, `is-template-${state.id}`);
+}
+
+function protoTemplateShow() {
+  const value = String(store.prototypeTemplateShow || "");
+  return PROTO_TEMPLATE_STATES.some((item) => item.id === value) ? value : "";
+}
+
+function protoTemplateRow(tpl) {
+  const use = protoTemplateUse(tpl);
+  const id = escapeHtml(tpl.id);
+  return `
+    <tr class="is-link" data-proto-template-row="${id}">
+      <th scope="row">
+        <span class="astral-template-name">
+          <button type="button" class="astral-text" data-proto-template-open="${id}">${escapeHtml(protoTemplateTitle(tpl))}</button>
+          ${tpl.builtIn ? protoTag("Built in", "Its source and columns are fixed. You can change who can use it and its defaults.") : ""}
+        </span>
+      </th>
+      <td>${escapeHtml(protoTemplateSourceName(tpl))}</td>
+      <td class="astral-muted">${escapeHtml(protoTemplateWhoLine(tpl))}</td>
+      <td>${escapeHtml(use.reports ? `${use.reports} at ${use.companies} ${use.companies === 1 ? "company" : "companies"}` : "None yet")}</td>
+      <td>${protoTemplateStateTag(tpl)}</td>
+    </tr>
+  `;
+}
+
+function protoTemplatesView() {
+  if (protoTemplatePageOpen()) return protoTemplatePage();
+  const all = protoTemplates();
+  const q = String(store.prototypeTemplateQuery || "").trim().toLowerCase();
+  const show = protoTemplateShow();
+  const words = q.split(/\s+/).filter(Boolean);
+  const shown = all.filter((tpl) => {
+    if (show && tpl.state !== show) return false;
+    const hay = `${tpl.name} ${tpl.blurb} ${protoTemplateSourceName(tpl)} ${protoTemplateWhoLine(tpl)}`.toLowerCase();
+    return words.every((word) => hay.includes(word));
+  });
+  const order = { live: 0, draft: 1, retired: 2 };
+  const rows = protoSortedRows(
+    "templates",
+    shown.slice().sort((a, b) => order[a.state] - order[b.state]),
+    (tpl, key) => {
+      if (key === "name") return protoTemplateTitle(tpl);
+      if (key === "source") return protoTemplateSourceName(tpl);
+      if (key === "use") return protoTemplateUse(tpl).reports;
+      if (key === "state") return order[tpl.state];
+      return "";
+    }
+  );
+  const notice = store.prototypeTemplateNotice?.text
+    ? protoBanner(store.prototypeTemplateNotice.text, protoIconBtn("close", "Hide", 'data-proto-template-notice="hide"'))
+    : "";
+  const count = (id) => all.filter((tpl) => !id || tpl.state === id).length;
+  const body = shown.length
+    ? `
+      <div class="astral-table-wrap is-tips astral-template-table">
+        <table class="astral-table">
+          <thead>
+            <tr>
+              ${protoSortHead("templates", "name", "Name")}
+              ${protoSortHead("templates", "source", "Data source")}
+              <th scope="col">Who can use it</th>
+              ${protoSortHead("templates", "use", "Used by")}
+              ${protoSortHead("templates", "state", "State")}
+            </tr>
+          </thead>
+          <tbody>${rows.map(protoTemplateRow).join("")}</tbody>
+        </table>
+      </div>
+    `
+    : `<div class="astral-empty"><h3>No templates match</h3><p class="astral-muted">Try another word or show every state.</p>${protoTextBtn(
+        "Clear search and filters",
+        'data-proto-template-filter="reset"'
+      )}</div>`;
+  return astralShell(`
+    <header class="astral-page-head astral-page-tools">
+      <div><h2>Report templates</h2></div>
+      <div class="astral-page-actions">${protoBtn("Add a template", 'data-proto-template-open="new"')}</div>
+    </header>
+    ${notice}
+    <section class="astral-card astral-reports-sheet astral-templates-sheet">
+      <div class="astral-sheet-head">
+        <p class="astral-muted">Customers make their own reports from Live templates. Use Log in as user to see a company's reports.</p>
+        <div class="astral-sheet-tools">
+          ${protoSearchField({
+            name: "proto-template-query",
+            value: String(store.prototypeTemplateQuery || ""),
+            placeholder: "Search name, source, or company",
+            label: "Search templates by name, source, or company",
+          })}
+          ${protoSelect({
+            id: "tpl-show",
+            label: "State",
+            value: show,
+            options: [
+              { value: "", label: "Every state", count: count("") },
+              ...PROTO_TEMPLATE_STATES.map((item) => ({ value: item.id, label: item.name, count: count(item.id) })),
+            ],
+          })}
+        </div>
+      </div>
+      ${body}
+    </section>
+  `);
+}
+
+function protoTemplateStep(n, title, lead, inner) {
+  return `
+    <section class="astral-template-step" aria-labelledby="astral-template-step-${n}">
+      <h3 id="astral-template-step-${n}">${n ? `<span class="astral-template-num" aria-hidden="true">${n}</span>` : ""}${escapeHtml(title)}</h3>
+      ${lead ? `<p class="astral-muted">${escapeHtml(lead)}</p>` : ""}
+      ${inner}
+    </section>
+  `;
+}
+
+function protoTemplateSettingRow(draft, id) {
+  const source = protoTemplateSource(draft.source);
+  const setting = PROTO_TEMPLATE_SETTINGS.find((item) => item.id === id);
+  const own = draft.settings[id];
+  return `
+    <div class="astral-report-pair astral-template-setting">
+      ${protoReportField(
+        setting.name,
+        protoSelect({
+          id: `tpl-set:${id}`,
+          label: setting.name,
+          wide: true,
+          value: own.value,
+          options: protoTemplateSettingOptions(id, source),
+        })
+      )}
+      ${protoReportField(
+        "Who sets it",
+        protoSelect({
+          id: `tpl-mode:${id}`,
+          label: `Who sets ${setting.name.toLowerCase()}`,
+          wide: true,
+          value: own.mode,
+          options: PROTO_TEMPLATE_MODES,
+        })
+      )}
+    </div>
+  `;
+}
+
+function protoTemplateSourcePicker(draft) {
+  return `
+    <div class="astral-report-types astral-template-sources" role="radiogroup" aria-labelledby="astral-template-step-1">
+      ${PROTO_TEMPLATE_SOURCES.map((item) => {
+        const on = item.id === draft.source;
+        return `
+          <button
+            type="button"
+            role="radio"
+            class="astral-report-type${on ? " is-on" : ""}"
+            aria-checked="${on ? "true" : "false"}"
+            tabindex="${on ? "0" : "-1"}"
+            data-proto-template-source="${escapeHtml(item.id)}"
+          >
+            <span class="astral-report-type-head">${protoRadio(on)}<span>${escapeHtml(item.name)}</span></span>
+            <span class="astral-muted">${escapeHtml(item.note)}</span>
+          </button>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function protoTemplateColumns(draft) {
+  const source = protoTemplateSource(draft.source);
+  const always = protoTemplateAlwaysIn(draft, protoTemplateStepOf(draft));
+  return `
+    <p class="astral-fact">Always in: ${escapeHtml(always.join(", "))}.</p>
+    <div class="astral-template-cols" role="group" aria-labelledby="astral-template-step-2">
+      ${source.columns
+        .map((col) => {
+          const on = draft.columns.includes(col.id);
+          return `<button type="button" role="checkbox" class="astral-template-col${on ? " is-on" : ""}" aria-checked="${
+            on ? "true" : "false"
+          }" data-proto-template-column="${escapeHtml(col.id)}">${protoCheck(on)}<span>${escapeHtml(col.name)}</span></button>`;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function protoTemplateWho(draft) {
+  const names = protoTeamCompanyNames();
+  return `
+    <div class="astral-report-pair">
+      ${protoReportField(
+        "Open to",
+        protoSelect({ id: "tpl-who", label: "Open to", wide: true, value: draft.who, options: PROTO_TEMPLATE_WHO })
+      )}
+      ${
+        draft.who === "types"
+          ? protoReportField(
+              "Company types",
+              protoSelect({
+                id: "tpl-types",
+                label: "Company types",
+                multi: true,
+                wide: true,
+                values: draft.types,
+                placeholder: "Pick types",
+                countLabel: "types",
+                options: protoTemplateTypes(),
+              })
+            )
+          : draft.who === "companies"
+            ? protoReportField(
+                "Companies",
+                protoSelect({
+                  id: "tpl-companies",
+                  label: "Companies",
+                  multi: true,
+                  wide: true,
+                  values: draft.companies,
+                  placeholder: "Pick companies",
+                  countLabel: "companies",
+                  options: names.map((name) => ({
+                    value: name,
+                    label: name,
+                    note: protoUsageTypeName(protoUsageCompanyType(name)),
+                  })),
+                })
+              )
+            : ""
+      }
+    </div>
+  `;
+}
+
+function protoTemplateSample(draft) {
+  if (draft.builtIn) {
+    return `<p class="astral-muted">Built in. Customers see its own form in Add a report, and the file follows the settings they pick.</p>`;
+  }
+  const rows = protoTemplateRows(draft, null, 6);
+  const [head, ...body] = rows;
+  return `
+    <p class="astral-muted">The first rows, from Network Rail's data. Each company's file uses their own sites.</p>
+    <div class="astral-table-wrap astral-template-sample">
+      <table class="astral-table">
+        <thead><tr>${head.map((cell) => `<th scope="col">${escapeHtml(cell)}</th>`).join("")}</tr></thead>
+        <tbody>${
+          body.length
+            ? body.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")
+            : `<tr><td colspan="${head.length}" class="astral-muted">No meters match this utility and channel.</td></tr>`
+        }</tbody>
+      </table>
+    </div>
+    <p class="astral-fact">${escapeHtml(
+      `As ${protoReportOptionName(PROTO_REPORT_FORMAT, draft.settings.format?.value || "csv")}. One row for each ${
+        PROTO_TEMPLATE_GROUPS.find((g) => g.id === draft.group)?.name.toLowerCase() || "meter"
+      }${protoTemplateStepOf(draft) && protoTemplateStepOf(draft) !== "whole" ? `, each ${protoTemplateStepWord(protoTemplateStepOf(draft))}` : ""}.`
+    )}</p>
+  `;
+}
+
+function protoTemplateStepWord(step) {
+  return { hh: "half hour", day: "day", week: "week", month: "month" }[step] || "period";
+}
+
+function protoTemplatePage() {
+  const draft = protoTemplateDraft();
+  const id = protoTemplateEditId();
+  const isNew = id === "new";
+  const saved = isNew ? null : protoTemplate(id);
+  const state = saved?.state || "draft";
+  const issue = protoTemplateIssue(draft);
+  const use = saved ? protoTemplateUse(saved) : { reports: 0, companies: 0 };
+  const source = protoTemplateSource(draft.source);
+  const built = draft.builtIn ? PROTO_TEMPLATE_BUILT_IN[draft.builtIn] : null;
+  const pickIds = protoTemplateSettingIds(draft);
+  const rowIds = built ? [] : pickIds.filter((item) => item === "step");
+  const restIds = pickIds.filter((item) => item !== "step");
+  const details = protoTemplateStep(
+    0,
+    "Details",
+    "",
+    `
+      ${protoField(
+        "Template name",
+        `type="text" name="proto-template-name" data-proto-template-field="name" value="${escapeHtml(
+          draft.name
+        )}" maxlength="80" autocomplete="off" placeholder="Such as Monthly carbon by site"`
+      )}
+      ${protoField(
+        "What it's for",
+        `type="text" name="proto-template-blurb" data-proto-template-field="blurb" value="${escapeHtml(
+          draft.blurb
+        )}" maxlength="160" autocomplete="off" placeholder="Customers see this in Add a report"`
+      )}
+    `
+  );
+  const steps = built
+    ? `
+      ${protoTemplateStep(
+        1,
+        "Data source",
+        "",
+        `<p class="astral-fact">${escapeHtml(built.source)}.</p><p class="astral-muted">Built in. Its source, columns and rows are fixed.</p>`
+      )}
+      ${protoTemplateStep(
+        2,
+        "What customers can change",
+        restIds.length
+          ? "Fixed locks the value. Customer picks shows it in Add a report, starting on this value."
+          : "",
+        restIds.length
+          ? restIds.map((item) => protoTemplateSettingRow(draft, item)).join("")
+          : `<p class="astral-fact">Customers set everything in Add a report.</p>`
+      )}
+    `
+    : `
+      ${protoTemplateStep(1, "Data source", "Pick where the data comes from.", protoTemplateSourcePicker(draft))}
+      ${protoTemplateStep(2, "Columns", "Tick what goes in each row.", protoTemplateColumns(draft))}
+      ${protoTemplateStep(
+        3,
+        "Rows",
+        "",
+        `
+          <div class="astral-report-pair">
+            ${protoReportField(
+              "Group by",
+              protoSelect({
+                id: "tpl-group",
+                label: "Group by",
+                wide: true,
+                value: draft.group,
+                options: PROTO_TEMPLATE_GROUPS.filter((g) => source.groups.includes(g.id)).map((g) => ({
+                  value: g.id,
+                  label: g.name,
+                  note: g.note,
+                })),
+              })
+            )}
+          </div>
+          ${rowIds.map((item) => protoTemplateSettingRow(draft, item)).join("")}
+        `
+      )}
+      ${protoTemplateStep(
+        4,
+        "What customers can change",
+        "Fixed locks the value. Customer picks shows it in Add a report, starting on this value. Customers always pick the sites, the schedule, and who gets it.",
+        restIds.map((item) => protoTemplateSettingRow(draft, item)).join("")
+      )}
+    `;
+  const who = protoTemplateStep(0, "Who can use it", "", protoTemplateWho(draft));
+  const actions =
+    state === "live"
+      ? `${protoBtn("Save changes", 'data-proto-template-save="save"', { disabled: Boolean(issue) })}
+         ${protoGhost("Cancel", 'data-proto-template-save="cancel"')}
+         ${protoTextBtn("Retire template", 'data-proto-template-save="retired"', { className: "astral-report-delete" })}`
+      : state === "retired"
+        ? `${protoBtn("Make live again", 'data-proto-template-save="live"', { disabled: Boolean(issue) })}
+           ${protoGhost("Save changes", 'data-proto-template-save="save"', { disabled: Boolean(issue) })}
+           ${protoGhost("Cancel", 'data-proto-template-save="cancel"')}`
+        : `${protoBtn("Make live", 'data-proto-template-save="live"', { disabled: Boolean(issue) })}
+           ${protoGhost("Save as draft", 'data-proto-template-save="draft"', { disabled: Boolean(issue) })}
+           ${protoGhost("Cancel", 'data-proto-template-save="cancel"')}
+           ${
+             isNew || draft.builtIn
+               ? ""
+               : protoTextBtn("Delete template", 'data-proto-template-save="delete"', { className: "astral-report-delete" })
+           }`;
+  const useLine =
+    state === "draft"
+      ? "Draft. Only IMSERV can see it."
+      : `${protoTemplateUseLine(use)}${use.reports ? " Changes apply from each report's next send." : ""}`;
+  return astralShell(`
+    ${astralPageHead(
+      isNew ? "New template" : protoTemplateTitle(saved),
+      "",
+      `<div class="astral-page-actions">${draft.builtIn ? protoTag("Built in") : ""}${saved ? protoTemplateStateTag(saved) : ""}</div>`,
+      protoBackLink("Back to templates", 'data-proto-template-save="cancel"')
+    )}
+    <div class="astral-report-page astral-template-page">
+      <section class="astral-card astral-pane astral-template-set">
+        ${protoPaneShell(
+          `<div class="astral-detail-head"><div>${protoDetailTitle("Build", draft.builtIn ? "Built-in type" : "From scratch")}</div></div>`,
+          `<div class="astral-report-fields astral-template-steps">${details}${steps}${who}</div>`
+        )}
+      </section>
+      <section class="astral-card astral-pane astral-template-preview" aria-labelledby="astral-template-sample-title">
+        ${protoPaneShell(
+          `<div class="astral-detail-head"><div><h3 id="astral-template-sample-title">Sample</h3></div></div>`,
+          `<div class="astral-report-fields">${protoTemplateSample(draft)}</div>`
+        )}
+      </section>
+      <div class="astral-card astral-report-page-foot">
+        <p class="astral-muted">${escapeHtml(useLine)}</p>
+        <div class="astral-actions">
+          ${actions}
+          <p class="astral-muted astral-report-issue" data-proto-template-issue${issue ? "" : " hidden"}>${escapeHtml(issue)}</p>
+        </div>
+      </div>
+    </div>
+  `);
+}
+
+function protoTemplateRefresh() {
+  const page = document.querySelector("#astral-fs .astral-template-page");
+  const draft = protoTemplateDraft();
+  if (!page || !draft) return;
+  const issue = protoTemplateIssue(draft);
+  page.querySelectorAll("[data-proto-template-save]").forEach((btn) => {
+    const act = btn.dataset.protoTemplateSave;
+    if (act !== "cancel" && act !== "delete" && act !== "retired") btn.disabled = Boolean(issue);
+  });
+  const issueEl = page.querySelector("[data-proto-template-issue]");
+  if (issueEl) {
+    issueEl.textContent = issue;
+    issueEl.hidden = !issue;
+  }
+}
+
+function protoTemplatePick(id, value) {
+  if (id === "tpl-show") {
+    setProto({ prototypeSelectOpen: "", prototypeTemplateShow: value });
+    return;
+  }
+  const draft = protoTemplateDraft();
+  if (!draft) return;
+  if (id === "tpl-group") {
+    protoTemplatePatchDraft({ group: value });
+    return;
+  }
+  if (id === "tpl-who") {
+    protoTemplatePatchDraft({ who: value });
+    return;
+  }
+  if (id === "tpl-types" || id === "tpl-companies") {
+    const key = id === "tpl-types" ? "types" : "companies";
+    protoTemplatePatchDraft({ [key]: protoReportToggleIn(draft[key], value) }, id);
+    protoRestoreFocus(
+      `#astral-fs [data-proto-select-option="${CSS.escape(id)}"][data-proto-select-value="${CSS.escape(value)}"]`
+    );
+    return;
+  }
+  const bits = id.split(":");
+  if ((bits[0] === "tpl-set" || bits[0] === "tpl-mode") && draft.settings[bits[1]]) {
+    const cur = draft.settings[bits[1]];
+    const next = bits[0] === "tpl-set" ? { ...cur, value } : { ...cur, mode: value };
+    protoTemplatePatchDraft({ settings: { ...draft.settings, [bits[1]]: next } });
+  }
+}
+
+// What a customer's report takes from its template. Fixed values win.
+function protoTemplateApply(def, tpl) {
+  if (!tpl) return def;
+  const out = { ...def };
+  ["utility", "channel", "format"].forEach((id) => {
+    const own = tpl.settings[id];
+    if (!own) return;
+    if (own.mode === "fixed" || !def[id]) out[id] = own.value;
+  });
+  return out;
+}
+
+// The types a customer can pick in Add a report.
+function protoReportPickTypes(tab) {
+  const open = protoTemplatesForCompany();
+  const builtIn = protoReportTypesFor(tab).filter((type) => {
+    const tpl = protoTemplateBuiltIn(type.id);
+    return !tpl || open.some((item) => item.id === tpl.id);
+  }).map((type) => {
+    const tpl = protoTemplateBuiltIn(type.id);
+    return { id: type.id, name: tpl?.name || type.name, blurb: tpl?.blurb || type.blurb };
+  });
+  if (tab !== "reports") return builtIn;
+  const built = open
+    .filter((tpl) => !tpl.builtIn)
+    .map((tpl) => ({ id: `tpl:${tpl.id}`, name: protoTemplateTitle(tpl), blurb: tpl.blurb || protoTemplateSource(tpl.source).note }));
+  return [...builtIn, ...built];
+}
+
+function protoReportTemplateOf(def) {
+  if (!def?.template) return null;
+  const tpl = protoTemplate(def.template);
+  return tpl && !tpl.builtIn ? tpl : null;
+}
+
+// The tag a report carries. Reports from a built template carry the template's name.
+function protoReportTypeFor(def) {
+  const tpl = protoReportTemplateOf(def);
+  if (tpl) return { short: protoTemplateTitle(tpl), name: protoTemplateTitle(tpl), blurb: tpl.blurb || protoTemplateSource(tpl.source).note };
+  const type = protoReportType(def.type);
+  const own = protoTemplateBuiltIn(def.type);
+  return own ? { ...type, name: own.name || type.name, blurb: own.blurb || type.blurb } : type;
+}
+
+function protoReportTemplateFields(draft, tpl) {
+  const source = protoTemplateSource(tpl.source);
+  const picks = protoTemplateSettingIds(tpl).filter((id) => tpl.settings[id]?.mode === "pick");
+  const fixed = protoTemplateSettingIds(tpl)
+    .filter((id) => tpl.settings[id]?.mode === "fixed")
+    .map((id) => {
+      const option = protoTemplateSettingOptions(id, source).find((item) => item.value === tpl.settings[id].value);
+      return `${PROTO_TEMPLATE_SETTINGS.find((item) => item.id === id).name}: ${option?.label || ""}`;
+    });
+  const select = (id) => {
+    const name = PROTO_TEMPLATE_SETTINGS.find((item) => item.id === id).name;
+    const value = id === "step" ? protoTemplateStepOf(tpl, draft) : draft[id] || tpl.settings[id].value;
+    return protoReportField(
+      name,
+      protoSelect({
+        id: `report-tpl:${id}`,
+        label: name,
+        wide: true,
+        value,
+        options: protoTemplateSettingOptions(id, source),
+      })
+    );
+  };
+  const pairs = [];
+  for (let i = 0; i < picks.length; i += 2) {
+    pairs.push(`<div class="astral-report-pair">${picks.slice(i, i + 2).map(select).join("")}</div>`);
+  }
+  return `
+    ${pairs.join("")}
+    <p class="astral-muted">${escapeHtml(
+      `${source.name}. ${fixed.length ? `IMSERV set ${fixed.join(", ")}.` : "IMSERV set the columns."}`
+    )}</p>
+  `;
+}
+
+
+// "one row for each meter per day, " for a template report's summary.
+function protoTemplateRowsLine(tpl, def) {
+  const source = protoTemplateSource(tpl.source);
+  const step = protoTemplateStepOf(tpl, def);
+  const each = { meter: "each meter", site: "each site", company: "the whole company" }[tpl.group] || "each meter";
+  const per = source.steps.length && step !== "whole" ? ` per ${protoTemplateStepWord(step)}` : "";
+  return `one row for ${each}${per}, `;
+}
+
+// The Type filter lists built-in types and any live template this company can pick.
+function protoReportTypeFilterItems() {
+  const base = protoReportTypesFor("reports").map((item) => ({ id: item.id, name: protoReportTypeFor({ type: item.id }).short }));
+  const own = new Set(protoReportDefs().map((def) => def.template).filter(Boolean));
+  const built = protoTemplates()
+    .filter((tpl) => !tpl.builtIn && (own.has(tpl.id) || (tpl.state === "live" && protoTemplateOpenTo(tpl, protoHomeCompany()))))
+    .map((tpl) => ({ id: `tpl:${tpl.id}`, name: protoTemplateTitle(tpl) }));
+  return [...base, ...built];
 }
 
 function protoUsageData() {
@@ -17677,7 +18908,7 @@ function protoReportList() {
 
 function protoReportCard(def) {
   const canEdit = protoCanEditReports();
-  const type = protoReportType(def.type);
+  const type = protoReportTypeFor(def);
   const id = escapeHtml(def.id);
   return `
     <article class="astral-card astral-report-card${def.on ? "" : " is-off"}" data-proto-report-card="${id}">
@@ -17706,6 +18937,7 @@ function protoReportCard(def) {
 }
 
 function protoReports() {
+  if (protoTemplateAdmin()) return protoTemplatesView();
   if (protoReportPageOpen()) return protoReportPage();
   const defs = protoReportDefs().filter((def) => protoReportTabOf(def.type) === "reports");
   const empty = protoCanAddReports()
@@ -17728,7 +18960,9 @@ const PROTO_REPORT_FILTERS = {
     {
       id: "type",
       name: "Type",
-      items: protoReportTypesFor("reports").map((item) => ({ id: item.id, name: item.short })),
+      get items() {
+        return protoReportTypeFilterItems();
+      },
     },
     {
       id: "status",
@@ -17810,7 +19044,7 @@ function protoReportLayout() {
 
 // What a report is for each filter group. A report can send more than one way.
 function protoReportFacet(def, groupId) {
-  if (groupId === "type") return [def.type];
+  if (groupId === "type") return [def.template ? `tpl:${def.template}` : def.type];
   if (groupId === "status") {
     if (!def.on) return ["paused"];
     if (def.type === "alert" || def.type === "missing") {
@@ -17825,7 +19059,7 @@ function protoReportFacet(def, groupId) {
 }
 
 function protoReportHay(def) {
-  const type = protoReportType(def.type);
+  const type = protoReportTypeFor(def);
   const people = protoReportRecipientRows(protoReportDraftFrom(def))
     .filter((row) => !row.fixed)
     .map((row) => `${row.name} ${row.email}`)
@@ -17927,7 +19161,7 @@ function protoReportStatusSort(def) {
 }
 
 function protoReportRow(def, canEdit) {
-  const type = protoReportType(def.type);
+  const type = protoReportTypeFor(def);
   const id = escapeHtml(def.id);
   const edit = protoReportTabOf(def.type) === "alerts" ? "Edit alert" : "Edit report";
   return `
@@ -23101,6 +24335,8 @@ function onPrototype(event) {
                 ? { prototypeDownloadQuery: "" }
               : name === "proto-report-query"
                 ? { prototypeReportQuery: "" }
+              : name === "proto-template-query"
+                ? { prototypeTemplateQuery: "" }
               : null;
     if (!patch) return;
     setProto(patch);
@@ -23651,10 +24887,12 @@ function onPrototype(event) {
   const reportTypeBtn = event.target.closest("[data-proto-report-type]");
   if (reportTypeBtn) {
     if (!protoCanEditReports() || protoReportEditId() !== "new") return;
-    const type = protoReportTypeId(reportTypeBtn.dataset.protoReportType);
+    const raw = String(reportTypeBtn.dataset.protoReportType || "");
+    const tplId = raw.startsWith("tpl:") ? raw.slice(4) : "";
+    const type = tplId ? "extract" : protoReportTypeId(raw);
     const cur = protoReportDraft();
-    if (cur?.type === type) return;
-    const next = protoReportNewDraft(type);
+    if (cur?.type === type && String(cur?.template || "") === tplId) return;
+    const next = protoReportNewDraft(type, tplId);
     if (cur) {
       next.name = cur.name;
       next.people = cur.people;
@@ -23666,7 +24904,7 @@ function onPrototype(event) {
       prototypeReportDraft: next,
       prototypeReportSiteQuery: "",
     });
-    protoRestoreFocus(`#astral-fs [data-proto-report-type="${type}"]`);
+    protoRestoreFocus(`#astral-fs [data-proto-report-type="${raw}"]`);
     return;
   }
   const reportDeleteBtn = event.target.closest("[data-proto-report-delete]");
@@ -23762,6 +25000,53 @@ function onPrototype(event) {
     if (wait) wait.innerHTML = protoReportStatusHtml({ ...def, on: nextOn });
     Object.assign(store, protoReportDefsPatch(next));
     persistChrome();
+    return;
+  }
+  const templateOpen = event.target.closest("[data-proto-template-open]");
+  if (templateOpen) {
+    protoTemplateOpen(templateOpen.dataset.protoTemplateOpen);
+    return;
+  }
+  const templateRow = event.target.closest("tr[data-proto-template-row]");
+  if (templateRow && !event.target.closest("button, a, input, label")) {
+    protoTemplateOpen(templateRow.dataset.protoTemplateRow);
+    return;
+  }
+  const templateSave = event.target.closest("[data-proto-template-save]");
+  if (templateSave) {
+    const act = templateSave.dataset.protoTemplateSave;
+    if (act === "cancel") protoTemplateLeave();
+    else if (act === "delete") protoTemplateDelete();
+    else if (act === "save") protoTemplateSave();
+    else protoTemplateSave(act);
+    return;
+  }
+  const templateSource = event.target.closest("[data-proto-template-source]");
+  if (templateSource) {
+    const draft = protoTemplateDraft();
+    const id = templateSource.dataset.protoTemplateSource;
+    if (!draft || draft.source === id) return;
+    const next = protoTemplateSource(id);
+    protoTemplatePatchDraft({ source: next.id, columns: next.columns.map((col) => col.id), group: next.groups[0] });
+    protoRestoreFocus(`#astral-fs [data-proto-template-source="${next.id}"]`);
+    return;
+  }
+  const templateColumn = event.target.closest("[data-proto-template-column]");
+  if (templateColumn) {
+    const draft = protoTemplateDraft();
+    if (!draft) return;
+    const col = templateColumn.dataset.protoTemplateColumn;
+    protoTemplatePatchDraft({ columns: protoReportToggleIn(draft.columns, col) });
+    protoRestoreFocus(`#astral-fs [data-proto-template-column="${col}"]`);
+    return;
+  }
+  if (event.target.closest("[data-proto-template-notice]")) {
+    setProto({ prototypeTemplateNotice: null });
+    return;
+  }
+  if (event.target.closest("[data-proto-template-filter]")) {
+    setProto({ prototypeTemplateQuery: "", prototypeTemplateShow: "" });
+    protoRestoreFocus("#astral-fs input[name='proto-template-query']");
     return;
   }
   const reportRow = event.target.closest("tr[data-proto-report-row]");
@@ -25251,6 +26536,24 @@ function onPrototypeInput(event) {
         start
       );
     }
+    return;
+  }
+  const templateSearch = event.target.closest("input[name='proto-template-query']");
+  if (templateSearch) {
+    store.prototypeTemplateQuery = templateSearch.value.slice(0, 120);
+    persistChrome();
+    const start = templateSearch.selectionStart;
+    render();
+    protoRestoreFocus("#astral-fs input[name='proto-template-query']", start);
+    return;
+  }
+  const templateField = event.target.closest("input[data-proto-template-field]");
+  if (templateField) {
+    const draft = protoTemplateDraft();
+    if (!draft || !protoTemplateAdmin()) return;
+    store.prototypeTemplateDraft = { ...draft, [templateField.dataset.protoTemplateField]: templateField.value.slice(0, 160) };
+    persistChrome();
+    protoTemplateRefresh();
     return;
   }
   const reportField = event.target.closest("input[data-proto-report-field]");
