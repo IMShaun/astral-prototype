@@ -3467,9 +3467,12 @@ function protoZoneGroupLabel(members, all) {
     const kinds = [...new Set(mine.map((meter) => protoMeterUtility(meter).toLowerCase()))];
     return [site, protoZoneJoin(kinds)].filter(Boolean).join(" ");
   });
-  if (parts.length === 1) return parts[0];
+  if (parts.length === 1) return { label: parts[0], whole };
   const more = parts.length - 1;
-  return whole ? `${parts[0]} and ${more} other site${more === 1 ? "" : "s"}` : `${parts[0]} and ${more} more`;
+  const label = whole
+    ? `${parts[0]} and ${more} other site${more === 1 ? "" : "s"}`
+    : `${parts[0]} and ${more} more`;
+  return { label, whole };
 }
 
 function protoZoneGroupNote(meter, zones) {
@@ -3494,12 +3497,16 @@ function protoZoneGroups(meters, zones) {
     if (!map.has(key)) map.set(key, []);
     map.get(key).push(meter);
   });
-  return [...map.values()].map((members) => ({
-    id: members[0].id,
-    meters: members,
-    label: protoZoneGroupLabel(members, list),
-    note: protoZoneGroupNote(members[0], zones),
-  }));
+  return [...map.values()].map((members) => {
+    const name = protoZoneGroupLabel(members, list);
+    return {
+      id: members[0].id,
+      meters: members,
+      label: name.label,
+      whole: name.whole,
+      note: protoZoneGroupNote(members[0], zones),
+    };
+  });
 }
 
 function protoZoneSet(rows, meters, zones) {
@@ -5369,19 +5376,15 @@ function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing }) {
 function protoChartZoneRow(set) {
   if (!set?.pick || set.groups.length < 2) return "";
   const { showHours, showTou } = set.zones;
-  const lead =
-    showHours && showTou
-      ? "Hours and time of use differ in this view."
-      : showHours
-        ? "Hours differ in this view."
-        : "Time of use differs in this view.";
+  const lead = `Showing ${showHours && showTou ? "hours and time of use" : showHours ? "hours" : "time of use"} for`;
+  const others = set.groups.every((group) => group.whole) ? "sites" : "meters";
   const select = protoSelect({
     id: "chart-zone-for",
-    label: `Showing ${set.pick.label}`,
+    label: `${lead} ${set.pick.label}`,
     value: set.pick.id,
     options: set.groups.map((group) => ({ value: group.id, label: group.label, note: group.note })),
   });
-  return `<div class="astral-chart-zone-row"><p class="astral-muted">${escapeHtml(lead)} Showing</p>${select}</div>`;
+  return `<div class="astral-chart-zone-row"><p class="astral-muted">${escapeHtml(lead)}</p>${select}<p class="astral-muted">Hover the graph to see the other ${others}.</p></div>`;
 }
 
 function protoChartNav(pan) {

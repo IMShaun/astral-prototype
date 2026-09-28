@@ -9036,8 +9036,9 @@ button.astral-state {
 .astral-chart-zone-row {
   display: flex;
   flex-basis: 100%;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
   min-width: 0;
 }
 
