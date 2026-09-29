@@ -18888,7 +18888,8 @@ function protoBreakdownReading(value, quality) {
   if (value == null) return "No reading";
   const amount = protoFormatAmount(value);
   if (quality !== "estimated") return amount;
-  return `<span class="astral-reading">${amount}${protoTag("Estimated")}</span>`;
+  // The table is dense, so Estimated is shortened to Est. and named in full on hover and to screen readers.
+  return `<span class="astral-reading">${amount}<span class="astral-tip-host astral-reading-est"><span class="astral-tag" aria-hidden="true">Est.</span><span class="sr-only">Estimated</span><span class="astral-icon-tip" role="tooltip">Estimated</span></span></span>`;
 }
 
 function protoIntervalRowHtml(point, dual, chart, sliceCols) {
@@ -19329,8 +19330,8 @@ function protoTrackBreakdownTable(tracks, options = {}) {
       )
     );
   const marks = stateIds.size ? Math.max(mixed ? 4.25 : 0, 3.25) : 0;
-  const colWidth = marks ? 5.5 + marks + (hasEstimate ? 7 : 0) : 8.5 + (hasEstimate ? 2.5 : 0);
-  const minWidth = 6 + tracks.length * colWidth + totals.length * (hasEstimate ? 11 : 8.5);
+  const colWidth = marks ? 5.5 + marks + (hasEstimate ? 4.5 : 0) : 8.5 + (hasEstimate ? 1 : 0);
+  const minWidth = 6 + tracks.length * colWidth + totals.length * (hasEstimate ? 9.5 : 8.5);
   const label = `${chart} by ${options.by || "series"}`;
   return protoBreakdownPanel(`
     <div class="astral-breakdown-top">
