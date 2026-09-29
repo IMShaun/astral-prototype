@@ -7025,6 +7025,11 @@ button.astral-state {
   scrollbar-gutter: auto;
 }
 
+/* Options with a note are two lines tall; keep five in view before the list scrolls. */
+.astral-select-options:has(.astral-select-option-copy > .astral-muted) {
+  max-height: calc(5 * 3.875rem + 4 * 4px);
+}
+
 .astral-select.is-multi .astral-select-menu {
   width: 100%;
   max-width: none;
