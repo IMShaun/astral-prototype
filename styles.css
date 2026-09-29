@@ -10464,8 +10464,9 @@ tr.is-off .astral-person-mark {
   display: none;
 }
 
-.astral-report-taxes legend {
-  font-weight: 600;
+.astral-report-taxes {
+  display: grid;
+  gap: 16px;
 }
 
 .astral-report-consent-host {

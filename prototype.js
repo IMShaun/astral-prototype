@@ -8593,26 +8593,43 @@ function protoReportNormalizeTenants(raw, known) {
           protoReportShareKeys().map((key) => [key, protoReportNumber(item[key] ?? share, share, 0, 100)])
         ),
         ...Object.fromEntries(PROTO_REPORT_BILL_UTILS.map((util) => [`${util.id}Pays`, item[`${util.id}Pays`] !== false])),
-        vat: protoReportNumber(item.vat ?? vat, vat, 0, 100),
+        taxes: protoReportNormalizeTaxes(item, vat),
       };
     });
+}
+
+// Each tenant has one tax, a name and a rate. A tenant saved with only a VAT rate opens as VAT.
+function protoReportNormalizeTaxes(item, fallback) {
+  const list = Array.isArray(item.taxes)
+    ? item.taxes
+    : [{ id: "tax-1", name: "VAT", rate: item.vat ?? fallback }];
+  return list
+    .filter((tax) => tax && typeof tax === "object")
+    .slice(0, 1)
+    .map((tax, i) => ({
+      id: String(tax.id || `tax-${i + 1}`),
+      name: String(tax.name ?? "").replace(/\s+/g, " ").trim().slice(0, 40),
+      rate: protoReportNumber(tax.rate, 0, 0, 100),
+    }));
 }
 
 function protoReportTenantDraft(tenant) {
   return {
     ...tenant,
     ...Object.fromEntries(protoReportShareKeys().map((key) => [key, String(tenant[key] ?? "")])),
-    vat: String(tenant.vat ?? ""),
+    taxes: (tenant.taxes || []).map((tax) => ({ ...tax, rate: String(tax.rate ?? "") })),
   };
 }
 
 // A draft saved before tenants became a list still opens.
 function protoReportTenantsOf(draft) {
   if (Array.isArray(draft?.tenants)) {
-    // Tenants drafted before VAT moved onto each tenant take the report's old rate.
-    if (draft.tenants.every((tenant) => tenant.vat !== undefined)) return draft.tenants;
+    // Tenants drafted before taxes moved onto each tenant take VAT at the old rate.
+    if (draft.tenants.every((tenant) => Array.isArray(tenant.taxes))) return draft.tenants;
     return draft.tenants.map((tenant) =>
-      tenant.vat === undefined ? { ...tenant, vat: String(draft.vat ?? 20) } : tenant
+      Array.isArray(tenant.taxes)
+        ? tenant
+        : { ...tenant, taxes: [{ id: "tax-1", name: "VAT", rate: String(tenant.vat ?? draft.vat ?? 20) }] }
     );
   }
   if (draft?.type !== "billing") return [];
@@ -9007,9 +9024,12 @@ function protoReportBill(def, tenant) {
     : [];
   const cost = lines.reduce((n, line) => n + line.usage + line.standing, 0);
   const net = lines.reduce((n, line) => n + line.due, 0);
-  const rate = Number(tenant?.vat) || 0;
-  const vat = (net * rate) / 100;
-  return { tenant, site, period, lines, cost, net, rate, vat, due: net + vat };
+  const taxes = (tenant?.taxes || []).filter((tax) => Number(tax.rate) > 0).map((tax) => {
+    const rate = Number(tax.rate) || 0;
+    return { name: String(tax.name || "").trim() || "Tax", rate, amount: (net * rate) / 100 };
+  });
+  const tax = taxes.reduce((n, item) => n + item.amount, 0);
+  return { tenant, site, period, lines, cost, net, taxes, tax, due: net + tax };
 }
 
 // Every tenant's bill. A site counts once in the cost, even with two tenants on it.
@@ -9023,8 +9043,8 @@ function protoReportBills(def) {
     return n + bill.cost;
   }, 0);
   const net = bills.reduce((n, bill) => n + bill.net, 0);
-  const vat = bills.reduce((n, bill) => n + bill.vat, 0);
-  return { period, bills, sites: seen.size, cost, net, vat, due: net + vat };
+  const tax = bills.reduce((n, bill) => n + bill.tax, 0);
+  return { period, bills, sites: seen.size, cost, net, tax, due: net + tax };
 }
 
 function protoReportTenantBillLine(def, tenant) {
@@ -9032,7 +9052,20 @@ function protoReportTenantBillLine(def, tenant) {
   if (!bill.site) return "Pick a site to project this bill.";
   return `Projected ${bill.period.word} cost ${protoSpendMoney(bill.cost)}. ${
     tenant.name || "The tenant"
-  } pays ${protoSpendMoney(bill.net)} plus ${protoSpendMoney(bill.vat)} VAT, ${protoSpendMoney(bill.due)} in all.`;
+  } pays ${protoSpendMoney(bill.net)}${
+    bill.taxes.length
+      ? ` plus ${protoSpendMoney(bill.tax)} ${protoReportTaxWord(bill)}, ${protoSpendMoney(bill.due)} in all`
+      : ", with no tax"
+  }.`;
+}
+
+// The tax goes by its name.
+function protoReportTaxWord(bill) {
+  return bill.taxes.length === 1 ? bill.taxes[0].name : "tax";
+}
+
+function protoReportTaxRates(bill) {
+  return bill.taxes.map((item) => `${item.name} at ${item.rate}%`).join(" and ");
 }
 
 function protoReportStepDate(date, period) {
@@ -9167,11 +9200,11 @@ function protoReportSummary(def) {
       if (!bill.site) return "Pick a site to project its cost.";
       return `${bill.site.name}. Projected ${bill.period.word} cost ${protoSpendMoney(bill.cost)}. ${
         bill.tenant.name || "The tenant"
-      } pays ${protoSpendMoney(bill.due)}, including VAT at ${bill.rate}%.`;
+      } pays ${protoSpendMoney(bill.due)}${bill.taxes.length ? `, including ${protoReportTaxRates(bill)}` : ""}.`;
     }
     return `${all.bills.length} tenants on ${all.sites} ${all.sites === 1 ? "site" : "sites"}. Projected ${
       all.period.word
-    } cost ${protoSpendMoney(all.cost)}. Tenants pay ${protoSpendMoney(all.due)} in all, including VAT.`;
+    } cost ${protoSpendMoney(all.cost)}. Tenants pay ${protoSpendMoney(all.due)} in all, including tax.`;
   }
   if (def.type === "alert") {
     const totals = protoReportAlertTotals(def);
@@ -9588,8 +9621,13 @@ function protoReportDraftIssueBase(draft) {
           }
         }
       }
-      const vat = String(tenant.vat ?? "").trim();
-      if (vat === "" || !(Number(vat) >= 0 && Number(vat) <= 100)) return `VAT for ${who} must be between 0 and 100%.`;
+      for (const tax of tenant.taxes || []) {
+        const rate = String(tax.rate ?? "").trim();
+        if (rate === "" || !(Number(rate) >= 0 && Number(rate) <= 100)) {
+          return `The tax rate for ${who} must be between 0 and 100%.`;
+        }
+        if (Number(rate) > 0 && !String(tax.name || "").trim()) return `Add a tax name for ${who}.`;
+      }
     }
     return "";
   }
@@ -9625,8 +9663,8 @@ function protoReportDraftPreview(draft) {
     return `${all.bills.length} bills, one for each tenant. Projected ${all.period.word} cost ${protoSpendMoney(
       all.cost
     )} across ${all.sites} ${all.sites === 1 ? "site" : "sites"}. Tenants pay ${protoSpendMoney(all.net)} plus ${protoSpendMoney(
-      all.vat
-    )} VAT, ${protoSpendMoney(all.due)} in all.`;
+      all.tax
+    )} tax, ${protoSpendMoney(all.due)} in all.`;
   }
   if (def.type === "alert") {
     const hits = protoReportAlertHits(def);
@@ -10726,34 +10764,39 @@ function protoReportDeliveryFields(draft, opts = {}) {
   `;
 }
 
+// Electricity, Gas, and Water, then Taxes, as tabs on each tenant.
+const PROTO_REPORT_TENANT_TABS = [...PROTO_REPORT_BILL_UTILS, { id: "taxes", name: "Taxes" }];
+
 function protoReportUtilTab(site) {
   const want = String(store.prototypeReportUtilTab || "");
-  return PROTO_REPORT_BILL_UTILS.some((util) => util.id === want) ? want : protoReportBillUtils(site)[0].id;
+  return PROTO_REPORT_TENANT_TABS.some((tab) => tab.id === want) ? want : protoReportBillUtils(site)[0].id;
 }
 
 function protoReportBillSplit(draft, tenant) {
   const site = protoReportSiteById(tenant.site);
-  if (!site) return `<p class="astral-muted">Pick a site to set what ${escapeHtml(
-    String(tenant.name || "").trim() || "this tenant"
-  )} pays for.</p>`;
   const who = String(tenant.name || "").trim() || "this tenant";
   const onSite = new Set(protoReportBillUtils(site).map((util) => util.id));
   const active = protoReportUtilTab(site);
-  const tabId = (util) => `${tenant.id}:${util.id}`;
-  const panels = PROTO_REPORT_BILL_UTILS.map((util) => {
-    const body = onSite.has(util.id)
-      ? protoReportUtilSplit(tenant, util, who)
-      : `<p class="astral-muted">${escapeHtml(site.name)} has no ${util.name.toLowerCase()} meters.</p>`;
-    return `<div class="astral-report-util-panel" role="tabpanel" aria-label="${escapeHtml(util.name)}" data-proto-report-util-panel="${escapeHtml(
-      tabId(util)
-    )}"${util.id === active ? "" : " hidden"}>${body}</div>`;
+  const tabId = (tab) => `${tenant.id}:${tab.id}`;
+  const panels = PROTO_REPORT_TENANT_TABS.map((tab) => {
+    const body =
+      tab.id === "taxes"
+        ? protoReportTenantTaxes(tenant)
+        : !site
+          ? `<p class="astral-muted">Pick a site to set what ${escapeHtml(who)} pays for.</p>`
+          : onSite.has(tab.id)
+            ? protoReportUtilSplit(tenant, tab, who)
+            : `<p class="astral-muted">${escapeHtml(site.name)} has no ${tab.name.toLowerCase()} meters.</p>`;
+    return `<div class="astral-report-util-panel" role="tabpanel" aria-label="${escapeHtml(tab.name)}" data-proto-report-util-panel="${escapeHtml(
+      tabId(tab)
+    )}"${tab.id === active ? "" : " hidden"}>${body}</div>`;
   }).join("");
   return `
     <div class="astral-report-util-tabs">${protoTabs(
-      PROTO_REPORT_BILL_UTILS.map((util) => ({ id: tabId(util), name: util.name })),
+      PROTO_REPORT_TENANT_TABS.map((tab) => ({ id: tabId(tab), name: tab.name })),
       `${tenant.id}:${active}`,
       "data-proto-report-util-tab",
-      "Utilities"
+      "Charges and taxes"
     )}</div>
     ${panels}
   `;
@@ -10839,14 +10882,16 @@ function protoReportUtilSplit(tenant, util, who) {
 }
 
 function protoReportTenantTaxes(tenant) {
+  const tax = (tenant.taxes || [])[0] || { id: "tax-1", name: "", rate: "" };
+  const field = (key) => `tenant:${tenant.id}:tax:${tax.id}:${key}`;
   return `
-    <fieldset class="astral-report-split astral-report-taxes">
-      <legend>Taxes</legend>
+    <div class="astral-report-taxes">
       <div class="astral-report-pair">
-        ${protoReportUnitInput("VAT", `tenant:${tenant.id}:vat`, tenant.vat, "%", "20")}
+        ${protoReportInput("Tax name", field("name"), tax.name, 'maxlength="40" placeholder="VAT"')}
+        ${protoReportUnitInput("Tax rate", field("rate"), tax.rate, "%", "20")}
       </div>
-      <p class="astral-muted">Added on top of what they pay.</p>
-    </fieldset>
+      <p class="astral-muted">Added on top of what they pay. Use 0% if they pay no tax.</p>
+    </div>
   `;
 }
 
@@ -10908,7 +10953,6 @@ function protoReportTenantFold(draft, tenant, i, openId) {
         ${protoReportInput("Tenant emails", field("email"), tenant.email, 'inputmode="email" placeholder="accounts@tenant.com, name@tenant.com"')}
       </div>
       ${protoReportBillSplit(draft, tenant)}
-      ${protoReportTenantTaxes(tenant)}
       <p class="astral-report-preview" data-proto-report-tenant-bill="${escapeHtml(tenant.id)}">${escapeHtml(
         protoReportTenantBillLine(protoReportDraftDef(draft), protoReportTenantsOf(protoReportDraftDef(draft))[i] || tenant)
       )}</p>
@@ -11550,9 +11594,9 @@ function protoReportRows(def) {
         "from",
         "to",
         "projected cost (GBP)",
-        "tenant pays before VAT (GBP)",
-        "VAT (%)",
-        "VAT (GBP)",
+        "tenant pays before tax (GBP)",
+        "taxes",
+        "tax (GBP)",
         "amount payable (GBP)",
       ],
       ...all.bills.map((bill) => [
@@ -11563,8 +11607,8 @@ function protoReportRows(def) {
         protoFormatUkDate(to),
         bill.cost.toFixed(2),
         bill.net.toFixed(2),
-        bill.rate,
-        bill.vat.toFixed(2),
+        protoReportTaxRates(bill),
+        bill.tax.toFixed(2),
         bill.due.toFixed(2),
       ]),
       [],
@@ -11575,7 +11619,7 @@ function protoReportRows(def) {
         "standing charge share (%)",
         "usage cost (GBP)",
         "usage share (%)",
-        "tenant pays before VAT (GBP)",
+        "tenant pays before tax (GBP)",
       ],
       ...all.bills.flatMap((bill) =>
         bill.lines.filter((line) => line.pays).map((line) => [
@@ -11589,7 +11633,7 @@ function protoReportRows(def) {
         ])
       ),
       [],
-      ["tenant", "meter", "utility", "usage cost (GBP)", "usage share (%)", "tenant pays before VAT (GBP)"],
+      ["tenant", "meter", "utility", "usage cost (GBP)", "usage share (%)", "tenant pays before tax (GBP)"],
       ...all.bills.flatMap((bill) =>
         bill.lines.filter((line) => line.pays).flatMap((line) =>
           line.meters.map((meter, m) => {
@@ -28927,12 +28971,19 @@ function onPrototypeInput(event) {
       protoReportRefreshForm();
       return;
     }
+    const taxField = (tenant) =>
+      bits[2] === "tax"
+        ? {
+            ...tenant,
+            taxes: (tenant.taxes?.length ? tenant.taxes : [{ id: bits[3], name: "", rate: "" }]).map((tax) =>
+              tax.id === bits[3] ? { ...tax, [bits[4]]: value } : tax
+            ),
+          }
+        : { ...tenant, [bits[2]]: value };
     store.prototypeReportDraft = bits
       ? {
           ...draft,
-          tenants: protoReportTenantsOf(draft).map((tenant) =>
-            tenant.id === bits[1] ? { ...tenant, [bits[2]]: value } : tenant
-          ),
+          tenants: protoReportTenantsOf(draft).map((tenant) => (tenant.id === bits[1] ? taxField(tenant) : tenant)),
         }
       : { ...draft, [key]: value };
     protoReportRefreshForm();
