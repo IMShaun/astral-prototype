@@ -10432,6 +10432,18 @@ tr.is-off .astral-person-mark {
   font-weight: 500;
 }
 
+.astral-report-split-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.astral-report-split-head .astral-report-split-ask {
+  margin-top: 0;
+}
+
 .astral-report-util-tabs {
   display: flex;
   min-width: 0;

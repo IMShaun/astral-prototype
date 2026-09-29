@@ -9658,6 +9658,30 @@ function protoReportInput(label, field, value, attrs = "") {
   );
 }
 
+// A number with its unit grey beside it, like the site attributes.
+function protoReportUnitInput(label, field, value, unit, placeholder = "") {
+  const unitId = `astral-report-unit-${String(field).replace(/[^a-z0-9-]/gi, "-")}`;
+  return `
+    <label class="astral-field">
+      <span>${escapeHtml(label)}</span>
+      <span class="astral-input-unit">
+        <input
+          type="text"
+          name="proto-report-${escapeHtml(field)}"
+          data-proto-report-field="${escapeHtml(field)}"
+          value="${escapeHtml(value ?? "")}"
+          inputmode="decimal"
+          autocomplete="off"
+          spellcheck="false"
+          ${placeholder ? `placeholder="${escapeHtml(placeholder)}"` : ""}
+          aria-describedby="${escapeHtml(unitId)}"
+        />
+        <span class="astral-field-unit" id="${escapeHtml(unitId)}">${escapeHtml(unit)}</span>
+      </span>
+    </label>
+  `;
+}
+
 function protoReportSitesSelect(draft) {
   const sites = protoEstateSites();
   const alert = draft.type === "alert";
@@ -10316,13 +10340,15 @@ function protoReportRateCheckModal(draft) {
   const changes = protoReportRateChanges(draft);
   if (!changes.length) return "";
   const show = (value, unit) => (value === "" ? "Not set" : `${value} ${unit}`);
+  const sites = [...new Set(changes.map((change) => change.site))];
+  const title = sites.length === 1 ? `Update the site settings for ${sites[0]}?` : "Update the site settings?";
   return `
     <div class="astral-modal-back" data-proto-modal="report-rates">
       <div class="astral-modal astral-report-rate-check" role="dialog" aria-modal="true" aria-labelledby="astral-report-rates-title">
         ${protoModalHead(
           "astral-report-rates-title",
-          "Update the site profile?",
-          "Saving changes these charges in the site profile too. Reports and charts that use them will change. Is this right?",
+          title,
+          "Saving this report changes these charges for every meter that follows the site. Cost graphs and other reports use them too. Are they right?",
           "report-rates"
         )}
         <div class="astral-modal-body">
@@ -10333,8 +10359,8 @@ function protoReportRateCheckModal(draft) {
         </div>
         <div class="astral-modal-foot">
           <div class="astral-actions">
-            ${protoBtn("Yes, save and update", 'data-proto-report-rate-check="yes"')}
-            ${protoGhost("No, go back", 'data-proto-modal-close="report-rates"')}
+            ${protoBtn("Save and update", 'data-proto-report-rate-check="yes"')}
+            ${protoGhost("Go back", 'data-proto-modal-close="report-rates"')}
           </div>
         </div>
       </div>
@@ -10717,7 +10743,7 @@ function protoReportBillSplit(draft, tenant) {
   const panels = PROTO_REPORT_BILL_UTILS.map((util) => {
     const body = onSite.has(util.id)
       ? protoReportUtilSplit(tenant, util, who)
-      : `<p class="astral-muted">${escapeHtml(site.name)} has no ${util.name.toLowerCase()} meters, so there is nothing to share.</p>`;
+      : `<p class="astral-muted">${escapeHtml(site.name)} has no ${util.name.toLowerCase()} meters.</p>`;
     return `<div class="astral-report-util-panel" role="tabpanel" aria-label="${escapeHtml(util.name)}" data-proto-report-util-panel="${escapeHtml(
       tabId(util)
     )}"${util.id === active ? "" : " hidden"}>${body}</div>`;
@@ -10739,24 +10765,26 @@ function protoReportSiteCharges(tenant, util) {
   const siteId = String(protoSiteId(site));
   const own = (site.meters || []).filter(
     (meter) => protoReportMeterUtil(meter) === util.id && protoReportMeterOwnRates(meter)
-  ).length;
+  );
+  const ownNames = own.map((meter) => protoMeterName(meter));
+  const ownLine = ownNames.length
+    ? ` ${ownNames.join(", ")} ${ownNames.length === 1 ? "sets its" : "set their"} own rates, so ${
+        ownNames.length === 1 ? "it keeps them" : "they keep them"
+      }.`
+    : "";
   return `
-    <span class="astral-report-split-ask">Site charges</span>
+    <div class="astral-report-split-head">
+      <span class="astral-report-split-ask">Site charges</span>
+      ${protoMeterSourceTag(false)}
+    </div>
     <div class="astral-report-rates">
       ${protoReportRateSpec(util)
-        .map((item) =>
-          protoReportInput(
-            `${item.label} (${item.unit})`,
-            `rate:${siteId}:${item.key}`,
-            attrs[item.key],
-            'inputmode="decimal"'
-          )
-        )
+        .map((item) => protoReportUnitInput(item.label, `rate:${siteId}:${item.key}`, attrs[item.key], item.unit))
         .join("")}
     </div>
-    <p class="astral-muted">From the site profile for ${escapeHtml(site.name)}. Change them here and we check with you before the site profile updates.${
-      own ? ` ${own} ${own === 1 ? "meter uses its" : "meters use their"} own rates.` : ""
-    }</p>
+    <p class="astral-muted">From the site settings for ${escapeHtml(site.name)}. Change one and you check it before the site updates.${escapeHtml(
+      ownLine
+    )}</p>
   `;
 }
 
@@ -10795,18 +10823,14 @@ function protoReportUtilSplit(tenant, util, who) {
       ${protoReportSiteCharges(tenant, util)}
       <span class="astral-report-split-ask">What share do they pay?</span>
       <div class="astral-report-pair">
-        ${protoReportInput(
-          "Standing charge share (%)",
+        ${protoReportUnitInput(
+          "Standing charge share",
           `tenant:${tenant.id}:${util.id}Standing`,
           tenant[`${util.id}Standing`],
-          'inputmode="decimal" placeholder="50"'
+          "%",
+          "50"
         )}
-        ${protoReportInput(
-          "Usage share (%)",
-          `tenant:${tenant.id}:${util.id}Usage`,
-          tenant[`${util.id}Usage`],
-          'inputmode="decimal" placeholder="50"'
-        )}
+        ${protoReportUnitInput("Usage share", `tenant:${tenant.id}:${util.id}Usage`, tenant[`${util.id}Usage`], "%", "50")}
       </div>`
           : ""
       }
@@ -10819,9 +10843,9 @@ function protoReportTenantTaxes(tenant) {
     <fieldset class="astral-report-split astral-report-taxes">
       <legend>Taxes</legend>
       <div class="astral-report-pair">
-        ${protoReportInput("VAT (%)", `tenant:${tenant.id}:vat`, tenant.vat, 'inputmode="decimal" placeholder="20"')}
+        ${protoReportUnitInput("VAT", `tenant:${tenant.id}:vat`, tenant.vat, "%", "20")}
       </div>
-      <p class="astral-muted">VAT goes on top of what they pay for each utility.</p>
+      <p class="astral-muted">Added on top of what they pay.</p>
     </fieldset>
   `;
 }
