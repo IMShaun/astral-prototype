@@ -9078,6 +9078,25 @@ button.astral-state {
   color: #000;
 }
 
+.astral-tip-zones:has(> .astral-tip-zone-group) {
+  gap: 8px;
+}
+
+.astral-tip-zone-group {
+  display: grid;
+  gap: 4px;
+}
+
+.astral-tip-zone-head {
+  margin: 0;
+  color: #000;
+  font-weight: 600;
+}
+
+.astral-tip-zone-group .astral-tip-zone-state {
+  color: var(--color-text-secondary);
+}
+
 .astral-tip-zone-pills {
   display: flex;
   flex: none;

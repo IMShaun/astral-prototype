@@ -3460,7 +3460,12 @@ function protoZoneSpokenParts(parts) {
 
 function protoZoneTipAttrs(bucket, zones) {
   if (bucket?.groups) {
-    const lines = bucket.groups.map((line) => [line.words, line.parts.map((part) => [part.utility, part.sites])]);
+    const lines = bucket.groups.map((line) => [
+      line.words,
+      line.parts.map((part) => [part.utility, part.sites]),
+      line.hours,
+      line.tou,
+    ]);
     return `data-tip-zones="${escapeHtml(JSON.stringify(lines))}"`;
   }
   return `data-tip-zone="${escapeHtml(protoZoneWords(bucket, zones).replace(/^\. /, ""))}"`;
@@ -3477,10 +3482,16 @@ function protoReadZones(raw) {
   }
   if (!Array.isArray(list)) return [];
   return list
-    .map((row) => (row && !Array.isArray(row) && typeof row === "object" ? [row.words, (row.parts || []).map((part) => [part?.utility, part?.sites])] : row))
+    .map((row) =>
+      row && !Array.isArray(row) && typeof row === "object"
+        ? [row.words, (row.parts || []).map((part) => [part?.utility, part?.sites]), row.hours, row.tou]
+        : row
+    )
     .filter((row) => Array.isArray(row) && Array.isArray(row[1]))
     .map((row) => ({
       words: String(row[0] || ""),
+      hours: String(row[2] || ""),
+      tou: String(row[3] || ""),
       parts: row[1]
         .filter((part) => Array.isArray(part) && Array.isArray(part[1]))
         .map((part) => ({ utility: String(part[0] || ""), sites: part[1].map(String) })),
@@ -3502,16 +3513,26 @@ function protoZoneUtilityPill({ utility, sites }) {
   )}<span>${n}</span><span class="astral-icon-tip is-list">${head}${lines}</span></span>`;
 }
 
-function protoChartZoneLines(point, limit = 0) {
+// With hours and time of use both on, each hours state is a heading and its rows are Peak and Off-peak.
+function protoChartZoneLines(point) {
   const zones = point?.zones || [];
-  return (limit ? zones.slice(0, limit) : zones)
+  const row = ({ words, parts }, name) =>
+    `<p class="astral-tip-zone"><span class="astral-tip-zone-state" aria-hidden="true">${escapeHtml(
+      name || words
+    )}</span><span class="astral-tip-zone-pills">${parts.map(protoZoneUtilityPill).join("")}</span><span class="sr-only">${escapeHtml(
+      `${words}: ${protoZoneSpokenParts(parts)}`
+    )}</span></p>`;
+  if (!zones.every((zone) => zone.hours && zone.tou)) return zones.map((zone) => row(zone)).join("");
+  const heads = [...new Set(zones.map((zone) => zone.hours))];
+  return heads
     .map(
-      ({ words, parts }) =>
-        `<p class="astral-tip-zone"><span class="astral-tip-zone-state" aria-hidden="true">${escapeHtml(
-          words
-        )}</span><span class="astral-tip-zone-pills">${parts.map(protoZoneUtilityPill).join("")}</span><span class="sr-only">${escapeHtml(
-          `${words}: ${protoZoneSpokenParts(parts)}`
-        )}</span></p>`
+      (head) =>
+        `<div class="astral-tip-zone-group"><p class="astral-tip-zone-head" aria-hidden="true">${escapeHtml(
+          head
+        )}</p>${zones
+          .filter((zone) => zone.hours === head)
+          .map((zone) => row(zone, zone.tou))
+          .join("")}</div>`
     )
     .join("");
 }
@@ -3669,8 +3690,11 @@ function protoZoneStateLines(rows, allMeters, zones, { utilities, drawn, utility
       if (!by.has(set.utility)) by.set(set.utility, new Set());
       set.meters.forEach((meter) => by.get(set.utility).add(meter.site || ""));
     });
-    return [...merged.values()].map((line) => ({
+    const rank = (line) => ["on", "non", "closed"].indexOf(line.bucket.kind) * 2 + (line.bucket.peak ? 0 : 1);
+    return [...merged.values()].sort((a, b) => rank(a) - rank(b)).map((line) => ({
       words: line.words,
+      hours: zones.showHours ? PROTO_ZONE_NAMES[line.bucket.kind] : "",
+      tou: zones.showTou ? (line.bucket.peak ? "Peak" : "Off-peak") : "",
       bucket: line.bucket,
       parts: PROTO_ZONE_UTILITIES.filter((name) => line.by.has(name)).map((name) => ({
         utility: name,
@@ -5362,12 +5386,7 @@ function protoPinMoreBtn(part, open, label) {
 function protoPinBody(point) {
   const state = protoPinMoreState(point);
   const zones = point?.zones || [];
-  const zoneRest = Math.max(0, zones.length - PROTO_HOVER_SLICE_MAX);
-  const zoneHtml = zones.length
-    ? `<div class="astral-tip-zones">${protoChartZoneLines(point, state.zones ? 0 : PROTO_HOVER_SLICE_MAX)}${
-        zoneRest ? protoPinMoreBtn("zones", state.zones, `Show ${zoneRest} more`) : ""
-      }</div>`
-    : "";
+  const zoneHtml = zones.length ? `<div class="astral-tip-zones">${protoChartZoneLines(point)}</div>` : "";
   const slices = protoHoverSlices(point, { all: state.readings, drill: true });
   const allRows = protoPointSliceRows(point).length;
   const readRest = Math.max(0, allRows - PROTO_HOVER_SLICE_MAX);
@@ -24800,9 +24819,8 @@ function fillProtoTip(hit) {
   }
   const zonesEl = tip.querySelector(".astral-tip-zones");
   if (zonesEl) {
-    const rest = Math.max(0, (point.zones || []).length - PROTO_HOVER_SLICE_MAX);
-    const lines = protoChartZoneLines(point, PROTO_HOVER_SLICE_MAX);
-    zonesEl.innerHTML = rest ? `${lines}<p class="astral-tip-zone">+${rest} more</p>` : lines;
+    const lines = protoChartZoneLines(point);
+    zonesEl.innerHTML = lines;
     zonesEl.hidden = !lines;
   }
   const markEl = tip.querySelector(".astral-tip-marks");
