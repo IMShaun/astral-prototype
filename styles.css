@@ -10320,6 +10320,17 @@ tr.is-off .astral-person-mark {
   padding: 8px 16px;
 }
 
+/* The list can't clip its corners, as pickers open out of it, so the end heads round their own hover. */
+.astral-report-tenant:first-child > .astral-report-tenant-head {
+  border-top-left-radius: calc(var(--radius-lg) - 1px);
+  border-top-right-radius: calc(var(--radius-lg) - 1px);
+}
+
+.astral-report-tenant:last-child:not(.is-open) > .astral-report-tenant-head {
+  border-bottom-left-radius: calc(var(--radius-lg) - 1px);
+  border-bottom-right-radius: calc(var(--radius-lg) - 1px);
+}
+
 .astral-report-tenant-body {
   display: grid;
   gap: 16px;
