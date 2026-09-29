@@ -8260,10 +8260,10 @@ const PROTO_REPORT_FILE_PREFIXES = [
 ];
 
 const PROTO_REPORT_FILE_SUFFIXES = [
+  { id: "none", name: "None" },
   { id: "run", name: "Date and time it sends" },
   { id: "start", name: "Date and time the data starts" },
   { id: "end", name: "Date and time the data ends" },
-  { id: "none", name: "None" },
 ];
 
 const PROTO_REPORT_FILE_DATES = [
@@ -8654,7 +8654,7 @@ function protoReportNormalize(raw) {
       : String(raw.fileStart || "").trim()
         ? "custom"
         : "none",
-    fileSuffix: PROTO_REPORT_FILE_SUFFIXES.some((item) => item.id === raw.fileSuffix) ? raw.fileSuffix : "run",
+    fileSuffix: PROTO_REPORT_FILE_SUFFIXES.some((item) => item.id === raw.fileSuffix) ? raw.fileSuffix : "none",
     fileDate: PROTO_REPORT_FILE_DATES.some((item) => item.id === raw.fileDate) ? raw.fileDate : "iso",
     fileSep: raw.fileSep === "-" ? "-" : "_",
     sftpHost: String(raw.sftpHost || "").trim().slice(0, 120),
@@ -10713,7 +10713,8 @@ function protoReportFileName(raw, sendDate) {
   const def = protoReportNormalize(raw);
   const when = sendDate || protoReportNextSend(def) || protoToday();
   const bits = [protoReportFilePrefixText(def, raw), protoReportFileSuffixText(def, when)];
-  if (!bits.some(Boolean)) bits.push("report");
+  // With no prefix and no suffix the file takes the report name.
+  if (!bits.some(Boolean)) bits.push(protoReportFilePrefixText({ ...def, filePrefix: "name" }, raw));
   const ext = def.type === "billing" ? "pdf" : def.format === "xlsx" ? "xlsx" : "csv";
   return `${bits.filter(Boolean).join(def.fileSep)}.${ext}`;
 }
