@@ -9983,7 +9983,8 @@ function protoReportBackLabel() {
 
 function protoReportPage() {
   const id = protoReportEditId();
-  const def = protoReportDef(id);
+  const isNew = id === "new";
+  const def = isNew ? null : protoReportDef(id);
   const draft = protoReportDraft() || protoReportDraftFrom(def);
   const type = protoReportTypeFor(draft);
   const issue = protoReportDraftIssue(draft);
@@ -9991,9 +9992,10 @@ function protoReportPage() {
   const alert = protoReportTabOf(draft.type) === "alerts";
   const groups = protoReportGroups(draft, { page: true });
   const group = groups.find((item) => item.id === protoReportGroupId(groups));
+  const title = isNew ? (alert ? "Add an alert" : "Add a report") : def.name;
   return astralShell(`
     ${astralPageHead(
-      def.name,
+      title,
       "",
       `<div class="astral-page-actions">${protoTag(type.short, type.blurb, `is-${draft.type}`)}</div>`,
       protoBackLink(protoReportBackLabel(), 'data-proto-report-edit="cancel"')
@@ -10004,6 +10006,7 @@ function protoReportPage() {
           `<div class="astral-detail-head"><div>${protoDetailTitle("Settings", type.blurb)}</div></div>
           ${protoTabs(groups, group.id, "data-proto-report-group", alert ? "Alert settings" : "Report settings")}`,
           `<div class="astral-report-fields" role="tabpanel" aria-label="${escapeHtml(group.name)}">
+            ${isNew && group.id === "details" ? protoReportTypePicker(draft) : ""}
             ${
               group.id === "details"
                 ? protoReportInput(
@@ -10025,23 +10028,33 @@ function protoReportPage() {
       <div class="astral-card astral-report-page-foot">
         ${protoReportConsentHost(draft)}
         <div class="astral-actions">
-          ${protoBtn("Save changes", "", { type: "submit", disabled: Boolean(issue) })}
+          ${protoBtn(isNew ? (alert ? "Add alert" : "Add report") : "Save changes", "", {
+            type: "submit",
+            disabled: Boolean(issue),
+          })}
           ${protoGhost("Cancel", 'data-proto-report-edit="cancel"')}
           <p class="astral-muted astral-report-issue" data-proto-report-issue${issue ? "" : " hidden"}>${escapeHtml(
             issue
           )}</p>
-          ${protoTextBtn(protoReportTabOf(draft.type) === "alerts" ? "Delete alert" : "Delete report", `data-proto-report-delete="${escapeHtml(id)}"`, {
-            className: "astral-report-delete",
-          })}
+          ${
+            isNew
+              ? ""
+              : protoTextBtn(alert ? "Delete alert" : "Delete report", `data-proto-report-delete="${escapeHtml(id)}"`, {
+                  className: "astral-report-delete",
+                })
+          }
         </div>
       </div>
     </form>
   `);
 }
 
+// Adding and editing share one page. A new one opens on the first type, so every field is there to fill in.
 function protoReportPageOpen() {
   const id = protoReportEditId();
-  return Boolean(id && id !== "new" && protoCanEditReports() && protoReportDef(id));
+  if (!id || !protoCanEditReports()) return false;
+  if (id === "new") return protoCanAddReports() && Boolean(protoReportDraft());
+  return Boolean(protoReportDef(id));
 }
 
 function protoReportTestSig(draft) {
@@ -10652,82 +10665,6 @@ function protoReportSoonCards(tab = "reports") {
   `;
 }
 
-function protoReportEditModal() {
-  const id = protoReportEditId();
-  if (id !== "new" || !protoCanEditReports()) return "";
-  const isNew = true;
-  const alerts = protoReportNewTab() === "alerts";
-  const draft = protoReportDraft();
-  const type = draft ? protoReportType(draft.type) : null;
-  const issue = protoReportDraftIssue(draft);
-  const preview = protoReportDraftPreview(draft);
-  const lead = alerts
-    ? "Pick a type, then say what it watches and who hears about it."
-    : isNew
-      ? "Pick a type, then say what it covers and who gets it."
-      : `${type?.name || "Report"}. ${type?.blurb || ""}`;
-  return `
-    <div class="astral-modal-back" data-proto-modal="report">
-      <div
-        id="astral-report-edit"
-        class="astral-modal astral-report-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="astral-report-edit-title"
-        data-proto-report-edit-form
-      >
-        ${protoModalHead(
-          "astral-report-edit-title",
-          isNew ? (alerts ? "Add an alert" : "Add a report") : "Edit report",
-          lead,
-          "report"
-        )}
-        <form data-proto-report-edit-form novalidate>
-          <div class="astral-modal-body">
-            ${isNew ? protoReportTypePicker(draft) : ""}
-            ${
-              draft
-                ? `
-                  ${protoReportInput(
-                    protoReportTabOf(draft.type) === "alerts" ? "Alert name" : "Report name",
-                    "name",
-                    draft.name,
-                    `maxlength="80" placeholder="${escapeHtml(protoReportAutoName(protoReportDraftDef(draft)))}"`
-                  )}
-                  ${protoReportTypeFields(draft)}
-                  <p class="astral-report-preview" data-proto-report-preview${
-                    preview ? "" : " hidden"
-                  }>${escapeHtml(preview)}</p>
-                `
-                : ""
-            }
-          </div>
-          <div class="astral-modal-foot">
-            ${draft ? protoReportConsentHost(draft) : ""}
-            <p class="astral-muted astral-report-issue" data-proto-report-issue${
-              issue ? "" : " hidden"
-            }>${escapeHtml(draft ? issue : `Pick ${alerts ? "an alert" : "a report"} type.`)}</p>
-            <div class="astral-actions">
-              ${protoBtn(isNew ? (alerts ? "Add alert" : "Add report") : "Save changes", "", {
-                type: "submit",
-                disabled: Boolean(issue),
-              })}
-              ${protoGhost("Cancel", 'data-proto-report-edit="cancel"')}
-              ${
-                isNew
-                  ? ""
-                  : protoTextBtn("Delete report", `data-proto-report-delete="${escapeHtml(id)}"`, {
-                      className: "astral-report-delete",
-                    })
-              }
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-  `;
-}
-
 function protoReportRefreshForm() {
   const modal = document.querySelector("#astral-fs form[data-proto-report-edit-form]");
   const draft = protoReportDraft();
@@ -10794,10 +10731,13 @@ function protoReportOpenEdit(id) {
   const view = protoState().view;
   const from = view === "downloads" || view === PROTO_ALERT_RULES_VIEW ? view : "reports";
   const tab = def ? protoReportTabOf(def.type) : from === PROTO_ALERT_RULES_VIEW ? "alerts" : "reports";
+  const firstPick = def ? "" : String(protoReportPickTypes(tab)[0]?.id || "");
+  const firstTpl = firstPick.startsWith("tpl:") ? firstPick.slice(4) : "";
+  const fresh = def ? null : protoReportNewDraft(firstTpl ? "extract" : protoReportTypeId(firstPick), firstTpl);
   setProto({
     prototypeReportEdit: id,
     prototypeReportFrom: from,
-    prototypeReportDraft: def ? protoReportDraftFrom(def) : null,
+    prototypeReportDraft: def ? protoReportDraftFrom(def) : fresh,
     prototypeReportDraftStart: def ? def.start : protoFormatUkDate(protoToday()),
     prototypeReportDraftFrom: def ? def.from : "",
     prototypeReportDraftTo: def ? def.to : "",
@@ -10807,22 +10747,16 @@ function protoReportOpenEdit(id) {
     prototypeReportSample: null,
     prototypeReportCal: "",
     prototypeReportGroup: "details",
-    prototypeReportTenantOpen: def?.tenants?.length === 1 ? def.tenants[0].id : "",
+    prototypeReportTenantOpen: def?.tenants?.length === 1 ? def.tenants[0].id : fresh?.tenants?.[0]?.id || "",
     prototypeSelectOpen: "",
-    ...(def
-      ? {
-          activePrototypeView: tab === "alerts" ? PROTO_ALERT_RULES_VIEW : "reports",
-        }
-      : {}),
+    activePrototypeView: tab === "alerts" ? PROTO_ALERT_RULES_VIEW : "reports",
   });
-  if (def) {
-    document.querySelector("#astral-fs .astral-stage-body")?.scrollTo(0, 0);
-    protoPageSlide("in");
-  }
+  document.querySelector("#astral-fs .astral-stage-body")?.scrollTo(0, 0);
+  protoPageSlide("in");
   protoRestoreFocus(
     def
       ? '#astral-fs input[name="proto-report-name"]'
-      : `#astral-fs [data-proto-report-type="${protoReportPickTypes(tab)[0]?.id || ""}"]`
+      : `#astral-fs [data-proto-report-type="${CSS.escape(firstPick)}"]`
   );
 }
 
@@ -11528,17 +11462,16 @@ function protoReportsDownloadsTabs(active) {
 }
 
 function protoReportsAreaHead(active) {
-  const open = protoReportEditId() === "new" ? "true" : "false";
   const addBtn =
     active === "reports" && protoCanAddReports()
       ? protoBtn(
           "Add a report",
-          `data-proto-report-edit="new" aria-haspopup="dialog" aria-expanded="${open}" aria-controls="astral-report-edit"`
+          `data-proto-report-edit="new"`
         )
       : active === PROTO_ALERT_RULES_VIEW && protoCanAddReports()
         ? protoBtn(
             "Add an alert",
-            `data-proto-report-edit="new" aria-haspopup="dialog" aria-expanded="${open}" aria-controls="astral-report-edit"`
+            `data-proto-report-edit="new"`
           )
         : "";
   const title = protoAlertsArea(active) ? "Alerts" : "Reports and compliance";
@@ -17481,7 +17414,6 @@ function protoDownloadsSection() {
 function protoDownloadsPage() {
   return astralShell(`
     ${protoReportsAreaHead("downloads")}
-    ${protoReportEditModal()}
     ${protoDownloadsSection()}
   `);
 }
@@ -20777,7 +20709,7 @@ function protoReportTable(tab, defs) {
 function protoReportsSheet(active, defs, empty) {
   const tab = active === PROTO_ALERT_RULES_VIEW ? "alerts" : "reports";
   const cardTabs = tab === "alerts" ? protoAlertsCardTabs(active) : protoReportsCardTabs(active);
-  const top = `${protoReportsAreaHead(active)}${protoReportNoticeHtml()}${protoReportEditModal()}`;
+  const top = `${protoReportsAreaHead(active)}${protoReportNoticeHtml()}`;
   if (!defs.length) {
     return astralShell(`
       ${top}
@@ -29044,10 +28976,6 @@ function onPrototypeKey(event) {
     }
     if (store.prototypeNoticeOpen) {
       setProto({ prototypeNoticeOpen: false });
-      return;
-    }
-    if (store.prototypeReportEdit === "new") {
-      protoCloseModal("report");
       return;
     }
     if (store.prototypeColourOpen) {

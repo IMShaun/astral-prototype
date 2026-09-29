@@ -10198,16 +10198,6 @@ tr.is-off .astral-person-mark {
   max-width: none;
 }
 
-.astral-modal.astral-report-modal {
-  width: min(38rem, 100%);
-  max-height: min(48rem, calc(100vh - 48px));
-}
-
-.astral-report-modal .astral-modal-body {
-  position: relative;
-  z-index: 3;
-}
-
 .astral-report-type-field {
   display: grid;
   gap: 8px;
@@ -10338,7 +10328,7 @@ tr.is-off .astral-person-mark {
 
 .astral-report-types {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
   gap: 8px;
 }
 
@@ -10391,11 +10381,6 @@ tr.is-off .astral-person-mark {
 
 .astral-report-pair .astral-day-cal .astral-field > span {
   font-weight: 600;
-}
-
-.astral-report-modal .astral-modal-body > p.astral-muted {
-  margin: -8px 0 0;
-  font-size: 0.875rem;
 }
 
 .astral-report-preview {
@@ -10518,10 +10503,6 @@ tr.is-off .astral-person-mark {
 .astral-report-fields input[readonly] {
   color: var(--color-text-secondary);
   background: var(--color-background-subtle);
-}
-
-.astral-report-modal .astral-modal-foot .astral-actions {
-  align-items: center;
 }
 
 .astral-report-delete {
