@@ -18327,15 +18327,7 @@ function protoGroupDetail(group) {
           ? `<p class="astral-banner">No reading in ${missing} intervals. That is missing data, not zero use.</p>`
           : ""
       }
-      ${
-        viewMeters.length && !protoConsumptionUnitsMixed(viewMeters)
-          ? protoTrackBreakdownTable(protoScaleTracks(siteTracks, viewMeters), {
-              chart: protoPaneChartLabel(dual && !protoChartIsIndividual()),
-              by: "site",
-              note: protoBreakdownCountNote,
-            })
-          : ""
-      }
+      ${protoPaneBreakdown({ tracks: siteTracks, points, meters: viewMeters, dual, by: "site" })}
       ${rows ? protoPaneListTable(["Site", protoBelowSiteHeading(2), "State"], rows, "Sites") : ""}
           `
   );
@@ -18480,13 +18472,17 @@ function protoCompareDetail() {
       }
       ${
         bundle.level !== "group" && meters.length > 1
-          ? protoMeterCompareTable(meters, allMeters, { chart: protoPaneChartLabel(false), site: true })
+          ? protoChartIsIndividual()
+            ? protoMeterCompareTable(meters, allMeters, { chart: protoPaneChartLabel(false), site: true })
+            : protoPaneBreakdown({ tracks, points: protoTracksToTotalPoints(tracks), meters, dual: false })
           : `${
-              bundle.level === "group" && meters.length && !protoConsumptionUnitsMixed(meters)
-                ? protoTrackBreakdownTable(scaledTracks, {
-                    chart: protoPaneChartLabel(false),
+              bundle.level === "group"
+                ? protoPaneBreakdown({
+                    tracks,
+                    points: protoTracksToTotalPoints(tracks),
+                    meters,
+                    dual: false,
                     by: "group",
-                    note: protoBreakdownCountNote,
                   })
                 : ""
             }${
@@ -18937,18 +18933,13 @@ function protoPortfolioDetail() {
             ? `<p class="astral-banner">No reading in ${missing} intervals. That is missing data, not zero use.</p>`
             : ""
         }
-        ${
-          viewMeters.length > 1
-            ? protoMeterCompareTable(viewMeters, protoMetersForPane(currentSite.meters), {
-                chart: protoPaneChartLabel(dual),
-              })
-            : viewMeters.length && !protoChartIsLine() && !protoConsumptionUnitsMixed(viewMeters)
-            ? protoIntervalTable(
-                protoScalePoints(protoChannelSeries(currentSite, flow.channel), viewMeters),
-                dual
-              )
-            : ""
-        }
+        ${protoPaneBreakdown({
+          tracks: protoMeterTracks(viewMeters, protoMetersForPane(currentSite.meters)),
+          points: protoMetersSeries(viewMeters, protoMetersFlow(viewMeters).channel),
+          meters: viewMeters,
+          dual,
+          by: protoBelowSiteNoun(1),
+        })}
             `
         );
   }
@@ -19488,6 +19479,66 @@ function protoMeterCompareTable(meters, all, options = {}) {
   });
 }
 
+// Total on the graph is one series, or In and Out, so the Breakdown shows the same columns and the same numbers.
+function protoTotalBreakdownTracks(points, meters, dual) {
+  const list = points || [];
+  const pool = meters || [];
+  if (!dual) {
+    return [
+      {
+        id: "total",
+        ref: pool.length === 1 ? protoMeterRef(pool[0]) : "Total",
+        meters: pool,
+        color: protoIncomingInk(),
+        points: list,
+      },
+    ];
+  }
+  const inMeters = pool.filter((meter) => meter.direction !== "Export");
+  const outMeters = pool.filter((meter) => meter.direction === "Export");
+  const slices = protoChartStackSlices();
+  const tracks = [];
+  if (protoChartFlowOn("in")) {
+    tracks.push({ id: "in", ref: "Incoming", meters: inMeters, color: protoIncomingInk(), points: list });
+  }
+  if (protoChartFlowOn("out")) {
+    tracks.push({
+      id: "out",
+      ref: "Outgoing",
+      meters: outMeters,
+      color: protoOutgoingInk(),
+      points: list.map((point) => ({
+        ...point,
+        value: point.last,
+        quality: point.lastQuality || point.quality,
+        ...(point.zoneStacks
+          ? { zoneStacks: protoVisibleStacks(protoPointStacks(point, outMeters[0] || pool[0], slices, "last")) }
+          : {}),
+      })),
+    });
+  }
+  return tracks;
+}
+
+// The Breakdown follows the graph: Total gives its total (or In and Out), Individual gives a column per series.
+function protoPaneBreakdown({ tracks, points, meters, dual, by }) {
+  const list = meters || [];
+  if (!list.length || protoConsumptionUnitsMixed(list)) return "";
+  if (protoChartIsIndividual()) {
+    return protoTrackBreakdownTable(protoScaleTracks(tracks, list), {
+      chart: protoPaneChartLabel(false),
+      by,
+      note: by === protoBelowSiteNoun(1) ? (track, unit) => unit : protoBreakdownCountNote,
+    });
+  }
+  return protoTrackBreakdownTable(protoTotalBreakdownTracks(protoScalePoints(points, list), list, dual), {
+    chart: protoPaneChartLabel(Boolean(dual)),
+    by: "total",
+    note: protoBreakdownCountNote,
+    totals: false,
+  });
+}
+
 // One column per series on the chart (meter, site, or group), a row per interval, then totals.
 function protoTrackBreakdownTable(tracks, options = {}) {
   const n = Math.max(0, ...tracks.map((track) => (track.points || []).length));
@@ -19501,7 +19552,7 @@ function protoTrackBreakdownTable(tracks, options = {}) {
   const outIdx = tracks.flatMap((track, i) => (track.meter?.direction === "Export" ? [i] : []));
   const inIdx = tracks.flatMap((track, i) => (track.meter?.direction === "Export" ? [] : [i]));
   const totals =
-    units.length !== 1 || tracks.length < 2
+    options.totals === false || units.length !== 1 || tracks.length < 2
       ? []
       : outIdx.length && inIdx.length
         ? [
