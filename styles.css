@@ -9253,19 +9253,6 @@ button.astral-state {
   width: 30%;
 }
 
-.astral-breakdown-cols.is-profile th:first-child,
-.astral-breakdown-cols.is-profile td:first-child,
-.astral-breakdown-cols.is-profile tbody th {
-  width: 10%;
-}
-
-.astral-breakdown-cols.is-profile thead th {
-  letter-spacing: 0;
-  text-transform: none;
-  font-weight: 600;
-  padding: 12px 6px;
-}
-
 .astral-breakdown-cols tbody th,
 .astral-breakdown-cols tbody td {
   height: 45px;
@@ -9402,17 +9389,56 @@ button.astral-state {
   text-transform: none;
 }
 
-.astral-breakdown-cols.is-meters thead th.astral-breakdown-slice {
-  height: var(--astral-head-h, 45px);
-  box-sizing: border-box;
-  padding: 0 8px;
-  vertical-align: middle;
+/* The reading, Estimated, then the hours and tariff state, on one line. */
+.astral-breakdown-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8, 8px);
+  white-space: nowrap;
+}
+
+.astral-tag.astral-breakdown-state {
   font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
+}
+
+.astral-breakdown-mixed {
+  display: inline-flex;
+  border-radius: var(--radius-button);
+}
+
+.astral-breakdown-mixed:focus-visible {
+  outline: 2px solid var(--color-focus-contrast);
+  outline-offset: 2px;
+}
+
+.astral-breakdown-foot th,
+.astral-breakdown-foot td {
+  background: var(--color-background-subtle);
+  font-weight: 600;
+}
+
+.astral-breakdown-foot tr:first-child > * {
+  border-top: 1px solid var(--color-border-strong);
+}
+
+.astral-breakdown-cols.is-meters .astral-breakdown-foot th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.astral-breakdown-foot-name,
+.astral-breakdown-foot-note {
+  display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.astral-breakdown-foot-note {
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 400;
 }
 
 .astral-breakdown-cols.is-meters .is-total {
