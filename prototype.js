@@ -8011,6 +8011,7 @@ function protoPickSelect(id, value) {
     "report-file-date": "fileDate",
     "report-file-sep": "fileSep",
   "report-file-prefix": "filePrefix",
+  "report-file-suffix": "fileSuffix",
   };
   if (PROTO_REPORT_SELECT_KEYS[id]) {
     const key = PROTO_REPORT_SELECT_KEYS[id];
@@ -8256,6 +8257,13 @@ const PROTO_REPORT_FILE_PREFIXES = [
   { id: "user", name: "Username" },
   { id: "none", name: "Nothing", note: "Starts with the date" },
   { id: "custom", name: "Custom", note: "Type your own" },
+];
+
+const PROTO_REPORT_FILE_SUFFIXES = [
+  { id: "run", name: "Date and time of report execution", note: "When it sends" },
+  { id: "start", name: "Date and time of report range start", note: "The first moment the file holds" },
+  { id: "end", name: "Date and time of report range end", note: "The last moment the file holds" },
+  { id: "none", name: "None" },
 ];
 
 const PROTO_REPORT_FILE_DATES = [
@@ -8646,6 +8654,7 @@ function protoReportNormalize(raw) {
       : String(raw.fileStart || "").trim()
         ? "custom"
         : "name",
+    fileSuffix: PROTO_REPORT_FILE_SUFFIXES.some((item) => item.id === raw.fileSuffix) ? raw.fileSuffix : "run",
     fileDate: PROTO_REPORT_FILE_DATES.some((item) => item.id === raw.fileDate) ? raw.fileDate : "iso",
     fileSep: raw.fileSep === "-" ? "-" : "_",
     sftpHost: String(raw.sftpHost || "").trim().slice(0, 120),
@@ -10083,16 +10092,16 @@ function protoReportSampleSent(draft) {
   return sent && sent.id === (protoReportEditId() || "") && sent.type === draft?.type ? sent : null;
 }
 
-function protoReportConsentTick(which, on, text, note, extra = "") {
+function protoReportConsentTick(which, on, text, note) {
   return `
       <button
         type="button"
         role="checkbox"
-        class="astral-report-consent${on === true ? " is-on" : ""}${extra}"
-        aria-checked="${on === "mixed" ? "mixed" : on ? "true" : "false"}"
+        class="astral-report-consent${on ? " is-on" : ""}"
+        aria-checked="${on ? "true" : "false"}"
         data-proto-report-consent="${which}"
       >
-        <span class="astral-check${on === true ? " is-on" : on === "mixed" ? " is-mixed" : ""}" aria-hidden="true"></span>
+        ${protoCheck(on)}
         <span class="astral-report-consent-copy">
           <span>${escapeHtml(text)}</span>
           <span class="astral-muted">${escapeHtml(note)}</span>
@@ -10108,36 +10117,26 @@ function protoReportConsentInner(draft) {
   const n = consent.fresh.filter(protoReportIsPersonKey).length;
   const serverNew = consent.fresh.some((key) => key.startsWith("server:"));
   const changed = "What it sends has changed since the last save.";
-  const ticks = consent.groups.map((group) =>
-    group.id === "email"
-      ? protoReportConsentTick(
-          "email",
-          group.on,
-          "I have permission to email this data to everyone on the list.",
-          n
-            ? `${n === 1 ? "The new recipient gets" : `The ${n} new recipients get`} an email that says you added them. Each can opt out.`
-            : changed
-        )
-      : protoReportConsentTick(
-          "server",
-          group.on,
-          "I have permission to send this data to the SFTP server.",
-          serverNew ? "The server is new since the last save." : changed
-        )
-  );
-  if (ticks.length < 2) return ticks.join("");
-  const done = consent.groups.filter((group) => group.on).length;
-  const all = done === consent.groups.length ? true : done ? "mixed" : false;
-  return `
-      ${protoReportConsentTick(
-        "all",
-        all,
-        "I have permission to send this data by email and to the SFTP server.",
-        all === true ? "Both are confirmed." : `Confirms both below. ${done} of 2 done.`,
-        " is-all"
-      )}
-      <div class="astral-report-consent-subs">${ticks.join("")}</div>
-    `;
+  const notes = {
+    email: n
+      ? `${n === 1 ? "The new recipient gets" : `The ${n} new recipients get`} an email that says you added them. Each can opt out.`
+      : changed,
+    server: serverNew ? "The server is new since the last save." : changed,
+  };
+  // Email and the server share one tick when both ask.
+  if (consent.groups.length > 1) {
+    const note = [...new Set([notes.email, notes.server])].join(" ");
+    return protoReportConsentTick(
+      "all",
+      consent.on,
+      "I have permission to send this data by email and to the SFTP server.",
+      note
+    );
+  }
+  const group = consent.groups[0];
+  return group.id === "email"
+    ? protoReportConsentTick("email", group.on, "I have permission to email this data to everyone on the list.", notes.email)
+    : protoReportConsentTick("server", group.on, "I have permission to send this data to the SFTP server.", notes.server);
 }
 
 function protoReportSampleHtml(draft) {
@@ -10691,11 +10690,30 @@ function protoReportFilePrefixText(def, raw) {
   return protoReportFileSlug(String(raw.name || "").trim() || protoReportAutoName(def)) || "report";
 }
 
-// The name each sent file gets: the prefix, then the date it was sent.
+// The data a repeating send holds: the period before the send day.
+function protoReportFileRange(def, when) {
+  const to = protoAddDays(when, -1);
+  if (def.period === "day") return { from: to, to };
+  if (def.period === "week") return { from: protoAddDays(when, -7), to };
+  if (def.period === "quarter") return { from: protoAddMonths(when, -3), to };
+  return { from: protoAddMonths(when, -1), to };
+}
+
+function protoReportFileSuffixText(def, when) {
+  if (def.fileSuffix === "none") return "";
+  const stamp = (date, time) => `${protoReportFileDate(date, def.fileDate)}${def.fileSep}${time}`;
+  if (def.fileSuffix === "run") return stamp(when, def.sendAt.replace(":", ""));
+  const range = protoReportOnce(def) ? protoReportRange(def) : protoReportFileRange(def, when);
+  if (!range) return stamp(when, def.sendAt.replace(":", ""));
+  return def.fileSuffix === "start" ? stamp(range.from, "0000") : stamp(range.to, "2359");
+}
+
+// The name each sent file gets: the prefix, then the suffix.
 function protoReportFileName(raw, sendDate) {
   const def = protoReportNormalize(raw);
   const when = sendDate || protoReportNextSend(def) || protoToday();
-  const bits = [protoReportFilePrefixText(def, raw), protoReportFileDate(when, def.fileDate)];
+  const bits = [protoReportFilePrefixText(def, raw), protoReportFileSuffixText(def, when)];
+  if (!bits.some(Boolean)) bits.push("report");
   const ext = def.type === "billing" ? "pdf" : def.format === "xlsx" ? "xlsx" : "csv";
   return `${bits.filter(Boolean).join(def.fileSep)}.${ext}`;
 }
@@ -10710,7 +10728,9 @@ function protoReportFilePreviewInner(draft) {
     <p class="astral-report-file-name">${protoIconMark("report")}<span>${escapeHtml(protoReportFileName(raw))}</span></p>
     ${
       later
-        ? `<p class="astral-muted">The send after that is ${escapeHtml(protoReportFileName(raw, later))}</p>`
+        ? def.fileSuffix === "none"
+          ? `<p class="astral-muted">Every send has this name. On the server, each new file replaces the last one.</p>`
+          : `<p class="astral-muted">The send after that is ${escapeHtml(protoReportFileName(raw, later))}</p>`
         : ""
     }
   `;
@@ -10734,10 +10754,13 @@ function protoReportFileFields(draft) {
       }
     </div>
     <div class="astral-report-pair">
-      ${protoReportOptionSelect("report-file-date", "Date format", PROTO_REPORT_FILE_DATES, draft.fileDate || "iso")}
-      ${protoReportOptionSelect("report-file-sep", "Separator", PROTO_REPORT_FILE_SEPS, draft.fileSep || "_")}
+      ${protoReportOptionSelect("report-file-suffix", "File suffix", PROTO_REPORT_FILE_SUFFIXES, def.fileSuffix)}
+      ${def.fileSuffix === "none" ? "" : protoReportOptionSelect("report-file-date", "Date format", PROTO_REPORT_FILE_DATES, def.fileDate)}
     </div>
-    <p class="astral-muted">Every file ends with the date it was sent. Letters and numbers only. Spaces become hyphens.</p>
+    <div class="astral-report-pair">
+      ${protoReportOptionSelect("report-file-sep", "Separator", PROTO_REPORT_FILE_SEPS, def.fileSep)}
+    </div>
+    <p class="astral-muted">Times are 24-hour ${escapeHtml(protoReportZone(def))}. Letters and numbers only. Spaces become hyphens.</p>
     <div class="astral-report-file-preview" role="status" data-proto-report-file-preview>${protoReportFilePreviewInner(draft)}</div>
   `;
 }
