@@ -7967,11 +7967,11 @@ function protoPickSelect(id, value) {
     );
     return;
   }
-  if (id === "report-sites" || id === "report-delivery" || id === "report-notify" || id === "report-file-parts") {
+  if (id === "report-sites" || id === "report-delivery" || id === "report-notify") {
     const draft = protoReportDraft();
     if (!draft) return;
     const key =
-      id === "report-sites" ? "sites" : id === "report-notify" ? "notify" : id === "report-file-parts" ? "fileParts" : "delivery";
+      id === "report-sites" ? "sites" : id === "report-notify" ? "notify" : "delivery";
     protoReportPatchDraft({ [key]: protoReportToggleIn(draft[key], value) }, id);
     protoRestoreFocus(
       `#astral-fs [data-proto-select-option="${id}"][data-proto-select-value="${CSS.escape(value)}"]`
@@ -8010,6 +8010,7 @@ function protoPickSelect(id, value) {
     "report-send-date": "sendDate",
     "report-file-date": "fileDate",
     "report-file-sep": "fileSep",
+  "report-file-prefix": "filePrefix",
   };
   if (PROTO_REPORT_SELECT_KEYS[id]) {
     const key = PROTO_REPORT_SELECT_KEYS[id];
@@ -8250,11 +8251,11 @@ function protoReportNewTab() {
   return store.prototypeReportFrom === PROTO_ALERT_RULES_VIEW ? "alerts" : "reports";
 }
 
-const PROTO_REPORT_FILE_PARTS = [
-  { id: "company", name: "Company name" },
-  { id: "period", name: "Data period", note: "The first and last day the file holds" },
-  { id: "sent", name: "Date sent" },
-  { id: "time", name: "Time sent" },
+const PROTO_REPORT_FILE_PREFIXES = [
+  { id: "name", name: "Default report name" },
+  { id: "user", name: "Username" },
+  { id: "none", name: "Nothing", note: "Starts with the date" },
+  { id: "custom", name: "Custom", note: "Type your own" },
 ];
 
 const PROTO_REPORT_FILE_DATES = [
@@ -8640,9 +8641,11 @@ function protoReportNormalize(raw) {
     time: protoReportPick(PROTO_REPORT_TIME, raw.time),
     sendAt: PROTO_REPORT_SEND_AT.includes(String(raw.sendAt)) ? String(raw.sendAt) : "09:00",
     fileStart: String(raw.fileStart || "").trim().slice(0, 60),
-    fileParts: Array.isArray(raw.fileParts)
-      ? PROTO_REPORT_FILE_PARTS.map((item) => item.id).filter((id) => raw.fileParts.includes(id))
-      : ["sent"],
+    filePrefix: PROTO_REPORT_FILE_PREFIXES.some((item) => item.id === raw.filePrefix)
+      ? raw.filePrefix
+      : String(raw.fileStart || "").trim()
+        ? "custom"
+        : "name",
     fileDate: PROTO_REPORT_FILE_DATES.some((item) => item.id === raw.fileDate) ? raw.fileDate : "iso",
     fileSep: raw.fileSep === "-" ? "-" : "_",
     sftpHost: String(raw.sftpHost || "").trim().slice(0, 120),
@@ -10681,32 +10684,20 @@ function protoReportDraftFileDef(draft) {
   return { ...draft, start: protoReportDraftStart(), from: protoReportDraftDate("from"), to: protoReportDraftDate("to") };
 }
 
-// The name each sent file gets. Parts join in a fixed order so every file from a report sorts together.
-function protoReportFileName(raw, sendDate) {
-  const def = protoReportNormalize(raw);
-  const sep = def.fileSep;
-  const style = def.fileDate;
-  const when = sendDate || protoReportNextSend(def) || protoToday();
-  const bits = [];
-  if (def.fileParts.includes("company")) bits.push(protoReportFileSlug(protoOrgName()));
-  bits.push(protoReportFileSlug(def.fileStart || String(raw.name || "").trim() || protoReportAutoName(def)) || "report");
-  if (def.fileParts.includes("period")) {
-    const range = protoReportOnce(def) ? protoReportRange(def) : protoReportFileRange(def, when);
-    if (range) bits.push(`${protoReportFileDate(range.from, style)}${sep}to${sep}${protoReportFileDate(range.to, style)}`);
-  }
-  if (def.fileParts.includes("sent")) bits.push(protoReportFileDate(when, style));
-  if (def.fileParts.includes("time")) bits.push(def.sendAt.replace(":", ""));
-  const ext = def.type === "billing" ? "pdf" : def.format === "xlsx" ? "xlsx" : "csv";
-  return `${bits.filter(Boolean).join(sep)}.${ext}`;
+function protoReportFilePrefixText(def, raw) {
+  if (def.filePrefix === "none") return "";
+  if (def.filePrefix === "user") return protoReportFileSlug(String(raw.owner || protoProfileEmail()).split("@")[0]) || "user";
+  if (def.filePrefix === "custom" && def.fileStart) return protoReportFileSlug(def.fileStart);
+  return protoReportFileSlug(String(raw.name || "").trim() || protoReportAutoName(def)) || "report";
 }
 
-// The data a repeating send holds: the period before the send day.
-function protoReportFileRange(def, when) {
-  const to = protoAddDays(when, -1);
-  if (def.period === "day") return { from: to, to };
-  if (def.period === "week") return { from: protoAddDays(when, -7), to };
-  if (def.period === "quarter") return { from: protoAddMonths(when, -3), to };
-  return { from: protoAddMonths(when, -1), to };
+// The name each sent file gets: the prefix, then the date it was sent.
+function protoReportFileName(raw, sendDate) {
+  const def = protoReportNormalize(raw);
+  const when = sendDate || protoReportNextSend(def) || protoToday();
+  const bits = [protoReportFilePrefixText(def, raw), protoReportFileDate(when, def.fileDate)];
+  const ext = def.type === "billing" ? "pdf" : def.format === "xlsx" ? "xlsx" : "csv";
+  return `${bits.filter(Boolean).join(def.fileSep)}.${ext}`;
 }
 
 function protoReportFilePreviewInner(draft) {
@@ -10726,30 +10717,27 @@ function protoReportFilePreviewInner(draft) {
 }
 
 function protoReportFileFields(draft) {
-  const def = protoReportNormalize(protoReportDraftFileDef(draft));
-  const fallback = protoReportFileSlug(String(draft.name || "").trim() || protoReportAutoName(def)) || "report";
+  const raw = protoReportDraftFileDef(draft);
+  const def = protoReportNormalize(raw);
+  const prefix = def.filePrefix;
+  const note = (id) => protoReportFilePrefixText({ ...def, filePrefix: id }, raw);
+  const prefixes = PROTO_REPORT_FILE_PREFIXES.map((item) =>
+    item.id === "name" || item.id === "user" ? { ...item, note: note(item.id) } : item
+  );
   return `
     <div class="astral-report-pair">
-      ${protoReportInput("Starts with", "fileStart", draft.fileStart, `placeholder="${escapeHtml(fallback)}" spellcheck="false" maxlength="60"`)}
-      ${protoReportField(
-        "Add to the name",
-        protoSelect({
-          id: "report-file-parts",
-          label: "Add to the name",
-          multi: true,
-          wide: true,
-          values: draft.fileParts || [],
-          placeholder: "Nothing else",
-          countLabel: "parts",
-          options: PROTO_REPORT_FILE_PARTS.map((item) => ({ value: item.id, label: item.name, note: item.note })),
-        })
-      )}
+      ${protoReportOptionSelect("report-file-prefix", "File prefix", prefixes, prefix)}
+      ${
+        prefix === "custom"
+          ? protoReportInput("Custom prefix", "fileStart", draft.fileStart, `placeholder="${escapeHtml(note("name"))}" spellcheck="false" maxlength="60"`)
+          : ""
+      }
     </div>
     <div class="astral-report-pair">
       ${protoReportOptionSelect("report-file-date", "Date format", PROTO_REPORT_FILE_DATES, draft.fileDate || "iso")}
       ${protoReportOptionSelect("report-file-sep", "Separator", PROTO_REPORT_FILE_SEPS, draft.fileSep || "_")}
     </div>
-    <p class="astral-muted">Left empty, it starts with the report name. Letters and numbers only. Spaces become hyphens.</p>
+    <p class="astral-muted">Every file ends with the date it was sent. Letters and numbers only. Spaces become hyphens.</p>
     <div class="astral-report-file-preview" role="status" data-proto-report-file-preview>${protoReportFilePreviewInner(draft)}</div>
   `;
 }
