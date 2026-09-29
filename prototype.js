@@ -620,6 +620,8 @@ function protoState() {
   };
 }
 
+let protoKeepSelectOpen = "";
+
 function setProto(patch) {
   const before = typeof protoSkelKeys === "function" ? protoSkelKeys() : null;
   protoPatchStay(patch);
@@ -806,7 +808,7 @@ function protoPatchStay(patch) {
     patch.prototypeAckOpen = "";
   }
   if (!Object.prototype.hasOwnProperty.call(patch, "prototypeSelectOpen")) {
-    patch.prototypeSelectOpen = "";
+    patch.prototypeSelectOpen = protoKeepSelectOpen;
   }
   if (!Object.prototype.hasOwnProperty.call(patch, "prototypeReportCalOpen")) {
     patch.prototypeReportCalOpen = false;
@@ -25121,7 +25123,14 @@ function onPrototype(event) {
   }
   const selectOption = event.target.closest("[data-proto-select-option]");
   if (selectOption) {
-    protoPickSelect(selectOption.dataset.protoSelectOption, selectOption.dataset.protoSelectValue);
+    const id = selectOption.dataset.protoSelectOption;
+    // A multi-select stays open while ticking, unless its handler closes it on purpose.
+    protoKeepSelectOpen = selectOption.closest('[aria-multiselectable="true"]') ? id : "";
+    try {
+      protoPickSelect(id, selectOption.dataset.protoSelectValue);
+    } finally {
+      protoKeepSelectOpen = "";
+    }
     return;
   }
   const selectToggle = event.target.closest("[data-proto-select-toggle]");
