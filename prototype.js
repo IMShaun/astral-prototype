@@ -18793,11 +18793,14 @@ function protoZoneBadges(id) {
 }
 
 // A key over the table names each mark in use, so the icons are never the only way to read the state.
-function protoBreakdownKey(ids) {
+function protoBreakdownKey(ids, estimated = false) {
   const parts = Object.keys(PROTO_ZONE_BADGES).filter((part) =>
     [...ids].some((id) => String(id).split("|").includes(part))
   );
-  if (!parts.length) return "";
+  const est = estimated
+    ? `<span class="astral-breakdown-key-item"><span class="astral-est-sample" aria-hidden="true">0.0</span><span>Estimated</span></span>`
+    : "";
+  if (!parts.length && !est) return "";
   return `<p class="astral-breakdown-key">${parts
     .map(
       (part) =>
@@ -18805,7 +18808,7 @@ function protoBreakdownKey(ids) {
           PROTO_ZONE_BADGES[part].name
         )}</span></span>`
     )
-    .join("")}</p>`;
+    .join("")}${est}</p>`;
 }
 
 function protoBreakdownStateIds(points, slices) {
@@ -18888,8 +18891,8 @@ function protoBreakdownReading(value, quality) {
   if (value == null) return "No reading";
   const amount = protoFormatAmount(value);
   if (quality !== "estimated") return amount;
-  // The table is dense, so Estimated is shortened to Est. and named in full on hover and to screen readers.
-  return `<span class="astral-reading">${amount}<span class="astral-tip-host astral-reading-est"><span class="astral-tag" aria-hidden="true">Est.</span><span class="sr-only">Estimated</span><span class="astral-icon-tip" role="tooltip">Estimated</span></span></span>`;
+  // Dotted means estimated, as on the graph line. Hover and screen readers name it.
+  return `<span class="astral-tip-host astral-reading-est"><span class="astral-est">${amount}</span><span class="sr-only">, Estimated</span><span class="astral-icon-tip" role="tooltip">Estimated</span></span>`;
 }
 
 function protoIntervalRowHtml(point, dual, chart, sliceCols) {
@@ -19201,7 +19204,10 @@ function protoIntervalTable(points, dual) {
       ? `<th scope="col">In</th><th scope="col">Out</th>`
       : `<th scope="col">${escapeHtml(unit)}</th>`;
   return protoBreakdownPanel(`
-    ${sliceCols.length ? protoBreakdownKey(protoBreakdownStateIds(points, sliceCols)) : ""}
+    ${protoBreakdownKey(
+      sliceCols.length ? protoBreakdownStateIds(points, sliceCols) : new Set(),
+      (points || []).some((point) => point?.quality === "estimated" || point?.lastQuality === "estimated")
+    )}
     <table class="astral-table astral-breakdown-cols${sliceCols.length ? " is-states" : ""}">
       <thead>
         <tr>
@@ -19315,7 +19321,7 @@ function protoTrackBreakdownTable(tracks, options = {}) {
     .map((total) => protoBreakdownMeterHead(total.name, units[0] || "", { attrs: span, total: true }))
     .join("");
   const hasEstimate = rows.some((row) => row.cells.some((cell) => cell?.quality === "estimated"));
-  // Room for the reading, Estimated and the state marks (or Mixed), so a cell stays on one line.
+  // Room for the reading and the state marks (or Mixed), so a cell stays on one line.
   const stateIds = sliceCols.length
     ? protoBreakdownStateIds(
         tracks.flatMap((track) => track.points || []),
@@ -19330,12 +19336,12 @@ function protoTrackBreakdownTable(tracks, options = {}) {
       )
     );
   const marks = stateIds.size ? Math.max(mixed ? 4.25 : 0, 3.25) : 0;
-  const colWidth = marks ? 5.5 + marks + (hasEstimate ? 4.5 : 0) : 8.5 + (hasEstimate ? 1 : 0);
-  const minWidth = 6 + tracks.length * colWidth + totals.length * (hasEstimate ? 9.5 : 8.5);
+  const colWidth = marks ? 5.5 + marks : 8.5;
+  const minWidth = 6 + tracks.length * colWidth + totals.length * 8.5;
   const label = `${chart} by ${options.by || "series"}`;
   return protoBreakdownPanel(`
     <div class="astral-breakdown-top">
-      ${protoBreakdownKey(stateIds)}
+      ${protoBreakdownKey(stateIds, hasEstimate)}
       <div class="astral-breakdown-bar" data-proto-breakdown-nav hidden>
         <p class="astral-muted" data-proto-breakdown-range aria-live="polite"></p>
         ${protoIconBtn("prev", "Previous columns", 'data-proto-breakdown-page="prev"', { disabled: true })}

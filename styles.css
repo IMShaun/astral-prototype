@@ -12238,6 +12238,21 @@ button.astral-state:focus-visible,
   background: #000;
   color: #fff;
 }
+/* Dotted means estimated: a dotted line on the graph, a dotted underline on a number in a table. */
+.astral-est,
+.astral-est-sample {
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--color-text-primary);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.astral-reading-est {
+  cursor: default;
+}
+
 .astral-reading {
   display: inline-flex;
   align-items: center;
