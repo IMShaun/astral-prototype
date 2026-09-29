@@ -10790,6 +10790,7 @@ function astralRailNav(state) {
     <div class="astral-rail-layer${open ? " is-open" : ""}" ${open ? "" : "hidden"}>
       <button type="button" class="astral-rail-scrim" data-proto-rail="close" aria-label="Close menu"></button>
       <aside id="astral-rail" class="astral-rail" role="dialog" aria-modal="true" aria-label="Menu">
+        <p class="astral-rail-brand">${protoBrandMark()}</p>
         <nav class="astral-rail-links" aria-label="Astral">${links}</nav>
       </aside>
     </div>

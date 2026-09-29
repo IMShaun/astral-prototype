@@ -7409,7 +7409,7 @@
             "name": "Admin side map",
             "status": "working",
             "summary": "Overview, Companies, Servicing, Inbox, Users, and Usage down the left. Open a company for their data.",
-            "now": "IMSERV admin side menu is Overview, Companies, Servicing, Inbox, Users, Usage, and Reports. Overview is the picture of the platform. Companies is the list. Add a company sits there. Pick a company to see their product. Servicing is meter health across every company. Inbox is support tickets. Inbox shows how many are unread. Usage is who signs in and what they use. On Users, IMSERV sits first. It lists every super admin, you too. Companies follow. Back to admin returns to Companies. Brokers still wait.",
+            "now": "IMSERV admin side menu is Overview, Companies, Servicing, Inbox, Users, Usage, and Reports. The company logo sits at the top of the side menu, above the links, with a line under it. The IMSERV mark is black on the white menu. An uploaded logo keeps its own colours. Overview is the picture of the platform. Companies is the list. Add a company sits there. Pick a company to see their product. Servicing is meter health across every company. Inbox is support tickets. Inbox shows how many are unread. Usage is who signs in and what they use. On Users, IMSERV sits first. It lists every super admin, you too. Companies follow. Back to admin returns to Companies. Brokers still wait.",
             "later": "",
             "uses": [
               "list",
