@@ -5803,6 +5803,11 @@ function protoChartUtilityField(set, field) {
   );
 }
 
+// Defaults: Total consumption, Bar, and no overlay.
+function protoChartSettingsDefault() {
+  return protoChartView() === "total" && protoChartStyle() === "bar" && !protoChartShow().length;
+}
+
 function protoChartSettings(zoneSet) {
   const open = Boolean(store.prototypeChartSettingsOpen);
   const field = (key, caption, control) => {
@@ -5816,6 +5821,9 @@ function protoChartSettings(zoneSet) {
         field("show", "Overlay", (labelledby) => protoChartShowSelect({ labelledby })),
         protoChartUtilityField(zoneSet, field),
         protoChartZoneField(zoneSet, field),
+        `<div class="astral-chart-settings-foot">${protoTextBtn("Restore defaults", "data-proto-chart-reset", {
+          disabled: protoChartSettingsDefault(),
+        })}</div>`,
       ].join("")
     : "";
   return `
@@ -7383,6 +7391,11 @@ function protoPinClose() {
 }
 
 function protoCloseModal(kind) {
+  if (kind === "report-pick") {
+    setProto({ prototypeReportPick: null });
+    protoRestoreFocus('#astral-fs [data-proto-report-edit="new"]');
+    return;
+  }
   if (kind === "report-tenant") {
     const id = store.prototypeReportTenantDrop;
     setProto({ prototypeReportTenantDrop: "" });
@@ -10386,27 +10399,55 @@ function protoReportRateCheckModal(draft) {
   if (!store.prototypeReportRateCheck) return "";
   const changes = protoReportRateChanges(draft);
   if (!changes.length) return "";
-  const show = (value, unit) => (value === "" ? "Not set" : `${value} ${unit}`);
+  const show = (value, unit) =>
+    value === "" ? "Not set" : unit.startsWith("£") ? `£${value}${unit.slice(1)}` : `${value}${unit}`;
   const sites = [...new Set(changes.map((change) => change.site))];
-  const title = sites.length === 1 ? `Update the site settings for ${sites[0]}?` : "Update the site settings?";
+  const title = sites.length === 1 ? `Update the charges for ${sites[0]}?` : "Update the site charges?";
+  const groups = new Map();
+  changes.forEach((change) => {
+    const head = sites.length === 1 ? change.util : `${change.site}, ${change.util}`;
+    groups.set(head, [...(groups.get(head) || []), change]);
+  });
+  const arrow = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   return `
     <div class="astral-modal-back" data-proto-modal="report-rates">
       <div class="astral-modal astral-report-rate-check" role="dialog" aria-modal="true" aria-labelledby="astral-report-rates-title">
         ${protoModalHead(
           "astral-report-rates-title",
           title,
-          "Saving this report changes these charges for every meter that follows the site. Cost graphs and other reports use them too. Are they right?",
+          "These are the site's charges, so cost graphs and other reports use them too.",
           "report-rates"
         )}
         <div class="astral-modal-body">
-          ${protoMeterPlainTable(
-            ["Site", "Utility", "Charge", "From", "To"],
-            changes.map((change) => [change.site, change.util, change.label, show(change.from, change.unit), show(change.to, change.unit)])
-          )}
+          ${[...groups]
+            .map(
+              ([head, list]) => `
+                <section class="astral-report-rate-group" aria-label="${escapeHtml(head)}">
+                  <h4>${escapeHtml(head)}</h4>
+                  <ul>
+                    ${list
+                      .map(
+                        (change) => `
+                          <li>
+                            <span>${escapeHtml(change.label)}</span>
+                            <span class="astral-report-rate-move">
+                              <span class="astral-muted"><span class="sr-only">from </span>${escapeHtml(show(change.from, change.unit))}</span>
+                              ${arrow}
+                              <strong><span class="sr-only">to </span>${escapeHtml(show(change.to, change.unit))}</strong>
+                            </span>
+                          </li>
+                        `
+                      )
+                      .join("")}
+                  </ul>
+                </section>
+              `
+            )
+            .join("")}
         </div>
         <div class="astral-modal-foot">
           <div class="astral-actions">
-            ${protoBtn("Save and update", 'data-proto-report-rate-check="yes"')}
+            ${protoBtn("Save and update charges", 'data-proto-report-rate-check="yes"')}
             ${protoGhost("Go back", 'data-proto-modal-close="report-rates"')}
           </div>
         </div>
@@ -10489,7 +10530,6 @@ function protoReportPage() {
           `<div class="astral-detail-head"><div>${protoDetailTitle("Settings", type.blurb)}</div></div>
           ${protoTabs(groups, group.id, "data-proto-report-group", alert ? "Alert settings" : "Report settings")}`,
           `<div class="astral-report-fields" role="tabpanel" aria-label="${escapeHtml(group.name)}">
-            ${isNew && group.id === "details" ? protoReportTypePicker(draft) : ""}
             ${
               group.id === "details"
                 ? protoReportInput(
@@ -11407,14 +11447,13 @@ function protoReportNotifyFields(draft, opts = {}) {
 }
 
 // Radio cards. One tab stop. Arrow keys move the pick, like native radios.
-function protoReportTypePicker(draft) {
-  const label = protoReportNewTab() === "alerts" ? "Alert type" : "Report type";
-  const types = protoReportPickTypes(protoReportNewTab());
-  const own = draft ? (draft.template ? `tpl:${draft.template}` : draft.type) : "";
+function protoReportTypePicker(tab, own) {
+  const label = tab === "alerts" ? "Alert type" : "Report type";
+  const types = protoReportPickTypes(tab);
   const picked = types.some((item) => item.id === own) ? own : types[0]?.id;
   return `
     <div class="astral-report-type-field">
-      <span class="astral-report-type-label" id="astral-report-type-label">${label}</span>
+      <span class="astral-report-type-label sr-only" id="astral-report-type-label">${label}</span>
       <div class="astral-report-types" role="radiogroup" aria-labelledby="astral-report-type-label">
         ${types.map((item) => {
           const on = own === item.id;
@@ -11434,8 +11473,50 @@ function protoReportTypePicker(draft) {
         }).join("")}
       </div>
     </div>
-    ${draft ? "" : protoReportSoonTypes()}
+    ${protoReportSoonTypes(tab)}
   `;
+}
+
+// Add a report or Add an alert asks for the type first, then opens the page to fill in.
+function protoReportPickModal() {
+  const pick = store.prototypeReportPick;
+  if (!pick) return "";
+  const alert = pick.tab === "alerts";
+  return `
+    <div class="astral-modal-back" data-proto-modal="report-pick">
+      <div
+        class="astral-modal astral-report-pick"
+        id="astral-report-pick"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="astral-report-pick-title"
+      >
+        ${protoModalHead(
+          "astral-report-pick-title",
+          alert ? "Add an alert" : "Add a report",
+          alert ? "Pick the type of alert. You set it up on the next page." : "Pick the type of report. You set it up on the next page.",
+          "report-pick"
+        )}
+        <div class="astral-modal-body">
+          ${protoReportTypePicker(pick.tab, pick.type)}
+        </div>
+        <div class="astral-modal-foot">
+          <div class="astral-actions">
+            ${protoBtn("Continue", 'data-proto-report-pick="go"')}
+            ${protoGhost("Cancel", 'data-proto-modal-close="report-pick"')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function protoReportPickOpen() {
+  if (!protoCanEditReports() || !protoCanAddReports()) return;
+  const tab = protoState().view === PROTO_ALERT_RULES_VIEW ? "alerts" : "reports";
+  protoReportSoonOpen = false;
+  setProto({ prototypeReportPick: { tab, type: String(protoReportPickTypes(tab)[0]?.id || "") } });
+  protoRestoreFocus("#astral-fs #astral-report-pick .astral-report-type.is-on");
 }
 
 function protoReportSoonList(tab) {
@@ -11446,8 +11527,8 @@ function protoReportSoonList(tab) {
 let protoReportSoonOpen = false;
 
 // Later types fold away so the ones they can pick lead.
-function protoReportSoonTypes() {
-  const list = protoReportSoonList(protoReportNewTab());
+function protoReportSoonTypes(tab) {
+  const list = protoReportSoonList(tab);
   if (!list.length) return "";
   return protoAccordion({
     id: "astral-report-soon-list",
@@ -11571,7 +11652,7 @@ function protoReportRefreshForm() {
   }
 }
 
-function protoReportOpenEdit(id) {
+function protoReportOpenEdit(id, pickId = "") {
   if (!protoCanEditReports()) return;
   if (id === "new" && !protoCanAddReports()) return;
   const def = id === "new" ? null : protoReportDef(id);
@@ -11579,11 +11660,12 @@ function protoReportOpenEdit(id) {
   const view = protoState().view;
   const from = view === "downloads" || view === PROTO_ALERT_RULES_VIEW ? view : "reports";
   const tab = def ? protoReportTabOf(def.type) : from === PROTO_ALERT_RULES_VIEW ? "alerts" : "reports";
-  const firstPick = def ? "" : String(protoReportPickTypes(tab)[0]?.id || "");
+  const firstPick = def ? "" : String(pickId || protoReportPickTypes(tab)[0]?.id || "");
   const firstTpl = firstPick.startsWith("tpl:") ? firstPick.slice(4) : "";
   const fresh = def ? null : protoReportNewDraft(firstTpl ? "extract" : protoReportTypeId(firstPick), firstTpl);
   setProto({
     prototypeReportEdit: id,
+    prototypeReportPick: null,
     prototypeReportFrom: from,
     prototypeReportDraft: def ? protoReportDraftFrom(def) : fresh,
     prototypeReportDraftStart: def ? def.start : protoFormatUkDate(protoToday()),
@@ -11601,11 +11683,7 @@ function protoReportOpenEdit(id) {
   });
   document.querySelector("#astral-fs .astral-stage-body")?.scrollTo(0, 0);
   protoPageSlide("in");
-  protoRestoreFocus(
-    def
-      ? '#astral-fs input[name="proto-report-name"]'
-      : `#astral-fs [data-proto-report-type="${CSS.escape(firstPick)}"]`
-  );
+  protoRestoreFocus('#astral-fs input[name="proto-report-name"]');
 }
 
 function protoReportLeave(patch = {}) {
@@ -12351,12 +12429,12 @@ function protoReportsAreaHead(active) {
     active === "reports" && protoCanAddReports()
       ? protoBtn(
           "Add a report",
-          `data-proto-report-edit="new"`
+          `data-proto-report-edit="new" aria-haspopup="dialog" aria-expanded="${store.prototypeReportPick ? "true" : "false"}" aria-controls="astral-report-pick"`
         )
       : active === PROTO_ALERT_RULES_VIEW && protoCanAddReports()
         ? protoBtn(
             "Add an alert",
-            `data-proto-report-edit="new"`
+            `data-proto-report-edit="new" aria-haspopup="dialog" aria-expanded="${store.prototypeReportPick ? "true" : "false"}" aria-controls="astral-report-pick"`
           )
         : "";
   const title = protoAlertsArea(active) ? "Alerts" : "Reports and compliance";
@@ -21602,7 +21680,7 @@ function protoReportTable(tab, defs) {
 function protoReportsSheet(active, defs, empty) {
   const tab = active === PROTO_ALERT_RULES_VIEW ? "alerts" : "reports";
   const cardTabs = tab === "alerts" ? protoAlertsCardTabs(active) : protoReportsCardTabs(active);
-  const top = `${protoReportsAreaHead(active)}${protoReportNoticeHtml()}`;
+  const top = `${protoReportsAreaHead(active)}${protoReportNoticeHtml()}${protoReportPickModal()}`;
   if (!defs.length) {
     return astralShell(`
       ${top}
@@ -27337,25 +27415,19 @@ function onPrototype(event) {
   }
   const reportTypeBtn = event.target.closest("[data-proto-report-type]");
   if (reportTypeBtn) {
-    if (!protoCanEditReports() || protoReportEditId() !== "new") return;
+    const pick = store.prototypeReportPick;
+    if (!pick) return;
     const raw = String(reportTypeBtn.dataset.protoReportType || "");
-    const tplId = raw.startsWith("tpl:") ? raw.slice(4) : "";
-    const type = tplId ? "extract" : protoReportTypeId(raw);
-    const cur = protoReportDraft();
-    if (cur?.type === type && String(cur?.template || "") === tplId) return;
-    const next = protoReportNewDraft(type, tplId);
-    if (cur) {
-      next.name = cur.name;
-      next.people = cur.people;
-      next.emails = cur.emails;
-    }
-    store.prototypeReportTenantOpen = next.tenants?.[0]?.id || "";
-    setProto({
-      prototypeReportEdit: "new",
-      prototypeReportDraft: next,
-      prototypeReportSiteQuery: "",
-    });
-    protoRestoreFocus(`#astral-fs [data-proto-report-type="${raw}"]`);
+    if (pick.type !== raw) setProto({ prototypeReportPick: { ...pick, type: raw } });
+    protoRestoreFocus(`#astral-fs #astral-report-pick [data-proto-report-type="${CSS.escape(raw)}"]`);
+    return;
+  }
+  const reportPickBtn = event.target.closest("[data-proto-report-pick]");
+  if (reportPickBtn) {
+    if (reportPickBtn.dataset.protoReportPick === "go") {
+      const pick = store.prototypeReportPick;
+      if (pick) protoReportOpenEdit("new", pick.type);
+    } else protoReportPickOpen();
     return;
   }
   const reportDeleteBtn = event.target.closest("[data-proto-report-delete]");
@@ -27497,7 +27569,10 @@ function onPrototype(event) {
       protoCloseModal("report");
       return;
     }
-    if (id === "new") protoReportSoonOpen = false;
+    if (id === "new") {
+      protoReportPickOpen();
+      return;
+    }
     protoReportOpenEdit(id);
     return;
   }
@@ -28577,6 +28652,19 @@ function onPrototype(event) {
       setProto({ prototypeChartStyle: style, prototypeChartPoint: null, prototypeChartSettingsOpen: true });
     }
     protoRestoreFocus(`#astral-fs [data-proto-chart-style="${style}"]`);
+    return;
+  }
+  if (event.target.closest("[data-proto-chart-reset]")) {
+    setProto({
+      prototypeChartView: "total",
+      prototypeChartStyle: "bar",
+      prototypeChartShow: [],
+      prototypeChartSliceOff: [],
+      prototypeChartPoint: null,
+      prototypeSelectOpen: "",
+      prototypeChartSettingsOpen: true,
+    });
+    protoRestoreFocus("#astral-chart-settings-menu [data-proto-select='chart-view'] .astral-select-btn");
     return;
   }
   const chartSettingsBtn = event.target.closest("[data-proto-chart-settings]");
@@ -29890,6 +29978,11 @@ function onPrototypeKey(event) {
     return;
   }
   if (event.key === "Escape" && store?.prototypeFullscreen) {
+    const modalKind = document.querySelector("#astral-fs .astral-modal-back[data-proto-modal^='report-']")?.dataset.protoModal;
+    if (modalKind && !store.prototypeSelectOpen) {
+      protoCloseModal(modalKind);
+      return;
+    }
     if (store.prototypeDateCustomOpen) {
       setProto({ prototypeDateCustomOpen: false, prototypeDateOpen: false });
       return;
