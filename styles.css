@@ -9055,7 +9055,7 @@ button.astral-state {
 
 .astral-tip-zones {
   display: grid;
-  gap: 2px;
+  gap: 8px;
   margin: 4px 0 0;
   font-size: 0.85rem;
 }
@@ -9065,12 +9065,20 @@ button.astral-state {
 }
 
 .astral-tip-zone {
+  display: grid;
+  gap: 2px;
   margin: 0;
   color: var(--color-text-secondary);
 }
 
 .astral-tip-zone-name {
+  display: flex;
+  min-width: 0;
   color: #000;
+}
+
+.astral-tip-zone-name .astral-zone-name {
+  flex-wrap: wrap;
 }
 
 .astral-chart-settings {

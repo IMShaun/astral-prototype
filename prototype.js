@@ -3454,7 +3454,13 @@ function protoZoneWords(bucket, zones) {
 
 function protoZoneTipAttrs(bucket, zones) {
   if (bucket?.groups) {
-    const lines = bucket.groups.map((group) => [group.label, protoZoneBits(group.bucket, zones)]);
+    const lines = bucket.groups.map((group) => [
+      group.label,
+      protoZoneBits(group.bucket, zones),
+      group.head || group.label,
+      group.rest || [],
+      group.whole !== false,
+    ]);
     return `data-tip-zones="${escapeHtml(JSON.stringify(lines))}"`;
   }
   return `data-tip-zone="${escapeHtml(protoZoneWords(bucket, zones).replace(/^\. /, ""))}"`;
@@ -3471,17 +3477,23 @@ function protoReadZones(raw) {
   }
   if (!Array.isArray(list)) return [];
   return list
-    .filter((row) => Array.isArray(row) && row.length === 2)
-    .map((row) => [String(row[0] || ""), String(row[1] || "")]);
+    .filter((row) => Array.isArray(row) && row.length >= 2)
+    .map((row) => [
+      String(row[0] || ""),
+      String(row[1] || ""),
+      String(row[2] || row[0] || ""),
+      Array.isArray(row[3]) ? row[3].map(String) : [],
+      row[4] !== false,
+    ]);
 }
 
 function protoChartZoneLines(point, limit = 0) {
   const zones = point?.zones || [];
   return (limit ? zones.slice(0, limit) : zones)
-    .map(
-      ([name, words]) =>
-        `<p class="astral-tip-zone"><span class="astral-tip-zone-name">${escapeHtml(name)}</span> ${escapeHtml(words)}</p>`
-    )
+    .map(([label, words, head, rest, whole]) => {
+      const name = protoChartZoneName({ label, head, rest, whole }, true);
+      return `<p class="astral-tip-zone"><span class="astral-tip-zone-name">${name}</span><span class="astral-tip-zone-state">${escapeHtml(words)}</span></p>`;
+    })
     .join("");
 }
 
@@ -3613,9 +3625,10 @@ function protoZoneSet(rows, allMeters, zones) {
       if (!labels.has(id)) {
         const every = line.meters.length === meters.length;
         const several = new Set(meters.map((meter) => meter.site || "")).size > 1;
-        labels.set(id, every && several ? "All sites" : protoZoneGroupLabel(line.meters, meters).label);
+        labels.set(id, every && several ? { label: "All sites", whole: true, head: "All sites", rest: [] } : protoZoneGroupLabel(line.meters, meters));
       }
-      return { label: labels.get(id), bucket: line.bucket };
+      const name = labels.get(id);
+      return { label: name.label, head: name.head, rest: name.rest, whole: name.whole, bucket: line.bucket };
     });
   });
   return { ...base, groups, pick, buckets };
