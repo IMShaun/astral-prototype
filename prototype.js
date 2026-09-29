@@ -7383,6 +7383,11 @@ function protoPinClose() {
 }
 
 function protoCloseModal(kind) {
+  if (kind === "report-rates") {
+    setProto({ prototypeReportRateCheck: false });
+    protoRestoreFocus('#astral-fs .astral-report-page-foot button[type="submit"]');
+    return;
+  }
   if (kind === "report") {
     protoReportLeave();
     return;
@@ -8345,11 +8350,11 @@ function protoReportUtilityNames(raw, type) {
   );
 }
 
-// Standing charge in pounds a meter a day. Placeholder until tariffs come through.
+// Standing charges and unit rates come from the site profile.
 const PROTO_REPORT_BILL_UTILS = [
-  { id: "electricity", name: "Electricity", standing: 1.35 },
-  { id: "gas", name: "Gas", standing: 0.85 },
-  { id: "water", name: "Water", standing: 0.45 },
+  { id: "electricity", name: "Electricity" },
+  { id: "gas", name: "Gas" },
+  { id: "water", name: "Water" },
 ];
 
 const PROTO_REPORT_CHANNEL = [
@@ -8578,6 +8583,7 @@ function protoReportNormalizeTenants(raw, known) {
     .slice(0, 200)
     .map((item, i) => {
       const share = protoReportNumber(item.share ?? 50, 50, 0, 100);
+      const vat = protoReportNumber(raw.vat ?? 20, 20, 0, 100);
       return {
         id: String(item.id || `tenant-${i + 1}`),
         site: known.has(String(item.site || "")) ? String(item.site) : "",
@@ -8587,6 +8593,7 @@ function protoReportNormalizeTenants(raw, known) {
           protoReportShareKeys().map((key) => [key, protoReportNumber(item[key] ?? share, share, 0, 100)])
         ),
         ...Object.fromEntries(PROTO_REPORT_BILL_UTILS.map((util) => [`${util.id}Pays`, item[`${util.id}Pays`] !== false])),
+        vat: protoReportNumber(item.vat ?? vat, vat, 0, 100),
       };
     });
 }
@@ -8595,12 +8602,19 @@ function protoReportTenantDraft(tenant) {
   return {
     ...tenant,
     ...Object.fromEntries(protoReportShareKeys().map((key) => [key, String(tenant[key] ?? "")])),
+    vat: String(tenant.vat ?? ""),
   };
 }
 
 // A draft saved before tenants became a list still opens.
 function protoReportTenantsOf(draft) {
-  if (Array.isArray(draft?.tenants)) return draft.tenants;
+  if (Array.isArray(draft?.tenants)) {
+    // Tenants drafted before VAT moved onto each tenant take the report's old rate.
+    if (draft.tenants.every((tenant) => tenant.vat !== undefined)) return draft.tenants;
+    return draft.tenants.map((tenant) =>
+      tenant.vat === undefined ? { ...tenant, vat: String(draft.vat ?? 20) } : tenant
+    );
+  }
   if (draft?.type !== "billing") return [];
   return protoReportNormalizeTenants(draft, new Set(protoReportSiteIds())).map(protoReportTenantDraft);
 }
@@ -8922,14 +8936,59 @@ function protoReportBillUtils(site) {
   return list.length ? list : PROTO_REPORT_BILL_UTILS.slice(0, 1);
 }
 
+// The site profile's charges for one utility: standing, and on-peak and off-peak or a single unit rate.
+function protoReportRateSpec(util) {
+  return protoMeterAttrSpec(util.id).filter((item) => /^(standing|on|off|unit)/.test(item.key));
+}
+
+function protoReportSiteLead(site) {
+  return (site?.meters || [])[0]?.id || "";
+}
+
+// Site charges typed on the open report price its preview until the report is saved.
+function protoReportSiteAttrs(site) {
+  const lead = protoReportSiteLead(site);
+  const saved = lead ? protoSiteProfile(lead).attrs : {};
+  const typed = protoReportEditId() ? protoReportDraft()?.siteRates?.[String(protoSiteId(site))] : null;
+  return { ...saved, ...(typed || {}) };
+}
+
+function protoReportPeakShare(meter) {
+  let on = 0;
+  for (let hour = 0; hour < 24; hour += 1) if (protoHourIsPeak(meter, hour, protoToday())) on += 1;
+  return on / 24;
+}
+
+function protoReportMeterOwnRates(meter) {
+  return protoMeterOwnParts(meter.id).includes("rates");
+}
+
+// A day of one meter's charges. A meter with its own rates keeps them.
+function protoReportMeterDay(meter, util, siteAttrs) {
+  const own = protoReportMeterOwnRates(meter) ? protoMeterOverride(meter.id).rates : null;
+  const attrs = { ...siteAttrs, ...(own || {}) };
+  const key = util.id === "water" ? "Water" : util.id === "gas" ? "Gas" : "Elec";
+  const amount = meter.direction === "Export" ? 0 : protoDayKwh(meter);
+  const standing = Number(attrs[`standing${key}`]) || 0;
+  if (util.id === "water") {
+    return { standing, onUse: amount, offUse: 0, usage: (amount * (Number(attrs.unitWater) || 0)) / 100 };
+  }
+  const onUse = amount * protoReportPeakShare(meter);
+  const offUse = amount - onUse;
+  const usage = (onUse * (Number(attrs[`on${key}`]) || 0) + offUse * (Number(attrs[`off${key}`]) || 0)) / 100;
+  return { standing, onUse, offUse, usage };
+}
+
 function protoReportBill(def, tenant) {
   const site = protoReportSiteById(tenant?.site);
   const period = protoReportPeriod("billing", def.period);
   const lines = site
     ? protoReportBillUtils(site).map((util) => {
         const meters = (site.meters || []).filter((meter) => protoReportMeterUtil(meter) === util.id);
-        const usage = meters.reduce((n, meter) => n + protoMeterSpendGbp(meter), 0) * period.days;
-        const standing = meters.length * util.standing * period.days;
+        const siteAttrs = protoReportSiteAttrs(site);
+        const days = meters.map((meter) => protoReportMeterDay(meter, util, siteAttrs));
+        const usage = days.reduce((n, day) => n + day.usage, 0) * period.days;
+        const standing = days.reduce((n, day) => n + day.standing, 0) * period.days;
         const pays = tenant[`${util.id}Pays`] !== false;
         const standingShare = pays ? Number(tenant[`${util.id}Standing`]) || 0 : 0;
         const usageShare = pays ? Number(tenant[`${util.id}Usage`]) || 0 : 0;
@@ -8937,6 +8996,7 @@ function protoReportBill(def, tenant) {
           util,
           pays,
           meters,
+          days,
           usage,
           standing,
           standingShare,
@@ -8947,8 +9007,9 @@ function protoReportBill(def, tenant) {
     : [];
   const cost = lines.reduce((n, line) => n + line.usage + line.standing, 0);
   const net = lines.reduce((n, line) => n + line.due, 0);
-  const vat = (net * def.vat) / 100;
-  return { tenant, site, period, lines, cost, net, vat, due: net + vat };
+  const rate = Number(tenant?.vat) || 0;
+  const vat = (net * rate) / 100;
+  return { tenant, site, period, lines, cost, net, rate, vat, due: net + vat };
 }
 
 // Every tenant's bill. A site counts once in the cost, even with two tenants on it.
@@ -9106,11 +9167,11 @@ function protoReportSummary(def) {
       if (!bill.site) return "Pick a site to project its cost.";
       return `${bill.site.name}. Projected ${bill.period.word} cost ${protoSpendMoney(bill.cost)}. ${
         bill.tenant.name || "The tenant"
-      } pays ${protoSpendMoney(bill.due)}, including VAT at ${def.vat}%.`;
+      } pays ${protoSpendMoney(bill.due)}, including VAT at ${bill.rate}%.`;
     }
     return `${all.bills.length} tenants on ${all.sites} ${all.sites === 1 ? "site" : "sites"}. Projected ${
       all.period.word
-    } cost ${protoSpendMoney(all.cost)}. Tenants pay ${protoSpendMoney(all.due)} in all, including VAT at ${def.vat}%.`;
+    } cost ${protoSpendMoney(all.cost)}. Tenants pay ${protoSpendMoney(all.due)} in all, including VAT.`;
   }
   if (def.type === "alert") {
     const totals = protoReportAlertTotals(def);
@@ -9516,9 +9577,20 @@ function protoReportDraftIssueBase(draft) {
           return `Give ${who} a share of ${util.name.toLowerCase()}, or answer No.`;
         }
       }
+      const typed = draft.siteRates?.[String(tenant.site)] || {};
+      const site = protoReportSiteById(tenant.site);
+      for (const util of paid) {
+        for (const item of protoReportRateSpec(util)) {
+          if (!(item.key in typed)) continue;
+          const raw = String(typed[item.key] ?? "").trim();
+          if (raw === "" || !(Number(raw) >= 0)) {
+            return `${item.label} for ${util.name.toLowerCase()} at ${site?.name || "the site"} must be 0 or more.`;
+          }
+        }
+      }
+      const vat = String(tenant.vat ?? "").trim();
+      if (vat === "" || !(Number(vat) >= 0 && Number(vat) <= 100)) return `VAT for ${who} must be between 0 and 100%.`;
     }
-    const vat = String(draft.vat ?? "").trim();
-    if (vat === "" || !(Number(vat) >= 0 && Number(vat) <= 100)) return "VAT must be between 0 and 100%.";
     return "";
   }
   if (draft.type === "alert") {
@@ -10200,6 +10272,99 @@ function protoReportBackLabel() {
   return from === PROTO_ALERT_RULES_VIEW ? "Back to alerts" : "Back to reports";
 }
 
+// Site charges typed on a billing report that differ from the site profile.
+function protoReportRateChanges(draft) {
+  if (draft?.type !== "billing") return [];
+  const used = new Set(protoReportTenantsOf(draft).map((tenant) => String(tenant.site || "")).filter(Boolean));
+  const out = [];
+  Object.entries(draft.siteRates || {}).forEach(([siteId, typed]) => {
+    const site = protoReportSiteById(siteId);
+    const lead = protoReportSiteLead(site);
+    if (!used.has(siteId) || !lead) return;
+    const saved = protoSiteProfile(lead).attrs;
+    protoReportBillUtils(site).forEach((util) =>
+      protoReportRateSpec(util).forEach((item) => {
+        if (!(item.key in typed)) return;
+        const from = String(saved[item.key] ?? "").trim();
+        const to = String(typed[item.key] ?? "").trim();
+        if (from === to || (from !== "" && Number(from) === Number(to))) return;
+        out.push({ lead, site: site.name, util: util.name, label: item.label, unit: item.unit, key: item.key, from, to });
+      })
+    );
+  });
+  return out;
+}
+
+function protoReportRateProfilesPatch(changes) {
+  if (!changes.length) return {};
+  const profiles = { ...protoMeterProfiles() };
+  const drafts = { ...protoMeterDrafts() };
+  const byLead = new Map();
+  changes.forEach((change) => byLead.set(change.lead, { ...(byLead.get(change.lead) || {}), [change.key]: change.to }));
+  byLead.forEach((attrs, lead) => {
+    const key = protoProfileKey(lead);
+    const next = protoSiteProfile(lead);
+    next.attrs = { ...next.attrs, ...attrs };
+    profiles[key] = next;
+    drafts[key] = protoCloneProfile(next);
+  });
+  return { prototypeMeterProfiles: profiles, prototypeMeterDrafts: drafts };
+}
+
+function protoReportRateCheckModal(draft) {
+  if (!store.prototypeReportRateCheck) return "";
+  const changes = protoReportRateChanges(draft);
+  if (!changes.length) return "";
+  const show = (value, unit) => (value === "" ? "Not set" : `${value} ${unit}`);
+  return `
+    <div class="astral-modal-back" data-proto-modal="report-rates">
+      <div class="astral-modal astral-report-rate-check" role="dialog" aria-modal="true" aria-labelledby="astral-report-rates-title">
+        ${protoModalHead(
+          "astral-report-rates-title",
+          "Update the site profile?",
+          "Saving changes these charges in the site profile too. Reports and charts that use them will change. Is this right?",
+          "report-rates"
+        )}
+        <div class="astral-modal-body">
+          ${protoMeterPlainTable(
+            ["Site", "Utility", "Charge", "From", "To"],
+            changes.map((change) => [change.site, change.util, change.label, show(change.from, change.unit), show(change.to, change.unit)])
+          )}
+        </div>
+        <div class="astral-modal-foot">
+          <div class="astral-actions">
+            ${protoBtn("Yes, save and update", 'data-proto-report-rate-check="yes"')}
+            ${protoGhost("No, go back", 'data-proto-modal-close="report-rates"')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function protoReportSubmit(confirmed) {
+  if (!protoCanEditReports()) return;
+  const draft = protoReportDraft();
+  if (!draft || protoReportDraftIssue(draft)) return;
+  const changes = protoReportRateChanges(draft);
+  if (changes.length && !confirmed) {
+    setProto({ prototypeReportRateCheck: true });
+    protoRestoreFocus('#astral-fs [data-proto-report-rate-check="yes"]');
+    return;
+  }
+  const def = protoReportDraftDef(draft);
+  const fresh = protoReportConsent(draft).fresh.filter(protoReportIsPersonKey).length;
+  const defs = protoReportDefs();
+  const next = defs.some((item) => item.id === def.id)
+    ? defs.map((item) => (item.id === def.id ? def : item))
+    : [...defs, def];
+  protoReportLeave({
+    ...protoReportDefsPatch(next),
+    ...protoReportRateProfilesPatch(changes),
+    prototypeReportNotice: fresh ? { n: fresh, name: def.name } : null,
+  });
+}
+
 function protoReportPage() {
   const id = protoReportEditId();
   const isNew = id === "new";
@@ -10265,6 +10430,7 @@ function protoReportPage() {
         </div>
       </div>
     </form>
+    ${protoReportRateCheckModal(draft)}
   `);
 }
 
@@ -10534,67 +10700,129 @@ function protoReportDeliveryFields(draft, opts = {}) {
   `;
 }
 
+function protoReportUtilTab(site) {
+  const want = String(store.prototypeReportUtilTab || "");
+  return PROTO_REPORT_BILL_UTILS.some((util) => util.id === want) ? want : protoReportBillUtils(site)[0].id;
+}
+
 function protoReportBillSplit(draft, tenant) {
   const site = protoReportSiteById(tenant.site);
-  if (!site) return "";
+  if (!site) return `<p class="astral-muted">Pick a site to set what ${escapeHtml(
+    String(tenant.name || "").trim() || "this tenant"
+  )} pays for.</p>`;
   const who = String(tenant.name || "").trim() || "this tenant";
-  const rows = protoReportBillUtils(site)
-    .map((util) => {
-      const pays = tenant[`${util.id}Pays`] !== false;
-      const answers = [
-        { on: true, name: "Yes", note: "They pay a share of it." },
-        { on: false, name: "No", note: "It stays off their bill." },
-      ];
-      return `
-        <fieldset class="astral-report-split">
-          <legend>${escapeHtml(`Does ${who} pay for ${util.name.toLowerCase()}?`)}</legend>
-          <div class="astral-report-types is-pair" role="radiogroup" aria-label="${escapeHtml(`Pays for ${util.name.toLowerCase()}`)}">
-            ${answers
-              .map((item) => {
-                const on = item.on === pays;
-                return `
-                  <button
-                    type="button"
-                    role="radio"
-                    class="astral-report-type${on ? " is-on" : ""}"
-                    aria-checked="${on ? "true" : "false"}"
-                    tabindex="${on ? "0" : "-1"}"
-                    data-proto-report-tenant-pays="${escapeHtml(`${tenant.id}:${util.id}:${item.on ? 1 : 0}`)}"
-                  >
-                    <span class="astral-report-type-head">${protoRadio(on)}<span>${item.name}</span></span>
-                    <span class="astral-muted">${item.note}</span>
-                  </button>
-                `;
-              })
-              .join("")}
-          </div>
-          ${
-            pays
-              ? `
-          <span class="astral-report-split-ask">What share do they pay?</span>
-          <div class="astral-report-pair">
-            ${protoReportInput(
-              "Standing charge share (%)",
-              `tenant:${tenant.id}:${util.id}Standing`,
-              tenant[`${util.id}Standing`],
-              'inputmode="decimal" placeholder="50"'
-            )}
-            ${protoReportInput(
-              "Usage share (%)",
-              `tenant:${tenant.id}:${util.id}Usage`,
-              tenant[`${util.id}Usage`],
-              'inputmode="decimal" placeholder="50"'
-            )}
-          </div>`
-              : ""
-          }
-        </fieldset>
-      `;
-    })
-    .join("");
+  const onSite = new Set(protoReportBillUtils(site).map((util) => util.id));
+  const active = protoReportUtilTab(site);
+  const tabId = (util) => `${tenant.id}:${util.id}`;
+  const panels = PROTO_REPORT_BILL_UTILS.map((util) => {
+    const body = onSite.has(util.id)
+      ? protoReportUtilSplit(tenant, util, who)
+      : `<p class="astral-muted">${escapeHtml(site.name)} has no ${util.name.toLowerCase()} meters, so there is nothing to share.</p>`;
+    return `<div class="astral-report-util-panel" role="tabpanel" aria-label="${escapeHtml(util.name)}" data-proto-report-util-panel="${escapeHtml(
+      tabId(util)
+    )}"${util.id === active ? "" : " hidden"}>${body}</div>`;
+  }).join("");
   return `
-    ${rows}
-    <p class="astral-muted">Only the utilities on this site show. The tenant pays their share of each one they pay for.</p>
+    <div class="astral-report-util-tabs">${protoTabs(
+      PROTO_REPORT_BILL_UTILS.map((util) => ({ id: tabId(util), name: util.name })),
+      `${tenant.id}:${active}`,
+      "data-proto-report-util-tab",
+      "Utilities"
+    )}</div>
+    ${panels}
+  `;
+}
+
+function protoReportSiteCharges(tenant, util) {
+  const site = protoReportSiteById(tenant.site);
+  const attrs = protoReportSiteAttrs(site);
+  const siteId = String(protoSiteId(site));
+  const own = (site.meters || []).filter(
+    (meter) => protoReportMeterUtil(meter) === util.id && protoReportMeterOwnRates(meter)
+  ).length;
+  return `
+    <span class="astral-report-split-ask">Site charges</span>
+    <div class="astral-report-rates">
+      ${protoReportRateSpec(util)
+        .map((item) =>
+          protoReportInput(
+            `${item.label} (${item.unit})`,
+            `rate:${siteId}:${item.key}`,
+            attrs[item.key],
+            'inputmode="decimal"'
+          )
+        )
+        .join("")}
+    </div>
+    <p class="astral-muted">From the site profile for ${escapeHtml(site.name)}. Change them here and we check with you before the site profile updates.${
+      own ? ` ${own} ${own === 1 ? "meter uses its" : "meters use their"} own rates.` : ""
+    }</p>
+  `;
+}
+
+function protoReportUtilSplit(tenant, util, who) {
+  const pays = tenant[`${util.id}Pays`] !== false;
+  const answers = [
+    { on: true, name: "Yes", note: "They pay a share of it." },
+    { on: false, name: "No", note: "It stays off their bill." },
+  ];
+  return `
+    <fieldset class="astral-report-split">
+      <legend>${escapeHtml(`Does ${who} pay for ${util.name.toLowerCase()}?`)}</legend>
+      <div class="astral-report-types is-pair" role="radiogroup" aria-label="${escapeHtml(`Pays for ${util.name.toLowerCase()}`)}">
+        ${answers
+          .map((item) => {
+            const on = item.on === pays;
+            return `
+              <button
+                type="button"
+                role="radio"
+                class="astral-report-type${on ? " is-on" : ""}"
+                aria-checked="${on ? "true" : "false"}"
+                tabindex="${on ? "0" : "-1"}"
+                data-proto-report-tenant-pays="${escapeHtml(`${tenant.id}:${util.id}:${item.on ? 1 : 0}`)}"
+              >
+                <span class="astral-report-type-head">${protoRadio(on)}<span>${item.name}</span></span>
+                <span class="astral-muted">${item.note}</span>
+              </button>
+            `;
+          })
+          .join("")}
+      </div>
+      ${
+        pays
+          ? `
+      ${protoReportSiteCharges(tenant, util)}
+      <span class="astral-report-split-ask">What share do they pay?</span>
+      <div class="astral-report-pair">
+        ${protoReportInput(
+          "Standing charge share (%)",
+          `tenant:${tenant.id}:${util.id}Standing`,
+          tenant[`${util.id}Standing`],
+          'inputmode="decimal" placeholder="50"'
+        )}
+        ${protoReportInput(
+          "Usage share (%)",
+          `tenant:${tenant.id}:${util.id}Usage`,
+          tenant[`${util.id}Usage`],
+          'inputmode="decimal" placeholder="50"'
+        )}
+      </div>`
+          : ""
+      }
+    </fieldset>
+  `;
+}
+
+function protoReportTenantTaxes(tenant) {
+  return `
+    <fieldset class="astral-report-split astral-report-taxes">
+      <legend>Taxes</legend>
+      <div class="astral-report-pair">
+        ${protoReportInput("VAT (%)", `tenant:${tenant.id}:vat`, tenant.vat, 'inputmode="decimal" placeholder="20"')}
+      </div>
+      <p class="astral-muted">VAT goes on top of what they pay for each utility.</p>
+    </fieldset>
   `;
 }
 
@@ -10656,6 +10884,7 @@ function protoReportTenantFold(draft, tenant, i, openId) {
         ${protoReportInput("Tenant emails", field("email"), tenant.email, 'inputmode="email" placeholder="accounts@tenant.com, name@tenant.com"')}
       </div>
       ${protoReportBillSplit(draft, tenant)}
+      ${protoReportTenantTaxes(tenant)}
       <p class="astral-report-preview" data-proto-report-tenant-bill="${escapeHtml(tenant.id)}">${escapeHtml(
         protoReportTenantBillLine(protoReportDraftDef(draft), protoReportTenantsOf(protoReportDraftDef(draft))[i] || tenant)
       )}</p>
@@ -10698,7 +10927,6 @@ function protoReportPatchTenant(tenantId, patch) {
 const PROTO_REPORT_GROUP_NAMES = {
   details: "Details",
   data: "Data",
-  charges: "Charges",
   trigger: "Trigger",
   schedule: "Schedule",
   delivery: "Delivery",
@@ -10874,15 +11102,6 @@ function protoReportGroups(draft, opts = {}) {
   if (draft.type === "billing") {
     return [
       protoReportGroup("details", protoReportTenantsHtml(draft)),
-      protoReportGroup(
-        "charges",
-        `
-          <div class="astral-report-pair">
-            ${protoReportInput("VAT (%)", "vat", draft.vat, 'inputmode="decimal" placeholder="20"')}
-          </div>
-          <p class="astral-muted">VAT goes on every tenant's bill. Each tenant's shares sit with them in Details.</p>
-        `
-      ),
       protoReportGroup(
         "schedule",
         `${protoReportWhenFields(draft)}<div class="astral-report-pair">${protoReportSendAtSelect(draft)}</div>`
@@ -11136,6 +11355,12 @@ function protoReportRefreshForm() {
     }
   }
   if (draft.type === "billing") {
+    modal.querySelectorAll('input[data-proto-report-field^="rate:"]').forEach((input) => {
+      if (input === document.activeElement) return;
+      const [, siteId, key] = input.dataset.protoReportField.split(":");
+      const typed = draft.siteRates?.[siteId];
+      if (typed && key in typed && input.value !== typed[key]) input.value = typed[key];
+    });
     const def = protoReportDraftDef(draft);
     const saved = protoReportTenantsOf(def);
     protoReportTenantsOf(draft).forEach((tenant, i) => {
@@ -11223,6 +11448,7 @@ function protoPageSlide(dir) {
 
 function protoReportEditClear() {
   return {
+    prototypeReportRateCheck: false,
     prototypeReportEdit: "",
     prototypeReportDraft: null,
     prototypeReportDraftStart: "",
@@ -11313,7 +11539,7 @@ function protoReportRows(def) {
         protoFormatUkDate(to),
         bill.cost.toFixed(2),
         bill.net.toFixed(2),
-        def.vat,
+        bill.rate,
         bill.vat.toFixed(2),
         bill.due.toFixed(2),
       ]),
@@ -11342,8 +11568,8 @@ function protoReportRows(def) {
       ["tenant", "meter", "utility", "usage cost (GBP)", "usage share (%)", "tenant pays before VAT (GBP)"],
       ...all.bills.flatMap((bill) =>
         bill.lines.filter((line) => line.pays).flatMap((line) =>
-          line.meters.map((meter) => {
-            const cost = protoMeterSpendGbp(meter) * bill.period.days;
+          line.meters.map((meter, m) => {
+            const cost = line.days[m].usage * bill.period.days;
             return [
               bill.tenant.name,
               meter.name,
@@ -25800,7 +26026,7 @@ function protoMeasurePillsSoon() {
   }
 }
 
-const protoSlideMemory = { tabs: null, links: null, reportTabs: null, attrTabs: null, chartStyle: null };
+const protoSlideMemory = { tabs: null, links: null, reportTabs: null, attrTabs: null, chartStyle: null, utilTabs: null };
 
 function protoSlideNavPillsSoon() {
   requestAnimationFrame(() => protoSlideNavPills());
@@ -25824,6 +26050,12 @@ function protoSlideNavPills(options) {
   );
   protoSlideHost(root.querySelector("nav.astral-links"), ".astral-link[aria-current='page']", "links", snap);
   protoSlideHost(root.querySelector(".astral-meter-attr-tabs .astral-tabs"), "button.is-on", "attrTabs", snap);
+  protoSlideHost(
+    root.querySelector(".astral-report-tenant.is-open .astral-report-util-tabs .astral-tabs"),
+    "button.is-on",
+    "utilTabs",
+    snap
+  );
   protoSlideHost(
     document.querySelector("#astral-fs .astral-chart-style-switch"),
     "button.is-on",
@@ -26867,6 +27099,14 @@ function onPrototype(event) {
       const head = root.querySelector(":scope > [data-proto-report-tenant-fold]");
       protoSyncFoldClip(root, Boolean(next) && head?.dataset.protoReportTenantFold === next);
     });
+    requestAnimationFrame(() =>
+      protoSlideHost(
+        document.querySelector("#astral-fs .astral-report-tenant.is-open .astral-report-util-tabs .astral-tabs"),
+        "button.is-on",
+        "utilTabs",
+        true
+      )
+    );
     return;
   }
   const tenantAddBtn = event.target.closest("[data-proto-report-tenant-add]");
@@ -26950,6 +27190,26 @@ function onPrototype(event) {
     const draft = protoReportDraft();
     if (draft && (draft.bySite !== false) !== bySite) protoReportPatchDraft({ bySite });
     protoRestoreFocus(`#astral-fs [data-proto-report-bysite="${bySite ? 1 : 0}"]`);
+    return;
+  }
+  if (event.target.closest("[data-proto-report-rate-check]")) {
+    protoReportSubmit(true);
+    return;
+  }
+  const utilTab = event.target.closest("[data-proto-report-util-tab]");
+  if (utilTab) {
+    const utilId = utilTab.dataset.protoReportUtilTab.split(":")[1];
+    store.prototypeReportUtilTab = utilId;
+    document.querySelectorAll("#astral-fs .astral-report-util-tabs [data-proto-report-util-tab]").forEach((tab) => {
+      const on = tab.dataset.protoReportUtilTab.split(":")[1] === utilId;
+      tab.classList.toggle("is-on", on);
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+      tab.tabIndex = on ? 0 : -1;
+    });
+    document.querySelectorAll("#astral-fs [data-proto-report-util-panel]").forEach((panel) => {
+      panel.hidden = panel.dataset.protoReportUtilPanel.split(":")[1] !== utilId;
+    });
+    protoSlideHost(utilTab.closest(".astral-tabs"), "button.is-on", "utilTabs", false);
     return;
   }
   const paysBtn = event.target.closest("[data-proto-report-tenant-pays]");
@@ -28635,6 +28895,14 @@ function onPrototypeInput(event) {
     const key = reportField.dataset.protoReportField;
     const value = reportField.value.slice(0, 400);
     const bits = key.startsWith("tenant:") ? key.split(":") : null;
+    const rate = key.startsWith("rate:") ? key.split(":") : null;
+    if (rate) {
+      const rates = { ...(draft.siteRates || {}) };
+      rates[rate[1]] = { ...(rates[rate[1]] || {}), [rate[2]]: value.trim() };
+      store.prototypeReportDraft = { ...draft, siteRates: rates };
+      protoReportRefreshForm();
+      return;
+    }
     store.prototypeReportDraft = bits
       ? {
           ...draft,
@@ -29294,19 +29562,7 @@ function onPrototypeSubmit(event) {
   const reportForm = event.target.closest("[data-proto-report-edit-form]");
   if (reportForm) {
     event.preventDefault();
-    if (!protoCanEditReports()) return;
-    const draft = protoReportDraft();
-    if (!draft || protoReportDraftIssue(draft)) return;
-    const def = protoReportDraftDef(draft);
-    const fresh = protoReportConsent(draft).fresh.filter(protoReportIsPersonKey).length;
-    const defs = protoReportDefs();
-    const next = defs.some((item) => item.id === def.id)
-      ? defs.map((item) => (item.id === def.id ? def : item))
-      : [...defs, def];
-    protoReportLeave({
-      ...protoReportDefsPatch(next),
-      prototypeReportNotice: fresh ? { n: fresh, name: def.name } : null,
-    });
+    protoReportSubmit(false);
   }
 }
 

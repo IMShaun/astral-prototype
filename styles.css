@@ -10432,6 +10432,30 @@ tr.is-off .astral-person-mark {
   font-weight: 500;
 }
 
+.astral-report-util-tabs {
+  display: flex;
+  min-width: 0;
+}
+
+.astral-report-rates {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.astral-report-util-panel {
+  min-width: 0;
+}
+
+.astral-report-util-panel[hidden] {
+  display: none;
+}
+
+.astral-report-taxes legend {
+  font-weight: 600;
+}
+
 .astral-report-consent-host {
   display: grid;
   gap: 12px;
