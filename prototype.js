@@ -3570,13 +3570,22 @@ function protoZoneLayer(buckets, zones, pad, w, h, spanOf) {
       return { ...run, x0, x1, width: Math.max(0, x1 - x0) };
     });
   };
+  // Keys carry the kind and its ordinal, so a band or segment morphs into the same kind when the settings change.
+  const keyer = () => {
+    const seen = {};
+    return (kind) => {
+      seen[kind] = (seen[kind] || 0) + 1;
+      return `${kind}|${seen[kind] - 1}`;
+    };
+  };
   if (zones.showHours) {
+    const bandKey = keyer();
     const bands = runs((b) => (b.shut < 0.05 ? "on" : `${b.kind === "on" ? "non" : b.kind}:${Math.round(b.shut * 10)}`))
       .filter((run) => run.k !== "on")
-      .map((run, n) => {
+      .map((run) => {
         const [kind, tenth] = run.k.split(":");
         const opacity = Math.max(0.35, Number(tenth) / 10);
-        return `<rect class="astral-zone-band is-${kind}" data-m="zb|${n}" x="${run.x0.toFixed(1)}" y="${pad.t}" width="${run.width.toFixed(
+        return `<rect class="astral-zone-band is-${kind}" data-m="zb|${bandKey(kind)}" x="${run.x0.toFixed(1)}" y="${pad.t}" width="${run.width.toFixed(
           1
         )}" height="${(bottom - pad.t).toFixed(1)}" style="opacity:${opacity.toFixed(2)}" />`;
       })
@@ -3591,11 +3600,12 @@ function protoZoneLayer(buckets, zones, pad, w, h, spanOf) {
           )}" y2="${bottom}" />`
       )
       .join("");
+    const labelKey = keyer();
     const labels = named
-      .map((run, n) =>
+      .map((run) =>
         run.width < 100
           ? ""
-          : `<text class="astral-zone-label" data-m="zl|${n}" x="${(run.x0 + run.width / 2).toFixed(1)}" y="${
+          : `<text class="astral-zone-label" data-m="zl|${labelKey(run.k)}" x="${(run.x0 + run.width / 2).toFixed(1)}" y="${
               pad.t - 10
             }" text-anchor="middle">${PROTO_ZONE_NAMES[run.k]}</text>`
       )
@@ -3604,17 +3614,19 @@ function protoZoneLayer(buckets, zones, pad, w, h, spanOf) {
   }
   if (zones.showTou) {
     const y = bottom + 6;
+    const segKey = keyer();
     const segs = runs((b) => (b.peak ? "peak" : "off"))
-      .map((run, n) => {
+      .map((run) => {
+        const key = segKey(run.k);
         const x0 = run.x0 + 1;
         const width = Math.max(0, run.width - 2);
         const label =
           width < 64
             ? ""
-            : `<text class="astral-tou-label is-${run.k}" data-m="tl|${n}" x="${(x0 + width / 2).toFixed(1)}" y="${(
+            : `<text class="astral-tou-label is-${run.k}" data-m="tl|${key}" x="${(x0 + width / 2).toFixed(1)}" y="${(
                 y + 13
               ).toFixed(1)}" text-anchor="middle">${run.k === "peak" ? "Peak" : "Off-peak"}</text>`;
-        return `<rect class="astral-tou is-${run.k}" data-m="tou|${n}" x="${x0.toFixed(1)}" y="${y}" width="${width.toFixed(
+        return `<rect class="astral-tou is-${run.k}" data-m="tou|${key}" x="${x0.toFixed(1)}" y="${y}" width="${width.toFixed(
           1
         )}" height="18" rx="4" />${label}`;
       })
@@ -6095,6 +6107,8 @@ function protoChartFinger(label, points) {
     protoChartFlowIds().join(","),
     protoChartSliceOffIds().join(","),
     protoChartShow().join(","),
+    store.prototypeZoneUtility || "",
+    store.prototypeZoneFor || "",
     (protoPaneMeterKindIds() || ["*"]).join(","),
     protoPaneFilterIds().join(","),
     protoTreeFilterIds().join(","),
@@ -6259,6 +6273,8 @@ function protoMorphSnap(svg) {
         const v = parseFloat(el.getAttribute(name));
         if (Number.isFinite(v)) item.attrs[name] = v;
       });
+      const op = parseFloat(el.style.opacity);
+      if (Number.isFinite(op)) item.op = op;
     }
     items.set(key, item);
   });
@@ -6368,7 +6384,12 @@ function protoMorphBind(m, svg) {
         const to = parseFloat(raw);
         if (Number.isFinite(to) && to !== from.attrs[name]) pairs.push({ name, from: from.attrs[name], to, raw });
       });
-      if (pairs.length) m.tracks.push({ el, type: "attrs", pairs });
+      const toOp = parseFloat(el.style.opacity);
+      const op =
+        Number.isFinite(from.op) && Number.isFinite(toOp) && from.op !== toOp
+          ? { from: from.op, to: toOp, raw: el.style.opacity }
+          : null;
+      if (pairs.length || op) m.tracks.push({ el, type: "attrs", pairs, op });
       return;
     }
     if (PROTO_MORPH_FADE.has(tag)) m.tracks.push({ el, type: "fade-in" });
@@ -6428,10 +6449,15 @@ function protoMorphPaint(m, t) {
       track.pairs.forEach((pair) => {
         el.setAttribute(pair.name, protoMorphLerp(pair.from, pair.to, t).toFixed(1));
       });
-    } else if (track.type === "fade-in") {
-      el.style.opacity = String(t);
-    } else if (track.type === "fade-out") {
-      el.style.opacity = String(1 - t);
+      if (track.op) el.style.opacity = protoMorphLerp(track.op.from, track.op.to, t).toFixed(2);
+    } else if (track.type === "fade-in" || track.type === "fade-out") {
+      // Fades run to or from the part's own opacity, such as a lighter partly closed hours band.
+      if (track.top == null) {
+        track.base = el.style.opacity;
+        const top = parseFloat(track.base);
+        track.top = Number.isFinite(top) ? top : 1;
+      }
+      el.style.opacity = String(track.top * (track.type === "fade-in" ? t : 1 - t));
     }
   });
 }
@@ -6447,8 +6473,9 @@ function protoMorphFinish(m) {
       el.setAttribute("points", track.final);
     } else if (track.type === "attrs") {
       track.pairs.forEach((pair) => el.setAttribute(pair.name, pair.raw));
+      if (track.op) el.style.opacity = track.op.raw;
     } else if (track.type === "fade-in") {
-      el.style.opacity = "";
+      el.style.opacity = track.base || "";
     }
   });
   m.layer?.remove();
