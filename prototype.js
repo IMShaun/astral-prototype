@@ -3516,22 +3516,26 @@ function protoZoneGroups(meters, zones) {
 const PROTO_ZONE_UTILITIES = ["Electricity", "Gas", "Water"];
 
 // Each utility can keep its own hours and tariff, so the graph shades one utility at a time.
+// The list holds every utility in the view. One not on the graph switches the graph to it.
 function protoZoneUtilityPick(meters) {
-  const have = PROTO_ZONE_UTILITIES.filter((name) =>
-    (meters || []).some((meter) => meter && protoMeterUtility(meter) === name)
-  );
+  const has = (list, name) => (list || []).some((meter) => meter && protoMeterUtility(meter) === name);
+  const drawn = PROTO_ZONE_UTILITIES.filter((name) => has(meters, name));
+  const pool = protoPanePoolMeters();
+  const have = PROTO_ZONE_UTILITIES.filter((name) => drawn.includes(name) || has(pool, name));
   const want = String(store.prototypeZoneUtility || "");
-  return { utilities: have, utility: have.includes(want) ? want : have[0] || "" };
+  return { utilities: have, drawn, utility: drawn.includes(want) ? want : drawn[0] || "" };
 }
 
 function protoZoneSet(rows, allMeters, zones) {
   const hourly = (rows || []).some((point) => protoPointHour(point) != null);
-  const { utilities, utility } = hourly ? protoZoneUtilityPick(allMeters) : { utilities: [], utility: "" };
+  const { utilities, drawn, utility } = hourly
+    ? protoZoneUtilityPick(allMeters)
+    : { utilities: [], drawn: [], utility: "" };
   const meters =
-    utilities.length > 1
+    drawn.length > 1
       ? (allMeters || []).filter((meter) => meter && protoMeterUtility(meter) === utility)
       : allMeters;
-  const base = { zones, utilities, utility };
+  const base = { zones, utilities, drawn, utility };
   const groups = hourly ? protoZoneGroups(meters, zones) : [];
   if (groups.length < 2) return { ...base, groups, pick: null, buckets: protoZoneBuckets(rows, meters) };
   const want = String(store.prototypeZoneFor || "");
@@ -7500,11 +7504,18 @@ function protoPickSelect(id, value) {
     return;
   }
   if (id === "chart-zone-utility") {
-    setProto({
+    const name = String(value || "");
+    const kind = name.toLowerCase();
+    const patch = {
       prototypeSelectOpen: "",
-      prototypeZoneUtility: String(value || ""),
+      prototypeZoneUtility: name,
       prototypeChartPoint: null,
-    });
+    };
+    // Water is m³ and cannot share the graph with kWh, so picking across that line swaps what is drawn.
+    const drawn = protoPaneMeterKindIds();
+    const onGraph = drawn ? drawn.includes(kind) : kind !== "water";
+    if (!onGraph) patch.prototypePaneMeterKinds = kind === "water" ? ["water"] : null;
+    setProto(patch);
     protoRestoreFocus(`#astral-fs [data-proto-select="chart-zone-utility"] .astral-select-btn`);
     return;
   }
