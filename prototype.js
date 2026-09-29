@@ -988,7 +988,7 @@ const PROTO_NAMED_METERS = {
     lastReading: "5 min ago",
     use24h: "0.4 MWh",
     hours: "00.00 to 24.00",
-    tou: "On peak and off peak",
+    tou: "Night and day",
     tariff: "Gas",
     base: 2.4,
     swing: 0.6,
@@ -1007,7 +1007,7 @@ const PROTO_NAMED_METERS = {
     lastReading: "5 min ago",
     use24h: "12 m³",
     hours: "00.00 to 24.00",
-    tou: "On peak and off peak",
+    tou: "Weekday peak",
     tariff: "Water",
     ratePence: 185,
     base: 2.4,
@@ -1054,11 +1054,24 @@ const PROTO_NAMED_METERS = {
   },
 };
 
+// days changes single weekdays from the usual hours: a time range, "off" for non-operational, or "closed".
 const PROTO_WALK_SITE_KIND = {
   traction: { base: 8.2, swing: 2.2, hours: "00.00 to 24.00", tou: "On peak and off peak" },
-  depot: { base: 5.4, swing: 1.4, hours: "05.00 to 21.00", tou: "Weekday peak" },
-  station: { base: 6.3, swing: 1.6, hours: "04.00 to 23.00", tou: "Night and day" },
-  retail: { base: 2.9, swing: 0.7, hours: "06.00 to 22.00", tou: "Weekday peak" },
+  depot: {
+    base: 5.4,
+    swing: 1.4,
+    hours: "05.00 to 21.00",
+    tou: "Weekday peak",
+    days: { Saturday: "07.00 to 13.00" },
+  },
+  station: { base: 6.3, swing: 1.6, hours: "04.00 to 23.00", tou: "Night and day", days: { Sunday: "07.00 to 22.00" } },
+  retail: { base: 2.9, swing: 0.7, hours: "06.00 to 22.00", tou: "Weekday peak", days: { Sunday: "10.00 to 16.00" } },
+};
+
+// Gas and water keep their own tariff times, so each utility shades differently on the same site.
+const PROTO_WALK_UTILITY_TOU = {
+  gas: { traction: "Night and day", depot: "Night and day", station: "On peak and off peak", retail: "Night and day" },
+  water: { traction: "Night and day", depot: "On peak and off peak", station: "Weekday peak", retail: "On peak and off peak" },
 };
 
 const PROTO_WALK_GROUPS = [
@@ -1068,10 +1081,10 @@ const PROTO_WALK_GROUPS = [
       { name: "Crewe depot", keep: ["nr-crewe-in"], kind: "depot" },
       { name: "Euston", keep: ["nr-euston-in"] },
       { name: "Manchester Traction", keep: ["nr-man-in", "nr-man-ex"], kind: "traction" },
-      { name: "Stafford", kind: "station" },
+      { name: "Stafford", kind: "station", meters: ["in", "gas"] },
       { name: "Warrington depot", kind: "depot", meters: ["in", "gas"] },
       { name: "Liverpool Lime Street", kind: "station" },
-      { name: "Preston", kind: "station" },
+      { name: "Preston", kind: "station", meters: ["in", "gas"] },
       { name: "Manchester Piccadilly", kind: "station" },
       { name: "Rugby", kind: "station" },
       { name: "Milton Keynes Central", kind: "station" },
@@ -1095,9 +1108,9 @@ const PROTO_WALK_GROUPS = [
     name: "Eastern",
     sites: [
       { name: "York Traction", keep: ["nr-york-in"], kind: "traction" },
-      { name: "Doncaster depot", kind: "depot", status: "gaps", gaps: [2, 3], lastReading: "2 h ago", use24h: "Partial" },
-      { name: "Newcastle", kind: "station" },
-      { name: "Leeds", kind: "station" },
+      { name: "Doncaster depot", kind: "depot", days: { Saturday: "off" }, status: "gaps", gaps: [2, 3], lastReading: "2 h ago", use24h: "Partial" },
+      { name: "Newcastle", kind: "station", meters: ["in", "gas"] },
+      { name: "Leeds", kind: "station", meters: ["in", "gas"] },
       { name: "Peterborough", kind: "station" },
       { name: "Hull", kind: "station" },
       { name: "King's Cross", kind: "station" },
@@ -1123,9 +1136,9 @@ const PROTO_WALK_GROUPS = [
       { name: "Birmingham", keep: ["nr-bham-in"] },
       { name: "Reading", kind: "station", status: "stale", lastReading: "3 h ago" },
       { name: "Oxford", kind: "station" },
-      { name: "Bristol Temple Meads", kind: "station" },
-      { name: "Cardiff Central", kind: "station" },
-      { name: "Swindon depot", kind: "depot" },
+      { name: "Bristol Temple Meads", kind: "station", meters: ["in", "gas"] },
+      { name: "Cardiff Central", kind: "station", meters: ["in", "gas"] },
+      { name: "Swindon depot", kind: "depot", days: { Saturday: "closed", Sunday: "closed" } },
       { name: "Exeter St Davids", kind: "station" },
       { name: "Plymouth", kind: "station" },
       { name: "Swansea", kind: "station" },
@@ -1147,10 +1160,10 @@ const PROTO_WALK_GROUPS = [
     name: "Scotland",
     sites: [
       { name: "Glasgow Central", kind: "station", meters: ["in", "ex"] },
-      { name: "Edinburgh Waverley", kind: "station" },
+      { name: "Edinburgh Waverley", kind: "station", meters: ["in", "gas"] },
       { name: "Motherwell depot", kind: "depot", status: "stale", lastReading: "4 h ago" },
       { name: "Inverness", kind: "station" },
-      { name: "Aberdeen", kind: "station" },
+      { name: "Aberdeen", kind: "station", meters: ["in", "gas"] },
       { name: "Glasgow Queen Street", kind: "station" },
       { name: "Haymarket", kind: "station" },
       { name: "Stirling", kind: "station" },
@@ -1168,9 +1181,9 @@ const PROTO_WALK_GROUPS = [
   {
     name: "Southern",
     sites: [
-      { name: "Waterloo", kind: "station" },
+      { name: "Waterloo", kind: "station", meters: ["in", "gas"] },
       { name: "Clapham Junction", kind: "station" },
-      { name: "Brighton", kind: "station" },
+      { name: "Brighton", kind: "station", meters: ["in", "gas"] },
       { name: "East Croydon", kind: "station" },
       { name: "Wimbledon depot", kind: "depot", meters: ["in", "gas"] },
       { name: "London Victoria", kind: "station" },
@@ -1263,7 +1276,8 @@ function protoWalkMakeMeter(group, site, kind, index, extra) {
       ? `${Math.max(4, Math.round(profile.base * 1.8 * protoWalkSiteSpread(site.name)))} m³`
       : extra.use24h || site.use24h || (status === "gaps" ? "Partial" : `${((profile.base * protoWalkSiteSpread(site.name)) / 4).toFixed(1)} MWh`),
     hours: profile.hours,
-    tou: profile.tou,
+    days: site.days || profile.days || null,
+    tou: (water || gas ? PROTO_WALK_UTILITY_TOU[kind][site.kind || "station"] : "") || profile.tou,
     tariff: water ? "Water" : gas ? "Gas" : "HH electricity",
     base: water
       ? Math.max(0.8, profile.base * 0.32 * protoWalkSiteSpread(site.name))
@@ -2194,14 +2208,23 @@ function protoMeterProfileDefault(meter) {
     PROTO_HOUR_PROFILES.find(
       (item) => item.from === hours.from && item.to === hours.to && item.status === hourStatus
     ) || "";
+  const days = meter?.days && typeof meter.days === "object" ? meter.days : {};
   return {
-    hours: PROTO_WEEKDAYS.map((day) => ({
-      day,
-      status: day === "Sunday" && hourStatus === "operational" && hours.from !== "00.00" ? "closed" : hourStatus,
-      from: day === "Sunday" && hours.from !== "00.00" ? "" : hours.from,
-      to: day === "Sunday" && hours.from !== "00.00" ? "" : hours.to,
-      profile: hourPreset?.id || "",
-    })),
+    hours: PROTO_WEEKDAYS.map((day) => {
+      const own = days[day];
+      if (own === "off" || own === "closed") return { day, status: own, from: "", to: "", profile: own };
+      if (own) {
+        const split = protoSplitHours(own);
+        return { day, status: "operational", from: split.from, to: split.to, profile: "" };
+      }
+      return {
+        day,
+        status: day === "Sunday" && hourStatus === "operational" && hours.from !== "00.00" ? "closed" : hourStatus,
+        from: day === "Sunday" && hours.from !== "00.00" ? "" : hours.from,
+        to: day === "Sunday" && hours.from !== "00.00" ? "" : hours.to,
+        profile: hourPreset?.id || "",
+      };
+    }),
     tou: PROTO_WEEKDAYS.map((day) => ({
       day,
       onFrom: touPreset.onFrom,
@@ -2318,14 +2341,41 @@ function protoMeterOverridesAll() {
   return protoMeterOverrideSeed();
 }
 
-// One worked example, so the difference shows before anyone sets their own.
+// Worked examples, so the difference shows before anyone sets their own.
+// Gas and water on the walk keep their own time of use when it differs from the site's.
+let protoMeterOverrideSeedCache = null;
+
 function protoMeterOverrideSeed() {
-  if (!protoMeter("nr-crewe-depot-gas")) return {};
-  return {
-    "nr-crewe-depot-gas": {
-      rates: { onGas: "5.5", offGas: "3.5" },
-    },
-  };
+  if (protoMeterOverrideSeedCache) return protoMeterOverrideSeedCache;
+  const seed = {};
+  const walk = typeof protoWalkPortfolio === "function" ? protoWalkPortfolio().meters : [];
+  const bySite = new Map();
+  walk.forEach((meter) => {
+    if (!bySite.has(meter.site)) bySite.set(meter.site, meter);
+  });
+  walk.forEach((meter) => {
+    const kind = protoMeterKind(meter);
+    if (kind !== "gas" && kind !== "water") return;
+    const lead = bySite.get(meter.site);
+    if (!lead || lead === meter || lead.tou === meter.tou) return;
+    const preset = PROTO_TOU_PROFILES.find((item) => item.name === meter.tou);
+    if (!preset) return;
+    seed[meter.id] = {
+      tou: PROTO_WEEKDAYS.map((day) => ({
+        day,
+        onFrom: preset.onFrom,
+        onTo: preset.onTo,
+        offFrom: preset.offFrom,
+        offTo: preset.offTo,
+        profile: preset.id,
+      })),
+    };
+  });
+  if (protoMeter("nr-crewe-depot-gas")) {
+    seed["nr-crewe-depot-gas"] = { ...(seed["nr-crewe-depot-gas"] || {}), rates: { onGas: "5.5", offGas: "3.5" } };
+  }
+  protoMeterOverrideSeedCache = seed;
+  return seed;
 }
 
 function protoMeterOverride(id) {
