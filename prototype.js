@@ -3677,7 +3677,9 @@ function protoZoneStateLines(rows, allMeters, zones, { utilities, drawn, utility
   const unit = protoZoneCountsMeters() ? "meter" : "site";
   const named = (meter) => {
     if (unit === "site") return [meter.site || "", meter.site || ""];
-    const ref = protoMeterName(meter) || meter.name || meter.id;
+    // Water meters read as the bare serial; MPAN and MPRN keep their label.
+    const facts = protoMeterFacts(meter);
+    const ref = (facts.refName === "Serial" ? facts.ref : protoMeterName(meter)) || meter.name || meter.id;
     return [meter.id, sites.size > 1 && meter.site ? `${meter.site} \u00b7 ${ref}` : ref];
   };
   const pool = protoPanePoolMeters().filter((meter) => meter && sites.has(meter.site || ""));
