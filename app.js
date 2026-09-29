@@ -3674,6 +3674,9 @@ const CHROME_FIELDS = [
   "prototypeExportNotice",
   "prototypeChartView",
   "prototypeChartStyle",
+  "prototypeChartShow",
+  "prototypeZoneFor",
+  "prototypePillsOpen",
   "prototypeTreeOpen",
   "prototypeFullscreen",
   "prototypePreviewHidden",
@@ -4036,6 +4039,11 @@ function applyChrome() {
   store.prototypePaneAlertFacet = store.prototypePaneAlertFacet === "resolved" ? "resolved" : "unread";
   store.prototypeChartView = store.prototypeChartView === "individual" ? "individual" : "total";
   store.prototypeChartStyle = store.prototypeChartStyle === "line" ? "line" : "bar";
+  store.prototypeChartShow = Array.isArray(store.prototypeChartShow)
+    ? store.prototypeChartShow.filter((id) => id === "hours" || id === "tou")
+    : [];
+  store.prototypeZoneFor = String(store.prototypeZoneFor || "");
+  store.prototypePillsOpen = Boolean(store.prototypePillsOpen);
   store.prototypeChartFilterOpen = Boolean(store.prototypeChartFilterOpen);
   store.prototypeReportForm = Boolean(store.prototypeReportForm);
   store.prototypeQueryForm = Boolean(store.prototypeQueryForm);
