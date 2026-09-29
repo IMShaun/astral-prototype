@@ -9565,7 +9565,7 @@ function protoReportBySiteField(draft) {
     {
       on: true,
       name: "Yes",
-      note: alert ? "Checks each site against the threshold." : "One row for each meter, with its site.",
+      note: alert ? "Checks each site against the threshold." : "One column for each meter, with its site.",
     },
     {
       on: false,
@@ -10988,6 +10988,37 @@ function protoReportRows(def) {
       rows.push([row.utility, row.clock.date, row.clock.time, row.value.toFixed(2), row.unit, row.meters, row.quality]);
     });
     if (rows.length === 1 && quality !== "all") rows.push([`No ${quality} readings in this period.`]);
+    return rows;
+  }
+  if (def.type === "extract" && protoReportAsksBySite(def)) {
+    // One column for each meter, headed with its site. A row for each half hour. Readings outside the picked quality stay blank.
+    const cols = [];
+    each((site, meter) => cols.push({ site, meter }));
+    const times = new Map();
+    let kept = 0;
+    cols.forEach(({ meter }, c) => {
+      days.forEach((day) => {
+        protoSeries(meter, "day", day).forEach((point) => {
+          const clock = protoReportClock(day, point.label, def.time);
+          const key = `${clock.date}|${clock.time}`;
+          if (!times.has(key)) times.set(key, { clock, cells: [] });
+          const reading =
+            point.value == null || point.quality === "missing" ? "missing" : point.quality === "estimated" ? "estimated" : "actual";
+          const ok = point.value != null && protoReportQualityOk(quality, reading);
+          if (ok) kept += 1;
+          times.get(key).cells[c] = ok ? point.value : "";
+        });
+      });
+    });
+    rows.push([
+      `date (${zone})`,
+      `time (${zone})`,
+      ...cols.map(({ site, meter }) => `${site.name} · ${meter.name} (${protoMeterUseUnit(meter)})`),
+    ]);
+    times.forEach(({ clock, cells }) => {
+      rows.push([clock.date, clock.time, ...cols.map((_, c) => cells[c] ?? "")]);
+    });
+    if (!kept && quality !== "all") return [rows[0], [`No ${quality} readings in this period.`]];
     return rows;
   }
   const missing = def.content === "missing";
