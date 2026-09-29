@@ -3452,10 +3452,15 @@ function protoZoneWords(bucket, zones) {
   return words ? `. ${words}` : "";
 }
 
+// Counts are in the view's own level: sites on a group, meter points on a site or its meters.
+function protoZoneCountNoun(n, unit) {
+  return unit === "meter" ? protoBelowSiteNoun(n) : n === 1 ? "site" : "sites";
+}
+
 function protoZoneSpokenParts(parts) {
   return (parts || [])
     .filter(({ sites }) => sites.length)
-    .map(({ utility, sites }) => `${sites.length} ${utility.toLowerCase()} site${sites.length === 1 ? "" : "s"}`)
+    .map(({ utility, sites, unit }) => `${sites.length} ${utility.toLowerCase()} ${protoZoneCountNoun(sites.length, unit)}`)
     .join(", ");
 }
 
@@ -3463,7 +3468,7 @@ function protoZoneTipAttrs(bucket, zones) {
   if (bucket?.groups) {
     const lines = bucket.groups.map((line) => [
       line.words,
-      line.parts.map((part) => [part.utility, part.sites]),
+      line.parts.map((part) => [part.utility, part.sites, part.unit || "site"]),
       line.hours,
       line.tou,
     ]);
@@ -3485,7 +3490,7 @@ function protoReadZones(raw) {
   return list
     .map((row) =>
       row && !Array.isArray(row) && typeof row === "object"
-        ? [row.words, (row.parts || []).map((part) => [part?.utility, part?.sites]), row.hours, row.tou]
+        ? [row.words, (row.parts || []).map((part) => [part?.utility, part?.sites, part?.unit]), row.hours, row.tou]
         : row
     )
     .filter((row) => Array.isArray(row) && Array.isArray(row[1]))
@@ -3495,12 +3500,16 @@ function protoReadZones(raw) {
       tou: String(row[3] || ""),
       parts: row[1]
         .filter((part) => Array.isArray(part) && Array.isArray(part[1]))
-        .map((part) => ({ utility: String(part[0] || ""), sites: part[1].map(String) })),
+        .map((part) => ({
+          utility: String(part[0] || ""),
+          sites: part[1].map(String),
+          unit: part[2] === "meter" ? "meter" : "site",
+        })),
     }));
 }
 
-// A utility icon and how many sites; hover lists them.
-function protoZoneUtilityPill({ utility, sites }) {
+// A utility icon and how many sites or meter points; hover lists them.
+function protoZoneUtilityPill({ utility, sites, unit }) {
   const n = sites.length;
   const icon = protoIconMark(protoMeterKind({ commodity: utility }), "astral-meter-mark");
   if (!n) return `<span class="astral-zone-more astral-zone-count is-zero" aria-hidden="true">${icon}<span>0</span></span>`;
@@ -3509,7 +3518,7 @@ function protoZoneUtilityPill({ utility, sites }) {
   const lines = [...shown, ...(left ? [`and ${left} more`] : [])]
     .map((name) => `<span>${escapeHtml(name)}</span>`)
     .join("");
-  const head = `<span class="is-head">${n} ${escapeHtml(utility.toLowerCase())} site${n === 1 ? "" : "s"}</span>`;
+  const head = `<span class="is-head">${n} ${escapeHtml(utility.toLowerCase())} ${protoZoneCountNoun(n, unit)}</span>`;
   return `<span class="astral-zone-more astral-zone-count astral-tip-host" aria-hidden="true">${icon}<span>${n}</span><span class="astral-icon-tip is-list">${head}${lines}</span></span>`;
 }
 
@@ -3654,11 +3663,23 @@ function protoZoneSet(rows, allMeters, zones) {
   return { ...base, groups, pick, buckets };
 }
 
+// A group's graph is in sites; a site's graph, and a compare of sites or meters, is in meter points.
+function protoZoneCountsMeters() {
+  if (protoCompareOn()) return protoCompareBundle().level !== "group";
+  return store.prototypeScope !== "group";
+}
+
 // Hover and the pin are not the Utility pick. At each time they say what state every utility's sites are in.
 // Sites in the same state share a line; each utility on it is a pill with its count.
 function protoZoneStateLines(rows, allMeters, zones, { utilities, drawn, utility, pick }) {
   const graph = (allMeters || []).filter(Boolean);
   const sites = new Set(graph.map((meter) => meter.site || ""));
+  const unit = protoZoneCountsMeters() ? "meter" : "site";
+  const named = (meter) => {
+    if (unit === "site") return [meter.site || "", meter.site || ""];
+    const ref = protoMeterName(meter) || meter.name || meter.id;
+    return [meter.id, sites.size > 1 && meter.site ? `${meter.site} \u00b7 ${ref}` : ref];
+  };
   const pool = protoPanePoolMeters().filter((meter) => meter && sites.has(meter.site || ""));
   const pickId = pick?.meters?.[0]?.id || "";
   const sets = [];
@@ -3688,8 +3709,11 @@ function protoZoneStateLines(rows, allMeters, zones, { utilities, drawn, utility
       const words = protoZoneBits(at, zones);
       if (!merged.has(words)) merged.set(words, { words, bucket: at, by: new Map() });
       const by = merged.get(words).by;
-      if (!by.has(set.utility)) by.set(set.utility, new Set());
-      set.meters.forEach((meter) => by.get(set.utility).add(meter.site || ""));
+      if (!by.has(set.utility)) by.set(set.utility, new Map());
+      set.meters.forEach((meter) => {
+        const [key, label] = named(meter);
+        if (key) by.get(set.utility).set(key, label);
+      });
     });
     const rank = (line) => ["on", "non", "closed"].indexOf(line.bucket.kind) * 2 + (line.bucket.peak ? 0 : 1);
     return [...merged.values()].sort((a, b) => rank(a) - rank(b)).map((line) => ({
@@ -3700,7 +3724,8 @@ function protoZoneStateLines(rows, allMeters, zones, { utilities, drawn, utility
       // Every utility in view keeps its pill on every line, at 0 when none of its sites is in that state.
       parts: PROTO_ZONE_UTILITIES.filter((name) => shown.has(name)).map((name) => ({
         utility: name,
-        sites: [...(line.by.get(name) || [])].filter(Boolean),
+        sites: [...(line.by.get(name)?.values() || [])].filter(Boolean),
+        unit,
       })),
     }));
   });
