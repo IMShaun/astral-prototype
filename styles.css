@@ -8472,7 +8472,8 @@ button.astral-state {
   overscroll-behavior: contain;
 }
 
-.astral-query-pin-body > .astral-tip-zones {
+.astral-query-pin-body > .astral-tip-zones,
+.astral-tip > .astral-tip-zones:has(+ .astral-tip-slices:not([hidden])) {
   margin: 0;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--color-border-subtle);
