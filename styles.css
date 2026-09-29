@@ -9397,8 +9397,70 @@ button.astral-state {
   white-space: nowrap;
 }
 
-.astral-tag.astral-breakdown-state {
-  font-weight: 400;
+/* Hours and tariff marks. Icons are black or white on the fill. */
+.astral-zone-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.astral-zone-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+
+.astral-zone-badge svg {
+  width: 14px;
+  height: 14px;
+}
+
+.astral-zone-badge.is-open {
+  background: var(--color-status-success);
+  color: #fff;
+}
+
+.astral-zone-badge.is-non {
+  background: var(--color-background-subtle);
+  border-color: var(--color-border-default);
+  color: #000;
+}
+
+.astral-zone-badge.is-closed {
+  background: #fff;
+  border-color: var(--color-border-strong);
+  color: #000;
+}
+
+.astral-zone-badge.is-peak {
+  background: #000;
+  color: #fff;
+}
+
+.astral-zone-badge.is-offpeak {
+  background: #fff;
+  border-color: var(--color-border-strong);
+  color: #000;
+}
+
+.astral-breakdown-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8, 8px) var(--space-16, 16px);
+  margin: 0 0 var(--space-8, 8px);
+  font-size: 0.8125rem;
+}
+
+.astral-breakdown-key-item,
+.astral-breakdown-mixed-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .astral-breakdown-mixed {
@@ -9427,7 +9489,13 @@ button.astral-state {
   z-index: 1;
 }
 
-.astral-breakdown-foot-name,
+.astral-breakdown-foot-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
 .astral-breakdown-foot-note {
   display: block;
   white-space: nowrap;

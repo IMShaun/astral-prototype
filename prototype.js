@@ -18772,14 +18772,71 @@ function protoBreakdownStates(point, slices) {
     .filter(Boolean);
 }
 
+// Hours is a clock: green Operational, grey Non-operational, struck through Closed.
+// Time of use is an arrow: black up for Peak, white down for Off-peak.
+const PROTO_ZONE_BADGES = {
+  "hours-on": { icon: "hours", cls: "is-open", name: "Operational" },
+  "hours-non": { icon: "hours", cls: "is-non", name: "Non-operational" },
+  "hours-off": { icon: "closed", cls: "is-closed", name: "Closed" },
+  "tou-on": { icon: "peak", cls: "is-peak", name: "Peak" },
+  "tou-off": { icon: "off-peak", cls: "is-offpeak", name: "Off-peak" },
+};
+
+function protoZoneBadges(id) {
+  const marks = String(id || "")
+    .split("|")
+    .map((part) => PROTO_ZONE_BADGES[part])
+    .filter(Boolean)
+    .map((badge) => `<span class="astral-zone-badge ${badge.cls}">${protoIconMark(badge.icon)}</span>`)
+    .join("");
+  return marks ? `<span class="astral-zone-badges" aria-hidden="true">${marks}</span>` : "";
+}
+
+// A key over the table names each mark in use, so the icons are never the only way to read the state.
+function protoBreakdownKey(ids) {
+  const parts = Object.keys(PROTO_ZONE_BADGES).filter((part) =>
+    [...ids].some((id) => String(id).split("|").includes(part))
+  );
+  if (!parts.length) return "";
+  return `<p class="astral-breakdown-key">${parts
+    .map(
+      (part) =>
+        `<span class="astral-breakdown-key-item">${protoZoneBadges(part)}<span>${escapeHtml(
+          PROTO_ZONE_BADGES[part].name
+        )}</span></span>`
+    )
+    .join("")}</p>`;
+}
+
+function protoBreakdownStateIds(points, slices) {
+  const ids = new Set();
+  (points || []).forEach((point) => {
+    if (point?.value == null) return;
+    protoBreakdownStates(point, slices)
+      .filter((state, _, all) => all.length === 1 || state.value > 0)
+      .forEach((state) => ids.add(state.id));
+  });
+  return ids;
+}
+
 function protoBreakdownStateTag(states, unit) {
   const used = states.length > 1 ? states.filter((state) => state.value > 0) : states;
   if (!used.length) return "";
-  if (used.length === 1) return protoTag(used[0].name, "", "is-quiet astral-breakdown-state");
+  if (used.length === 1) {
+    const name = escapeHtml(used[0].name);
+    return `<span class="astral-tip-host astral-breakdown-state">${protoZoneBadges(
+      used[0].id
+    )}<span class="sr-only">${name}</span><span class="astral-icon-tip" role="tooltip">${name}</span></span>`;
+  }
   const lines = used
-    .map((state) => `<span>${escapeHtml(`${state.name} ${protoFormatReading(state.value, unit)}`)}</span>`)
+    .map(
+      (state) =>
+        `<span class="astral-breakdown-mixed-line">${protoZoneBadges(state.id)}${escapeHtml(
+          `${state.name} ${protoFormatReading(state.value, unit)}`
+        )}</span>`
+    )
     .join("");
-  return `<span class="astral-tip-host astral-breakdown-mixed" tabindex="0"><span class="astral-tag is-quiet astral-breakdown-state">Mixed</span><span class="astral-icon-tip is-list" role="tooltip"><span class="is-head">By state</span>${lines}</span></span>`;
+  return `<span class="astral-tip-host astral-breakdown-mixed" tabindex="0"><span class="astral-tag is-quiet">Mixed</span><span class="astral-icon-tip is-list" role="tooltip"><span class="is-head">By state</span>${lines}</span></span>`;
 }
 
 // One column per series. The state sits as a tag after the reading, so no column is a row of zeros.
@@ -18813,9 +18870,9 @@ function protoBreakdownStateFoot(columns, slices, unit, totals = []) {
       const tot = totals
         .map((total) => `<td class="is-total">${protoFormatAmount(protoRoundReading(total.idx.reduce((n, i) => n + sums[i], 0), 1))}</td>`)
         .join("");
-      return `<tr><th scope="row"><span class="astral-breakdown-foot-name">${escapeHtml(
+      return `<tr><th scope="row"><span class="astral-breakdown-foot-name">${protoZoneBadges(slice.id)}<span>${escapeHtml(
         protoSliceName(slice)
-      )}</span><span class="astral-breakdown-foot-note">Total${unit ? ` \u00b7 ${escapeHtml(unit)}` : ""}</span></th>${cells}${tot}</tr>`;
+      )}</span></span><span class="astral-breakdown-foot-note">Total${unit ? ` \u00b7 ${escapeHtml(unit)}` : ""}</span></th>${cells}${tot}</tr>`;
     })
     .filter(Boolean)
     .join("");
@@ -19138,6 +19195,7 @@ function protoIntervalTable(points, dual) {
       ? `<th scope="col">In</th><th scope="col">Out</th>`
       : `<th scope="col">${escapeHtml(unit)}</th>`;
   return protoBreakdownPanel(`
+    ${sliceCols.length ? protoBreakdownKey(protoBreakdownStateIds(points, sliceCols)) : ""}
     <table class="astral-table astral-breakdown-cols${sliceCols.length ? " is-states" : ""}">
       <thead>
         <tr>
@@ -19251,24 +19309,26 @@ function protoTrackBreakdownTable(tracks, options = {}) {
     .map((total) => protoBreakdownMeterHead(total.name, units[0] || "", { attrs: span, total: true }))
     .join("");
   const hasEstimate = rows.some((row) => row.cells.some((cell) => cell?.quality === "estimated"));
-  // Room for the reading, Estimated and the longest state tag in use, so a cell stays on one line.
-  const inUse = new Set();
-  if (sliceCols.length) {
-    rows.forEach((row) =>
-      row.cells.forEach((cell) => {
-        const states = cell?.value == null ? [] : protoBreakdownStates(cell, sliceCols).filter((state) => state.value > 0);
-        if (states.length > 1) inUse.add("Mixed");
-        else if (states[0]) inUse.add(states[0].name);
-      })
+  // Room for the reading, Estimated and the state marks (or Mixed), so a cell stays on one line.
+  const stateIds = sliceCols.length
+    ? protoBreakdownStateIds(
+        tracks.flatMap((track) => track.points || []),
+        sliceCols
+      )
+    : new Set();
+  const mixed =
+    sliceCols.length &&
+    rows.some((row) =>
+      row.cells.some(
+        (cell) => cell?.value != null && protoBreakdownStates(cell, sliceCols).filter((state) => state.value > 0).length > 1
+      )
     );
-  }
-  const tagChars = Math.max(0, ...[...inUse].map((name) => name.length));
-  const colWidth = tagChars
-    ? 4.5 + tagChars * 0.4 + 1.3 + (hasEstimate ? 5.5 : 0)
-    : 8.5 + (hasEstimate ? 2.5 : 0);
+  const marks = stateIds.size ? Math.max(mixed ? 4.25 : 0, 3.25) : 0;
+  const colWidth = marks ? 5.5 + marks + (hasEstimate ? 7 : 0) : 8.5 + (hasEstimate ? 2.5 : 0);
   const minWidth = 6 + tracks.length * colWidth + totals.length * (hasEstimate ? 11 : 8.5);
   const label = `${chart} by ${options.by || "series"}`;
   return protoBreakdownPanel(`
+    ${protoBreakdownKey(stateIds)}
     <div class="astral-breakdown-bar" data-proto-breakdown-nav hidden>
       <p class="astral-muted" data-proto-breakdown-range aria-live="polite"></p>
       ${protoIconBtn("prev", "Previous columns", 'data-proto-breakdown-page="prev"', { disabled: true })}
