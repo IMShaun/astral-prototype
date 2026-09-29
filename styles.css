@@ -10342,6 +10342,12 @@ tr.is-off .astral-person-mark {
   justify-self: start;
 }
 
+.astral-report-tenant-details {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
 .astral-report-types {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));

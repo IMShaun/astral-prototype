@@ -7383,6 +7383,12 @@ function protoPinClose() {
 }
 
 function protoCloseModal(kind) {
+  if (kind === "report-tenant") {
+    const id = store.prototypeReportTenantDrop;
+    setProto({ prototypeReportTenantDrop: "" });
+    protoRestoreFocus(`#astral-fs [data-proto-report-tenant-remove="${id}"]`);
+    return;
+  }
   if (kind === "report-rates") {
     setProto({ prototypeReportRateCheck: false });
     protoRestoreFocus('#astral-fs .astral-report-page-foot button[type="submit"]');
@@ -10406,6 +10412,32 @@ function protoReportRateCheckModal(draft) {
   `;
 }
 
+// Remove tenant asks first, as their emails, shares, and tax go with them.
+function protoReportTenantDropModal(draft) {
+  const id = store.prototypeReportTenantDrop;
+  const tenant = id ? protoReportTenantsOf(draft).find((item) => item.id === id) : null;
+  if (!tenant) return "";
+  const name = String(tenant.name || "").trim() || "this tenant";
+  return `
+    <div class="astral-modal-back" data-proto-modal="report-tenant">
+      <div class="astral-modal astral-report-tenant-drop" role="dialog" aria-modal="true" aria-labelledby="astral-report-tenant-drop-title">
+        ${protoModalHead(
+          "astral-report-tenant-drop-title",
+          `Remove ${escapeHtml(name)}?`,
+          "Their emails, shares, and tax go with them. They get no more bills from this report once you save it.",
+          "report-tenant"
+        )}
+        <div class="astral-modal-foot">
+          <div class="astral-actions">
+            ${protoBtn("Remove tenant", `data-proto-report-tenant-drop="${escapeHtml(tenant.id)}"`)}
+            ${protoGhost("Go back", 'data-proto-modal-close="report-tenant"')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function protoReportSubmit(confirmed) {
   if (!protoCanEditReports()) return;
   const draft = protoReportDraft();
@@ -10495,6 +10527,7 @@ function protoReportPage() {
       </div>
     </form>
     ${protoReportRateCheckModal(draft)}
+    ${protoReportTenantDropModal(draft)}
   `);
 }
 
@@ -10764,23 +10797,29 @@ function protoReportDeliveryFields(draft, opts = {}) {
   `;
 }
 
-// Electricity, Gas, and Water, then Taxes, as tabs on each tenant.
-const PROTO_REPORT_TENANT_TABS = [...PROTO_REPORT_BILL_UTILS, { id: "taxes", name: "Taxes" }];
+// Details, then Electricity, Gas, and Water, then Taxes, as tabs on each tenant.
+const PROTO_REPORT_TENANT_TABS = [
+  { id: "details", name: "Details" },
+  ...PROTO_REPORT_BILL_UTILS,
+  { id: "taxes", name: "Taxes" },
+];
 
-function protoReportUtilTab(site) {
+function protoReportUtilTab() {
   const want = String(store.prototypeReportUtilTab || "");
-  return PROTO_REPORT_TENANT_TABS.some((tab) => tab.id === want) ? want : protoReportBillUtils(site)[0].id;
+  return PROTO_REPORT_TENANT_TABS.some((tab) => tab.id === want) ? want : "details";
 }
 
-function protoReportBillSplit(draft, tenant) {
+function protoReportBillSplit(draft, tenant, details) {
   const site = protoReportSiteById(tenant.site);
   const who = String(tenant.name || "").trim() || "this tenant";
   const onSite = new Set(protoReportBillUtils(site).map((util) => util.id));
-  const active = protoReportUtilTab(site);
+  const active = protoReportUtilTab();
   const tabId = (tab) => `${tenant.id}:${tab.id}`;
   const panels = PROTO_REPORT_TENANT_TABS.map((tab) => {
     const body =
-      tab.id === "taxes"
+      tab.id === "details"
+        ? `<div class="astral-report-tenant-details">${details}</div>`
+        : tab.id === "taxes"
         ? protoReportTenantTaxes(tenant)
         : !site
           ? `<p class="astral-muted">Pick a site to set what ${escapeHtml(who)} pays for.</p>`
@@ -10796,7 +10835,7 @@ function protoReportBillSplit(draft, tenant) {
       PROTO_REPORT_TENANT_TABS.map((tab) => ({ id: tabId(tab), name: tab.name })),
       `${tenant.id}:${active}`,
       "data-proto-report-util-tab",
-      "Charges and taxes"
+      "Tenant"
     )}</div>
     ${panels}
   `;
@@ -10919,6 +10958,10 @@ function protoReportTenantFold(draft, tenant, i, openId) {
     attr: `data-proto-report-tenant-fold="${escapeHtml(tenant.id)}"`,
     modifier: "astral-report-tenant",
     inner: `
+      ${protoReportBillSplit(
+        draft,
+        tenant,
+        `
       ${protoReportField(
         "Site",
         protoSelect({
@@ -10952,7 +10995,8 @@ function protoReportTenantFold(draft, tenant, i, openId) {
         ${protoReportInput("Tenant name", field("name"), tenant.name, 'maxlength="80" placeholder="Northgate Retail"')}
         ${protoReportInput("Tenant emails", field("email"), tenant.email, 'inputmode="email" placeholder="accounts@tenant.com, name@tenant.com"')}
       </div>
-      ${protoReportBillSplit(draft, tenant)}
+        `
+      )}
       <p class="astral-report-preview" data-proto-report-tenant-bill="${escapeHtml(tenant.id)}">${escapeHtml(
         protoReportTenantBillLine(protoReportDraftDef(draft), protoReportTenantsOf(protoReportDraftDef(draft))[i] || tenant)
       )}</p>
@@ -11517,6 +11561,7 @@ function protoPageSlide(dir) {
 function protoReportEditClear() {
   return {
     prototypeReportRateCheck: false,
+    prototypeReportTenantDrop: "",
     prototypeReportEdit: "",
     prototypeReportDraft: null,
     prototypeReportDraftStart: "",
@@ -27183,15 +27228,24 @@ function onPrototype(event) {
     if (!draft || !protoCanEditReports()) return;
     const tenant = protoReportBlankTenant();
     store.prototypeReportTenantOpen = tenant.id;
+    store.prototypeReportUtilTab = "details";
     protoReportPatchDraft({ tenants: [...protoReportTenantsOf(draft), tenant] });
     protoRestoreFocus(`#astral-fs [data-proto-select="report-tenant-site:${CSS.escape(tenant.id)}"] .astral-select-btn`);
     return;
   }
   const tenantRemoveBtn = event.target.closest("[data-proto-report-tenant-remove]");
   if (tenantRemoveBtn) {
+    if (!protoReportDraft() || !protoCanEditReports()) return;
+    setProto({ prototypeReportTenantDrop: tenantRemoveBtn.dataset.protoReportTenantRemove });
+    protoRestoreFocus("#astral-fs [data-proto-report-tenant-drop]");
+    return;
+  }
+  const tenantDropBtn = event.target.closest("[data-proto-report-tenant-drop]");
+  if (tenantDropBtn) {
     const draft = protoReportDraft();
     if (!draft || !protoCanEditReports()) return;
-    const id = tenantRemoveBtn.dataset.protoReportTenantRemove;
+    const id = tenantDropBtn.dataset.protoReportTenantDrop;
+    store.prototypeReportTenantDrop = "";
     const tenants = protoReportTenantsOf(draft);
     if (tenants.length < 2) return;
     if (store.prototypeReportTenantOpen === id) store.prototypeReportTenantOpen = "";
