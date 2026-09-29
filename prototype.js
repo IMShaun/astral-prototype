@@ -8582,7 +8582,7 @@ function protoReportNormalizeTenants(raw, known) {
         id: String(item.id || `tenant-${i + 1}`),
         site: known.has(String(item.site || "")) ? String(item.site) : "",
         name: String(item.name || "").replace(/\s+/g, " ").trim().slice(0, 80),
-        email: protoReportEmails([item.email])[0] || "",
+        email: protoReportEmails(String(item.email || "")).join(", "),
         ...Object.fromEntries(
           protoReportShareKeys().map((key) => [key, protoReportNumber(item[key] ?? share, share, 0, 100)])
         ),
@@ -9499,7 +9499,7 @@ function protoReportDraftIssueBase(draft) {
       const who = name || `tenant ${i + 1}`;
       if (!tenant.site) return `Pick a site for ${who}.`;
       if (!name) return `Add the name of tenant ${i + 1}.`;
-      if (!protoReportEmails([tenant.email]).length) return `Add an email for ${who}.`;
+      if (!protoReportEmails(String(tenant.email || "")).length) return `Add an email for ${who}.`;
       const site = protoReportSiteById(tenant.site);
       const shares = protoReportBillUtils(site).flatMap((util) => [
         String(tenant[`${util.id}Standing`] ?? "").trim(),
@@ -9805,13 +9805,13 @@ function protoReportOptionSelect(id, label, list, value) {
 
 function protoReportTenantRow(tenant, i) {
   const name = String(tenant.name || "").trim() || `Tenant ${i + 1}`;
-  const email = protoReportEmails([tenant.email])[0] || "";
+  const emails = protoReportEmails(String(tenant.email || ""));
   return {
     key: `tenant:${tenant.id}`,
     tenantId: tenant.id,
-    consentKey: `tenant:${email}`,
+    consentKeys: emails.map((email) => `tenant:${email}`),
     name,
-    email: email || "Add their email in Settings",
+    email: emails.join(", ") || "Add their email in Settings",
     role: "Tenant",
     initials: protoProfileInitials(name),
     fixed: true,
@@ -10049,7 +10049,7 @@ function protoReportPeopleKeys(draft) {
   return [
     ...new Set(
       protoReportRecipientRows(draft)
-        .map((row) => (row.fixed ? row.consentKey : row.key))
+        .flatMap((row) => (row.fixed ? row.consentKeys : [row.key]))
         .map((key) => key.toLowerCase())
         .filter((key) => key !== "person:me" && key !== "tenant:" && key !== `email:${mine}` && key !== `tenant:${mine}`)
     ),
@@ -10614,7 +10614,7 @@ function protoReportTenantFold(draft, tenant, i, openId) {
       )}
       <div class="astral-report-pair">
         ${protoReportInput("Tenant name", field("name"), tenant.name, 'maxlength="80" placeholder="Northgate Retail"')}
-        ${protoReportInput("Tenant email", field("email"), tenant.email, 'inputmode="email" placeholder="accounts@tenant.com"')}
+        ${protoReportInput("Tenant emails", field("email"), tenant.email, 'inputmode="email" placeholder="accounts@tenant.com, name@tenant.com"')}
       </div>
       ${protoReportBillSplit(draft, tenant)}
       <p class="astral-report-preview" data-proto-report-tenant-bill="${escapeHtml(tenant.id)}">${escapeHtml(
