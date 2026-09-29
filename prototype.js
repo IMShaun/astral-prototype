@@ -14927,7 +14927,8 @@ function protoFilterMeterKind(id) {
 
 function protoFilterFace(id, label) {
   const name = label || protoTreeFilterName(id) || id;
-  const flow = protoFlowKind(id);
+  // Only the In and Out ticks are flows. A Data export in Downloads is not.
+  const flow = id === "in" || id === "out" ? id : "";
   if (flow) return protoFlowMark(flow);
   const meter = protoFilterMeterKind(id);
   if (meter) {
@@ -14968,8 +14969,18 @@ function protoFilterMeterHit(id, meter) {
   return null;
 }
 
+// Every Filter shows how many rows each tick would leave, and greys a tick with none.
 function protoFilterItemCount(attr, item) {
   if (attr === "data-proto-report-filter") return protoReportFilterCount(item?.id);
+  if (attr === "data-proto-download-filter") {
+    return item?.id ? protoDownloads().filter((row) => protoDownloadMatches(row, "", [item.id])).length : null;
+  }
+  if (attr === "data-proto-user-filter") {
+    return item?.id ? protoUserPeople().filter((person) => person.role === item.id).length : null;
+  }
+  if (attr === "data-proto-compare-filter") {
+    return item?.id && PROTO_FILTER_COUNTED.has(item.id) ? protoComparePeerCount(item.id) : null;
+  }
   const pool = protoFilterPool(attr);
   const id = item?.id;
   if (!pool || !id || !PROTO_FILTER_COUNTED.has(id)) return null;
@@ -15302,6 +15313,44 @@ function protoToggleFilterSection(key) {
   protoFilterSectionFollow(menu, performance.now() + ms);
 }
 
+function protoFilterCountNoun(attr, count) {
+  const one = count === 1;
+  if (attr === "data-proto-tree-filter") return one ? "site" : "sites";
+  if (attr === "data-proto-report-filter") {
+    const alert = protoReportSheetTab() === "alerts";
+    return alert ? (one ? "alert" : "alerts") : one ? "report" : "reports";
+  }
+  if (attr === "data-proto-download-filter") return one ? "file" : "files";
+  if (attr === "data-proto-user-filter") return one ? "person" : "people";
+  if (attr === "data-proto-compare-filter") {
+    const level = protoCompareLevel();
+    if (level === "group") return one ? "group" : "groups";
+    if (level !== "meter") return one ? "site" : "sites";
+  }
+  return one ? "meter" : "meters";
+}
+
+// How many peers in Compare one tick would leave. Search does not change it.
+function protoComparePeerCount(id) {
+  const level = protoCompareLevel();
+  if (level === "group") {
+    return protoGroups().filter((group) => group.id !== store.prototypeGroup && protoGroupPassesFilter(group, [id]))
+      .length;
+  }
+  if (level === "meter") {
+    const currentId = protoCompareCurrentId();
+    return protoPortfolioMeters().filter((row) => row.meter.id !== currentId && protoMeterPassesFilter(row.meter, [id]))
+      .length;
+  }
+  const currentId = protoSiteId(protoSiteByMeter(store.activePrototypeMeter));
+  return protoSites().filter(
+    (site) =>
+      protoSiteId(site) !== currentId &&
+      protoSitePassesFilter(site, [id]) &&
+      protoMetersVisible(site.meters, [id]).length
+  ).length;
+}
+
 function protoFilterTickGroups(picked, attr, groups = PROTO_TREE_FILTERS) {
   const menuId = PROTO_FILTER_MENU_IDS[attr] || attr;
   return groups.map((group) => {
@@ -15329,18 +15378,11 @@ function protoFilterTickGroups(picked, attr, groups = PROTO_TREE_FILTERS) {
         const on = protoFilterItemOn(attr, picked, item);
         const avail = protoFilterItemAvailable(attr, item);
         const count = protoFilterItemCount(attr, item);
-        const noun =
-          attr === "data-proto-tree-filter"
-            ? "site"
-            : attr === "data-proto-report-filter"
-              ? protoReportSheetTab() === "alerts" ? "alert" : "report"
-              : "meter";
+        const noun = protoFilterCountNoun(attr, count);
         const countHtml =
           count === null
             ? ""
-            : `<span class="astral-filter-count" aria-label="${count} ${noun}${
-                count === 1 ? "" : "s"
-              }">${count}</span>`;
+            : `<span class="astral-filter-count" aria-label="${count} ${noun}">${count}</span>`;
         return `
           <button
             type="button"
@@ -17036,7 +17078,10 @@ const PROTO_DOWNLOAD_FILTERS = [
   {
     id: "wait",
     name: "Status",
-    items: [{ id: "processing", name: "Processing" }],
+    items: [
+      { id: "ready", name: "Ready" },
+      { id: "processing", name: "Processing" },
+    ],
   },
 ];
 const PROTO_DOWNLOAD_FILTER_IDS = PROTO_DOWNLOAD_FILTERS.flatMap((group) =>
@@ -17077,7 +17122,8 @@ function protoDownloadMatches(item, q, picked) {
   if (kinds.length && !kinds.includes(item.kind)) return false;
   const types = ids.filter((id) => id === "report" || id === "export" || id === "document");
   if (types.length && !types.includes(protoDownloadType(item))) return false;
-  if (ids.includes("processing") && protoDownloadReady(item)) return false;
+  const waits = ids.filter((id) => id === "ready" || id === "processing");
+  if (waits.length && !waits.includes(protoDownloadReady(item) ? "ready" : "processing")) return false;
   return true;
 }
 
@@ -17102,7 +17148,7 @@ function protoDownloadFilterPills() {
       const name = protoDownloadFilterName(id);
       return `
         <span class="astral-filter-pill">
-          <span>${escapeHtml(name)}</span>
+          ${protoFilterFace(id, name)}
           ${protoClearButton(
             "astral-filter-pill-clear",
             `data-proto-download-filter="${escapeHtml(id)}"`,
@@ -20582,7 +20628,7 @@ function protoReportFilterPills(tab) {
       const name = protoReportFilterName(id, tab);
       return `
         <span class="astral-filter-pill">
-          <span>${escapeHtml(name)}</span>
+          ${protoFilterFace(id, name)}
           ${protoClearButton("astral-filter-pill-clear", `data-proto-report-filter="${escapeHtml(id)}"`, `Clear ${name}`)}
         </span>
       `;
@@ -21178,7 +21224,7 @@ function protoUserRoleFilterPills() {
       const name = protoUserRoleName(id);
       return `
         <span class="astral-filter-pill">
-          <span>${escapeHtml(name)}</span>
+          ${protoFilterFace(id, name)}
           ${protoClearButton(
             "astral-filter-pill-clear",
             `data-proto-user-filter="${escapeHtml(id)}"`,
