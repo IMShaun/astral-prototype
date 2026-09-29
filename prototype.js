@@ -6224,6 +6224,8 @@ function protoChartDraw(label, points) {
   if (!changed && !sceneChanged) return protoChartPlay;
   if (sceneChanged) {
     protoChartStartDraw();
+    // The bars grow in again, but the hours bands and time of use strip slide from where they were.
+    protoMorphStart(old, protoMorphZoneKey);
     return true;
   }
   protoChartStopDraw();
@@ -6300,11 +6302,18 @@ function protoMorphAddFamily(map, key, geo) {
   map.set(family, cur);
 }
 
-function protoMorphSnap(svg) {
+const PROTO_MORPH_ZONE_KEY = /^(zb|ze|zl|tou|tl)\|/;
+
+function protoMorphZoneKey(key) {
+  return PROTO_MORPH_ZONE_KEY.test(key);
+}
+
+function protoMorphSnap(svg, only) {
   const items = new Map();
   const families = new Map();
   svg.querySelectorAll("[data-m]").forEach((el) => {
     const key = el.getAttribute("data-m");
+    if (only && !only(key)) return;
     const tag = el.tagName.toLowerCase();
     const item = { el, tag };
     if (el.hasAttribute("data-g")) {
@@ -6337,12 +6346,12 @@ function protoMorphStop() {
   protoMorph = null;
 }
 
-function protoMorphStart(oldSvg) {
-  const snap = protoMorphSnap(oldSvg);
+function protoMorphStart(oldSvg, only) {
+  const snap = protoMorphSnap(oldSvg, only);
   protoMorphStop();
   if (!snap.items.size) return;
   if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-  protoMorph = { snap, old: oldSvg, svg: null, start: 0, raf: 0, waits: 0, tracks: [], layer: null };
+  protoMorph = { snap, only: only || null, old: oldSvg, svg: null, start: 0, raf: 0, waits: 0, tracks: [], layer: null };
   const m = protoMorph;
   queueMicrotask(() => {
     if (protoMorph === m) protoMorphTick(performance.now());
@@ -6364,9 +6373,9 @@ function protoMorphBarPath(geo, round) {
 function protoMorphBind(m, svg) {
   m.svg = svg;
   m.tracks = [];
-  svg.classList.add("is-morph");
+  if (!m.only) svg.classList.add("is-morph");
   const { items, families } = m.snap;
-  const live = [...svg.querySelectorAll("[data-m]")];
+  const live = [...svg.querySelectorAll("[data-m]")].filter((el) => !m.only || m.only(el.getAttribute("data-m")));
   const fresh = new Map();
   live.forEach((el) => {
     if (!el.hasAttribute("data-g")) return;
