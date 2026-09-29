@@ -19237,7 +19237,7 @@ function protoBreakdownMeterHead(ref, note, options = {}) {
       <span class="astral-breakdown-meter-ref">${options.mark || ""}<span class="astral-breakdown-meter-text">${escapeHtml(
         ref
       )}</span></span>
-      <span class="astral-breakdown-meter-note">${note ? escapeHtml(note) : "&nbsp;"}</span>
+      ${note ? `<span class="astral-breakdown-meter-note">${escapeHtml(note)}</span>` : ""}
     </th>
   `;
 }

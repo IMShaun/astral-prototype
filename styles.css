@@ -6460,11 +6460,11 @@ button.astral-state {
 
 .astral-meter-list-head {
   color: var(--color-text-secondary);
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-weight: 600;
+  font-size: 0.875rem;
+  line-height: 20px;
+  font-weight: 500;
   white-space: nowrap;
+  border-bottom-color: var(--color-text-primary);
 }
 
 .astral-meter-list .astral-meter-ref {
@@ -9363,8 +9363,6 @@ button.astral-state {
   box-sizing: border-box;
   padding: 0 8px;
   vertical-align: middle;
-  letter-spacing: 0;
-  text-transform: none;
 }
 
 .astral-breakdown-meter-ref {
@@ -9373,12 +9371,9 @@ button.astral-state {
   gap: 6px;
   min-width: 0;
   height: 20px;
-  color: #000;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 20px;
-  font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
+  font-weight: 500;
 }
 
 .astral-breakdown-meter-text,
@@ -9399,9 +9394,7 @@ button.astral-state {
   margin-top: 2px;
   font-size: 0.75rem;
   line-height: 18px;
-  font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
+  font-weight: 500;
 }
 
 /* The reading, Estimated, then the hours and tariff state, on one line. */
@@ -9582,13 +9575,14 @@ button.astral-state {
   white-space: nowrap;
 }
 
+/* Column headers: Body S in Infra Grey C on white, sentence case, over a black rule. */
 .astral-table thead th {
   color: var(--color-text-secondary);
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-weight: 600;
+  font-size: 0.875rem;
+  line-height: 20px;
+  font-weight: 500;
   white-space: nowrap;
+  border-bottom-color: var(--color-text-primary);
 }
 
 .astral-sort {
@@ -11915,9 +11909,9 @@ button.astral-state:focus-visible,
     animation: none;
   }
 }
-/* Column headers sit on the subtle grey surface so they read as a band apart from the rows. */
+/* Column headers sit on white; the black rule under them, not a fill, parts them from the rows. */
 #astral-fs .astral-table thead th {
-  background: var(--color-background-subtle);
+  background: #fff;
 }
 /* Column headers always match the height of the body rows beneath them (synced in protoSyncTableHeads). */
 .astral-table thead[style*="--astral-head-h"] th {
