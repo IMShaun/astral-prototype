@@ -3677,6 +3677,7 @@ const CHROME_FIELDS = [
   "prototypeChartShow",
   "prototypeChartSettingsOpen",
   "prototypeZoneFor",
+  "prototypeZoneUtility",
   "prototypePillsOpen",
   "prototypeTreeOpen",
   "prototypeFullscreen",
@@ -4044,6 +4045,9 @@ function applyChrome() {
     ? store.prototypeChartShow.filter((id) => id === "hours" || id === "tou")
     : [];
   store.prototypeZoneFor = String(store.prototypeZoneFor || "");
+  store.prototypeZoneUtility = ["Electricity", "Gas", "Water"].includes(store.prototypeZoneUtility)
+    ? store.prototypeZoneUtility
+    : "";
   store.prototypeChartSettingsOpen = Boolean(store.prototypeChartSettingsOpen);
   store.prototypePillsOpen = Boolean(store.prototypePillsOpen);
   store.prototypeChartFilterOpen = Boolean(store.prototypeChartFilterOpen);

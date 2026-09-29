@@ -3513,10 +3513,27 @@ function protoZoneGroups(meters, zones) {
   });
 }
 
-function protoZoneSet(rows, meters, zones) {
+const PROTO_ZONE_UTILITIES = ["Electricity", "Gas", "Water"];
+
+// Each utility can keep its own hours and tariff, so the graph shades one utility at a time.
+function protoZoneUtilityPick(meters) {
+  const have = PROTO_ZONE_UTILITIES.filter((name) =>
+    (meters || []).some((meter) => meter && protoMeterUtility(meter) === name)
+  );
+  const want = String(store.prototypeZoneUtility || "");
+  return { utilities: have, utility: have.includes(want) ? want : have[0] || "" };
+}
+
+function protoZoneSet(rows, allMeters, zones) {
   const hourly = (rows || []).some((point) => protoPointHour(point) != null);
+  const { utilities, utility } = hourly ? protoZoneUtilityPick(allMeters) : { utilities: [], utility: "" };
+  const meters =
+    utilities.length > 1
+      ? (allMeters || []).filter((meter) => meter && protoMeterUtility(meter) === utility)
+      : allMeters;
+  const base = { zones, utilities, utility };
   const groups = hourly ? protoZoneGroups(meters, zones) : [];
-  if (groups.length < 2) return { zones, groups, pick: null, buckets: protoZoneBuckets(rows, meters) };
+  if (groups.length < 2) return { ...base, groups, pick: null, buckets: protoZoneBuckets(rows, meters) };
   const want = String(store.prototypeZoneFor || "");
   const pick = groups.find((group) => group.meters.some((meter) => meter.id === want)) || groups[0];
   const buckets = protoZoneBuckets(rows, pick.meters);
@@ -3527,7 +3544,7 @@ function protoZoneSet(rows, meters, zones) {
   buckets.forEach((bucket, i) => {
     if (bucket) bucket.groups = order.map((group) => ({ label: group.label, bucket: group.buckets[i] }));
   });
-  return { zones, groups, pick, buckets };
+  return { ...base, groups, pick, buckets };
 }
 
 function protoZoneLayer(buckets, zones, pad, w, h, spanOf) {
@@ -5439,6 +5456,25 @@ function protoChartZoneField(set, field) {
   );
 }
 
+function protoChartUtilityField(set, field) {
+  if (!set || (set.utilities || []).length < 2) return "";
+  return field("utility", "Utility", (labelledby) =>
+    protoSelect({
+      id: "chart-zone-utility",
+      label: "Utility",
+      labelledby,
+      value: set.utility,
+      options: set.utilities.map((name) => {
+        const face = `<span class="astral-filter-face">${protoIconMark(
+          protoMeterKind({ commodity: name.toLowerCase() }),
+          "astral-meter-mark"
+        )}<span>${escapeHtml(name)}</span></span>`;
+        return { value: name, label: name, face, html: face };
+      }),
+    })
+  );
+}
+
 function protoChartSettings(zoneSet) {
   const open = Boolean(store.prototypeChartSettingsOpen);
   const field = (key, caption, control) => {
@@ -5452,6 +5488,7 @@ function protoChartSettings(zoneSet) {
           protoChartStyleSelect({ label: "Chart type", labelledby })
         ),
         field("show", "Overlay", (labelledby) => protoChartShowSelect({ labelledby })),
+        protoChartUtilityField(zoneSet, field),
         protoChartZoneField(zoneSet, field),
       ].join("")
     : "";
@@ -7435,6 +7472,15 @@ function protoPickSelect(id, value) {
       prototypeChartPoint: null,
     });
     protoRestoreFocus(`#astral-fs [data-proto-select-option="chart-show"][data-proto-select-value="${value}"]`);
+    return;
+  }
+  if (id === "chart-zone-utility") {
+    setProto({
+      prototypeSelectOpen: "",
+      prototypeZoneUtility: String(value || ""),
+      prototypeChartPoint: null,
+    });
+    protoRestoreFocus(`#astral-fs [data-proto-select="chart-zone-utility"] .astral-select-btn`);
     return;
   }
   if (id === "chart-zone-for") {

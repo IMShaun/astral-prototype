@@ -6339,7 +6339,8 @@ button.astral-flow-pill {
 
 .astral-filter-pill .astral-flow-mark,
 .astral-filter-pill .astral-filter-face,
-.astral-filter-menu .astral-filter-face {
+.astral-filter-menu .astral-filter-face,
+[data-proto-select="chart-zone-utility"] .astral-filter-face {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -6350,7 +6351,8 @@ button.astral-flow-pill {
 .astral-filter-pill .astral-flow-icon,
 .astral-filter-menu .astral-flow-icon,
 .astral-filter-pill .astral-meter-mark,
-.astral-filter-menu .astral-meter-mark {
+.astral-filter-menu .astral-meter-mark,
+[data-proto-select="chart-zone-utility"] .astral-meter-mark {
   width: 16px;
   height: 16px;
   flex: none;
