@@ -10841,69 +10841,74 @@ function protoReportBillSplit(draft, tenant, details) {
   `;
 }
 
+// One charge in a line, e.g. "On-peak 18p/kWh".
+function protoReportRateShort(item, value) {
+  const name = item.label.replace(/^Daily /, "").replace(/ unit rate$/, "").replace(/ charge$/, "");
+  const label = name.charAt(0).toUpperCase() + name.slice(1);
+  const raw = String(value ?? "").trim();
+  if (raw === "") return `${label} not set`;
+  return item.unit.startsWith("£") ? `${label} £${raw}${item.unit.slice(1)}` : `${label} ${raw}${item.unit}`;
+}
+
+// The site's charges read as one line. Edit charges opens the fields.
 function protoReportSiteCharges(tenant, util) {
   const site = protoReportSiteById(tenant.site);
   const attrs = protoReportSiteAttrs(site);
   const siteId = String(protoSiteId(site));
+  const key = `${tenant.id}:${util.id}`;
+  const open = (store.prototypeReportRatesOpen || []).includes(key);
   const own = (site.meters || []).filter(
     (meter) => protoReportMeterUtil(meter) === util.id && protoReportMeterOwnRates(meter)
   );
   const ownNames = own.map((meter) => protoMeterName(meter));
   const ownLine = ownNames.length
-    ? ` ${ownNames.join(", ")} ${ownNames.length === 1 ? "sets its" : "set their"} own rates, so ${
+    ? `${ownNames.join(", ")} ${ownNames.length === 1 ? "sets its" : "set their"} own rates, so ${
         ownNames.length === 1 ? "it keeps them" : "they keep them"
       }.`
     : "";
+  const spec = protoReportRateSpec(util);
   return `
-    <div class="astral-report-split-head">
-      <span class="astral-report-split-ask">Site charges</span>
-      ${protoMeterSourceTag(false)}
+    <div class="astral-report-charges">
+      <div class="astral-report-split-head">
+        <span class="astral-report-split-ask">${escapeHtml(site.name)} charges</span>
+        ${protoMeterSourceTag(false)}
+        ${protoTextBtn(open ? "Done" : "Edit charges", `data-proto-report-rates-edit="${escapeHtml(key)}"`, {
+          className: "astral-report-charges-edit",
+        })}
+      </div>
+      ${
+        open
+          ? `
+      <div class="astral-report-rates">
+        ${spec.map((item) => protoReportUnitInput(item.label, `rate:${siteId}:${item.key}`, attrs[item.key], item.unit)).join("")}
+      </div>
+      <p class="astral-muted">Changes here update the site settings. You check them before they save.</p>`
+          : `<p class="astral-report-charges-line">${escapeHtml(spec.map((item) => protoReportRateShort(item, attrs[item.key])).join(" · "))}</p>`
+      }
+      ${ownLine ? `<p class="astral-muted">${escapeHtml(ownLine)}</p>` : ""}
     </div>
-    <div class="astral-report-rates">
-      ${protoReportRateSpec(util)
-        .map((item) => protoReportUnitInput(item.label, `rate:${siteId}:${item.key}`, attrs[item.key], item.unit))
-        .join("")}
-    </div>
-    <p class="astral-muted">From the site settings for ${escapeHtml(site.name)}. Change one and you check it before the site updates.${escapeHtml(
-      ownLine
-    )}</p>
   `;
 }
 
 function protoReportUtilSplit(tenant, util, who) {
   const pays = tenant[`${util.id}Pays`] !== false;
-  const answers = [
-    { on: true, name: "Yes", note: "They pay a share of it." },
-    { on: false, name: "No", note: "It stays off their bill." },
-  ];
+  const answer = (yes) => {
+    const on = yes === pays;
+    return `<button type="button" role="radio" class="astral-meter-src-item${on ? " is-on" : ""}" aria-checked="${
+      on ? "true" : "false"
+    }" tabindex="${on ? "0" : "-1"}" data-proto-report-tenant-pays="${escapeHtml(`${tenant.id}:${util.id}:${yes ? 1 : 0}`)}">${protoRadio(
+      on
+    )}<span>${yes ? "Yes" : "No"}</span></button>`;
+  };
   return `
     <fieldset class="astral-report-split">
       <legend>${escapeHtml(`Does ${who} pay for ${util.name.toLowerCase()}?`)}</legend>
-      <div class="astral-report-types is-pair" role="radiogroup" aria-label="${escapeHtml(`Pays for ${util.name.toLowerCase()}`)}">
-        ${answers
-          .map((item) => {
-            const on = item.on === pays;
-            return `
-              <button
-                type="button"
-                role="radio"
-                class="astral-report-type${on ? " is-on" : ""}"
-                aria-checked="${on ? "true" : "false"}"
-                tabindex="${on ? "0" : "-1"}"
-                data-proto-report-tenant-pays="${escapeHtml(`${tenant.id}:${util.id}:${item.on ? 1 : 0}`)}"
-              >
-                <span class="astral-report-type-head">${protoRadio(on)}<span>${item.name}</span></span>
-                <span class="astral-muted">${item.note}</span>
-              </button>
-            `;
-          })
-          .join("")}
+      <div class="astral-meter-src" role="radiogroup" aria-label="${escapeHtml(`Pays for ${util.name.toLowerCase()}`)}">
+        ${answer(true)}${answer(false)}
       </div>
       ${
         pays
           ? `
-      ${protoReportSiteCharges(tenant, util)}
-      <span class="astral-report-split-ask">What share do they pay?</span>
       <div class="astral-report-pair">
         ${protoReportUnitInput(
           "Standing charge share",
@@ -10913,8 +10918,9 @@ function protoReportUtilSplit(tenant, util, who) {
           "50"
         )}
         ${protoReportUnitInput("Usage share", `tenant:${tenant.id}:${util.id}Usage`, tenant[`${util.id}Usage`], "%", "50")}
-      </div>`
-          : ""
+      </div>
+      ${protoReportSiteCharges(tenant, util)}`
+          : `<p class="astral-muted">${escapeHtml(util.name)} stays off their bill.</p>`
       }
     </fieldset>
   `;
@@ -11562,6 +11568,7 @@ function protoReportEditClear() {
   return {
     prototypeReportRateCheck: false,
     prototypeReportTenantDrop: "",
+    prototypeReportRatesOpen: [],
     prototypeReportEdit: "",
     prototypeReportDraft: null,
     prototypeReportDraftStart: "",
@@ -27334,6 +27341,16 @@ function onPrototype(event) {
     protoSlideHost(utilTab.closest(".astral-tabs"), "button.is-on", "utilTabs", false);
     return;
   }
+  const ratesEdit = event.target.closest("[data-proto-report-rates-edit]");
+  if (ratesEdit) {
+    const key = ratesEdit.dataset.protoReportRatesEdit;
+    const list = store.prototypeReportRatesOpen || [];
+    const open = !list.includes(key);
+    setProto({ prototypeReportRatesOpen: open ? [...list, key] : list.filter((item) => item !== key) });
+    const panel = `#astral-fs [data-proto-report-util-panel="${CSS.escape(key)}"]`;
+    protoRestoreFocus(open ? `${panel} input[data-proto-report-field^="rate:"]` : `${panel} [data-proto-report-rates-edit]`);
+    return;
+  }
   const paysBtn = event.target.closest("[data-proto-report-tenant-pays]");
   if (paysBtn) {
     const [tenantId, utilId, yes] = paysBtn.dataset.protoReportTenantPays.split(":");
@@ -29721,7 +29738,9 @@ function onPrototypeKey(event) {
     event.preventDefault();
     return;
   }
-  const typeRadio = event.target.closest(".astral-report-types [role='radio'], .astral-chart-style-switch [role='radio']");
+  const typeRadio = event.target.closest(
+    ".astral-report-types [role='radio'], .astral-chart-style-switch [role='radio'], [role='radio'][data-proto-report-tenant-pays]"
+  );
   if (typeRadio && ["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) {
     event.preventDefault();
     const radios = [...typeRadio.parentElement.querySelectorAll("[role='radio']")];
