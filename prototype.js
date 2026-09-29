@@ -3454,6 +3454,7 @@ function protoZoneWords(bucket, zones) {
 
 function protoZoneSpokenParts(parts) {
   return (parts || [])
+    .filter(({ sites }) => sites.length)
     .map(({ utility, sites }) => `${sites.length} ${utility.toLowerCase()} site${sites.length === 1 ? "" : "s"}`)
     .join(", ");
 }
@@ -3501,16 +3502,15 @@ function protoReadZones(raw) {
 // A utility icon and how many sites; hover lists them.
 function protoZoneUtilityPill({ utility, sites }) {
   const n = sites.length;
+  const icon = protoIconMark(protoMeterKind({ commodity: utility }), "astral-meter-mark");
+  if (!n) return `<span class="astral-zone-more astral-zone-count is-zero" aria-hidden="true">${icon}<span>0</span></span>`;
   const shown = sites.slice(0, PROTO_ZONE_MORE_MAX);
   const left = n - shown.length;
   const lines = [...shown, ...(left ? [`and ${left} more`] : [])]
     .map((name) => `<span>${escapeHtml(name)}</span>`)
     .join("");
   const head = `<span class="is-head">${n} ${escapeHtml(utility.toLowerCase())} site${n === 1 ? "" : "s"}</span>`;
-  return `<span class="astral-zone-more astral-zone-count astral-tip-host" aria-hidden="true">${protoIconMark(
-    protoMeterKind({ commodity: utility }),
-    "astral-meter-mark"
-  )}<span>${n}</span><span class="astral-icon-tip is-list">${head}${lines}</span></span>`;
+  return `<span class="astral-zone-more astral-zone-count astral-tip-host" aria-hidden="true">${icon}<span>${n}</span><span class="astral-icon-tip is-list">${head}${lines}</span></span>`;
 }
 
 // With hours and time of use both on, each hours state is a heading and its rows are Peak and Off-peak.
@@ -3676,6 +3676,7 @@ function protoZoneStateLines(rows, allMeters, zones, { utilities, drawn, utility
   });
   if (sets.length < 2) return null;
   sets.sort((a, b) => a.rank - b.rank);
+  const shown = new Set(sets.map((set) => set.utility));
   sets.forEach((set) => {
     set.buckets = protoZoneBuckets(rows, set.meters.slice(0, 1));
   });
@@ -3696,9 +3697,10 @@ function protoZoneStateLines(rows, allMeters, zones, { utilities, drawn, utility
       hours: zones.showHours ? PROTO_ZONE_NAMES[line.bucket.kind] : "",
       tou: zones.showTou ? (line.bucket.peak ? "Peak" : "Off-peak") : "",
       bucket: line.bucket,
-      parts: PROTO_ZONE_UTILITIES.filter((name) => line.by.has(name)).map((name) => ({
+      // Every utility in view keeps its pill on every line, at 0 when none of its sites is in that state.
+      parts: PROTO_ZONE_UTILITIES.filter((name) => shown.has(name)).map((name) => ({
         utility: name,
-        sites: [...line.by.get(name)].filter(Boolean),
+        sites: [...(line.by.get(name) || [])].filter(Boolean),
       })),
     }));
   });

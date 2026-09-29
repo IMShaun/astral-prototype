@@ -9108,9 +9108,19 @@ button.astral-state {
 }
 
 .astral-zone-count {
+  justify-content: space-between;
   gap: 3px;
+  width: 3.5rem;
   padding: 0 6px 0 4px;
   font-variant-numeric: tabular-nums;
+}
+
+.astral-zone-count.is-zero {
+  color: var(--color-text-secondary);
+}
+
+.astral-zone-count.is-zero:hover {
+  background: #fff;
 }
 
 .astral-zone-count > .astral-meter-mark {
