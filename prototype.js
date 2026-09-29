@@ -3446,7 +3446,9 @@ function protoZoneBits(bucket, zones) {
 function protoZoneWords(bucket, zones) {
   if (!bucket) return "";
   if (bucket.groups) {
-    return bucket.groups.map((group) => `. ${group.label}: ${protoZoneBits(group.bucket, zones)}`).join("");
+    return bucket.groups
+      .map((group) => `. ${protoZoneWhose(group.label, group.utility)}: ${protoZoneBits(group.bucket, zones)}`)
+      .join("");
   }
   const words = protoZoneBits(bucket, zones);
   return words ? `. ${words}` : "";
@@ -3460,6 +3462,7 @@ function protoZoneTipAttrs(bucket, zones) {
       group.head || group.label,
       group.rest || [],
       group.whole !== false,
+      group.utility || "",
     ]);
     return `data-tip-zones="${escapeHtml(JSON.stringify(lines))}"`;
   }
@@ -3484,29 +3487,38 @@ function protoReadZones(raw) {
       String(row[2] || row[0] || ""),
       Array.isArray(row[3]) ? row[3].map(String) : [],
       row[4] !== false,
+      String(row[5] || ""),
     ]);
 }
 
+function protoZoneWhose(label, utility) {
+  return utility && !/^All /.test(label) ? `${label}, ${utility}` : label;
+}
+
 // The state leads each zone line. One pill says whose it is; hover lists the sites.
-function protoZoneSitesPill(names) {
+function protoZoneSitesPill(names, utility = "") {
   if (!names.length) return "";
-  if (names.length === 1) return `<span class="astral-zone-more" aria-hidden="true">${escapeHtml(names[0])}</span>`;
+  if (names.length === 1) {
+    const one = utility && !names[0].endsWith(` ${utility}`) ? `${names[0]} ${utility}` : names[0];
+    return `<span class="astral-zone-more" aria-hidden="true">${escapeHtml(one)}</span>`;
+  }
   const shown = names.slice(0, PROTO_ZONE_MORE_MAX);
   const left = names.length - shown.length;
   const lines = [...shown, ...(left ? [`and ${left} more`] : [])]
     .map((name) => `<span>${escapeHtml(name)}</span>`)
     .join("");
-  return `<span class="astral-zone-more astral-tip-host" aria-hidden="true">${names.length} sites<span class="astral-icon-tip is-list">${lines}</span></span>`;
+  return `<span class="astral-zone-more astral-tip-host" aria-hidden="true">${names.length} ${utility ? `${utility} ` : ""}sites<span class="astral-icon-tip is-list">${lines}</span></span>`;
 }
 
 function protoChartZoneLines(point, limit = 0) {
   const zones = point?.zones || [];
   return (limit ? zones.slice(0, limit) : zones)
-    .map(([label, words, head, rest]) => {
+    .map(([label, words, head, rest, , utility]) => {
       const names = [head, ...rest].filter(Boolean);
+      const whose = protoZoneWhose(label, utility);
       return `<p class="astral-tip-zone"><span class="astral-tip-zone-state" aria-hidden="true">${escapeHtml(
         words
-      )}</span>${protoZoneSitesPill(names)}<span class="sr-only">${escapeHtml(`${words}: ${label}`)}</span></p>`;
+      )}</span>${protoZoneSitesPill(names, utility)}<span class="sr-only">${escapeHtml(`${words}: ${whose}`)}</span></p>`;
     })
     .join("");
 }
@@ -3625,6 +3637,8 @@ function protoZoneSet(rows, allMeters, zones) {
   }));
   // Groups differ over the day, but at one time several can sit in the same state. Those share a line.
   const labels = new Map();
+  // With more than one utility drawn, the lines only cover the picked one's sites, so they say which.
+  const kind = drawn.length > 1 ? utility.toLowerCase() : "";
   buckets.forEach((bucket, i) => {
     if (!bucket) return;
     const merged = new Map();
@@ -3640,10 +3654,10 @@ function protoZoneSet(rows, allMeters, zones) {
         const every = line.meters.length === meters.length;
         const several = new Set(meters.map((meter) => meter.site || "")).size > 1;
         const name = protoZoneGroupLabel(line.meters, meters);
-        labels.set(id, every && several ? { ...name, label: "All sites" } : name);
+        labels.set(id, every && several ? { ...name, label: `All ${kind ? `${kind} ` : ""}sites` } : name);
       }
       const name = labels.get(id);
-      return { label: name.label, head: name.head, rest: name.rest, whole: name.whole, bucket: line.bucket };
+      return { label: name.label, head: name.head, rest: name.rest, whole: name.whole, utility: kind, bucket: line.bucket };
     });
   });
   return { ...base, groups, pick, buckets };
