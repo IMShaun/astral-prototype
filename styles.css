@@ -6989,6 +6989,7 @@ button.astral-state {
 
 .astral-select-options {
   display: grid;
+  grid-auto-rows: max-content;
   gap: 4px;
   min-width: 0;
   max-height: calc(
