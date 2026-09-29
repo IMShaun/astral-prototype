@@ -8253,9 +8253,9 @@ function protoReportNewTab() {
 }
 
 const PROTO_REPORT_FILE_PREFIXES = [
+  { id: "none", name: "None" },
   { id: "name", name: "Report name" },
   { id: "user", name: "Username" },
-  { id: "none", name: "None" },
   { id: "custom", name: "Custom", note: "Type your own" },
 ];
 
@@ -8653,7 +8653,7 @@ function protoReportNormalize(raw) {
       ? raw.filePrefix
       : String(raw.fileStart || "").trim()
         ? "custom"
-        : "name",
+        : "none",
     fileSuffix: PROTO_REPORT_FILE_SUFFIXES.some((item) => item.id === raw.fileSuffix) ? raw.fileSuffix : "run",
     fileDate: PROTO_REPORT_FILE_DATES.some((item) => item.id === raw.fileDate) ? raw.fileDate : "iso",
     fileSep: raw.fileSep === "-" ? "-" : "_",
