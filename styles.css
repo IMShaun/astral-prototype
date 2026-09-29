@@ -10469,6 +10469,24 @@ tr.is-off .astral-person-mark {
   margin-top: 2px;
 }
 
+.astral-check.is-mixed {
+  background: #000;
+}
+
+.astral-check.is-mixed::after {
+  content: "";
+  width: 8px;
+  height: 2px;
+  background: #fff;
+}
+
+.astral-report-consent-subs {
+  display: grid;
+  gap: 8px;
+  margin-top: -4px;
+  padding-left: 24px;
+}
+
 .astral-report-consent-copy {
   display: grid;
   gap: 4px;

@@ -9373,6 +9373,12 @@ function protoReportDraftDef(draft) {
   const saved = id && id !== "new" ? protoReportDef(id) : null;
   const def = protoReportNormalize({
     ...draft,
+    consentFor: [
+      ...new Set([
+        ...(saved ? saved.consentFor : []),
+        ...(protoReportConsent(draft).on ? protoReportConsentKeys(draft) : []),
+      ]),
+    ],
     id: saved?.id || `report-${Date.now()}`,
     on: saved ? saved.on : true,
     owner: saved?.owner || protoProfileEmail(),
@@ -9426,8 +9432,12 @@ function protoReportAutoName(def) {
 function protoReportDraftIssue(draft) {
   const issue = protoReportDraftIssueBase(draft);
   if (issue) return issue;
-  const consent = protoReportConsent(draft);
-  return consent.ask && !consent.on ? "Tick to confirm you have permission to send this data." : "";
+  const left = protoReportConsent(draft).groups.filter((group) => !group.on);
+  if (!left.length) return "";
+  if (left.length > 1) return "Tick to confirm you have permission to email this data and send it to the SFTP server.";
+  return left[0].id === "email"
+    ? "Tick to confirm you have permission to email this data."
+    : "Tick to confirm you have permission to send this data to the SFTP server.";
 }
 
 function protoReportDraftIssueBase(draft) {
@@ -10039,12 +10049,30 @@ function protoReportConsentSaved() {
   return saved ? saved.consentFor : [];
 }
 
+// Email and the server each get their own tick. The data key is tagged per channel so one tick doesn't cover the other.
+function protoReportConsentFresh(draft, id) {
+  const saved = new Set(protoReportConsentSaved());
+  const keys = protoReportConsentKeys(draft);
+  const own = keys.filter(id === "email" ? protoReportIsPersonKey : (key) => key.startsWith("server:"));
+  if (!own.length) return [];
+  const fresh = own.filter((key) => !saved.has(key));
+  const data = keys.find((key) => key.startsWith("data:"));
+  if (data && !saved.has(data)) fresh.push(`${id}|${data}`);
+  return fresh;
+}
+
 function protoReportConsent(draft) {
-  if (!draft) return { ask: false, on: true, fresh: [] };
+  if (!draft) return { ask: false, on: true, fresh: [], groups: [] };
   const saved = new Set(protoReportConsentSaved());
   const given = new Set(Array.isArray(draft.consentFor) ? draft.consentFor : []);
+  const groups = ["email", "server"]
+    .map((id) => {
+      const fresh = protoReportConsentFresh(draft, id);
+      return { id, fresh, on: fresh.every((key) => given.has(key)) };
+    })
+    .filter((group) => group.fresh.length);
   const fresh = protoReportConsentKeys(draft).filter((key) => !saved.has(key));
-  return { ask: fresh.length > 0, on: fresh.every((key) => given.has(key)), fresh };
+  return { ask: groups.length > 0, on: groups.every((group) => group.on), fresh, groups };
 }
 
 function protoReportSampleSent(draft) {
@@ -10052,42 +10080,60 @@ function protoReportSampleSent(draft) {
   return sent && sent.id === (protoReportEditId() || "") && sent.type === draft?.type ? sent : null;
 }
 
-function protoReportConsentInner(draft) {
-  if (!draft) return "";
-  const consent = protoReportConsent(draft);
-  if (!consent.ask) return "";
-  const people = consent.fresh.filter(protoReportIsPersonKey);
-  const n = people.length;
-  const dataNew = consent.fresh.some((key) => key.startsWith("data:"));
-  const serverNew = consent.fresh.some((key) => key.startsWith("server:"));
-  const keys = protoReportConsentKeys(draft);
-  const hasPeople = keys.some(protoReportIsPersonKey);
-  const hasServer = keys.some((key) => key.startsWith("server:"));
-  const ways = (draft.delivery || []).filter((way) => way === "sftp" || way === "ftp");
-  const serverName = ways.length === 1 ? `the ${ways[0].toUpperCase()} server` : "the server";
-  const to = [
-    ...(hasPeople && (n || dataNew) ? ["everyone on the list"] : []),
-    ...(hasServer && (serverNew || dataNew) ? [serverName] : []),
-  ];
-  const why = n
-    ? `${n === 1 ? "The new recipient gets" : `The ${n} new recipients get`} an email that says you added them. Each can opt out.`
-    : serverNew
-      ? "The server is new since the last save."
-      : "What it sends has changed since the last save.";
+function protoReportConsentTick(which, on, text, note, extra = "") {
   return `
       <button
         type="button"
         role="checkbox"
-        class="astral-report-consent${consent.on ? " is-on" : ""}"
-        aria-checked="${consent.on ? "true" : "false"}"
-        data-proto-report-consent
+        class="astral-report-consent${on === true ? " is-on" : ""}${extra}"
+        aria-checked="${on === "mixed" ? "mixed" : on ? "true" : "false"}"
+        data-proto-report-consent="${which}"
       >
-        ${protoCheck(consent.on)}
+        <span class="astral-check${on === true ? " is-on" : on === "mixed" ? " is-mixed" : ""}" aria-hidden="true"></span>
         <span class="astral-report-consent-copy">
-          <span>I have permission to send this data to ${escapeHtml(to.join(" and "))}.</span>
-          <span class="astral-muted">${escapeHtml(why)}</span>
+          <span>${escapeHtml(text)}</span>
+          <span class="astral-muted">${escapeHtml(note)}</span>
         </span>
       </button>
+    `;
+}
+
+function protoReportConsentInner(draft) {
+  if (!draft) return "";
+  const consent = protoReportConsent(draft);
+  if (!consent.ask) return "";
+  const n = consent.fresh.filter(protoReportIsPersonKey).length;
+  const serverNew = consent.fresh.some((key) => key.startsWith("server:"));
+  const changed = "What it sends has changed since the last save.";
+  const ticks = consent.groups.map((group) =>
+    group.id === "email"
+      ? protoReportConsentTick(
+          "email",
+          group.on,
+          "I have permission to email this data to everyone on the list.",
+          n
+            ? `${n === 1 ? "The new recipient gets" : `The ${n} new recipients get`} an email that says you added them. Each can opt out.`
+            : changed
+        )
+      : protoReportConsentTick(
+          "server",
+          group.on,
+          "I have permission to send this data to the SFTP server.",
+          serverNew ? "The server is new since the last save." : changed
+        )
+  );
+  if (ticks.length < 2) return ticks.join("");
+  const done = consent.groups.filter((group) => group.on).length;
+  const all = done === consent.groups.length ? true : done ? "mixed" : false;
+  return `
+      ${protoReportConsentTick(
+        "all",
+        all,
+        "I have permission to send this data by email and to the SFTP server.",
+        all === true ? "Both are confirmed." : `Confirms both below. ${done} of 2 done.`,
+        " is-all"
+      )}
+      <div class="astral-report-consent-subs">${ticks.join("")}</div>
     `;
 }
 
@@ -10110,17 +10156,16 @@ function protoReportConsentHost(draft) {
   return `<div class="astral-report-consent-host" data-proto-report-consent-host>${protoReportConsentInner(draft)}</div>`;
 }
 
-function protoReportToggleConsent() {
+function protoReportToggleConsent(which) {
   const draft = protoReportDraft();
   if (!draft) return;
   const consent = protoReportConsent(draft);
-  const saved = protoReportConsentSaved();
-  setProto({
-    prototypeReportDraft: {
-      ...draft,
-      consentFor: consent.on ? saved : [...new Set([...saved, ...protoReportConsentKeys(draft)])],
-    },
-  });
+  const pick = which === "all" ? consent.groups : consent.groups.filter((group) => group.id === which);
+  if (!pick.length) return;
+  const turnOn = which === "all" ? !consent.on : !pick[0].on;
+  const given = new Set(Array.isArray(draft.consentFor) ? draft.consentFor : []);
+  pick.forEach((group) => group.fresh.forEach((key) => (turnOn ? given.add(key) : given.delete(key))));
+  setProto({ prototypeReportDraft: { ...draft, consentFor: [...given] } });
 }
 
 function protoReportNoticeHtml() {
@@ -26849,8 +26894,9 @@ function onPrototype(event) {
     protoRestoreFocus(`#astral-fs [data-proto-report-bysite="${bySite ? 1 : 0}"]`);
     return;
   }
-  if (event.target.closest("[data-proto-report-consent]")) {
-    protoReportToggleConsent();
+  const consentTick = event.target.closest("[data-proto-report-consent]");
+  if (consentTick) {
+    protoReportToggleConsent(consentTick.dataset.protoReportConsent);
     return;
   }
   if (event.target.closest("[data-proto-report-sample]")) {
