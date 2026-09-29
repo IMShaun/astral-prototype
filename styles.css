@@ -7428,6 +7428,13 @@ button.astral-state {
   background: var(--color-background-subtle);
 }
 
+.astral-select-options button.is-disabled,
+.astral-select-options button.is-disabled:hover {
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: default;
+}
+
 .astral-filter-menu button.is-mix {
   background: var(--color-background-subtle);
 }

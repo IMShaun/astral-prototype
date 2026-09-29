@@ -4669,6 +4669,40 @@ function protoRevealTreeSite() {
 }
 
 // A reading in the pin opens the next level. A site opens as if picked in the tree. A meter narrows the graph to it.
+const PROTO_DRILL_BACK_KEYS = [
+  "prototypeScope",
+  "prototypeGroup",
+  "activePrototypeMeter",
+  "prototypeGroupClosed",
+  "prototypeChannel",
+  "prototypeSiteMeters",
+  "prototypeSiteMeter",
+  "prototypePaneMeterKinds",
+  "prototypePane",
+  "prototypeChartPoint",
+  "prototypeGroupSites",
+  "prototypeCompareLevel",
+];
+
+function protoDrillBackStash(label) {
+  const state = {};
+  PROTO_DRILL_BACK_KEYS.forEach((key) => {
+    state[key] = store[key] === undefined ? null : JSON.parse(JSON.stringify(store[key]));
+  });
+  return { label: String(label || ""), state };
+}
+
+function protoDrillBack() {
+  const back = store.prototypeDrillBack;
+  return back && back.state && back.label ? back : null;
+}
+
+function protoDrillBackLink() {
+  const back = protoDrillBack();
+  if (!back) return "";
+  return `<p class="astral-drill-back">${protoBackLink(`Back to ${back.label}`, "data-proto-drill-back")}</p>`;
+}
+
 function protoPinDrillAttr(row) {
   const id = String(row?.id || "");
   if (!id || protoCompareOn()) return "";
@@ -5488,19 +5522,34 @@ function protoChartZoneField(set, field) {
 }
 
 function protoChartUtilityField(set, field) {
-  if (!set || (set.utilities || []).length < 2) return "";
+  const have = set?.utilities || [];
+  if (!have.length) return "";
+  const where =
+    store.prototypeScope === "site" && !protoCompareOn()
+      ? "at this site"
+      : store.prototypeScope === "group" && !protoCompareOn() && !protoIsAllGroup(store.prototypeGroup)
+        ? "in this group"
+        : "in this view";
   return field("utility", "Utility", (labelledby) =>
     protoSelect({
       id: "chart-zone-utility",
       label: "Utility",
       labelledby,
       value: set.utility,
-      options: set.utilities.map((name) => {
+      options: PROTO_ZONE_UTILITIES.map((name) => {
+        const off = !have.includes(name);
         const face = `<span class="astral-filter-face">${protoIconMark(
           protoMeterKind({ commodity: name.toLowerCase() }),
           "astral-meter-mark"
         )}<span>${escapeHtml(name)}</span></span>`;
-        return { value: name, label: name, face, html: face };
+        return {
+          value: name,
+          label: name,
+          face,
+          html: face,
+          disabled: off,
+          tip: off ? `No ${name.toLowerCase()} meters ${where}.` : "",
+        };
       }),
     })
   );
@@ -7181,15 +7230,22 @@ function protoSelect(config) {
           : `<span class="astral-count" aria-label="${escapeHtml(
               item.countLabel || String(item.count)
             )}">${escapeHtml(String(item.count))}</span>`;
+      const off = Boolean(item.disabled);
+      const tipId = off && item.tip ? `${menuId}-tip-${String(item.value).replace(/[^a-z0-9_-]+/gi, "-")}` : "";
+      const tip = tipId
+        ? `<span class="astral-icon-tip" id="${escapeHtml(tipId)}" role="tooltip" aria-hidden="true">${escapeHtml(item.tip)}</span>`
+        : "";
       return `
         <button
           type="button"
           role="option"
-          class="${on ? "is-on" : ""}"
+          class="${[on ? "is-on" : "", off ? "is-disabled" : "", tip ? "astral-tip-host" : ""].filter(Boolean).join(" ")}"
           aria-selected="${on ? "true" : "false"}"
+          ${off ? `aria-disabled="true"` : ""}
+          ${tipId ? `aria-describedby="${escapeHtml(tipId)}"` : ""}
           data-proto-select-option="${escapeHtml(id)}"
           data-proto-select-value="${escapeHtml(item.value)}"
-        >${box}${inner}${count}</button>
+        >${box}${inner}${count}${tip}</button>
       `;
     })
     .join("");
@@ -25260,6 +25316,7 @@ function onPrototype(event) {
   }
   const selectOption = event.target.closest("[data-proto-select-option]");
   if (selectOption) {
+    if (selectOption.getAttribute("aria-disabled") === "true") return;
     const id = selectOption.dataset.protoSelectOption;
     // A multi-select stays open while ticking, unless its handler closes it on purpose.
     protoKeepSelectOpen = selectOption.closest('[aria-multiselectable="true"]') ? id : "";
