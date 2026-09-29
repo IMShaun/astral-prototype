@@ -3594,11 +3594,29 @@ function protoZoneSet(rows, allMeters, zones) {
   const pick = groups.find((group) => group.meters.some((meter) => meter.id === want)) || groups[0];
   const buckets = protoZoneBuckets(rows, pick.meters);
   const order = [pick, ...groups.filter((group) => group !== pick)].map((group) => ({
-    label: group.label,
+    meters: group.meters,
     buckets: protoZoneBuckets(rows, group.meters.slice(0, 1)),
   }));
+  // Groups differ over the day, but at one time several can sit in the same state. Those share a line.
+  const labels = new Map();
   buckets.forEach((bucket, i) => {
-    if (bucket) bucket.groups = order.map((group) => ({ label: group.label, bucket: group.buckets[i] }));
+    if (!bucket) return;
+    const merged = new Map();
+    order.forEach((group) => {
+      const at = group.buckets[i];
+      const key = protoZoneBits(at, zones);
+      if (!merged.has(key)) merged.set(key, { bucket: at, meters: [] });
+      merged.get(key).meters.push(...group.meters);
+    });
+    bucket.groups = [...merged.values()].map((line) => {
+      const id = line.meters.map((meter) => meter.id).join(",");
+      if (!labels.has(id)) {
+        const every = line.meters.length === meters.length;
+        const several = new Set(meters.map((meter) => meter.site || "")).size > 1;
+        labels.set(id, every && several ? "All sites" : protoZoneGroupLabel(line.meters, meters).label);
+      }
+      return { label: labels.get(id), bucket: line.bucket };
+    });
   });
   return { ...base, groups, pick, buckets };
 }
