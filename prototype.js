@@ -8005,10 +8005,13 @@ function protoPickSelect(id, value) {
     "report-time": "time",
     "report-send-at": "sendAt",
     "report-sftp-auth": "sftpAuth",
+    "report-send-day": "sendDay",
+    "report-send-date": "sendDate",
   };
   if (PROTO_REPORT_SELECT_KEYS[id]) {
     const key = PROTO_REPORT_SELECT_KEYS[id];
-    protoReportPatchDraft({ [key]: id === "report-silence" ? Number(value) : value });
+    const numeric = id === "report-silence" || id === "report-send-day" || (id === "report-send-date" && value !== "last");
+    protoReportPatchDraft({ [key]: numeric ? Number(value) : value });
     protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
     return;
   }
@@ -8272,7 +8275,6 @@ const PROTO_REPORT_BASIS = [
 const PROTO_REPORT_DELIVERY = [
   { id: "email", name: "Email" },
   { id: "sftp", name: "SFTP" },
-  { id: "ftp", name: "FTP" },
 ];
 
 const PROTO_REPORT_CONTENT = [
@@ -8591,9 +8593,9 @@ function protoReportNormalize(raw) {
   const range = protoReportDefaultRange();
   const from = protoMaskUkDate(raw.from || "");
   const to = protoMaskUkDate(raw.to || "");
-  const delivery = PROTO_REPORT_DELIVERY.map((item) => item.id).filter((id) =>
-    (Array.isArray(raw.delivery) ? raw.delivery : ["email"]).includes(id)
-  );
+  // FTP is gone. Reports saved with it send by SFTP to the same server.
+  const asked = (Array.isArray(raw.delivery) ? raw.delivery : ["email"]).map((way) => (way === "ftp" ? "sftp" : way));
+  const delivery = PROTO_REPORT_DELIVERY.map((item) => item.id).filter((id) => asked.includes(id));
   const def = {
     id: String(raw.id || `report-${Date.now()}`),
     type,
@@ -8607,6 +8609,7 @@ function protoReportNormalize(raw) {
     roles: protoReportRoles(raw.roles),
     sites,
     period: protoReportPeriod(type, raw.period).id,
+    ...protoReportSendDayOf(raw, start),
     delivery: delivery.length ? delivery : ["email"],
     content: protoReportPick(PROTO_REPORT_CONTENT, raw.content),
     utility: protoReportUtilityIds(raw.utility, type),
@@ -8617,7 +8620,7 @@ function protoReportNormalize(raw) {
     sendAt: PROTO_REPORT_SEND_AT.includes(String(raw.sendAt)) ? String(raw.sendAt) : "09:00",
     sftpHost: String(raw.sftpHost || "").trim().slice(0, 120),
     sftpPath: String(raw.sftpPath || "").trim().slice(0, 160),
-    sftpPort: protoReportNumber(raw.sftpPort, delivery.includes("sftp") || !delivery.includes("ftp") ? 22 : 21, 1, 65535),
+    sftpPort: protoReportNumber(raw.sftpPort, 22, 1, 65535),
     sftpUser: String(raw.sftpUser || "").trim().slice(0, 80),
     sftpAuth: raw.sftpAuth === "key" ? "key" : "password",
     sftpPassword: String(raw.sftpPassword || "").slice(0, 120),
@@ -8935,18 +8938,58 @@ function protoReportStepDate(date, period) {
   return protoAddMonths(date, 1);
 }
 
+const PROTO_REPORT_WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function protoReportOrdinal(n) {
+  const tens = n % 100;
+  if (tens >= 11 && tens <= 13) return `${n}th`;
+  return `${n}${{ 1: "st", 2: "nd", 3: "rd" }[n % 10] || "th"}`;
+}
+
+// Repeating sends pick a weekday (Weekly) or a day of the month (Monthly, Quarterly).
+// Reports saved before that take the day from their first send date.
+function protoReportSendDayOf(raw, start) {
+  const first = protoFromUkDate(start) || protoToday();
+  const day = Number(raw.sendDay);
+  const date = raw.sendDate === "last" ? "last" : Number(raw.sendDate);
+  return {
+    sendDay: Number.isInteger(day) && day >= 0 && day <= 6 ? day : first.getDay(),
+    sendDate:
+      date === "last" || (Number.isInteger(date) && date >= 1 && date <= 28)
+        ? date
+        : first.getDate() > 28
+          ? "last"
+          : first.getDate(),
+  };
+}
+
+function protoReportDayWords(def) {
+  if (def.period === "week") return ` on ${PROTO_REPORT_WEEKDAYS[def.sendDay]}s`;
+  if (def.period === "month" || def.period === "quarter") {
+    return def.sendDate === "last" ? " on the last day" : ` on the ${protoReportOrdinal(def.sendDate)}`;
+  }
+  return "";
+}
+
 function protoReportNextSend(def) {
   const start = protoFromUkDate(def.start);
-  if (!start) return null;
-  const todayStamp = protoDayStamp(protoToday());
-  if (protoReportOnce(def)) return protoDayStamp(start) >= todayStamp ? start : null;
-  let next = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-  let guard = 0;
-  while (protoDayStamp(next) <= todayStamp && guard < 800) {
-    next = protoReportStepDate(next, def.period);
-    guard += 1;
+  const today = protoToday();
+  const todayStamp = protoDayStamp(today);
+  if (protoReportOnce(def)) return start && protoDayStamp(start) >= todayStamp ? start : null;
+  const next = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  if (def.period === "day") return next;
+  if (def.period === "week") {
+    while (next.getDay() !== def.sendDay) next.setDate(next.getDate() + 1);
+    return next;
   }
-  return next;
+  for (let i = 0; i < 16; i += 1) {
+    const month = today.getMonth() + i;
+    if (def.period === "quarter" && ((month % 12) + 12) % 3 !== 0) continue;
+    const last = new Date(today.getFullYear(), month + 1, 0).getDate();
+    const on = new Date(today.getFullYear(), month, def.sendDate === "last" ? last : def.sendDate);
+    if (protoDayStamp(on) > todayStamp) return on;
+  }
+  return null;
 }
 
 function protoReportSendLabel(next) {
@@ -9232,7 +9275,7 @@ function protoReportDraftFrom(def) {
 
 function protoReportNewDraft(type, templateId = "") {
   const tpl = templateId ? protoTemplate(templateId) : protoTemplateBuiltIn(type);
-  const base = protoTemplateApply({ type, people: ["me"], template: templateId }, tpl);
+  const base = protoTemplateApply({ type, people: ["me"], template: templateId, sendDay: 1, sendDate: 1 }, tpl);
   if (templateId && tpl) base.step = protoTemplateStepOf(tpl);
   const def = protoReportNormalize(base);
   const draft = { ...protoReportDraftFrom(def), name: "" };
@@ -9253,6 +9296,11 @@ function protoReportDraftDef(draft) {
     to: protoReportDraftDate("to"),
   });
   if (!String(draft.name || "").trim()) def.name = protoReportAutoName(def);
+  // A new repeating report starts on its first send, so its past sends begin there.
+  if (!saved && !protoReportOnce(def)) {
+    const first = protoReportNextSend(def);
+    if (first) def.start = protoFormatUkDate(first);
+  }
   return def;
 }
 
@@ -9331,7 +9379,6 @@ function protoReportDraftIssueBase(draft) {
       if (!startOk) return "Enter the send date.";
       return "";
     }
-    if (!startOk) return "Enter the first send date.";
     return "";
   }
   if (draft.type === "billing") {
@@ -9355,7 +9402,6 @@ function protoReportDraftIssueBase(draft) {
     }
     const vat = String(draft.vat ?? "").trim();
     if (vat === "" || !(Number(vat) >= 0 && Number(vat) <= 100)) return "VAT must be between 0 and 100%.";
-    if (!startOk) return "Enter the first send date.";
     return "";
   }
   if (draft.type === "alert") {
@@ -9380,7 +9426,8 @@ function protoReportDraftPreview(draft) {
     if (protoReportOnce(def)) {
       return next ? `Once, on ${protoReportSendLabel(next)} at ${at}.` : "Once. The send date has passed.";
     }
-    return next ? `${period.every} at ${at}. Next send ${protoReportSendLabel(next)}.` : `${period.every} at ${at}.`;
+    const every = `${period.every}${protoReportDayWords(def)} at ${at}.`;
+    return next ? `${every} Next send ${protoReportSendLabel(next)}.` : every;
   }
   if (def.type === "billing") {
     const all = protoReportBills(def);
@@ -9476,12 +9523,43 @@ function protoReportPeriodSelect(draft, label) {
   );
 }
 
+function protoReportSendDaySelect(draft) {
+  const period = protoReportPeriod(draft.type, draft.period).id;
+  const days = protoReportSendDayOf(draft, protoReportDraftStart());
+  if (period === "week") {
+    return protoReportField(
+      "Day of the week",
+      protoSelect({
+        id: "report-send-day",
+        label: "Day of the week",
+        wide: true,
+        value: String(days.sendDay),
+        options: [1, 2, 3, 4, 5, 6, 0].map((day) => ({ value: String(day), label: PROTO_REPORT_WEEKDAYS[day] })),
+      })
+    );
+  }
+  if (period === "month" || period === "quarter") {
+    const dates = Array.from({ length: 28 }, (_, i) => ({ value: String(i + 1), label: protoReportOrdinal(i + 1) }));
+    return protoReportField(
+      "Day of the month",
+      protoSelect({
+        id: "report-send-date",
+        label: "Day of the month",
+        wide: true,
+        value: String(days.sendDate),
+        options: [...dates, { value: "last", label: "Last day" }],
+      })
+    );
+  }
+  return "";
+}
+
 function protoReportWhenFields(draft) {
   const once = draft.period === "once";
   return `
     <div class="astral-report-pair">
       ${protoReportPeriodSelect(draft, "How often")}
-      ${protoReportDayCalHtml(protoReportDraftStart(), once ? "Send on" : "First send on")}
+      ${once ? protoReportDayCalHtml(protoReportDraftStart(), "Send on") : protoReportSendDaySelect(draft)}
     </div>
     ${
       once
@@ -10173,7 +10251,6 @@ function protoReportServerFields(draft, serverName) {
           <p class="astral-muted">Ask your IT team for it. Astral checks it before every send, so the file only goes to your server.</p>`
         : ""
     }
-    ${sftp ? "" : '<p class="astral-muted">FTP sends the file and password unencrypted. Use SFTP if your server has it.</p>'}
     ${protoReportTestHtml(draft)}
   `;
 }
@@ -10225,7 +10302,7 @@ function protoReportDeliveryFields(draft, opts = {}) {
         values: ways,
         placeholder: "Pick how to send it",
         countLabel: "ways",
-        allLabel: "Email, SFTP and FTP",
+        allLabel: "Email and SFTP",
         options: PROTO_REPORT_DELIVERY.map((item) => ({ value: item.id, label: item.name })),
       })
     )}
