@@ -8275,6 +8275,7 @@ const PROTO_REPORT_FILE_DATES = [
 const PROTO_REPORT_FILE_SEPS = [
   { id: "_", name: "Underscore  _" },
   { id: "-", name: "Hyphen  -" },
+  { id: " ", name: "Space" },
 ];
 
 const PROTO_REPORT_PERIODS = [
@@ -8656,7 +8657,7 @@ function protoReportNormalize(raw) {
         : "none",
     fileSuffix: PROTO_REPORT_FILE_SUFFIXES.some((item) => item.id === raw.fileSuffix) ? raw.fileSuffix : "none",
     fileDate: PROTO_REPORT_FILE_DATES.some((item) => item.id === raw.fileDate) ? raw.fileDate : "iso",
-    fileSep: raw.fileSep === "-" ? "-" : "_",
+    fileSep: ["_", "-", " "].includes(raw.fileSep) ? raw.fileSep : "_",
     sftpHost: String(raw.sftpHost || "").trim().slice(0, 120),
     sftpPath: String(raw.sftpPath || "").trim().slice(0, 160),
     sftpPort: protoReportNumber(raw.sftpPort, 22, 1, 65535),
@@ -10665,11 +10666,10 @@ const PROTO_REPORT_GROUP_NAMES = {
   file: "File name",
 };
 
-function protoReportFileSlug(text) {
-  return String(text || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+// Spaces as the separator keep words and capitals as typed. Otherwise words join with hyphens.
+function protoReportFileSlug(text, sep) {
+  const clean = String(text || "").replace(/[^A-Za-z0-9]+/g, " ").trim();
+  return sep === " " ? clean : clean.toLowerCase().replace(/ /g, "-");
 }
 
 function protoReportFileDate(date, style) {
@@ -10685,9 +10685,9 @@ function protoReportDraftFileDef(draft) {
 
 function protoReportFilePrefixText(def, raw) {
   if (def.filePrefix === "none") return "";
-  if (def.filePrefix === "user") return protoReportFileSlug(String(raw.owner || protoProfileEmail()).split("@")[0]) || "user";
-  if (def.filePrefix === "custom" && def.fileStart) return protoReportFileSlug(def.fileStart);
-  return protoReportFileSlug(String(raw.name || "").trim() || protoReportAutoName(def)) || "report";
+  if (def.filePrefix === "user") return protoReportFileSlug(String(raw.owner || protoProfileEmail()).split("@")[0], def.fileSep) || "user";
+  if (def.filePrefix === "custom" && def.fileStart) return protoReportFileSlug(def.fileStart, def.fileSep);
+  return protoReportFileSlug(String(raw.name || "").trim() || protoReportAutoName(def), def.fileSep) || "report";
 }
 
 // The data a repeating send holds: the period before the send day.
@@ -10708,13 +10708,12 @@ function protoReportFileSuffixText(def, when) {
   return def.fileSuffix === "start" ? stamp(range.from, "0000") : stamp(range.to, "2359");
 }
 
-// The name each sent file gets: the prefix, then the suffix.
+// The name each sent file gets: the prefix, the report type, then the suffix.
 function protoReportFileName(raw, sendDate) {
   const def = protoReportNormalize(raw);
   const when = sendDate || protoReportNextSend(def) || protoToday();
-  const bits = [protoReportFilePrefixText(def, raw), protoReportFileSuffixText(def, when)];
-  // With no prefix and no suffix the file takes the report name.
-  if (!bits.some(Boolean)) bits.push(protoReportFilePrefixText({ ...def, filePrefix: "name" }, raw));
+  const core = protoReportFileSlug(protoReportType(def.type).short, def.fileSep);
+  const bits = [protoReportFilePrefixText(def, raw), core, protoReportFileSuffixText(def, when)];
   const ext = def.type === "billing" ? "pdf" : def.format === "xlsx" ? "xlsx" : "csv";
   return `${bits.filter(Boolean).join(def.fileSep)}.${ext}`;
 }
@@ -10751,7 +10750,7 @@ function protoReportFileFields(draft) {
   );
   const rules = [
     ...(def.fileSuffix === "none" ? [] : [`Times use the 24-hour clock in ${protoReportZone(def)}.`]),
-    "Spaces become hyphens. Other symbols drop out.",
+    def.fileSep === " " ? "Other symbols drop out." : "Spaces become hyphens. Other symbols drop out.",
   ];
   return `
     <div class="astral-report-pair">
