@@ -8892,9 +8892,9 @@ function protoReportPortfolioAverage(def) {
   return sites.reduce((n, site) => n + protoReportSiteDayKwh(site, def), 0) / sites.length;
 }
 
-// No to site-level data: the alert watches the picked sites added together.
+// Alerts no longer ask about site-level data, so an older alert saved with No checks each site too.
 function protoReportAlertTotals(def) {
-  return def.type === "alert" && def.bySite === false;
+  return def.type === "alert" && protoReportAsksBySite(def) && def.bySite === false;
 }
 
 function protoReportAlertTotal(def) {
@@ -9602,6 +9602,10 @@ function protoReportDraftIssueBase(draft) {
       const who = name || `tenant ${i + 1}`;
       if (!tenant.site) return `Pick a site for ${who}.`;
       if (!name) return `Add the name of tenant ${i + 1}.`;
+      const bad = protoReportEmailRows(tenant)
+        .map((item) => String(item).trim())
+        .find((item) => item && !protoReportEmails([item]).length);
+      if (bad) return `Check the email address ${bad} for ${who}.`;
       if (!protoReportEmails(String(tenant.email || "")).length) return `Add an email for ${who}.`;
       const paid = protoReportBillUtils(protoReportSiteById(tenant.site)).filter(
         (util) => tenant[`${util.id}Pays`] !== false
@@ -9885,10 +9889,9 @@ function protoReportUtilitySelect(draft) {
   );
 }
 
-// Site level or totals. A Data extract of interval data and a Data alert ask; a template sets its own rows.
-// Reads, DC and DA reads, and gaps do not add up, and a tenant's bill is already one site.
+// Site level or totals. Only a Data extract of interval data asks; a template sets its own rows.
+// Alerts always check each site. Reads, DC and DA reads, and gaps do not add up, and a tenant's bill is already one site.
 function protoReportAsksBySite(draft) {
-  if (draft.type === "alert") return true;
   return draft.type === "extract" && !draft.template && draft.content === "interval";
 }
 
@@ -10997,10 +11000,8 @@ function protoReportTenantFold(draft, tenant, i, openId) {
           }),
         })
       )}
-      <div class="astral-report-pair">
-        ${protoReportInput("Tenant name", field("name"), tenant.name, 'maxlength="80" placeholder="Northgate Retail"')}
-        ${protoReportInput("Tenant emails", field("email"), tenant.email, 'inputmode="email" placeholder="accounts@tenant.com, name@tenant.com"')}
-      </div>
+      ${protoReportInput("Tenant name", field("name"), tenant.name, 'maxlength="80" placeholder="Northgate Retail"')}
+      ${protoReportTenantEmails(tenant)}
         `
       )}
       <p class="astral-report-preview" data-proto-report-tenant-bill="${escapeHtml(tenant.id)}">${escapeHtml(
@@ -11015,6 +11016,74 @@ function protoReportTenantFold(draft, tenant, i, openId) {
       }
     `,
   });
+}
+
+// One address a row while typing. The saved tenant keeps them joined in email.
+function protoReportEmailRows(tenant) {
+  if (Array.isArray(tenant.emailRows)) return tenant.emailRows.length ? tenant.emailRows : [""];
+  const list = String(tenant.email || "")
+    .split(/[\s,;]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return list.length ? list : [""];
+}
+
+function protoReportAddEmailRow(tenantId) {
+  const tenant = protoReportTenantsOf(protoReportDraft()).find((item) => item.id === tenantId);
+  if (!tenant || !protoCanEditReports()) return;
+  const rows = protoReportEmailRows(tenant);
+  if (rows.length >= 20) return;
+  const next = protoReportSetEmailRows(tenant, [...rows, ""]);
+  protoReportPatchTenant(tenantId, { emailRows: next.emailRows, email: next.email });
+  protoRestoreFocus(`#astral-fs [data-proto-report-field="tenant:${tenantId}:emailRow:${rows.length}"]`);
+}
+
+function protoReportSetEmailRows(tenant, rows) {
+  const list = rows.slice(0, 20);
+  return {
+    ...tenant,
+    emailRows: list,
+    email: list
+      .map((item) => String(item).trim())
+      .filter(Boolean)
+      .join(", "),
+  };
+}
+
+function protoReportTenantEmails(tenant) {
+  const rows = protoReportEmailRows(tenant);
+  const labelId = `astral-report-emails-${tenant.id}`;
+  return `
+    <div class="astral-field astral-report-emails" role="group" aria-labelledby="${escapeHtml(labelId)}">
+      <span id="${escapeHtml(labelId)}">Tenant emails</span>
+      ${rows
+        .map((email, n) => {
+          const key = `tenant:${tenant.id}:emailRow:${n}`;
+          return `
+            <div class="astral-report-email-row">
+              <input type="text" name="proto-report-${escapeHtml(key)}" data-proto-report-field="${escapeHtml(key)}" value="${escapeHtml(
+                email
+              )}" inputmode="email" autocomplete="off" spellcheck="false" maxlength="120" aria-label="${escapeHtml(
+                `Email ${n + 1}`
+              )}" placeholder="${n ? "name@tenant.com" : "accounts@tenant.com"}">
+              ${
+                rows.length > 1
+                  ? protoIconBtn("close", `Remove ${String(email).trim() || `email ${n + 1}`}`, `data-proto-report-email-remove="${escapeHtml(
+                      `${tenant.id}:${n}`
+                    )}"`)
+                  : ""
+              }
+            </div>
+          `;
+        })
+        .join("")}
+      ${
+        rows.length < 20
+          ? `<div class="astral-actions">${protoGhost("Add an email", `data-proto-report-email-add="${escapeHtml(tenant.id)}"`)}</div>`
+          : ""
+      }
+    </div>
+  `;
 }
 
 function protoReportTenantsHtml(draft) {
@@ -27341,6 +27410,24 @@ function onPrototype(event) {
     protoSlideHost(utilTab.closest(".astral-tabs"), "button.is-on", "utilTabs", false);
     return;
   }
+  const emailAdd = event.target.closest("[data-proto-report-email-add]");
+  if (emailAdd) {
+    protoReportAddEmailRow(emailAdd.dataset.protoReportEmailAdd);
+    return;
+  }
+  const emailRemove = event.target.closest("[data-proto-report-email-remove]");
+  if (emailRemove) {
+    const [tenantId, at] = emailRemove.dataset.protoReportEmailRemove.split(":");
+    const tenant = protoReportTenantsOf(protoReportDraft()).find((item) => item.id === tenantId);
+    if (!tenant || !protoCanEditReports()) return;
+    const rows = protoReportEmailRows(tenant).filter((_, n) => n !== Number(at));
+    const next = protoReportSetEmailRows(tenant, rows.length ? rows : [""]);
+    protoReportPatchTenant(tenantId, { emailRows: next.emailRows, email: next.email });
+    protoRestoreFocus(
+      `#astral-fs [data-proto-report-field="tenant:${tenantId}:emailRow:${Math.max(0, Math.min(Number(at), rows.length - 1))}"]`
+    );
+    return;
+  }
   const ratesEdit = event.target.closest("[data-proto-report-rates-edit]");
   if (ratesEdit) {
     const key = ratesEdit.dataset.protoReportRatesEdit;
@@ -29050,7 +29137,9 @@ function onPrototypeInput(event) {
               tax.id === bits[3] ? { ...tax, [bits[4]]: value } : tax
             ),
           }
-        : { ...tenant, [bits[2]]: value };
+        : bits[2] === "emailRow"
+          ? protoReportSetEmailRows(tenant, protoReportEmailRows(tenant).map((item, n) => (n === Number(bits[3]) ? value : item)))
+          : { ...tenant, [bits[2]]: value };
     store.prototypeReportDraft = bits
       ? {
           ...draft,
@@ -29736,6 +29825,12 @@ function onPrototypeKey(event) {
   }
   if (event.key === "Enter" && event.target.closest("input[name='proto-team-people-query'], input[name='proto-report-people-query'], input[name='proto-report-site-query'], input[name='proto-person-team-query'], input[name='proto-person-sites-query']")) {
     event.preventDefault();
+    return;
+  }
+  const emailRowInput = event.target.closest('input[data-proto-report-field*=":emailRow:"]');
+  if (emailRowInput && event.key === "Enter") {
+    event.preventDefault();
+    if (emailRowInput.value.trim()) protoReportAddEmailRow(emailRowInput.dataset.protoReportField.split(":")[1]);
     return;
   }
   const typeRadio = event.target.closest(

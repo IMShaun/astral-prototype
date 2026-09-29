@@ -10348,6 +10348,21 @@ tr.is-off .astral-person-mark {
   min-width: 0;
 }
 
+.astral-report-emails {
+  gap: 8px;
+}
+
+.astral-report-email-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.astral-report-emails .astral-actions {
+  margin-top: 4px;
+}
+
 .astral-report-types {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
