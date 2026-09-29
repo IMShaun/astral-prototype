@@ -8253,22 +8253,22 @@ function protoReportNewTab() {
 }
 
 const PROTO_REPORT_FILE_PREFIXES = [
-  { id: "name", name: "Default report name" },
+  { id: "name", name: "Report name" },
   { id: "user", name: "Username" },
-  { id: "none", name: "Nothing", note: "Starts with the date" },
+  { id: "none", name: "None" },
   { id: "custom", name: "Custom", note: "Type your own" },
 ];
 
 const PROTO_REPORT_FILE_SUFFIXES = [
-  { id: "run", name: "Date and time of report execution", note: "When it sends" },
-  { id: "start", name: "Date and time of report range start", note: "The first moment the file holds" },
-  { id: "end", name: "Date and time of report range end", note: "The last moment the file holds" },
+  { id: "run", name: "Date and time it sends" },
+  { id: "start", name: "Date and time the data starts" },
+  { id: "end", name: "Date and time the data ends" },
   { id: "none", name: "None" },
 ];
 
 const PROTO_REPORT_FILE_DATES = [
   { id: "iso", name: "2026-09-07", note: "Year, month, day. Sorts in order." },
-  { id: "compact", name: "20260907", note: "No separators" },
+  { id: "compact", name: "20260907", note: "Year, month, day, with no gaps" },
   { id: "uk", name: "07-09-2026", note: "Day, month, year" },
 ];
 
@@ -9480,10 +9480,10 @@ function protoReportDraftIssueBase(draft) {
     if (draft.period === "once") {
       const from = protoFromUkDate(protoReportDraftDate("from"));
       const to = protoFromUkDate(protoReportDraftDate("to"));
-      if (!from || !to) return "Enter the from and to dates.";
-      if (from > to) return "The from date must come before the to date.";
+      if (!from || !to) return "Pick the dates the file covers.";
+      if (from > to) return "Data from must come before Data to.";
       if (to > protoToday()) return "Pick dates up to today.";
-      if (!startOk) return "Enter the send date.";
+      if (!startOk) return "Pick the send date.";
       if (!protoReportSendOnOk()) return "Pick today or a later day to send it.";
       if (protoReportHourGone(draft, draft.sendAt || "09:00")) return "That time has gone today. Pick a later time.";
       return "";
@@ -10467,7 +10467,7 @@ function protoReportSendTimeFields(draft) {
   return `
     <div class="astral-report-pair">
       ${protoReportSendAtSelect(draft)}
-      ${protoReportOptionSelect("report-time", "Times in", PROTO_REPORT_TIME, draft.time)}
+      ${protoReportOptionSelect("report-time", "Time zone", PROTO_REPORT_TIME, draft.time)}
     </div>
     <p class="astral-muted">Meter data comes in through the day, so a later send holds more of it.</p>
   `;
@@ -10730,7 +10730,7 @@ function protoReportFilePreviewInner(draft) {
       later
         ? def.fileSuffix === "none"
           ? `<p class="astral-muted">Every send has this name. On the server, each new file replaces the last one.</p>`
-          : `<p class="astral-muted">The send after that is ${escapeHtml(protoReportFileName(raw, later))}</p>`
+          : `<p class="astral-muted">The send after that is called ${escapeHtml(protoReportFileName(raw, later))}</p>`
         : ""
     }
   `;
@@ -10744,6 +10744,14 @@ function protoReportFileFields(draft) {
   const prefixes = PROTO_REPORT_FILE_PREFIXES.map((item) =>
     item.id === "name" || item.id === "user" ? { ...item, note: note(item.id) } : item
   );
+  const when = protoReportNextSend(def) || protoToday();
+  const suffixes = PROTO_REPORT_FILE_SUFFIXES.map((item) =>
+    item.id === "none" ? item : { ...item, note: protoReportFileSuffixText({ ...def, fileSuffix: item.id }, when) }
+  );
+  const rules = [
+    ...(def.fileSuffix === "none" ? [] : [`Times use the 24-hour clock in ${protoReportZone(def)}.`]),
+    "Spaces become hyphens. Other symbols drop out.",
+  ];
   return `
     <div class="astral-report-pair">
       ${protoReportOptionSelect("report-file-prefix", "File prefix", prefixes, prefix)}
@@ -10754,13 +10762,13 @@ function protoReportFileFields(draft) {
       }
     </div>
     <div class="astral-report-pair">
-      ${protoReportOptionSelect("report-file-suffix", "File suffix", PROTO_REPORT_FILE_SUFFIXES, def.fileSuffix)}
+      ${protoReportOptionSelect("report-file-suffix", "File suffix", suffixes, def.fileSuffix)}
       ${def.fileSuffix === "none" ? "" : protoReportOptionSelect("report-file-date", "Date format", PROTO_REPORT_FILE_DATES, def.fileDate)}
     </div>
     <div class="astral-report-pair">
       ${protoReportOptionSelect("report-file-sep", "Separator", PROTO_REPORT_FILE_SEPS, def.fileSep)}
     </div>
-    <p class="astral-muted">Times are 24-hour ${escapeHtml(protoReportZone(def))}. Letters and numbers only. Spaces become hyphens.</p>
+    <p class="astral-muted">${escapeHtml(rules.join(" "))}</p>
     <div class="astral-report-file-preview" role="status" data-proto-report-file-preview>${protoReportFilePreviewInner(draft)}</div>
   `;
 }
