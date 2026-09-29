@@ -19333,11 +19333,13 @@ function protoTrackBreakdownTable(tracks, options = {}) {
   const minWidth = 6 + tracks.length * colWidth + totals.length * (hasEstimate ? 11 : 8.5);
   const label = `${chart} by ${options.by || "series"}`;
   return protoBreakdownPanel(`
-    ${protoBreakdownKey(stateIds)}
-    <div class="astral-breakdown-bar" data-proto-breakdown-nav hidden>
-      <p class="astral-muted" data-proto-breakdown-range aria-live="polite"></p>
-      ${protoIconBtn("prev", "Previous columns", 'data-proto-breakdown-page="prev"', { disabled: true })}
-      ${protoIconBtn("next", "Next columns", 'data-proto-breakdown-page="next"')}
+    <div class="astral-breakdown-top">
+      ${protoBreakdownKey(stateIds)}
+      <div class="astral-breakdown-bar" data-proto-breakdown-nav hidden>
+        <p class="astral-muted" data-proto-breakdown-range aria-live="polite"></p>
+        ${protoIconBtn("prev", "Previous columns", 'data-proto-breakdown-page="prev"', { disabled: true })}
+        ${protoIconBtn("next", "Next columns", 'data-proto-breakdown-page="next"')}
+      </div>
     </div>
     <div class="astral-table-wrap astral-breakdown-scroll" tabindex="0" role="region" aria-label="${escapeHtml(label)}">
       <table class="astral-table astral-breakdown-cols is-meters" style="min-width:${minWidth}rem">

@@ -9303,6 +9303,21 @@ button.astral-state {
   display: none;
 }
 
+.astral-breakdown-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-16, 16px);
+}
+
+.astral-breakdown-top > .astral-breakdown-bar {
+  margin-left: auto;
+}
+
+.astral-breakdown-top:has(> .astral-breakdown-bar:not([hidden])) > .astral-breakdown-key {
+  margin: 0;
+}
+
 .astral-breakdown-bar > p {
   margin: 0 8px 0 0;
   font-variant-numeric: tabular-nums;
