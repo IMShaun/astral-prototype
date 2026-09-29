@@ -18870,13 +18870,18 @@ function protoBreakdownStateFoot(columns, slices, unit, totals = []) {
       const tot = totals
         .map((total) => `<td class="is-total">${protoFormatAmount(protoRoundReading(total.idx.reduce((n, i) => n + sums[i], 0), 1))}</td>`)
         .join("");
-      return `<tr><th scope="row"><span class="astral-breakdown-foot-name">${protoZoneBadges(slice.id)}<span>${escapeHtml(
-        protoSliceName(slice)
-      )}</span></span><span class="astral-breakdown-foot-note">Total${unit ? ` \u00b7 ${escapeHtml(unit)}` : ""}</span></th>${cells}${tot}</tr>`;
+      const name = escapeHtml(protoSliceName(slice));
+      return `<tr><th scope="row"><span class="astral-tip-host astral-breakdown-state" tabindex="0">${protoZoneBadges(
+        slice.id
+      )}<span class="sr-only">${name} total</span><span class="astral-icon-tip" role="tooltip">${name}</span></span></th>${cells}${tot}</tr>`;
     })
     .filter(Boolean)
     .join("");
-  return rows ? `<tfoot class="astral-breakdown-foot">${rows}</tfoot>` : "";
+  if (!rows) return "";
+  const span = 1 + columns.length + totals.length;
+  return `<tfoot class="astral-breakdown-foot"><tr class="is-head"><th scope="colgroup" colspan="${span}"><span class="astral-breakdown-foot-note">Total by zone${
+    unit ? ` \u00b7 ${escapeHtml(unit)}` : ""
+  }</span></th></tr>${rows}</tfoot>`;
 }
 
 function protoBreakdownReading(value, quality) {

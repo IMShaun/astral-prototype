@@ -9473,37 +9473,33 @@ button.astral-state {
   outline-offset: 2px;
 }
 
-.astral-breakdown-foot th,
-.astral-breakdown-foot td {
-  background: var(--color-background-subtle);
+.astral-breakdown-cols .astral-breakdown-foot th,
+.astral-breakdown-cols .astral-breakdown-foot td {
+  height: 45px;
+  box-sizing: border-box;
+  padding: 0 8px;
   font-weight: 600;
 }
 
-.astral-breakdown-foot tr:first-child > * {
+.astral-breakdown-cols .astral-breakdown-foot .is-head > th {
+  height: auto;
+  padding: 16px 8px 4px;
   border-top: 1px solid var(--color-border-strong);
+  border-bottom: 0;
 }
 
-.astral-breakdown-cols.is-meters .astral-breakdown-foot th {
+.astral-breakdown-cols.is-meters .astral-breakdown-foot tr:not(.is-head) > th {
   position: sticky;
   left: 0;
   z-index: 1;
-}
-
-.astral-breakdown-foot-name {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
+  background: #fff;
 }
 
 .astral-breakdown-foot-note {
-  display: block;
+  position: sticky;
+  left: 8px;
+  display: inline-block;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.astral-breakdown-foot-note {
   color: var(--color-text-secondary);
   font-size: 0.75rem;
   font-weight: 400;
