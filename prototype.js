@@ -6362,7 +6362,7 @@ function protoChartScene(label) {
   const scope = store.prototypeScope || "";
   return [
     protoChartIsGraph(label) ? "graph" : label,
-    protoPaneId(),
+    protoPaneScene(protoPaneId()),
     store.activePrototypeView || "",
     scope,
     scope === "site" ? store.activePrototypeMeter || "" : store.prototypeGroup || "",
@@ -15637,8 +15637,16 @@ function protoPaneId() {
 }
 
 function protoPaneIsGraph() {
-  const pane = protoPaneId();
+  return protoPaneIdIsGraph(protoPaneId());
+}
+
+function protoPaneIdIsGraph(pane) {
   return pane === "consumption" || pane === "cost" || pane === "carbon";
+}
+
+// Consumption, Cost, and Carbon are one graph seen three ways, so moving between them morphs.
+function protoPaneScene(pane) {
+  return protoPaneIdIsGraph(pane) ? "graph" : String(pane || "");
 }
 
 function protoPaneChartLabel(dual) {
@@ -24333,7 +24341,7 @@ function protoSkelKeys() {
       store.prototypeScope || "",
       store.activePrototypeMeter || "",
       store.prototypeGroup || "",
-      store.prototypePane || "",
+      protoPaneScene(protoKnownPane(store.prototypePane)),
       store.prototypeSettingsSection || "",
       store.prototypeServiceTab || "",
       store.prototypeUsageTab || "",
