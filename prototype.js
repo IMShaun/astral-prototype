@@ -7977,6 +7977,17 @@ function protoPickSelect(id, value) {
     );
     return;
   }
+  if (id === "report-utility") {
+    const draft = protoReportDraft();
+    if (!draft) return;
+    const next = protoReportToggleIn(protoReportUtilityIds(draft.utility, draft.type), value);
+    // A report always holds at least one utility.
+    if (next.length) protoReportPatchDraft({ utility: next }, id);
+    protoRestoreFocus(
+      `#astral-fs [data-proto-select-option="${id}"][data-proto-select-value="${CSS.escape(value)}"]`
+    );
+    return;
+  }
   if (id.startsWith("report-tenant-site:")) {
     protoReportPatchTenant(id.slice("report-tenant-site:".length), { site: value });
     protoRestoreFocus(`#astral-fs [data-proto-select="${CSS.escape(id)}"] .astral-select-btn`);
@@ -7988,7 +7999,6 @@ function protoPickSelect(id, value) {
     "report-direction": "direction",
     "report-silence": "hours",
     "report-content": "content",
-    "report-utility": "utility",
     "report-channel": "channel",
     "report-quality": "quality",
     "report-format": "format",
@@ -8277,6 +8287,30 @@ const PROTO_REPORT_UTILITY = [
   { id: "gas", name: "Gas" },
   { id: "water", name: "Water" },
 ];
+
+// The utilities a type can pick. A Data alert adds up kWh, and water is in m³, so it has no Water.
+function protoReportUtilityChoices(type) {
+  return PROTO_REPORT_UTILITY.filter((item) => item.id !== "all" && !(type === "alert" && item.id === "water"));
+}
+
+// A report can hold several utilities. "all", a single id or a list all become a list; none means all.
+function protoReportUtilityIds(raw, type) {
+  const ids = protoReportUtilityChoices(type).map((item) => item.id);
+  const list = (Array.isArray(raw) ? raw : raw && raw !== "all" ? [raw] : []).map(String);
+  const picked = ids.filter((id) => list.includes(id));
+  return picked.length ? picked : ids;
+}
+
+function protoReportUtilityAll(raw, type) {
+  return protoReportUtilityIds(raw, type).length === protoReportUtilityChoices(type).length;
+}
+
+// "electricity and gas" for the file line.
+function protoReportUtilityNames(raw, type) {
+  return protoReportJoin(
+    protoReportUtilityIds(raw, type).map((id) => protoReportOptionName(PROTO_REPORT_UTILITY, id).toLowerCase())
+  );
+}
 
 // Standing charge in pounds a meter a day. Placeholder until tariffs come through.
 const PROTO_REPORT_BILL_UTILS = [
@@ -8576,7 +8610,7 @@ function protoReportNormalize(raw) {
     period: protoReportPeriod(type, raw.period).id,
     delivery: delivery.length ? delivery : ["email"],
     content: protoReportPick(PROTO_REPORT_CONTENT, raw.content),
-    utility: protoReportPick(PROTO_REPORT_UTILITY, raw.utility),
+    utility: protoReportUtilityIds(raw.utility, type),
     channel: protoReportPick(PROTO_REPORT_CHANNEL, raw.channel),
     quality: protoReportPick(PROTO_REPORT_QUALITY, raw.quality),
     format: protoReportPick(PROTO_REPORT_FORMAT, raw.format === "xls" ? "xlsx" : raw.format),
@@ -8590,6 +8624,7 @@ function protoReportNormalize(raw) {
     sftpPassword: String(raw.sftpPassword || "").slice(0, 120),
     sftpFingerprint: String(raw.sftpFingerprint || "").trim().slice(0, 120),
     attach: raw.attach !== false,
+    bySite: raw.bySite !== false,
     tenants: type === "billing" ? protoReportNormalizeTenants(raw, known) : [],
     vat: protoReportNumber(raw.vat, 20, 0, 100),
     basis: raw.basis === "absolute" ? "absolute" : "average",
@@ -8615,6 +8650,7 @@ function protoReportNormalize(raw) {
     ["utility", "channel", "quality", "format"].forEach((key) => {
       if (rule.settings[key]?.mode === "fixed") def[key] = rule.settings[key].value;
     });
+    def.utility = protoReportUtilityIds(def.utility, def.type);
     if (def.template) {
       def.content = "interval";
       def.step = protoTemplateStepOf(rule, def);
@@ -8757,16 +8793,32 @@ function protoReportJoin(names) {
   return `${list[0]} and ${list.length - 1} more`;
 }
 
-function protoReportSiteDayKwh(site) {
+// A report's utility pick narrows the meters. Without a report it counts electricity and gas.
+function protoReportSiteDayKwh(site, def) {
+  const ids = def ? protoReportUtilityIds(def.utility, "alert") : null;
   return (site?.meters || [])
-    .filter((meter) => meter.direction !== "Export" && protoMeterKind(meter) !== "water")
+    .filter(
+      (meter) =>
+        meter.direction !== "Export" &&
+        protoMeterKind(meter) !== "water" &&
+        (!ids || ids.includes(protoMeterKind(meter)))
+    )
     .reduce((n, meter) => n + protoDayKwh(meter), 0);
 }
 
-function protoReportPortfolioAverage() {
+function protoReportPortfolioAverage(def) {
   const sites = protoEstateSites();
   if (!sites.length) return 0;
-  return sites.reduce((n, site) => n + protoReportSiteDayKwh(site), 0) / sites.length;
+  return sites.reduce((n, site) => n + protoReportSiteDayKwh(site, def), 0) / sites.length;
+}
+
+// No to site-level data: the alert watches the picked sites added together.
+function protoReportAlertTotals(def) {
+  return def.type === "alert" && def.bySite === false;
+}
+
+function protoReportAlertTotal(def) {
+  return protoReportScopeSites(def).reduce((n, site) => n + protoReportSiteDayKwh(site, def), 0);
 }
 
 function protoReportScopeSites(def) {
@@ -8782,17 +8834,19 @@ function protoReportAlertBelow(def) {
 
 function protoReportAlertLimit(def) {
   const sign = protoReportAlertBelow(def) ? -1 : 1;
-  return def.basis === "absolute"
-    ? def.amount
-    : protoReportPortfolioAverage() * Math.max(0, 1 + (sign * def.percent) / 100);
+  if (def.basis === "absolute") return def.amount;
+  // A total compares with the average for the same number of sites.
+  const sites = protoReportAlertTotals(def) ? protoReportScopeSites(def).length : 1;
+  return protoReportPortfolioAverage(def) * sites * Math.max(0, 1 + (sign * def.percent) / 100);
 }
 
 function protoReportAlertHits(def) {
   const limit = protoReportAlertLimit(def);
   const below = protoReportAlertBelow(def);
-  return protoReportScopeSites(def).filter((site) =>
-    below ? protoReportSiteDayKwh(site) < limit : protoReportSiteDayKwh(site) > limit
-  );
+  const past = (kwh) => (below ? kwh < limit : kwh > limit);
+  const sites = protoReportScopeSites(def);
+  if (protoReportAlertTotals(def)) return sites.length && past(protoReportAlertTotal(def)) ? sites : [];
+  return sites.filter((site) => past(protoReportSiteDayKwh(site, def)));
 }
 
 function protoMeterSilentHours(meter) {
@@ -8806,8 +8860,11 @@ function protoMeterSilentHours(meter) {
 }
 
 function protoReportMissingHits(def) {
+  const ids = protoReportUtilityIds(def.utility, def.type);
   return protoEstateSites().filter((site) =>
-    (site.meters || []).some((meter) => protoMeterSilentHours(meter) >= def.hours)
+    (site.meters || []).some(
+      (meter) => ids.includes(protoMeterKind(meter)) && protoMeterSilentHours(meter) >= def.hours
+    )
   );
 }
 
@@ -8923,7 +8980,8 @@ function protoReportSendAtSelect(draft) {
 
 function protoReportFileLine(def) {
   const bits = [protoReportOptionName(PROTO_REPORT_FORMAT, def.format)];
-  if (def.utility !== "all") bits.push(protoReportOptionName(PROTO_REPORT_UTILITY, def.utility).toLowerCase());
+  if (!protoReportUtilityAll(def.utility)) bits.push(protoReportUtilityNames(def.utility));
+  if (protoReportAsksBySite(def) && def.bySite === false) bits.push("totals across the sites");
   if (def.channel !== "all") bits.push(`${protoReportOptionName(PROTO_REPORT_CHANNEL, def.channel).toLowerCase()} only`);
   if (protoReportHasQuality(def) && def.quality !== "all") bits.push(`${def.quality} readings only`);
   if (def.time === "uk") bits.push("UK time");
@@ -8967,30 +9025,42 @@ function protoReportSummary(def) {
     } cost ${protoSpendMoney(all.cost)}. Tenants pay ${protoSpendMoney(all.due)} in all, including VAT at ${def.vat}%.`;
   }
   if (def.type === "alert") {
+    const totals = protoReportAlertTotals(def);
     const scope = def.sites.length
       ? protoReportJoin(protoReportScopeSites(def).map((site) => site.name))
-      : "any site";
+      : totals
+        ? "all sites"
+        : "any site";
+    const uses = totals ? "together use" : "uses";
+    const util = protoReportUtilityAll(def.utility, def.type) ? "" : ` ${protoReportUtilityNames(def.utility, def.type)}`;
     const below = protoReportAlertBelow(def);
     if (def.basis === "absolute") {
-      return `When ${scope} uses ${below ? "less" : "more"} than ${protoReportKwh(def.amount)} in a day.`;
+      return `When ${scope} ${uses} ${below ? "less" : "more"}${util} than ${protoReportKwh(def.amount)} in a day.`;
     }
-    return `When ${scope} uses ${def.percent}% ${below ? "less" : "more"} than the portfolio average, ${protoReportKwh(
+    const n = protoReportScopeSites(def).length;
+    const average = totals ? `the portfolio average for ${n} ${n === 1 ? "site" : "sites"}` : "the portfolio average";
+    return `When ${scope} ${uses} ${def.percent}% ${below ? "less" : "more"}${util} than ${average}, ${protoReportKwh(
       protoReportAlertLimit(def)
     )} a day.`;
   }
-  return `When any site in ${protoHomeCompany() || "the portfolio"} sends no data for ${protoReportSilenceName(
-    def.hours
-  )}.`;
+  const home = protoHomeCompany() || "the portfolio";
+  const silence = protoReportSilenceName(def.hours);
+  if (!protoReportUtilityAll(def.utility, def.type)) {
+    return `When ${protoReportUtilityNames(def.utility, def.type)} meters at any site in ${home} send no data for ${silence}.`;
+  }
+  return `When any site in ${home} sends no data for ${silence}.`;
 }
 
 function protoReportFlaggedHours(def) {
   let since = [];
   if (def.type === "alert") {
     const limit = protoReportAlertLimit(def);
-    since = protoReportAlertHits(def).map((site) => {
-      const kwh = protoReportSiteDayKwh(site);
-      return 24 * (1 - (protoReportAlertBelow(def) ? kwh / limit : limit / kwh));
-    });
+    const hours = (kwh) => 24 * (1 - (protoReportAlertBelow(def) ? kwh / limit : limit / kwh));
+    since = protoReportAlertTotals(def)
+      ? protoReportAlertHits(def).length
+        ? [hours(protoReportAlertTotal(def))]
+        : []
+      : protoReportAlertHits(def).map((site) => hours(protoReportSiteDayKwh(site, def)));
   } else if (def.type === "missing") {
     since = protoReportMissingHits(def).map(
       (site) => Math.max(...(site.meters || []).map((meter) => protoMeterSilentHours(meter))) - def.hours
@@ -9029,6 +9099,7 @@ function protoReportStatusLine(def) {
   if (!def.on) return "Paused";
   if (def.type === "alert") {
     const n = protoReportAlertHits(def).length;
+    if (protoReportAlertTotals(def)) return n ? "Total flagged" : "Total not flagged";
     return n ? `${n} ${n === 1 ? "site" : "sites"} flagged` : "No sites flagged";
   }
   if (def.type === "missing") {
@@ -9326,6 +9397,11 @@ function protoReportDraftPreview(draft) {
     const hits = protoReportAlertHits(def);
     const limit = `Limit ${protoReportKwh(protoReportAlertLimit(def))} a day.`;
     const word = protoReportAlertBelow(def) ? "under" : "over";
+    if (protoReportAlertTotals(def)) {
+      return `${limit} Together the sites use ${protoReportKwh(protoReportAlertTotal(def))} a day, ${
+        hits.length ? "" : "not "
+      }${word} it right now.`;
+    }
     if (!hits.length) return `${limit} No site is ${word} it right now.`;
     return `${limit} ${protoReportJoin(hits.map((site) => site.name))} ${hits.length === 1 ? "is" : "are"} ${word} it right now.`;
   }
@@ -9452,6 +9528,78 @@ function protoReportRecipientsHtml(draft) {
     )}
     <p class="astral-muted">Each email has an opt-out link.</p>
     ${protoReportSampleHtml(draft)}
+  `;
+}
+
+function protoReportUtilitySelect(draft) {
+  return protoReportField(
+    "Utility",
+    protoSelect({
+      id: "report-utility",
+      label: "Utility",
+      multi: true,
+      wide: true,
+      values: protoReportUtilityIds(draft.utility, draft.type),
+      placeholder: "Pick utilities",
+      allLabel: "All utilities",
+      countLabel: "utilities",
+      options: protoReportUtilityChoices(draft.type).map((item) => ({
+        value: item.id,
+        label: item.name,
+      })),
+    })
+  );
+}
+
+// Site level or totals. A Data extract of interval data and a Data alert ask; a template sets its own rows.
+// Reads, DC and DA reads, and gaps do not add up, and a tenant's bill is already one site.
+function protoReportAsksBySite(draft) {
+  if (draft.type === "alert") return true;
+  return draft.type === "extract" && !draft.template && draft.content === "interval";
+}
+
+function protoReportBySiteField(draft) {
+  if (!protoReportAsksBySite(draft)) return "";
+  const alert = draft.type === "alert";
+  const items = [
+    {
+      on: true,
+      name: "Yes",
+      note: alert ? "Checks each site against the threshold." : "One row for each meter, with its site.",
+    },
+    {
+      on: false,
+      name: "No",
+      note: alert
+        ? "Checks the sites you pick added together."
+        : "One total for each utility across the sites you pick.",
+    },
+  ];
+  const bySite = draft.bySite !== false;
+  return `
+    <div class="astral-report-type-field">
+      <span class="astral-report-type-label" id="astral-report-bysite-label">Use site-level data?</span>
+      <div class="astral-report-types is-pair" role="radiogroup" aria-labelledby="astral-report-bysite-label">
+        ${items
+          .map((item) => {
+            const on = item.on === bySite;
+            return `
+              <button
+                type="button"
+                role="radio"
+                class="astral-report-type${on ? " is-on" : ""}"
+                aria-checked="${on ? "true" : "false"}"
+                tabindex="${on ? "0" : "-1"}"
+                data-proto-report-bysite="${item.on ? "1" : "0"}"
+              >
+                <span class="astral-report-type-head">${protoRadio(on)}<span>${item.name}</span></span>
+                <span class="astral-muted">${escapeHtml(item.note)}</span>
+              </button>
+            `;
+          })
+          .join("")}
+      </div>
+    </div>
   `;
 }
 
@@ -9689,7 +9837,7 @@ function protoReportDataKey(draft) {
   const sites = [...(draft.sites || [])].map(String).sort().join(",");
   const bits =
     draft.type === "extract"
-      ? [sites, draft.content, draft.utility, draft.channel]
+      ? [sites, draft.content, protoReportUtilityIds(draft.utility).join(","), draft.channel, protoReportAsksBySite(draft) && draft.bySite === false ? "totals" : "sites"]
       : draft.type === "billing"
         ? [[...new Set(protoReportTenantsOf(draft).map((tenant) => String(tenant.site || "")))].sort().join(",")]
         : [sites];
@@ -10242,7 +10390,7 @@ function protoReportGroups(draft, opts = {}) {
       .map((key) => `${names[key]}: ${protoReportOptionName(lists[key], rule.settings[key].value)}`);
     const fixedNote = fixed.length ? `<p class="astral-muted">${escapeHtml(`IMSERV set ${fixed.join(", ")}.`)}</p>` : "";
     return [
-      protoReportGroup("details", protoReportSitesSelect(draft)),
+      protoReportGroup("details", `${protoReportSitesSelect(draft)}${protoReportBySiteField(draft)}`),
       protoReportGroup(
         "data",
         tpl
@@ -10254,7 +10402,7 @@ function protoReportGroups(draft, opts = {}) {
               ${pick("format", "Format", PROTO_REPORT_FORMAT, draft.format)}
             </div>
             <div class="astral-report-pair">
-              ${pick("utility", "Utility", PROTO_REPORT_UTILITY, draft.utility)}
+              ${rule?.settings.utility?.mode === "fixed" ? "" : protoReportUtilitySelect(draft)}
               ${pick("channel", "Channel", PROTO_REPORT_CHANNEL, draft.channel)}
             </div>
             ${
@@ -10310,7 +10458,9 @@ function protoReportGroups(draft, opts = {}) {
     return [
       protoReportGroup(
         "details",
-        `${protoReportSitesSelect(draft)}<p class="astral-muted">Leave it empty to watch every site.</p>`
+        `${protoReportSitesSelect(draft)}<p class="astral-muted">Leave it empty to watch every site.</p>${protoReportBySiteField(
+          draft
+        )}`
       ),
       protoReportGroup(
         "trigger",
@@ -10333,12 +10483,14 @@ function protoReportGroups(draft, opts = {}) {
             )}
           </div>
           <div class="astral-report-pair">
+            ${protoReportUtilitySelect(draft)}
             ${
               absolute
-                ? protoReportInput(`Daily use ${below ? "under" : "over"} (kWh)`, "amount", draft.amount, 'inputmode="decimal"')
+                ? protoReportInput(`${protoReportAlertTotals(draft) ? "Total daily use" : "Daily use"} ${below ? "under" : "over"} (kWh)`, "amount", draft.amount, 'inputmode="decimal"')
                 : protoReportInput(`${below ? "Below" : "Above"} the average by (%)`, "percent", draft.percent, 'inputmode="decimal"')
             }
           </div>
+          <p class="astral-muted">Water is in m³, not kWh, so alerts watch electricity and gas.</p>
         `
       ),
       protoReportGroup("delivery", protoReportNotifyFields(draft, opts)),
@@ -10351,7 +10503,7 @@ function protoReportGroups(draft, opts = {}) {
     ),
     protoReportGroup(
       "trigger",
-      protoReportField(
+      `<div class="astral-report-pair">${protoReportField(
         "No data for",
         protoSelect({
           id: "report-silence",
@@ -10363,7 +10515,7 @@ function protoReportGroups(draft, opts = {}) {
             label: protoReportSilenceName(hours),
           })),
         })
-      )
+      )}${protoReportUtilitySelect(draft)}</div>`
     ),
     protoReportGroup("delivery", protoReportNotifyFields(draft, opts)),
   ];
@@ -10731,7 +10883,7 @@ function protoReportToggleIn(list, value) {
 
 function protoReportMeters(def, site) {
   return (site.meters || []).filter((meter) => {
-    if (def.utility !== "all" && protoMeterKind(meter) !== def.utility) return false;
+    if (!protoReportUtilityIds(def.utility).includes(protoMeterKind(meter))) return false;
     const out = meter.direction === "Export";
     if (def.channel === "import" && out) return false;
     if (def.channel === "export" && !out) return false;
@@ -10874,6 +11026,34 @@ function protoReportRows(def) {
         rows.push(def.type === "dcda" ? [...row, "IMSERV", "IMSERV"] : row);
       });
     });
+    return rows;
+  }
+  if (protoReportAsksBySite(def) && def.bySite === false) {
+    // One row per utility per half hour, summed across every picked site. The worst quality in the sum wins.
+    const rank = { actual: 0, estimated: 1, missing: 2 };
+    const sums = new Map();
+    each((site, meter) => {
+      const utility = meter.commodity || protoMeterKind(meter);
+      days.forEach((day) => {
+        protoSeries(meter, "day", day).forEach((point) => {
+          const reading =
+            point.value == null || point.quality === "missing" ? "missing" : point.quality === "estimated" ? "estimated" : "actual";
+          const clock = protoReportClock(day, point.label, def.time);
+          const key = `${utility}|${clock.date}|${clock.time}`;
+          const row = sums.get(key) || { utility, clock, value: 0, unit: point.unit || protoMeterUseUnit(meter), quality: "actual", meters: 0 };
+          row.value += Number(point.value) || 0;
+          row.meters += 1;
+          if (rank[reading] > rank[row.quality]) row.quality = reading;
+          sums.set(key, row);
+        });
+      });
+    });
+    rows.push(["utility", `date (${zone})`, `time (${zone})`, "total", "unit", "meters", "quality"]);
+    sums.forEach((row) => {
+      if (!protoReportQualityOk(quality, row.quality)) return;
+      rows.push([row.utility, row.clock.date, row.clock.time, row.value.toFixed(2), row.unit, row.meters, row.quality]);
+    });
+    if (rows.length === 1 && quality !== "all") rows.push([`No ${quality} readings in this period.`]);
     return rows;
   }
   const missing = def.content === "missing";
@@ -12880,7 +13060,7 @@ function protoTemplateRows(tpl, def, limit = 6) {
   const head = [...protoTemplateAlwaysIn(tpl, step), ...cols.map((col) => col.name)];
   const sites = def ? protoReportScopeSites({ ...def, type: "extract" }) : protoEstateSites();
   const meterOk = (meter) => {
-    if (utility && utility !== "all" && protoMeterKind(meter) !== utility) return false;
+    if (!protoReportUtilityIds(utility).includes(protoMeterKind(meter))) return false;
     const out = meter.direction === "Export";
     if (channel === "import" && out) return false;
     if (channel === "export" && !out) return false;
@@ -13592,6 +13772,7 @@ function protoReportTemplateFields(draft, tpl) {
       return `${PROTO_TEMPLATE_SETTINGS.find((item) => item.id === id).name}: ${option?.label || ""}`;
     });
   const select = (id) => {
+    if (id === "utility") return protoReportUtilitySelect(draft);
     const name = PROTO_TEMPLATE_SETTINGS.find((item) => item.id === id).name;
     const value = id === "step" ? protoTemplateStepOf(tpl, draft) : draft[id] || tpl.settings[id].value;
     return protoReportField(
@@ -26250,6 +26431,14 @@ function onPrototype(event) {
   if (event.target.closest("[data-proto-report-attach]")) {
     const draft = protoReportDraft();
     if (draft) protoReportPatchDraft({ attach: draft.attach === false });
+    return;
+  }
+  const bySiteBtn = event.target.closest("[data-proto-report-bysite]");
+  if (bySiteBtn) {
+    const bySite = bySiteBtn.dataset.protoReportBysite === "1";
+    const draft = protoReportDraft();
+    if (draft && (draft.bySite !== false) !== bySite) protoReportPatchDraft({ bySite });
+    protoRestoreFocus(`#astral-fs [data-proto-report-bysite="${bySite ? 1 : 0}"]`);
     return;
   }
   if (event.target.closest("[data-proto-report-consent]")) {
