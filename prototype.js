@@ -689,6 +689,7 @@ function protoPageFilterReset() {
     prototypeMeterAttrTab: "",
     prototypeMeterUpload: null,
     prototypeBreakdownOpen: false,
+    prototypeListOpen: false,
     prototypeChartPoint: null,
     prototypeChartView: "total",
     prototypeChartStyle: "bar",
@@ -3474,8 +3475,9 @@ function protoReadZones(raw) {
     .map((row) => [String(row[0] || ""), String(row[1] || "")]);
 }
 
-function protoChartZoneLines(point) {
-  return (point?.zones || [])
+function protoChartZoneLines(point, limit = 0) {
+  const zones = point?.zones || [];
+  return (limit ? zones.slice(0, limit) : zones)
     .map(
       ([name, words]) =>
         `<p class="astral-tip-zone"><span class="astral-tip-zone-name">${escapeHtml(name)}</span> ${escapeHtml(words)}</p>`
@@ -3817,6 +3819,11 @@ function protoPointStacks(point, meter, slices, key) {
 
 function protoStacksSum(stacks) {
   return (stacks || []).reduce((n, slice) => n + (Number(slice.value) || 0), 0);
+}
+
+// Reading lists lead with the biggest reading. The bars keep their stack order.
+function protoSortStacksDesc(stacks) {
+  return [...(stacks || [])].sort((a, b) => (Number(b?.value) || 0) - (Number(a?.value) || 0));
 }
 
 function protoStacksNote(stacks, unit) {
@@ -4782,8 +4789,8 @@ function protoPinDrillAttr(row) {
 
 function protoPointSliceRows(point) {
   if (!point) return [];
-  const stacks = protoReadStacks(point.stacks);
-  const lastStacks = protoReadStacks(point.lastStacks);
+  const stacks = protoSortStacksDesc(protoReadStacks(point.stacks));
+  const lastStacks = protoSortStacksDesc(protoReadStacks(point.lastStacks));
   if (stacks.length || lastStacks.length) return [...stacks, ...lastStacks];
   if (point.compare) {
     const rows = [];
@@ -4816,7 +4823,7 @@ function protoChartPointSlicesHtml(point, opts = {}) {
   return protoHoverSlices(point, opts).html;
 }
 
-const PROTO_HOVER_SLICE_MAX = 7;
+const PROTO_HOVER_SLICE_MAX = 5;
 
 function protoHoverSeriesNoun(point, count) {
   const plural = count !== 1;
@@ -4840,7 +4847,7 @@ function protoHoverAriaNote(point) {
   const shown = rest ? slices.slice(0, PROTO_HOVER_SLICE_MAX) : slices;
   const note = protoStacksNote(shown, unit);
   if (!rest) return note;
-  return `${note} ${protoHoverMoreLabel(point, rest)}.`;
+  return `${note}. ${protoHoverMoreLabel(point, rest)}`;
 }
 
 function protoHoverSlices(point, opts = {}) {
@@ -4918,18 +4925,7 @@ function protoToggleHoverMore(btn) {
     }
     protoPaintHoverMore(btn, slicesHtml.rest, open, point);
     protoPlaceChartTip(tip, hit, wrap);
-    return;
   }
-  const pin = btn.closest(".astral-query-pin");
-  if (!pin) return;
-  const point = protoChartPoint();
-  if (!point) return;
-  const open = !pin.classList.contains("is-more");
-  pin.classList.toggle("is-more", open);
-  const slicesHtml = protoHoverSlices(point, { all: open });
-  const sliceEl = pin.querySelector(".astral-query-pin-readings");
-  if (sliceEl) sliceEl.innerHTML = slicesHtml.html;
-  protoPaintHoverMore(btn, slicesHtml.rest, open, point);
 }
 
 const PROTO_POINT_TAG_SEED = [];
@@ -5256,14 +5252,61 @@ function protoAnalyseControl(point) {
   return protoIconBtn("analyse", "Analyse", "data-proto-analyse");
 }
 
+// Hours and tariff lines, then readings, share one scroll. Each shows 5 until asked for more.
+let protoPinMore = { key: "", zones: false, readings: false };
+
+function protoPinMoreState(point) {
+  const key = `${point?.chart || ""}|${point?.time || ""}`;
+  if (protoPinMore.key !== key) protoPinMore = { key, zones: false, readings: false };
+  return protoPinMore;
+}
+
+function protoPinMoreBtn(part, open, label) {
+  return `<button type="button" class="astral-text astral-tip-more" data-proto-pin-more="${part}" aria-expanded="${
+    open ? "true" : "false"
+  }">${escapeHtml(open ? "Show less" : label)}</button>`;
+}
+
+function protoPinBody(point) {
+  const state = protoPinMoreState(point);
+  const zones = point?.zones || [];
+  const zoneRest = Math.max(0, zones.length - PROTO_HOVER_SLICE_MAX);
+  const zoneHtml = zones.length
+    ? `<div class="astral-tip-zones">${protoChartZoneLines(point, state.zones ? 0 : PROTO_HOVER_SLICE_MAX)}${
+        zoneRest ? protoPinMoreBtn("zones", state.zones, `Show ${zoneRest} more`) : ""
+      }</div>`
+    : "";
+  const slices = protoHoverSlices(point, { all: state.readings, drill: true });
+  const allRows = protoPointSliceRows(point).length;
+  const readRest = Math.max(0, allRows - PROTO_HOVER_SLICE_MAX);
+  const readMore = readRest
+    ? protoPinMoreBtn(
+        "readings",
+        state.readings,
+        `Show ${protoHoverMoreLabel(point, readRest).replace(/^\+/, "")}`
+      )
+    : "";
+  return `<div class="astral-query-pin-body" data-proto-pin-body>${zoneHtml}<div class="astral-query-pin-readings">${slices.html}</div>${readMore}</div>`;
+}
+
+function protoTogglePinMore(btn) {
+  const part = btn.dataset.protoPinMore;
+  const point = protoChartPoint();
+  const body = btn.closest("[data-proto-pin-body]");
+  if (!point || !body || (part !== "zones" && part !== "readings")) return;
+  const state = protoPinMoreState(point);
+  state[part] = !state[part];
+  const top = body.scrollTop;
+  body.outerHTML = protoPinBody(point);
+  const next = document.querySelector("#astral-fs [data-proto-pin-body]");
+  if (next) next.scrollTop = top;
+  next?.querySelector(`[data-proto-pin-more="${part}"]`)?.focus();
+}
+
 function protoChartPointTitle(point) {
   if (!point) return "";
-  const zoneLines = protoChartZoneLines(point);
-  const time = `<p class="astral-muted">${escapeHtml(protoChartAtZone(point))}</p>${
-    zoneLines ? `<div class="astral-tip-zones">${zoneLines}</div>` : ""
-  }`;
-  const slicesHtml = protoHoverSlices(point, { all: true, drill: true });
-  const rows = `<div class="astral-query-pin-readings${slicesHtml.rest ? " is-scroll" : ""}">${slicesHtml.html}</div>`;
+  const time = `<p class="astral-muted">${escapeHtml(protoChartAtZone(point))}</p>`;
+  const rows = protoPinBody(point);
   const tags = protoPointTagsOn(point);
   const tagRow = tags.length
     ? `<div class="astral-query-pin-tags">${tags.map((name) => protoPointTagPill(name)).join("")}</div>`
@@ -7490,7 +7533,7 @@ function protoTracksToStackPoints(tracks) {
       quality: missing ? "missing" : estimated ? "estimated" : "actual",
       unit,
       stacks,
-      note: protoStacksNote(stacks, unit),
+      note: protoStacksNote(protoSortStacksDesc(stacks), unit),
       ...(shared && sum ? { share: stacks.reduce((n, slice) => n + slice.value * (slice.share ?? 1), 0) / sum } : {}),
     };
   });
@@ -17914,9 +17957,23 @@ function protoGroupDetail(group) {
           ? `<p class="astral-banner">No reading in ${missing} intervals. That is missing data, not zero use.</p>`
           : ""
       }
-      ${rows ? protoPaneListTable(["Site", protoBelowSiteHeading(2), "State"], rows) : ""}
+      ${
+        viewMeters.length && !protoConsumptionUnitsMixed(viewMeters)
+          ? protoTrackBreakdownTable(protoScaleTracks(siteTracks, viewMeters), {
+              chart: protoPaneChartLabel(dual && !protoChartIsIndividual()),
+              by: "site",
+              note: protoBreakdownCountNote,
+            })
+          : ""
+      }
+      ${rows ? protoPaneListTable(["Site", protoBelowSiteHeading(2), "State"], rows, "Sites") : ""}
           `
   );
+}
+
+function protoBreakdownCountNote(track, unit) {
+  const meters = track.meters || [];
+  return [protoMeterCountWords(meters.length, meters), unit].filter(Boolean).join(" · ");
 }
 
 function protoCompareDetail() {
@@ -18054,16 +18111,27 @@ function protoCompareDetail() {
       ${
         bundle.level !== "group" && meters.length > 1
           ? protoMeterCompareTable(meters, allMeters, { chart: protoPaneChartLabel(false), site: true })
-          : rows
-          ? protoPaneListTable(
-              [
-                bundle.level === "group" ? "Group" : bundle.level === "meter" ? protoBelowSiteHeading(1) : "Site",
-                bundle.level === "group" ? "Sites" : bundle.level === "meter" ? "Site" : protoBelowSiteHeading(2),
-                "State",
-              ],
+          : `${
+              bundle.level === "group" && meters.length && !protoConsumptionUnitsMixed(meters)
+                ? protoTrackBreakdownTable(scaledTracks, {
+                    chart: protoPaneChartLabel(false),
+                    by: "group",
+                    note: protoBreakdownCountNote,
+                  })
+                : ""
+            }${
               rows
-            )
-          : ""
+                ? protoPaneListTable(
+                    [
+                      bundle.level === "group" ? "Group" : bundle.level === "meter" ? protoBelowSiteHeading(1) : "Site",
+                      bundle.level === "group" ? "Sites" : bundle.level === "meter" ? "Site" : protoBelowSiteHeading(2),
+                      "State",
+                    ],
+                    rows,
+                    bundle.level === "group" ? "Groups" : bundle.level === "meter" ? protoBelowSiteHeading(2) : "Sites"
+                  )
+                : ""
+            }`
       }
           `
   );
@@ -18347,6 +18415,7 @@ function protoPaintPortfolioPane() {
   protoScrollPane = protoScrollPaneKey();
   protoResetPaneScroll();
   protoBindBreakdown();
+  protoBindBreakdownNav();
   protoSyncTableHeadsSoon();
   protoMeasurePillsSoon();
   protoSlideNavPillsSoon();
@@ -18536,6 +18605,12 @@ function protoBreakdownOpen() {
   return Boolean(store.prototypeBreakdownOpen);
 }
 
+// The pane body can hold two folds: the list (Sites, Groups, Meter points) and the interval Breakdown.
+const PROTO_BREAKDOWN_FOLDS = {
+  toggle: { field: "prototypeBreakdownOpen", id: "astral-breakdown-panel" },
+  list: { field: "prototypeListOpen", id: "astral-list-panel" },
+};
+
 function protoBreakdownSliceCols() {
   return protoChartStackSlices().filter((slice) => protoChartSliceOn(slice.id));
 }
@@ -18675,17 +18750,126 @@ function protoBindBreakdown() {
     .forEach((el) => el.addEventListener("scroll", onScroll, { passive: true }));
 }
 
+// Horizontal paging for a wide Breakdown. Steps land on whole column heads, so a click never
+// leaves a column cut in half behind the sticky Time column.
+let protoBreakdownScrollMemo = { key: "", left: 0 };
+
+// Filters keep the columns in view. A new place in the tree starts back at the first column.
+function protoBreakdownScrollKey(wrap) {
+  const scope = store.prototypeScope || "";
+  return [
+    wrap.getAttribute("aria-label") || "",
+    protoPaneId(),
+    scope,
+    scope === "site" ? store.activePrototypeMeter || "" : store.prototypeGroup || "",
+  ].join("|");
+}
+
+function protoBreakdownNavParts() {
+  const wrap = document.querySelector("#astral-fs .astral-breakdown-scroll");
+  const bar = wrap?.parentElement?.querySelector("[data-proto-breakdown-nav]");
+  const table = wrap?.querySelector("table");
+  const row = table?.querySelector("tbody tr[data-proto-hit]") || table?.tHead?.rows[0];
+  if (!wrap || !bar || !row) return null;
+  const cells = [...row.cells];
+  const sticky = cells[0]?.offsetWidth || 0;
+  return { wrap, bar, sticky, heads: cells.slice(1) };
+}
+
+function protoBreakdownNavSync() {
+  const parts = protoBreakdownNavParts();
+  if (!parts) return;
+  const { wrap, bar, sticky, heads } = parts;
+  const max = wrap.scrollWidth - wrap.clientWidth;
+  const wide = max > 1;
+  bar.hidden = !wide;
+  protoBreakdownScrollMemo = { key: protoBreakdownScrollKey(wrap), left: wrap.scrollLeft };
+  if (!wide) return;
+  const from = wrap.scrollLeft + sticky - 1;
+  const to = wrap.scrollLeft + wrap.clientWidth + 1;
+  const seen = heads
+    .map((th, i) => (th.offsetLeft >= from && th.offsetLeft + th.offsetWidth <= to ? i : -1))
+    .filter((i) => i >= 0);
+  const first = seen.length ? seen[0] + 1 : 1;
+  const last = seen.length ? seen[seen.length - 1] + 1 : 1;
+  const range = bar.querySelector("[data-proto-breakdown-range]");
+  const text = `Columns ${first}${last > first ? `–${last}` : ""} of ${heads.length}`;
+  if (range && range.textContent !== text) range.textContent = text;
+  const prev = bar.querySelector('[data-proto-breakdown-page="prev"]');
+  const next = bar.querySelector('[data-proto-breakdown-page="next"]');
+  if (prev) prev.disabled = wrap.scrollLeft <= 1;
+  if (next) next.disabled = wrap.scrollLeft >= max - 1;
+}
+
+function protoBreakdownPage(dir) {
+  const parts = protoBreakdownNavParts();
+  if (!parts) return;
+  const { wrap, sticky, heads } = parts;
+  const view = wrap.clientWidth - sticky;
+  const left = wrap.scrollLeft;
+  let target;
+  if (dir === "next") {
+    const edge = left + wrap.clientWidth + 1;
+    const cut = heads.find((th) => th.offsetLeft + th.offsetWidth > edge);
+    target = cut ? cut.offsetLeft - sticky : wrap.scrollWidth;
+    if (target <= left + 1) target = left + view;
+  } else {
+    const edge = left + sticky - 1;
+    const before = heads.filter((th) => th.offsetLeft < edge);
+    const back = before[before.length - 1];
+    const want = back ? back.offsetLeft + back.offsetWidth - wrap.clientWidth : 0;
+    const snap = heads.find((th) => th.offsetLeft - sticky >= want - 1);
+    target = snap ? snap.offsetLeft - sticky : 0;
+    if (target >= left - 1) target = left - view;
+  }
+  const max = wrap.scrollWidth - wrap.clientWidth;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  wrap.scrollTo({ left: Math.max(0, Math.min(max, target)), behavior: reduce ? "auto" : "smooth" });
+}
+
+function protoBindBreakdownNav() {
+  const parts = protoBreakdownNavParts();
+  if (!parts) return;
+  const { wrap } = parts;
+  if (protoBreakdownScrollMemo.key && protoBreakdownScrollMemo.key === protoBreakdownScrollKey(wrap)) {
+    wrap.scrollLeft = protoBreakdownScrollMemo.left;
+  }
+  protoBreakdownNavSync();
+  requestAnimationFrame(protoBreakdownNavSync);
+  if (wrap.dataset.protoNavBound === "1") return;
+  wrap.dataset.protoNavBound = "1";
+  let queued = false;
+  wrap.addEventListener(
+    "scroll",
+    () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        protoBreakdownNavSync();
+      });
+    },
+    { passive: true }
+  );
+  if (!protoBindBreakdownNav.resize) {
+    protoBindBreakdownNav.resize = true;
+    window.addEventListener("resize", () => requestAnimationFrame(protoBreakdownNavSync));
+  }
+}
+
 function protoToggleBreakdown(btn) {
+  const kind = PROTO_BREAKDOWN_FOLDS[btn?.dataset.protoBreakdown] ? btn.dataset.protoBreakdown : "toggle";
+  const fold = PROTO_BREAKDOWN_FOLDS[kind];
   const root = btn?.closest(".astral-breakdown");
-  const next = !protoBreakdownOpen();
-  store.prototypeBreakdownOpen = next;
+  const next = !store[fold.field];
+  store[fold.field] = next;
   persistChrome();
   if (!root) {
     render();
-    protoRestoreFocus("#astral-fs [data-proto-breakdown]");
+    protoRestoreFocus(`#astral-fs [data-proto-breakdown="${kind}"]`);
     return;
   }
-  const panel = document.getElementById("astral-breakdown-panel");
+  const panel = document.getElementById(fold.id);
   const from = protoFoldHeight(panel);
   btn.setAttribute("aria-expanded", next ? "true" : "false");
   if (next) {
@@ -18693,9 +18877,12 @@ function protoToggleBreakdown(btn) {
       panel.removeAttribute("inert");
       panel.setAttribute("aria-hidden", "false");
     }
-    protoBindBreakdown();
+    if (kind === "toggle") {
+      protoBindBreakdown();
+      protoBindBreakdownNav();
+    }
     requestAnimationFrame(() => {
-      document.getElementById("astral-breakdown-panel")?.scrollIntoView({
+      document.getElementById(fold.id)?.scrollIntoView({
         block: "nearest",
         inline: "nearest",
       });
@@ -18722,17 +18909,25 @@ function protoBreakdownPanel(inner) {
   });
 }
 
-function protoPaneListTable(headers, rows) {
-  return protoBreakdownPanel(`
+function protoPaneListTable(headers, rows, name = "Breakdown") {
+  return protoAccordion({
+    id: PROTO_BREAKDOWN_FOLDS.list.id,
+    open: Boolean(store.prototypeListOpen),
+    name,
+    attr: 'data-proto-breakdown="list"',
+    modifier: "astral-breakdown",
+    clipClass: "astral-breakdown-clip",
+    inner: `
     <table class="astral-table">
       <thead>
         <tr>
-          ${headers.map((name) => `<th scope="col">${escapeHtml(name)}</th>`).join("")}
+          ${headers.map((head) => `<th scope="col">${escapeHtml(head)}</th>`).join("")}
         </tr>
       </thead>
       <tbody>${rows}</tbody>
     </table>
-  `);
+  `,
+  });
 }
 
 function protoIntervalTable(points, dual) {
@@ -18791,17 +18986,30 @@ function protoBreakdownMeterHead(ref, note, options = {}) {
 function protoMeterCompareTable(meters, all, options = {}) {
   const list = meters || [];
   const tracks = protoScaleTracks(protoMeterTracks(list, all), list);
+  const showSite = Boolean(options.site);
+  return protoTrackBreakdownTable(tracks, {
+    ...options,
+    by: protoBelowSiteNoun(1),
+    note: (track, unit) =>
+      [showSite ? protoSiteByMeter(track.meter?.id)?.name || "" : "", unit].filter(Boolean).join(" · "),
+  });
+}
+
+// One column per series on the chart (meter, site, or group), a row per interval, then totals.
+function protoTrackBreakdownTable(tracks, options = {}) {
   const n = Math.max(0, ...tracks.map((track) => (track.points || []).length));
   if (!n) return "";
-  const sliceCols = protoBreakdownSliceCols();
+  const hasSlices = tracks.some((track) => (track.points || []).some((point) => point?.zoneStacks));
+  const sliceCols = hasSlices ? protoBreakdownSliceCols() : [];
   const per = Math.max(1, sliceCols.length);
   const unitOf = (track) =>
-    (track.points || []).find((point) => point?.unit)?.unit || protoMeasureUnit([track.meter]);
+    (track.points || []).find((point) => point?.unit)?.unit ||
+    protoMeasureUnit(track.meter ? [track.meter] : track.meters || []);
   const units = [...new Set(tracks.map(unitOf))];
   const outIdx = tracks.flatMap((track, i) => (track.meter?.direction === "Export" ? [i] : []));
   const inIdx = tracks.flatMap((track, i) => (track.meter?.direction === "Export" ? [] : [i]));
   const totals =
-    units.length !== 1
+    units.length !== 1 || tracks.length < 2
       ? []
       : outIdx.length && inIdx.length
         ? [
@@ -18812,7 +19020,6 @@ function protoMeterCompareTable(meters, all, options = {}) {
   const hits = protoTracksToStackPoints(tracks);
   const chart = options.chart || protoPaneChartLabel(false);
   const colour = protoPillsNeedColour();
-  const showSite = Boolean(options.site);
   const rows = Array.from({ length: n }, (_, i) => ({
     ...(hits[i] || {}),
     label: hits[i]?.label || tracks.map((track) => track.points[i]?.label).find(Boolean) || "",
@@ -18843,8 +19050,7 @@ function protoMeterCompareTable(meters, all, options = {}) {
   const span = twoRows ? ` rowspan="2"` : "";
   const meterHeads = tracks
     .map((track) => {
-      const site = showSite ? protoSiteByMeter(track.meter?.id)?.name || "" : "";
-      const note = [site, unitOf(track)].filter(Boolean).join(" · ");
+      const note = options.note ? options.note(track, unitOf(track)) : unitOf(track);
       const mark = colour
         ? `<span class="astral-chart-key-mark" style="background:${escapeHtml(track.color)}" aria-hidden="true"></span>`
         : "";
@@ -18868,10 +19074,14 @@ function protoMeterCompareTable(meters, all, options = {}) {
     : "";
   const hasEstimate = rows.some((row) => row.cells.some((cell) => cell?.quality === "estimated"));
   const minWidth = 6 + (tracks.length * per + totals.length) * (hasEstimate ? 11 : 8.5);
+  const label = `${chart} by ${options.by || "series"}`;
   return protoBreakdownPanel(`
-    <div class="astral-table-wrap astral-breakdown-scroll" tabindex="0" role="region" aria-label="${escapeHtml(
-      `${chart} by ${protoBelowSiteNoun(1)}`
-    )}">
+    <div class="astral-breakdown-bar" data-proto-breakdown-nav hidden>
+      <p class="astral-muted" data-proto-breakdown-range aria-live="polite"></p>
+      ${protoIconBtn("prev", "Previous columns", 'data-proto-breakdown-page="prev"', { disabled: true })}
+      ${protoIconBtn("next", "Next columns", 'data-proto-breakdown-page="next"')}
+    </div>
+    <div class="astral-table-wrap astral-breakdown-scroll" tabindex="0" role="region" aria-label="${escapeHtml(label)}">
       <table class="astral-table astral-breakdown-cols is-meters" style="min-width:${minWidth}rem">
         <thead>
           <tr>
@@ -23877,6 +24087,7 @@ function renderPrototype() {
     protoPlaceQueryPinSoon();
   }
   protoBindBreakdown();
+  protoBindBreakdownNav();
   protoSyncTableHeadsSoon();
   protoMeasurePillsSoon();
   protoSlideNavPillsSoon();
@@ -24497,8 +24708,9 @@ function fillProtoTip(hit) {
   }
   const zonesEl = tip.querySelector(".astral-tip-zones");
   if (zonesEl) {
-    const lines = protoChartZoneLines(point);
-    zonesEl.innerHTML = lines;
+    const rest = Math.max(0, (point.zones || []).length - PROTO_HOVER_SLICE_MAX);
+    const lines = protoChartZoneLines(point, PROTO_HOVER_SLICE_MAX);
+    zonesEl.innerHTML = rest ? `${lines}<p class="astral-tip-zone">+${rest} more</p>` : lines;
     zonesEl.hidden = !lines;
   }
   const markEl = tip.querySelector(".astral-tip-marks");
@@ -25196,6 +25408,11 @@ function onPrototype(event) {
   }
   if (event.target.classList.contains("astral-modal-back")) {
     protoCloseModal(event.target.dataset.protoModal);
+    return;
+  }
+  const breakdownPage = event.target.closest("[data-proto-breakdown-page]");
+  if (breakdownPage) {
+    if (!breakdownPage.disabled) protoBreakdownPage(breakdownPage.dataset.protoBreakdownPage);
     return;
   }
   const breakdownBtn = event.target.closest("[data-proto-breakdown]");
@@ -26100,6 +26317,13 @@ function onPrototype(event) {
       prototypeUserDrafts: next.length ? next : [""],
     });
     protoRestoreFocus("#astral-fs [data-proto-user-draft]");
+    return;
+  }
+  const pinMore = event.target.closest("[data-proto-pin-more]");
+  if (pinMore) {
+    event.preventDefault();
+    event.stopPropagation();
+    protoTogglePinMore(pinMore);
     return;
   }
   const hoverMore = event.target.closest("[data-proto-hover-more]");

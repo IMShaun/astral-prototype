@@ -1159,6 +1159,7 @@ function normalize(data) {
     delete data.prototypeAlertCallHidden;
     data.prototypePane = protoKnownPane(data.prototypePane);
     data.prototypeBreakdownOpen = Boolean(data.prototypeBreakdownOpen);
+    data.prototypeListOpen = Boolean(data.prototypeListOpen);
     data.prototypeCompareOpen = Boolean(data.prototypeCompareOpen);
     data.prototypeCompareQuery = data.prototypeCompareQuery || "";
     data.prototypeCompareFilters = Array.isArray(data.prototypeCompareFilters)
@@ -3644,6 +3645,7 @@ const CHROME_FIELDS = [
   "prototypeMeterOverrides",
   "prototypeMeterOwnDrafts",
   "prototypeBreakdownOpen",
+  "prototypeListOpen",
   "prototypeChartPoint",
   "prototypePointTags",
   "prototypePointTagPool",
@@ -3959,6 +3961,7 @@ function applyChrome() {
       ? store.prototypeMeterDrafts
       : {};
   store.prototypeBreakdownOpen = Boolean(store.prototypeBreakdownOpen);
+  store.prototypeListOpen = Boolean(store.prototypeListOpen);
   store.prototypeCompareOpen = Boolean(store.prototypeCompareOpen);
   store.prototypeCompareQuery = store.prototypeCompareQuery || "";
   store.prototypeCompareFilters = Array.isArray(store.prototypeCompareFilters)

@@ -8462,6 +8462,22 @@ button.astral-state {
   padding-inline-end: var(--scrollbar-size);
 }
 
+/* Hours and tariff lines sit above the readings in one scroll, so the pin never nests scrollers. */
+.astral-query-pin-body {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  max-height: min(22.5rem, 60vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.astral-query-pin-body > .astral-tip-zones {
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
 .astral-tip-more {
   margin: 0;
   pointer-events: auto;
@@ -9223,6 +9239,23 @@ button.astral-state {
 .astral-breakdown-scroll {
   min-width: 0;
   overflow-anchor: none;
+}
+
+.astral-breakdown-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.astral-breakdown-bar[hidden] {
+  display: none;
+}
+
+.astral-breakdown-bar > p {
+  margin: 0 8px 0 0;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Horizontal-only scrollers inside a pane must hand vertical wheel/trackpad scrolling

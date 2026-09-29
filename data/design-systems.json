@@ -2808,7 +2808,7 @@
           "react": "Table",
           "file": "src/components/Table.tsx",
           "summary": "Dense lists of meters, sites, and readings. Body type is black. Headers use Infra Grey C on white. The State column uses State pills. Breakdown In and Out are text headings.",
-          "usage": "Pass columns and rows. Do not fetch inside the table. The pane scrolls the interval table. On a group or All, the site list sits in Breakdown. The graph stays the same height. Total, Individual, Bar, Line, Hours, and filter pills do not change it. Do not give Breakdown its own scrollbar. Rows load as they scroll. Empty uses Empty. Queries sits the list in a card. Column headers sort. A pair of arrows sits in the header. Click for A to Z or lowest first. Click again to reverse. Words are alphabetical. Numbers and dates go lowest to highest, then the reverse. Resolve and other actions do not sort. An action column has no sort. Its heading is hidden but read aloud. Remove on recipients.",
+          "usage": "Pass columns and rows. Do not fetch inside the table. The pane scrolls the interval table. On a group or All, Breakdown has a column for each site on the graph and a Total. The site list sits in its own Sites accordion under it, closed until they open it. A group comparison has Groups. The graph stays the same height. Total, Individual, Bar, Line, Hours, and filter pills do not change it. Do not give Breakdown its own scrollbar. Rows load as they scroll. Empty uses Empty. Queries sits the list in a card. Column headers sort. A pair of arrows sits in the header. Click for A to Z or lowest first. Click again to reverse. Words are alphabetical. Numbers and dates go lowest to highest, then the reverse. Resolve and other actions do not sort. An action column has no sort. Its heading is hidden but read aloud. Remove on recipients.",
           "variants": [
             "default"
           ],
@@ -3348,7 +3348,7 @@
           "file": "src/components/Pagination.tsx",
           "family": "navigation",
           "summary": "Graph window arrows, not page pills. Previous and Next are icon buttons. They move the date window. The filter becomes Custom. Back at the original window it is the preset again.",
-          "usage": "Use IconButton prev and next on the graph. Page number pills wait for a huge list. Do not add a pager on Breakdown. The pane scrolls the rows.",
+          "usage": "Use IconButton prev and next on the graph. Page number pills wait for a huge list. The pane scrolls the Breakdown rows. When Breakdown is wider than the pane, Previous columns and Next columns IconButtons sit above it with Columns 1–5 of 26. Each step lands on a whole column beside the sticky Time column. Previous is off at the start and Next at the end. Filters keep the columns in view. A new place in the tree starts at the first column.",
           "variants": [
             "window"
           ],
@@ -5236,7 +5236,7 @@
             "status": "working",
             "say": "Breakdown",
             "avoid": "",
-            "note": "The interval table sits in Breakdown. Closed until they open it. Accordions are one component. The whole head is the hit area. Hover tints the head. Open turns the name cyan. The chevron turns down. The body slides open and closed in 200ms. Script drives the height, so it moves in every browser. Reduced motion skips it. Time is UTC. Local time waits as a table option. Click a row to go to that time on the graph. The pane scrolls up to the graph. The point is picked and its pin opens. The ring pulses once. On a group or All, the site list sits in Breakdown. The graph stays the same height. Total, Individual, Bar, Line, Hours, and filter pills do not change it. The pane scrolls it. Do not give Breakdown its own scrollbar. Rows load as they scroll. In and Out are text headings, same as Time. An estimated reading carries an Estimated tag to the right of the number. An actual reading is the number alone. No Quality column. A total carries the tag when any reading in it is estimated. When Hours or Time of use ticks are on, Operational · Peak, Operational · Off-peak, Non-operational · Peak, Non-operational · Off-peak, Closed · Peak, and Closed · Off-peak sit as text headings, same as Time. Do not make them pills. Do not split Peak and Off-peak from the operating state. Breakdown follows the pills that are on.",
+            "note": "The interval table sits in Breakdown. Closed until they open it. Accordions are one component. The whole head is the hit area. Hover tints the head. Open turns the name cyan. The chevron turns down. The body slides open and closed in 200ms. Script drives the height, so it moves in every browser. Reduced motion skips it. Time is UTC. Local time waits as a table option. Click a row to go to that time on the graph. The pane scrolls up to the graph. The point is picked and its pin opens. The ring pulses once. On a group or All, Breakdown has a column for each site on the graph and a Total. The site list sits in its own Sites accordion under it, closed until they open it. A group comparison has Groups. The graph stays the same height. Total, Individual, Bar, Line, Hours, and filter pills do not change it. The pane scrolls it. Do not give Breakdown its own scrollbar. Rows load as they scroll. In and Out are text headings, same as Time. An estimated reading carries an Estimated tag to the right of the number. An actual reading is the number alone. No Quality column. A total carries the tag when any reading in it is estimated. When Hours or Time of use ticks are on, Operational · Peak, Operational · Off-peak, Non-operational · Peak, Non-operational · Off-peak, Closed · Peak, and Closed · Off-peak sit as text headings, same as Time. Do not make them pills. Do not split Peak and Off-peak from the operating state. Breakdown follows the pills that are on.",
             "from": "Shaun on the site pane, 6 Sep"
           },
           {
@@ -6396,7 +6396,7 @@
             "status": "working",
             "say": "17 more sites",
             "avoid": "listing every site on hover",
-            "note": "Hover and the pin use the same list. Plus then the count. First seven stay. The rest sit as +17 more sites, groups, or MPANs on a site when Country is England. Click it for the complete list. The list scrolls. Colour matches the stack. Hide puts the extra rows away. A group comparison stacks those groups, not every site.",
+            "note": "Hover and the pin use the same list. Highest reading first. The bars keep their stack order. First five stay. On hover the rest sit as +17 more sites, groups, or MPANs on a site when Country is England. In the pin it reads Show 17 more sites. Hours and time of use lines sit above the readings, first five then Show 1 more. Both open in place and read Show less. The pin body is one scroll. Do not nest a scroll inside it. Colour matches the stack. Hide puts the extra rows away. A group comparison stacks those groups, not every site.",
             "from": "Shaun on stacked hover, 23 Sep"
           },
           {
