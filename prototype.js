@@ -8328,7 +8328,6 @@ const PROTO_REPORT_CHANNEL = [
 const PROTO_REPORT_QUALITY = [
   { id: "all", name: "Actual and estimated", note: "Every reading" },
   { id: "actual", name: "Actual only", note: "Leaves out estimated readings" },
-  { id: "estimated", name: "Estimated only", note: "Just the estimated readings" },
 ];
 
 // Data quality only means something when the file holds readings.
@@ -8338,7 +8337,7 @@ function protoReportHasQuality(def) {
 
 // reading is "actual", "estimated" or "missing". A gap is neither actual nor estimated.
 function protoReportQualityOk(pick, reading) {
-  return pick === "actual" || pick === "estimated" ? reading === pick : true;
+  return pick === "actual" ? reading === "actual" : true;
 }
 
 const PROTO_REPORT_FORMAT = [

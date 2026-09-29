@@ -6824,9 +6824,9 @@
             "kind": "labels",
             "name": "Data quality",
             "status": "working",
-            "say": "Data quality. Actual and estimated, Actual only, Estimated only.",
+            "say": "Data quality. Actual and estimated, or Actual only.",
             "avoid": "Read quality. Validated. Substituted. Quality flag.",
-            "note": "On Data extract, in Data, under Utility and Channel. It shows when the file holds interval data or meter reads. It hides for Missing data, because that file only holds gaps. Actual and estimated is the default. Actual only leaves out estimated readings and gaps. Estimated only keeps just the estimated readings. If nothing matches, the file says so. Templates can fix it or let the customer pick.",
+            "note": "On Data extract, in Data, under Utility and Channel. It shows when the file holds interval data or meter reads. It hides for Missing data, because that file only holds gaps. Actual and estimated is the default. Actual only leaves out estimated readings and gaps. There is no Estimated only. If nothing matches, the file says so. Templates can fix it or let the customer pick.",
             "from": "Report definition fields, 28 Sep"
           },
           {
