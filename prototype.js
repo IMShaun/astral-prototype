@@ -5406,13 +5406,22 @@ function protoChartZoneRow(set) {
   if (!set?.pick || set.groups.length < 2) return "";
   const { showHours, showTou } = set.zones;
   const lead = `Showing ${showHours && showTou ? "hours and time of use" : showHours ? "hours" : "time of use"} for`;
+  const open = protoSelectOpen() === "chart-zone-for";
   const select = protoSelect({
     id: "chart-zone-for",
     label: `${lead} ${set.pick.label}`,
     value: set.pick.id,
+    search: {
+      name: "proto-zone-query",
+      value: open ? String(store.prototypeZoneQuery || "") : "",
+      placeholder: "Search sites",
+      label: "Search sites",
+    },
+    empty: "No sites match",
     options: set.groups.map((group) => ({
       value: group.id,
       label: group.label,
+      search: [group.head, ...(group.rest || []), group.note].join(" "),
       face: protoChartZoneName(group, false),
       html: `<span class="astral-select-option-copy">${protoChartZoneName(
         group,
@@ -25119,6 +25128,7 @@ function onPrototype(event) {
     if (selectToggle.disabled) return;
     const id = selectToggle.dataset.protoSelectToggle;
     const open = protoSelectOpen() === id;
+    if (id === "chart-zone-for") store.prototypeZoneQuery = "";
     setProto({
       prototypeSelectOpen: open ? "" : id,
       prototypeDateOpen: false,
@@ -25130,6 +25140,9 @@ function onPrototype(event) {
     });
     if (!open && id === "team-people") {
       protoRestoreFocus("#astral-fs input[name='proto-team-people-query']");
+    }
+    if (!open && id === "chart-zone-for") {
+      protoRestoreFocus("#astral-fs input[name='proto-zone-query']");
     }
     if (!open && String(id).startsWith("user-team:")) {
       protoRestoreFocus("#astral-fs input[name='proto-person-team-query']");
@@ -27123,6 +27136,15 @@ function onPrototypeInput(event) {
     const start = personTeamSearch.selectionStart;
     render();
     if (active) protoRestoreFocus("#astral-fs input[name='proto-person-team-query']", start);
+    return;
+  }
+  const zoneSearch = event.target.closest("input[name='proto-zone-query']");
+  if (zoneSearch) {
+    store.prototypeZoneQuery = zoneSearch.value.slice(0, 120);
+    const active = document.activeElement === zoneSearch;
+    const start = zoneSearch.selectionStart;
+    render();
+    if (active) protoRestoreFocus("#astral-fs input[name='proto-zone-query']", start);
     return;
   }
   const personSitesSearch = event.target.closest("input[name='proto-person-sites-query']");
