@@ -3861,12 +3861,14 @@ body.is-proto-fs .stage {
   pointer-events: none;
 }
 
-.astral-icon-btn:hover:not(:disabled):not(.is-plain) {
+.astral-icon-btn:hover:not(:disabled):not([aria-disabled="true"]):not(.is-plain) {
   background: var(--color-background-hover);
 }
 
 .astral-icon-btn:disabled,
-.astral-icon-btn:disabled:hover {
+.astral-icon-btn:disabled:hover,
+.astral-icon-btn[aria-disabled="true"],
+.astral-icon-btn[aria-disabled="true"]:hover {
   background: var(--color-background-subtle);
   color: var(--color-text-secondary);
   border-color: var(--color-border-default);

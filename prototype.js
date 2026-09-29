@@ -5391,9 +5391,13 @@ function protoPointTagPicker() {
   `;
 }
 
+// Half-hours are the finest level, so there Analyse stays in place but greyed out and says why.
 function protoAnalyseControl(point) {
-  if (!protoAnalyseTarget(point)) return "";
-  return protoIconBtn("analyse", "Analyse", "data-proto-analyse");
+  if (protoAnalyseTarget(point)) return protoIconBtn("analyse", "Analyse", "data-proto-analyse");
+  if (protoDateSpan().kind !== "interval") return "";
+  return protoIconBtn("analyse", "Analyse, already at half-hourly detail", 'data-proto-analyse aria-disabled="true"', {
+    tipLabel: "Already at half-hourly detail",
+  });
 }
 
 // Hours and tariff lines, then readings, share one scroll. Each shows 5 until asked for more.
@@ -25561,6 +25565,7 @@ function onPrototype(event) {
   const analyseBtn = event.target.closest("[data-proto-analyse]");
   if (analyseBtn) {
     event.stopPropagation();
+    if (analyseBtn.getAttribute("aria-disabled") === "true") return;
     protoAnalysePoint();
     return;
   }
