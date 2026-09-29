@@ -4586,7 +4586,7 @@
             "status": "working",
             "say": "Estimated",
             "avoid": "Using the same mark as Alert.",
-            "note": "A reading that was guessed. Confidence, not attention. Do not use the Alert pattern. On the graph the bar uses a quiet fill of the same colour, not a hatch. On a line the stretch is dotted. Actual is a solid line. In Breakdown an Estimated tag sits to the right of the number.",
+            "note": "A reading that was guessed. Confidence, not attention. Do not use the Alert pattern. On the graph the bar uses a quiet fill of the same colour, not a hatch. On a line the stretch is dotted. Actual is a solid line. In Breakdown an Estimated tag sits to the right of the number. In the pin and hover readings it sits between the name and the number, so the numbers stay lined up on the right.",
             "from": "Talks and UAT walkthroughs, and handoff model, 22 Sep"
           },
           {

@@ -4835,7 +4835,7 @@ function protoChartPointSeriesMark(label, color) {
 function protoChartPointReading(label, value, unit, color, quality, cls = "", drill = "") {
   const amount = escapeHtml(protoFormatReading(value, unit));
   const series = protoChartPointSeriesMark(label, color);
-  const inner = `${series}<span class="astral-query-pin-kwh">${amount}</span>${protoReadingQualityMark(quality)}`;
+  const inner = `${series}${protoReadingQualityMark(quality)}<span class="astral-query-pin-kwh">${amount}</span>`;
   if (drill) {
     return `<button type="button" class="astral-query-pin-reading is-drill${cls ? ` ${cls}` : ""}" ${drill} aria-label="${escapeHtml(
       `Open ${label}, ${protoFormatReading(value, unit)}${protoReadingQualityWords(quality)}`
