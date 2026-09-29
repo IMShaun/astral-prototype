@@ -9099,6 +9099,17 @@ button.astral-state {
   white-space: nowrap;
 }
 
+.astral-chart-style-switch > button {
+  flex: 1 1 0;
+  gap: 6px;
+}
+
+.astral-chart-style-switch svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
 .astral-zone-name {
   display: inline-flex;
   align-items: center;

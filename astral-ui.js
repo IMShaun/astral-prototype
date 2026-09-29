@@ -56,6 +56,8 @@ const PROTO_ICON_MARKS = {
   usage: `<path d="M4.5 19.5h15M7.5 16.5v-4.5M12 16.5V7.5M16.5 16.5v-7.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />`,
   grid: `<rect x="4" y="4" width="6.5" height="6.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="2" />`,
   list: `<path d="M9.5 6.5h10.5M9.5 12h10.5M9.5 17.5h10.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><circle cx="5" cy="6.5" r="1.4" fill="currentColor" /><circle cx="5" cy="12" r="1.4" fill="currentColor" /><circle cx="5" cy="17.5" r="1.4" fill="currentColor" />`,
+  "chart-bar": `<path d="M4 20h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><rect x="5.5" y="11" width="3" height="6" rx="0.75" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><rect x="10.5" y="5" width="3" height="12" rx="0.75" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><rect x="15.5" y="8.5" width="3" height="8.5" rx="0.75" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />`,
+  "chart-line": `<path d="M4 20h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M4.5 15.5 9 10l4 3.5 6.5-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
 };
 
 function protoIconNames() {

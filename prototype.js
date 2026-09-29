@@ -5299,6 +5299,29 @@ function protoChartStyleSelect(more = {}) {
   });
 }
 
+// Bar or Line as a two way switch, in the look of the tabs.
+function protoChartStyleSwitch(labelledby) {
+  const style = protoChartStyle();
+  const items = [
+    { id: "bar", name: "Bar", icon: "chart-bar" },
+    { id: "line", name: "Line", icon: "chart-line" },
+  ];
+  return `
+    <div class="astral-tabs astral-chart-style-switch" role="radiogroup" aria-labelledby="${escapeHtml(labelledby)}">
+      ${items
+        .map((item) => {
+          const on = item.id === style;
+          return `<button type="button" role="radio" class="${on ? "is-on" : ""}" aria-checked="${
+            on ? "true" : "false"
+          }" tabindex="${on ? "0" : "-1"}" data-proto-chart-style="${item.id}">${protoIconMark(
+            item.icon
+          )}<span>${item.name}</span></button>`;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
 function protoCombinedLineTracks(points) {
   const rows = (points || []).map((point) => ({
     ...point,
@@ -5423,24 +5446,28 @@ function protoChartZoneName(group, spoken) {
   )}</span>${pill}${sr}</span>`;
 }
 
-// When meters keep different hours, let the user pick whose hours the graph shades.
+// Says whose hours the graph shades. Several sets are a pick. One set still shows, so every utility says whose hours they are.
 function protoChartZoneField(set, field) {
-  if (!set?.pick || set.groups.length < 2) return "";
+  const pick = set?.pick || set?.groups?.[0] || null;
+  if (!pick) return "";
   const { showHours, showTou } = set.zones;
   const lead = `${showHours && showTou ? "Hours and time of use" : showHours ? "Hours" : "Time of use"} for`;
   const open = protoSelectOpen() === "chart-zone-for";
+  const several = set.groups.length > 1;
   return field("zone", lead, (labelledby) =>
     protoSelect({
       id: "chart-zone-for",
       label: lead,
       labelledby,
-      value: set.pick.id,
-      search: {
-        name: "proto-zone-query",
-        value: open ? String(store.prototypeZoneQuery || "") : "",
-        placeholder: "Search sites",
-        label: "Search sites",
-      },
+      value: pick.id,
+      search: several
+        ? {
+            name: "proto-zone-query",
+            value: open ? String(store.prototypeZoneQuery || "") : "",
+            placeholder: "Search sites",
+            label: "Search sites",
+          }
+        : null,
       empty: "No sites match",
       options: set.groups.map((group) => ({
         value: group.id,
@@ -5484,9 +5511,7 @@ function protoChartSettings(zoneSet) {
   const fields = open
     ? [
         field("view", "View", (labelledby) => protoChartViewSelect({ label: "View", labelledby })),
-        field("style", "Chart type", (labelledby) =>
-          protoChartStyleSelect({ label: "Chart type", labelledby })
-        ),
+        field("style", "Chart type", (labelledby) => protoChartStyleSwitch(labelledby)),
         field("show", "Overlay", (labelledby) => protoChartShowSelect({ labelledby })),
         protoChartUtilityField(zoneSet, field),
         protoChartZoneField(zoneSet, field),
@@ -24451,7 +24476,7 @@ function protoMeasurePillsSoon() {
   }
 }
 
-const protoSlideMemory = { tabs: null, links: null, reportTabs: null, attrTabs: null };
+const protoSlideMemory = { tabs: null, links: null, reportTabs: null, attrTabs: null, chartStyle: null };
 
 function protoSlideNavPillsSoon() {
   requestAnimationFrame(() => protoSlideNavPills());
@@ -24475,6 +24500,12 @@ function protoSlideNavPills(options) {
   );
   protoSlideHost(root.querySelector("nav.astral-links"), ".astral-link[aria-current='page']", "links", snap);
   protoSlideHost(root.querySelector(".astral-meter-attr-tabs .astral-tabs"), "button.is-on", "attrTabs", snap);
+  protoSlideHost(
+    document.querySelector("#astral-fs .astral-chart-style-switch"),
+    "button.is-on",
+    "chartStyle",
+    snap
+  );
 }
 
 function protoPickMeterAttrTab(id) {
@@ -26691,6 +26722,15 @@ function onPrototype(event) {
     );
     return;
   }
+  const chartStyleBtn = event.target.closest("[data-proto-chart-style]");
+  if (chartStyleBtn) {
+    const style = chartStyleBtn.dataset.protoChartStyle === "line" ? "line" : "bar";
+    if (style !== protoChartStyle()) {
+      setProto({ prototypeChartStyle: style, prototypeChartPoint: null, prototypeChartSettingsOpen: true });
+    }
+    protoRestoreFocus(`#astral-fs [data-proto-chart-style="${style}"]`);
+    return;
+  }
   const chartSettingsBtn = event.target.closest("[data-proto-chart-settings]");
   if (chartSettingsBtn) {
     const open = !store.prototypeChartSettingsOpen;
@@ -27934,7 +27974,7 @@ function onPrototypeKey(event) {
     event.preventDefault();
     return;
   }
-  const typeRadio = event.target.closest(".astral-report-types [role='radio']");
+  const typeRadio = event.target.closest(".astral-report-types [role='radio'], .astral-chart-style-switch [role='radio']");
   if (typeRadio && ["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) {
     event.preventDefault();
     const radios = [...typeRadio.parentElement.querySelectorAll("[role='radio']")];
