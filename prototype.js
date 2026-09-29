@@ -3487,12 +3487,26 @@ function protoReadZones(raw) {
     ]);
 }
 
+// The state leads each zone line. One pill says whose it is; hover lists the sites.
+function protoZoneSitesPill(names) {
+  if (!names.length) return "";
+  if (names.length === 1) return `<span class="astral-zone-more" aria-hidden="true">${escapeHtml(names[0])}</span>`;
+  const shown = names.slice(0, PROTO_ZONE_MORE_MAX);
+  const left = names.length - shown.length;
+  const lines = [...shown, ...(left ? [`and ${left} more`] : [])]
+    .map((name) => `<span>${escapeHtml(name)}</span>`)
+    .join("");
+  return `<span class="astral-zone-more astral-tip-host" aria-hidden="true">${names.length} sites<span class="astral-icon-tip is-list">${lines}</span></span>`;
+}
+
 function protoChartZoneLines(point, limit = 0) {
   const zones = point?.zones || [];
   return (limit ? zones.slice(0, limit) : zones)
-    .map(([label, words, head, rest, whole]) => {
-      const name = protoChartZoneName({ label, head, rest, whole }, true);
-      return `<p class="astral-tip-zone"><span class="astral-tip-zone-name">${name}</span><span class="astral-tip-zone-state">${escapeHtml(words)}</span></p>`;
+    .map(([label, words, head, rest]) => {
+      const names = [head, ...rest].filter(Boolean);
+      return `<p class="astral-tip-zone"><span class="astral-tip-zone-state" aria-hidden="true">${escapeHtml(
+        words
+      )}</span>${protoZoneSitesPill(names)}<span class="sr-only">${escapeHtml(`${words}: ${label}`)}</span></p>`;
     })
     .join("");
 }
@@ -3625,7 +3639,8 @@ function protoZoneSet(rows, allMeters, zones) {
       if (!labels.has(id)) {
         const every = line.meters.length === meters.length;
         const several = new Set(meters.map((meter) => meter.site || "")).size > 1;
-        labels.set(id, every && several ? { label: "All sites", whole: true, head: "All sites", rest: [] } : protoZoneGroupLabel(line.meters, meters));
+        const name = protoZoneGroupLabel(line.meters, meters);
+        labels.set(id, every && several ? { ...name, label: "All sites" } : name);
       }
       const name = labels.get(id);
       return { label: name.label, head: name.head, rest: name.rest, whole: name.whole, bucket: line.bucket };

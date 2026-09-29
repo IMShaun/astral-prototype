@@ -9055,7 +9055,7 @@ button.astral-state {
 
 .astral-tip-zones {
   display: grid;
-  gap: 8px;
+  gap: 4px;
   margin: 4px 0 0;
   font-size: 0.85rem;
 }
@@ -9065,20 +9065,21 @@ button.astral-state {
 }
 
 .astral-tip-zone {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   margin: 0;
   color: var(--color-text-secondary);
 }
 
-.astral-tip-zone-name {
-  display: flex;
-  min-width: 0;
+.astral-tip-zone-state {
   color: #000;
 }
 
-.astral-tip-zone-name .astral-zone-name {
-  flex-wrap: wrap;
+.astral-tip-zone > .astral-zone-more {
+  display: inline-flex;
+  max-width: 100%;
 }
 
 .astral-chart-settings {
