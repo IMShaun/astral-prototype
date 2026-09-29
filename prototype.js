@@ -3067,7 +3067,7 @@ function protoCalWeekdays() {
   return ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((day) => `<span>${day}</span>`).join("");
 }
 
-function protoCalDayCells({ year, month, selectedIso, allowFuture, pickAttr, fromIso, toIso }) {
+function protoCalDayCells({ year, month, selectedIso, allowFuture, minIso, pickAttr, fromIso, toIso }) {
   const today = protoToday();
   const todayIso = protoIso(today);
   const from = protoFromIso(fromIso);
@@ -3096,7 +3096,7 @@ function protoCalDayCells({ year, month, selectedIso, allowFuture, pickAttr, fro
     const label = `${i + 1} ${PROTO_MONTHS_LONG[month]} ${year}${todayOn ? ", today" : ""}`;
     const current = todayOn ? ' aria-current="date"' : "";
     const pressed = selected || isFrom || isTo ? ' aria-pressed="true"' : ' aria-pressed="false"';
-    if (!allowFuture && future) {
+    if ((!allowFuture && future) || (minIso && iso < minIso)) {
       return `<button type="button" class="${cls}" disabled aria-label="${escapeHtml(
         label
       )}"${current}>${i + 1}</button>`;
@@ -9015,7 +9015,10 @@ function protoReportSendAtSelect(draft) {
       label: "Send at",
       wide: true,
       value: draft.sendAt || "09:00",
-      options: PROTO_REPORT_SEND_AT.map((at) => ({ value: at, label: `${at} ${zone}` })),
+      options: PROTO_REPORT_SEND_AT.map((at) => {
+        const gone = protoReportHourGone(draft, at);
+        return { value: at, label: `${at} ${zone}`, disabled: gone, tip: gone ? "This time has gone today." : "" };
+      }),
     })
   );
 }
@@ -9166,6 +9169,60 @@ function protoReportDraftStart() {
   return protoReportDraftDate("start");
 }
 
+// Send on for Once is today or later. A sent report keeps its old date until someone changes it.
+function protoReportSendOnOk() {
+  const start = protoFromUkDate(protoReportDraftStart());
+  if (!start) return false;
+  const id = protoReportEditId();
+  const saved = id && id !== "new" ? protoReportDef(id) : null;
+  if (saved && protoReportOnce(saved) && saved.start === protoReportDraftStart()) return true;
+  return protoDayStamp(start) >= protoDayStamp(protoReportFirstDay(protoReportDraft()));
+}
+
+// The prototype's day is fixed. The time of day is the real clock, in the zone the report sends in.
+function protoReportNowMinutes(draft) {
+  const now = new Date();
+  if (protoReportZone(draft || {}) === "UTC") return now.getUTCHours() * 60 + now.getUTCMinutes();
+  const [h, m] = now
+    .toLocaleTimeString("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hour12: false })
+    .split(":")
+    .map(Number);
+  return h * 60 + m;
+}
+
+function protoReportAtMinutes(at) {
+  const [h, m] = String(at).split(":").map(Number);
+  return h * 60 + (m || 0);
+}
+
+function protoReportTodayHoursLeft(draft) {
+  const now = protoReportNowMinutes(draft);
+  return PROTO_REPORT_SEND_AT.filter((at) => protoReportAtMinutes(at) > now);
+}
+
+// Once cannot go before now: today while an hour is left, otherwise tomorrow.
+function protoReportFirstDay(draft) {
+  return protoReportTodayHoursLeft(draft).length ? protoToday() : protoAddDays(protoToday(), 1);
+}
+
+function protoReportSendsToday(draft) {
+  if (!draft || draft.period !== "once") return false;
+  const start = protoFromUkDate(protoReportDraftStart());
+  return Boolean(start) && protoDayStamp(start) === protoDayStamp(protoToday());
+}
+
+function protoReportHourGone(draft, at) {
+  return protoReportSendsToday(draft) && !protoReportTodayHoursLeft(draft).includes(at);
+}
+
+// Moves a Once draft off a day or hour that has gone. Returns the send time to keep.
+function protoReportFixOnce(draft) {
+  if (!draft || draft.period !== "once") return draft?.sendAt;
+  if (!protoReportSendOnOk()) store.prototypeReportDraftStart = protoFormatUkDate(protoReportFirstDay(draft));
+  if (protoReportHourGone(draft, draft.sendAt || "09:00")) return protoReportTodayHoursLeft(draft)[0] || draft.sendAt;
+  return draft.sendAt;
+}
+
 function protoReportCalField() {
   const raw = store.prototypeReportCalOpen;
   if (raw === true) return "start";
@@ -9209,6 +9266,7 @@ function protoReportDayCalHtml(start, label = "First send on", field = "start") 
     month,
     selectedIso,
     allowFuture: field === "start",
+    minIso: field === "start" ? protoIso(protoReportFirstDay(protoReportDraft())) : "",
     pickAttr: "data-proto-day-cal-pick",
   });
   return `
@@ -9377,6 +9435,8 @@ function protoReportDraftIssueBase(draft) {
       if (from > to) return "The from date must come before the to date.";
       if (to > protoToday()) return "Pick dates up to today.";
       if (!startOk) return "Enter the send date.";
+      if (!protoReportSendOnOk()) return "Pick today or a later day to send it.";
+      if (protoReportHourGone(draft, draft.sendAt || "09:00")) return "That time has gone today. Pick a later time.";
       return "";
     }
     return "";
@@ -10145,27 +10205,48 @@ function protoReportTest(draft) {
   return test && test.sig === protoReportTestSig(draft) ? test : { state: "idle" };
 }
 
-function protoReportTestResult(draft) {
-  const host = String(draft.sftpHost || "").trim().toLowerCase();
-  const key = (draft.delivery || []).includes("sftp") && draft.sftpAuth === "key";
-  if (!String(draft.sftpUser || "").trim()) return { state: "fail", text: "Add the username, then test again." };
-  if (!key && !String(draft.sftpPassword || "")) return { state: "fail", text: "Add the password, then test again." };
-  if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(host)) return { state: "fail", text: "We could not find that server. Check the address." };
-  if (/block|refuse|firewall/.test(host)) {
-    return { state: "fail", text: "The server turned the connection away. Ask your IT team to let IMSERV through." };
-  }
-  if (!key && String(draft.sftpPassword) === "wrong") {
-    return { state: "fail", text: "The server did not accept the username or password." };
-  }
-  if ((draft.delivery || []).includes("sftp")) {
-    const print = String(draft.sftpFingerprint || "").trim();
-    if (!print) return { state: "fail", text: "Add the SSH fingerprint, then test again." };
-    if (!protoReportFingerprintOk(print) || /0000/.test(print)) {
-      return { state: "fail", text: "The server's fingerprint does not match. Check it with your IT team." };
-    }
-  }
+// The four checks a connection test runs, in order. A failed step stops the rest.
+function protoReportTestSteps(draft) {
+  const host = String(draft.sftpHost || "").trim() || "the server";
+  const port = draft.sftpPort || 22;
+  const user = String(draft.sftpUser || "").trim();
   const folder = String(draft.sftpPath || "").trim();
-  return { state: "ok", text: `Connected. A test file landed in ${folder || "the top folder"}.` };
+  const key = draft.sftpAuth === "key";
+  return [
+    {
+      label: "Reach the server",
+      detail: `${host}:${port}`,
+      fail: "The server turned the connection away. Ask your IT team to let IMSERV through.",
+    },
+    {
+      label: "Check the SSH fingerprint",
+      detail: "Matches the one you added",
+      fail: "The server's fingerprint does not match the one you added. Check it with your IT team.",
+    },
+    {
+      label: "Sign in",
+      detail: user ? `As ${user}, with ${key ? "IMSERV's key" : "the password"}` : `With ${key ? "IMSERV's key" : "the password"}`,
+      fail: key
+        ? "The server did not accept IMSERV's key. Add it to the user on your server."
+        : "The server did not accept the username or password.",
+    },
+    {
+      label: "Send a test file",
+      detail: `To ${folder || "the top folder"}`,
+      fail: `Signed in, but could not save a file to ${folder || "the top folder"}. Check the user can write there.`,
+    },
+  ];
+}
+
+// The prototype takes turns: a pass, then a fail at the next step along, so both results can be seen.
+function protoReportTestResult(draft) {
+  const runs = (Number(store.prototypeReportTestRuns) || 0) + 1;
+  store.prototypeReportTestRuns = runs;
+  const steps = protoReportTestSteps(draft);
+  const time = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  if (runs % 2) return { state: "ok", failAt: -1, at: time, text: "IMSERV can send files to this server." };
+  const failAt = (runs / 2 - 1) % steps.length;
+  return { state: "fail", failAt, at: time, text: steps[failAt].fail };
 }
 
 function protoReportFingerprintOk(print) {
@@ -10175,40 +10256,94 @@ function protoReportFingerprintOk(print) {
 function protoReportTestLineHtml(draft) {
   const test = protoReportTest(draft);
   if (test.state === "testing") return "Testing the connection.";
-  if (test.state === "ok") return `${protoIconMark("check")}<span>${escapeHtml(test.text)}</span>`;
-  if (test.state === "fail") return `${protoIconMark("warning")}<span>${escapeHtml(test.text)}</span>`;
+  if (test.state === "ok") return `<strong>Connected</strong><span>Tested at ${escapeHtml(test.at)}</span>`;
+  if (test.state === "fail") return `<strong>Could not connect</strong><span>Tested at ${escapeHtml(test.at)}</span>`;
+  if (!String(draft.sftpHost || "").trim()) return "Add the server to test the connection.";
   return "Sends a small test file and checks the server lets IMSERV in.";
 }
 
-function protoReportTestHtml(draft) {
+function protoReportTestStepsHtml(draft, test) {
+  const steps = protoReportTestSteps(draft);
+  const rows = steps
+    .map((step, i) => {
+      const state =
+        test.state === "testing"
+          ? i < test.step
+            ? "done"
+            : i === test.step
+              ? "run"
+              : "wait"
+          : test.state === "ok" || i < test.failAt
+            ? "done"
+            : i === test.failAt
+              ? "fail"
+              : "skip";
+      const mark = state === "done" ? protoIconMark("tick") : state === "fail" ? protoIconMark("close") : "";
+      const note = { done: step.detail, fail: "Failed", run: "Checking", wait: "", skip: "Not tried" }[state];
+      return `
+        <li class="is-${state}">
+          <span class="astral-report-test-dot" aria-hidden="true">${mark}</span>
+          <span class="astral-report-test-step">
+            <span>${escapeHtml(step.label)}</span>
+            ${note ? `<span class="astral-muted">${escapeHtml(note)}</span>` : ""}
+          </span>
+        </li>
+      `;
+    })
+    .join("");
+  const reason =
+    test.state === "fail"
+      ? `<p class="astral-report-test-reason">${protoIconMark("warning")}<span>${escapeHtml(test.text)}</span></p>`
+      : test.state === "ok"
+        ? `<p class="astral-report-test-reason">${protoIconMark("tick")}<span>${escapeHtml(test.text)}</span></p>`
+        : "";
+  return `
+    <div class="astral-report-test-result is-${test.state}">
+      <ol class="astral-report-test-steps">${rows}</ol>
+      ${reason}
+    </div>
+  `;
+}
+
+function protoReportTestInner(draft) {
   const test = protoReportTest(draft);
   const noHost = !String(draft.sftpHost || "").trim();
   return `
     <div class="astral-report-test">
-      ${protoGhost(test.state === "testing" ? "Testing" : "Test connection", "data-proto-report-test", {
-        disabled: noHost || test.state === "testing",
-      })}
+      ${protoGhost(
+        test.state === "testing" ? "Testing" : test.state === "idle" ? "Test connection" : "Test again",
+        "data-proto-report-test",
+        { disabled: noHost || test.state === "testing" }
+      )}
       <p class="astral-muted astral-report-test-line is-${test.state}" role="status" data-proto-report-test-line>${protoReportTestLineHtml(
         draft
       )}</p>
     </div>
+    ${test.state === "idle" ? "" : protoReportTestStepsHtml(draft, test)}
   `;
+}
+
+function protoReportTestHtml(draft) {
+  return `<div class="astral-report-test-host" data-proto-report-test-host>${protoReportTestInner(draft)}</div>`;
 }
 
 function protoRunReportTest() {
   const draft = protoReportDraft();
   if (!draft || !protoCanEditReports() || !String(draft.sftpHost || "").trim()) return;
   const sig = protoReportTestSig(draft);
-  setProto({ prototypeReportTest: { state: "testing", sig }, prototypeReportEdit: protoReportEditId() });
-  setTimeout(() => {
+  const result = protoReportTestResult(draft);
+  const last = result.state === "ok" ? 3 : result.failAt;
+  const step = (n) => {
     const now = protoReportDraft();
     if (!now || protoReportTestSig(now) !== sig) return;
     setProto({
-      prototypeReportTest: { ...protoReportTestResult(now), sig },
+      prototypeReportTest: n > last ? { ...result, sig } : { state: "testing", step: n, sig },
       prototypeReportEdit: protoReportEditId(),
     });
     protoRestoreFocus("#astral-fs [data-proto-report-test]");
-  }, 1200);
+    if (n <= last) setTimeout(() => step(n + 1), 450);
+  };
+  step(0);
 }
 
 function protoReportServerFields(draft, serverName) {
@@ -10759,13 +10894,13 @@ function protoReportRefreshForm() {
     previewEl.textContent = preview;
     previewEl.hidden = !preview;
   }
-  const testLine = modal.querySelector("[data-proto-report-test-line]");
-  if (testLine) {
-    const state = protoReportTest(draft).state;
-    testLine.className = `astral-muted astral-report-test-line is-${state}`;
-    testLine.innerHTML = protoReportTestLineHtml(draft);
-    const testBtn = modal.querySelector("[data-proto-report-test]");
-    if (testBtn) testBtn.disabled = !String(draft.sftpHost || "").trim() || state === "testing";
+  const testHost = modal.querySelector("[data-proto-report-test-host]");
+  if (testHost) {
+    const html = protoReportTestInner(draft);
+    if (testHost.protoHtml !== html) {
+      testHost.innerHTML = html;
+      testHost.protoHtml = html;
+    }
   }
   const consentHost = modal.querySelector("[data-proto-report-consent-host]");
   if (consentHost) {
@@ -10879,9 +11014,12 @@ function protoReportEditClear() {
 function protoReportPatchDraft(patch, keepOpen) {
   const draft = protoReportDraft();
   if (!draft || !protoCanEditReports()) return;
+  const next = { ...draft, ...patch };
+  store.prototypeReportDraft = next;
+  next.sendAt = protoReportFixOnce(next);
   setProto({
     prototypeReportEdit: protoReportEditId(),
-    prototypeReportDraft: { ...draft, ...patch },
+    prototypeReportDraft: next,
     prototypeSelectOpen: keepOpen || "",
   });
 }
@@ -26131,8 +26269,12 @@ function onPrototype(event) {
     const day = protoFromIso(dayCalPick.dataset.protoDayCalPick);
     if (!day) return;
     const field = protoReportCalField() || "start";
+    store[PROTO_REPORT_DATES[field].key] = protoFormatUkDate(day);
+    const pickDraft = protoReportDraft();
+    const sendAt = field === "start" ? protoReportFixOnce(pickDraft) : pickDraft?.sendAt;
     setProto({
       [PROTO_REPORT_DATES[field].key]: protoFormatUkDate(day),
+      ...(pickDraft && sendAt !== pickDraft.sendAt ? { prototypeReportDraft: { ...pickDraft, sendAt } } : {}),
       prototypeReportCal: protoIso(day).slice(0, 7),
       prototypeReportCalOpen: false,
       prototypeSelectOpen: "",

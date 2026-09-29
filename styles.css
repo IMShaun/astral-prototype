@@ -10496,13 +10496,175 @@ tr.is-off .astral-person-mark {
 
 .astral-report-test-line.is-ok,
 .astral-report-test-line.is-fail {
-  color: var(--color-text-primary);
+  gap: 8px;
+  color: var(--color-text-secondary);
+}
+
+.astral-report-test-line strong {
+  font-weight: 600;
+}
+
+.astral-report-test-line.is-ok strong {
+  color: var(--color-status-success);
+}
+
+.astral-report-test-line.is-fail strong {
+  color: var(--color-status-danger);
 }
 
 .astral-report-test-line svg {
   flex: none;
   width: 16px;
   height: 16px;
+}
+
+.astral-report-test-host {
+  display: grid;
+  gap: 12px;
+}
+
+.astral-report-test-result {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 12px;
+  background: var(--color-background-surface);
+}
+
+.astral-report-test-result.is-ok {
+  border-color: var(--color-status-success);
+}
+
+.astral-report-test-result.is-fail {
+  border-color: var(--color-status-danger);
+}
+
+.astral-report-test-steps {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.astral-report-test-steps li {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 12px;
+}
+
+.astral-report-test-steps li:last-child {
+  padding-bottom: 0;
+}
+
+/* The rail joins each step to the next. */
+.astral-report-test-steps li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 24px;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-border-default);
+}
+
+.astral-report-test-steps li.is-done:not(:last-child)::after {
+  background: var(--color-status-success);
+}
+
+.astral-report-test-dot {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--color-border-default);
+  border-radius: 999px;
+  background: var(--color-background-surface);
+  color: #fff;
+  transition: background-color 200ms ease, border-color 200ms ease;
+}
+
+.astral-report-test-dot svg {
+  width: 14px;
+  height: 14px;
+}
+
+.is-done > .astral-report-test-dot {
+  border-color: var(--color-status-success);
+  background: var(--color-status-success);
+}
+
+.is-fail > .astral-report-test-dot {
+  border-color: var(--color-status-danger);
+  background: var(--color-status-danger);
+}
+
+.is-run > .astral-report-test-dot {
+  border-color: var(--color-text-primary);
+  border-right-color: transparent;
+  animation: astral-report-test-spin 700ms linear infinite;
+}
+
+@keyframes astral-report-test-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.astral-report-test-step {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding-top: 2px;
+  font-size: 0.875rem;
+}
+
+.is-wait .astral-report-test-step,
+.is-skip .astral-report-test-step {
+  color: var(--color-text-secondary);
+}
+
+.astral-report-test-reason {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.astral-report-test-reason svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.is-ok > .astral-report-test-reason {
+  background: var(--color-status-success-subtle);
+}
+
+.is-ok > .astral-report-test-reason svg {
+  color: var(--color-status-success);
+}
+
+.is-fail > .astral-report-test-reason {
+  background: var(--color-status-danger-subtle);
+}
+
+.is-fail > .astral-report-test-reason svg {
+  color: var(--color-status-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-run > .astral-report-test-dot {
+    animation: none;
+  }
 }
 
 .astral-report-fields input[readonly] {
