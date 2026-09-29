@@ -10427,6 +10427,11 @@ tr.is-off .astral-person-mark {
   font-weight: 500;
 }
 
+.astral-report-split-ask {
+  margin-top: 4px;
+  font-weight: 500;
+}
+
 .astral-report-consent-host {
   display: grid;
   gap: 12px;
