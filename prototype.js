@@ -5223,7 +5223,7 @@ function protoChartViewParts() {
   return "sites";
 }
 
-function protoChartViewSelect() {
+function protoChartViewSelect(more = {}) {
   const view = protoChartView();
   const pane = protoPaneId();
   const where = protoChartViewWhere();
@@ -5250,10 +5250,11 @@ function protoChartViewSelect() {
       { value: "total", label: total, note: totalNote },
       { value: "individual", label: individual, note: `Which ${parts} made that total` },
     ],
+    ...more,
   });
 }
 
-function protoChartShowSelect() {
+function protoChartShowSelect(more = {}) {
   return protoSelect({
     id: "chart-show",
     label: "Overlay",
@@ -5265,10 +5266,11 @@ function protoChartShowSelect() {
       { value: "hours", label: "Hours", note: "Operational, Non-operational, and Closed" },
       { value: "tou", label: "Time of use", note: "Peak and Off-peak" },
     ],
+    ...more,
   });
 }
 
-function protoChartStyleSelect() {
+function protoChartStyleSelect(more = {}) {
   return protoSelect({
     id: "chart-style",
     value: protoChartStyle(),
@@ -5276,6 +5278,7 @@ function protoChartStyleSelect() {
       { value: "bar", label: "Bar" },
       { value: "line", label: "Line" },
     ],
+    ...more,
   });
 }
 
@@ -5403,38 +5406,81 @@ function protoChartZoneName(group, spoken) {
   )}</span>${pill}${sr}</span>`;
 }
 
-// When meters keep different hours, say so and let the user pick whose hours the graph shades.
-function protoChartZoneRow(set) {
+// When meters keep different hours, let the user pick whose hours the graph shades.
+function protoChartZoneField(set, field) {
   if (!set?.pick || set.groups.length < 2) return "";
   const { showHours, showTou } = set.zones;
-  const lead = `Showing ${showHours && showTou ? "hours and time of use" : showHours ? "hours" : "time of use"} for`;
+  const lead = `${showHours && showTou ? "Hours and time of use" : showHours ? "Hours" : "Time of use"} for`;
   const open = protoSelectOpen() === "chart-zone-for";
-  const select = protoSelect({
-    id: "chart-zone-for",
-    label: `${lead} ${set.pick.label}`,
-    value: set.pick.id,
-    search: {
-      name: "proto-zone-query",
-      value: open ? String(store.prototypeZoneQuery || "") : "",
-      placeholder: "Search sites",
-      label: "Search sites",
-    },
-    empty: "No sites match",
-    options: set.groups.map((group) => ({
-      value: group.id,
-      label: group.label,
-      search: [group.head, ...(group.rest || []), group.note].join(" "),
-      face: protoChartZoneName(group, false),
-      html: `<span class="astral-select-option-copy">${protoChartZoneName(
-        group,
-        true
-      )}<span class="astral-muted">${escapeHtml(group.note)}</span></span>`,
-    })),
-  });
-  return `<div class="astral-chart-zone-row"><p class="astral-muted">${escapeHtml(lead)}</p>${select}</div>`;
+  return field("zone", lead, (labelledby) =>
+    protoSelect({
+      id: "chart-zone-for",
+      label: lead,
+      labelledby,
+      value: set.pick.id,
+      search: {
+        name: "proto-zone-query",
+        value: open ? String(store.prototypeZoneQuery || "") : "",
+        placeholder: "Search sites",
+        label: "Search sites",
+      },
+      empty: "No sites match",
+      options: set.groups.map((group) => ({
+        value: group.id,
+        label: group.label,
+        search: [group.head, ...(group.rest || []), group.note].join(" "),
+        face: protoChartZoneName(group, false),
+        html: `<span class="astral-select-option-copy">${protoChartZoneName(
+          group,
+          true
+        )}<span class="astral-muted">${escapeHtml(group.note)}</span></span>`,
+      })),
+    })
+  );
 }
 
-function protoChartNav(pan) {
+function protoChartSettings(zoneSet) {
+  const open = Boolean(store.prototypeChartSettingsOpen);
+  const field = (key, caption, control) => {
+    const id = `astral-chart-setting-${key}`;
+    return `<div class="astral-chart-setting"><p id="${id}">${escapeHtml(caption)}</p>${control(id)}</div>`;
+  };
+  const fields = open
+    ? [
+        field("view", "View", (labelledby) => protoChartViewSelect({ label: "View", labelledby })),
+        field("style", "Chart type", (labelledby) =>
+          protoChartStyleSelect({ label: "Chart type", labelledby })
+        ),
+        field("show", "Overlay", (labelledby) => protoChartShowSelect({ labelledby })),
+        protoChartZoneField(zoneSet, field),
+      ].join("")
+    : "";
+  return `
+    <div class="astral-chart-settings">
+      <button
+        type="button"
+        class="astral-select-btn astral-chart-settings-btn"
+        aria-haspopup="dialog"
+        aria-expanded="${open ? "true" : "false"}"
+        aria-controls="astral-chart-settings-menu"
+        data-proto-chart-settings="toggle"
+      >
+        ${protoIconMark("settings")}
+        <span>Chart settings</span>
+        ${protoChevronMark("menu")}
+      </button>
+      <div
+        id="astral-chart-settings-menu"
+        class="astral-chart-settings-menu${open ? protoMenuEnterClass("astral-chart-settings-menu") : ""}"
+        role="dialog"
+        aria-label="Chart settings"
+        ${open ? "" : "hidden"}
+      >${fields}</div>
+    </div>
+  `;
+}
+
+function protoChartNav(pan, zoneSet) {
   const atEnd = protoChartAtLatest();
   const arrows = pan
     ? `${protoIconBtn("prev", "Previous", 'data-proto-chart-pan="prev"')}
@@ -5445,9 +5491,7 @@ function protoChartNav(pan) {
     : "";
   return `
     <div class="astral-chart-nav">
-      ${protoChartViewSelect()}
-      ${protoChartStyleSelect()}
-      ${protoChartShowSelect()}
+      ${protoChartSettings(zoneSet)}
       ${arrows}
     </div>
   `;
@@ -5554,7 +5598,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
         </div>
       </div>`
           : titled || pan
-          ? `<div class="astral-chart-head${protoChartZoneRow(extras.zoneSet) ? " has-zone-row" : ""}">
+          ? `<div class="astral-chart-head">
         ${
           titled
             ? `<div class="astral-chart-heading">
@@ -5563,8 +5607,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
         </div>`
             : ""
         }
-        ${titled || pan ? protoChartNav(pan) : ""}
-        ${protoChartZoneRow(extras.zoneSet)}
+        ${titled || pan ? protoChartNav(pan, extras.zoneSet) : ""}
       </div>`
           : ""
       }
@@ -6831,6 +6874,7 @@ function protoOpenMenuKeys() {
   if (select) keys.push(`select:${select}`);
   if (store.prototypeDateOpen) keys.push("date");
   if (store.prototypeExportOpen) keys.push("export");
+  if (store.prototypeChartSettingsOpen) keys.push("astral-chart-settings-menu");
   if (store.prototypeAccountOpen) keys.push("account");
   if (store.prototypeNoticeOpen) keys.push("notice");
   if (store.prototypeTreeFilterOpen) keys.push("astral-tree-filter-menu");
@@ -7040,7 +7084,7 @@ function protoSelect(config) {
   } else if (picked?.label) {
     text = picked.label;
   }
-  const labelled = config.label && config.label !== text && !config.caption;
+  const labelled = config.label && config.label !== text && !config.caption && !config.labelledby;
   const disabled = Boolean(config.disabled);
   const extra = [
     config.wide ? "is-wide" : "",
@@ -7133,6 +7177,11 @@ function protoSelect(config) {
         aria-expanded="${open && !disabled ? "true" : "false"}"
         aria-controls="${escapeHtml(menuId)}"
         ${labelled ? `aria-label="${escapeHtml(config.label)}"` : ""}
+        ${
+          config.labelledby
+            ? `id="${escapeHtml(menuId)}-btn" aria-labelledby="${escapeHtml(config.labelledby)} ${escapeHtml(menuId)}-btn"`
+            : ""
+        }
         ${disabled ? "disabled" : ""}
         data-proto-select-toggle="${escapeHtml(id)}"
       >
@@ -23959,10 +24008,10 @@ function protoClearIconTipPlace() {
 }
 
 const PROTO_FLOAT_MENU =
-  ".astral-select-menu, .astral-date-menu, .astral-export-menu, .astral-filter-menu, .astral-ack-menu, .astral-account-menu, .astral-notice-menu, .astral-people-menu, .astral-picker, .astral-day-cal-menu";
+  ".astral-select-menu, .astral-date-menu, .astral-export-menu, .astral-filter-menu, .astral-ack-menu, .astral-account-menu, .astral-notice-menu, .astral-people-menu, .astral-picker, .astral-day-cal-menu, .astral-chart-settings-menu";
 
 const PROTO_FLOAT_HOST =
-  ".astral-select, .astral-date, .astral-export, .astral-filter, .astral-point-tags, .astral-ack, .astral-query-more, .astral-account, .astral-notice, .astral-people-more, .astral-brand-row, .astral-day-cal";
+  ".astral-select, .astral-date, .astral-export, .astral-filter, .astral-point-tags, .astral-ack, .astral-query-more, .astral-account, .astral-notice, .astral-people-more, .astral-brand-row, .astral-day-cal, .astral-chart-settings";
 
 function protoFloatHost(menu) {
   if (menu._protoHost && document.contains(menu._protoHost)) return menu._protoHost;
@@ -26596,6 +26645,21 @@ function onPrototype(event) {
     );
     return;
   }
+  const chartSettingsBtn = event.target.closest("[data-proto-chart-settings]");
+  if (chartSettingsBtn) {
+    const open = !store.prototypeChartSettingsOpen;
+    setProto({
+      prototypeChartSettingsOpen: open,
+      prototypeDateOpen: false,
+      prototypeExportOpen: false,
+      prototypeTreeFilterOpen: false,
+      prototypePaneFilterOpen: false,
+      prototypeSelectOpen: "",
+      prototypeAckOpen: "",
+    });
+    if (open) protoRestoreFocus("#astral-chart-settings-menu .astral-select-btn");
+    return;
+  }
   const exportBtn = event.target.closest("[data-proto-export]");
   if (exportBtn) {
     if (!protoCanAct()) return;
@@ -26836,6 +26900,12 @@ function protoOutsideClosePatch(target) {
   }
   if (store.prototypeSelectOpen && !inside(".astral-select, .astral-select-menu")) {
     patch.prototypeSelectOpen = "";
+  }
+  if (
+    store.prototypeChartSettingsOpen &&
+    !inside(".astral-chart-settings, .astral-chart-settings-menu, .astral-select-menu")
+  ) {
+    patch.prototypeChartSettingsOpen = false;
   }
   if (store.prototypeReportCalOpen && !inside(".astral-day-cal, .astral-day-cal-menu")) {
     patch.prototypeReportCalOpen = false;
@@ -27889,6 +27959,11 @@ function onPrototypeKey(event) {
     }
     if (store.prototypeSelectOpen) {
       setProto({ prototypeSelectOpen: "" });
+      return;
+    }
+    if (store.prototypeChartSettingsOpen) {
+      setProto({ prototypeChartSettingsOpen: false });
+      protoRestoreFocus("#astral-fs [data-proto-chart-settings='toggle']");
       return;
     }
     if (store.prototypeAckOpen) {

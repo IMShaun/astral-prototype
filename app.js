@@ -3675,6 +3675,7 @@ const CHROME_FIELDS = [
   "prototypeChartView",
   "prototypeChartStyle",
   "prototypeChartShow",
+  "prototypeChartSettingsOpen",
   "prototypeZoneFor",
   "prototypePillsOpen",
   "prototypeTreeOpen",
@@ -4043,6 +4044,7 @@ function applyChrome() {
     ? store.prototypeChartShow.filter((id) => id === "hours" || id === "tou")
     : [];
   store.prototypeZoneFor = String(store.prototypeZoneFor || "");
+  store.prototypeChartSettingsOpen = Boolean(store.prototypeChartSettingsOpen);
   store.prototypePillsOpen = Boolean(store.prototypePillsOpen);
   store.prototypeChartFilterOpen = Boolean(store.prototypeChartFilterOpen);
   store.prototypeReportForm = Boolean(store.prototypeReportForm);

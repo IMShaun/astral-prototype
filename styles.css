@@ -6983,7 +6983,8 @@ button.astral-state {
 .astral-filter-menu,
 .astral-ack-menu,
 .astral-select-menu,
-.astral-day-cal-menu {
+.astral-day-cal-menu,
+.astral-chart-settings-menu {
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
@@ -7279,7 +7280,8 @@ button.astral-state {
 .astral-filter-menu[hidden],
 .astral-ack-menu[hidden],
 .astral-select-menu[hidden],
-.astral-day-cal-menu[hidden] {
+.astral-day-cal-menu[hidden],
+.astral-chart-settings-menu[hidden] {
   display: none;
 }
 
@@ -7322,7 +7324,8 @@ button.astral-state {
 .astral-account-menu.is-enter,
 .astral-notice-menu.is-enter,
 .astral-people-menu.is-enter,
-.astral-day-cal-menu.is-enter {
+.astral-day-cal-menu.is-enter,
+.astral-chart-settings-menu.is-enter {
   transform-origin: top center;
   animation: astral-menu-in var(--motion-panel) ease both;
 }
@@ -7352,6 +7355,7 @@ button.astral-state {
   .astral-notice-menu.is-enter,
   .astral-people-menu.is-enter,
   .astral-day-cal-menu.is-enter,
+  .astral-chart-settings-menu.is-enter,
   .astral-select.is-enter .astral-select-btn[aria-expanded="true"] > .astral-select-chevron,
   .astral-date.is-enter .astral-date-btn[aria-expanded="true"] > .astral-select-chevron {
     animation: none;
@@ -9044,32 +9048,53 @@ button.astral-state {
   color: #000;
 }
 
-.astral-chart-head.has-zone-row {
-  flex-wrap: wrap;
-  row-gap: 8px;
+.astral-chart-settings {
+  position: relative;
+  flex: none;
 }
 
-.astral-chart-head.has-zone-row > .astral-chart-heading {
-  flex: 1 1 0;
+.astral-chart-settings-btn > svg:first-child {
+  width: 18px;
+  height: 18px;
+  flex: none;
 }
 
-.astral-chart-zone-row {
-  display: flex;
-  flex-basis: 100%;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
+.astral-chart-settings-menu {
+  gap: 12px;
+  width: 20rem;
+  min-width: 20rem;
+  max-width: calc(100vw - 16px);
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.astral-chart-setting {
+  display: grid;
+  gap: 4px;
   min-width: 0;
 }
 
-.astral-chart-zone-row > p {
+.astral-chart-setting > p {
   margin: 0;
-  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
 }
 
-.astral-chart-zone-row .astral-select-menu {
-  left: 0;
-  right: auto;
+.astral-chart-setting .astral-select,
+.astral-chart-setting .astral-select-btn {
+  width: 100%;
+  max-width: none;
+}
+
+.astral-chart-setting .astral-select-btn {
+  justify-content: space-between;
+}
+
+.astral-chart-setting .astral-select-btn > :first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .astral-zone-name {
