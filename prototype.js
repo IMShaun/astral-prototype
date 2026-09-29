@@ -3446,24 +3446,21 @@ function protoZoneBits(bucket, zones) {
 function protoZoneWords(bucket, zones) {
   if (!bucket) return "";
   if (bucket.groups) {
-    return bucket.groups
-      .map((group) => `. ${protoZoneWhose(group.label, group.utility)}: ${protoZoneBits(group.bucket, zones)}`)
-      .join("");
+    return bucket.groups.map((line) => `. ${line.words}: ${protoZoneSpokenParts(line.parts)}`).join("");
   }
   const words = protoZoneBits(bucket, zones);
   return words ? `. ${words}` : "";
 }
 
+function protoZoneSpokenParts(parts) {
+  return (parts || [])
+    .map(({ utility, sites }) => `${sites.length} ${utility.toLowerCase()} site${sites.length === 1 ? "" : "s"}`)
+    .join(", ");
+}
+
 function protoZoneTipAttrs(bucket, zones) {
   if (bucket?.groups) {
-    const lines = bucket.groups.map((group) => [
-      group.label,
-      protoZoneBits(group.bucket, zones),
-      group.head || group.label,
-      group.rest || [],
-      group.whole !== false,
-      group.utility || "",
-    ]);
+    const lines = bucket.groups.map((line) => [line.words, line.parts.map((part) => [part.utility, part.sites])]);
     return `data-tip-zones="${escapeHtml(JSON.stringify(lines))}"`;
   }
   return `data-tip-zone="${escapeHtml(protoZoneWords(bucket, zones).replace(/^\. /, ""))}"`;
@@ -3480,46 +3477,42 @@ function protoReadZones(raw) {
   }
   if (!Array.isArray(list)) return [];
   return list
-    .filter((row) => Array.isArray(row) && row.length >= 2)
-    .map((row) => [
-      String(row[0] || ""),
-      String(row[1] || ""),
-      String(row[2] || row[0] || ""),
-      Array.isArray(row[3]) ? row[3].map(String) : [],
-      row[4] !== false,
-      String(row[5] || ""),
-    ]);
+    .map((row) => (row && !Array.isArray(row) && typeof row === "object" ? [row.words, (row.parts || []).map((part) => [part?.utility, part?.sites])] : row))
+    .filter((row) => Array.isArray(row) && Array.isArray(row[1]))
+    .map((row) => ({
+      words: String(row[0] || ""),
+      parts: row[1]
+        .filter((part) => Array.isArray(part) && Array.isArray(part[1]))
+        .map((part) => ({ utility: String(part[0] || ""), sites: part[1].map(String) })),
+    }));
 }
 
-function protoZoneWhose(label, utility) {
-  return utility && !/^All /.test(label) ? `${label}, ${utility}` : label;
-}
-
-// The state leads each zone line. One pill says whose it is; hover lists the sites.
-function protoZoneSitesPill(names, utility = "") {
-  if (!names.length) return "";
-  if (names.length === 1) {
-    const one = utility && !names[0].endsWith(` ${utility}`) ? `${names[0]} ${utility}` : names[0];
-    return `<span class="astral-zone-more" aria-hidden="true">${escapeHtml(one)}</span>`;
-  }
-  const shown = names.slice(0, PROTO_ZONE_MORE_MAX);
-  const left = names.length - shown.length;
+// A utility icon and how many sites; hover lists them.
+function protoZoneUtilityPill({ utility, sites }) {
+  const n = sites.length;
+  const shown = sites.slice(0, PROTO_ZONE_MORE_MAX);
+  const left = n - shown.length;
   const lines = [...shown, ...(left ? [`and ${left} more`] : [])]
     .map((name) => `<span>${escapeHtml(name)}</span>`)
     .join("");
-  return `<span class="astral-zone-more astral-tip-host" aria-hidden="true">${names.length} ${utility ? `${utility} ` : ""}sites<span class="astral-icon-tip is-list">${lines}</span></span>`;
+  const head = `<span class="is-head">${n} ${escapeHtml(utility.toLowerCase())} site${n === 1 ? "" : "s"}</span>`;
+  return `<span class="astral-zone-more astral-zone-count astral-tip-host" aria-hidden="true">${protoIconMark(
+    protoMeterKind({ commodity: utility }),
+    "astral-meter-mark"
+  )}<span>${n}</span><span class="astral-icon-tip is-list">${head}${lines}</span></span>`;
 }
 
 function protoChartZoneLines(point, limit = 0) {
   const zones = point?.zones || [];
   return (limit ? zones.slice(0, limit) : zones)
-    .map(([label, words, head, rest, , utility]) => {
-      const names = [head, ...rest].filter(Boolean);
-      const whose = protoZoneWhose(label, utility);
-      return `<p class="astral-tip-zone"><span class="astral-tip-zone-state" aria-hidden="true">${escapeHtml(
-        words
-      )}</span>${protoZoneSitesPill(names, utility)}<span class="sr-only">${escapeHtml(`${words}: ${whose}`)}</span></p>`;
-    })
+    .map(
+      ({ words, parts }) =>
+        `<p class="astral-tip-zone"><span class="astral-tip-zone-state" aria-hidden="true">${escapeHtml(
+          words
+        )}</span><span class="astral-tip-zone-pills">${parts.map(protoZoneUtilityPill).join("")}</span><span class="sr-only">${escapeHtml(
+          `${words}: ${protoZoneSpokenParts(parts)}`
+        )}</span></p>`
+    )
     .join("");
 }
 
@@ -3627,40 +3620,64 @@ function protoZoneSet(rows, allMeters, zones) {
       : allMeters;
   const base = { zones, utilities, drawn, utility };
   const groups = hourly ? protoZoneGroups(meters, zones) : [];
-  if (groups.length < 2) return { ...base, groups, pick: null, buckets: protoZoneBuckets(rows, meters) };
   const want = String(store.prototypeZoneFor || "");
-  const pick = groups.find((group) => group.meters.some((meter) => meter.id === want)) || groups[0];
-  const buckets = protoZoneBuckets(rows, pick.meters);
-  const order = [pick, ...groups.filter((group) => group !== pick)].map((group) => ({
-    meters: group.meters,
-    buckets: protoZoneBuckets(rows, group.meters.slice(0, 1)),
-  }));
-  // Groups differ over the day, but at one time several can sit in the same state. Those share a line.
-  const labels = new Map();
-  // With more than one utility drawn, the lines only cover the picked one's sites, so they say which.
-  const kind = drawn.length > 1 ? utility.toLowerCase() : "";
-  buckets.forEach((bucket, i) => {
-    if (!bucket) return;
-    const merged = new Map();
-    order.forEach((group) => {
-      const at = group.buckets[i];
-      const key = protoZoneBits(at, zones);
-      if (!merged.has(key)) merged.set(key, { bucket: at, meters: [] });
-      merged.get(key).meters.push(...group.meters);
+  const pick =
+    groups.length < 2 ? null : groups.find((group) => group.meters.some((meter) => meter.id === want)) || groups[0];
+  const buckets = protoZoneBuckets(rows, pick ? pick.meters : meters);
+  const lines = hourly ? protoZoneStateLines(rows, allMeters, zones, { utilities, drawn, utility, pick }) : null;
+  if (lines) {
+    buckets.forEach((bucket, i) => {
+      if (bucket) bucket.groups = lines[i];
     });
-    bucket.groups = [...merged.values()].map((line) => {
-      const id = line.meters.map((meter) => meter.id).join(",");
-      if (!labels.has(id)) {
-        const every = line.meters.length === meters.length;
-        const several = new Set(meters.map((meter) => meter.site || "")).size > 1;
-        const name = protoZoneGroupLabel(line.meters, meters);
-        labels.set(id, every && several ? { ...name, label: `All ${kind ? `${kind} ` : ""}sites` } : name);
-      }
-      const name = labels.get(id);
-      return { label: name.label, head: name.head, rest: name.rest, whole: name.whole, utility: kind, bucket: line.bucket };
+  }
+  return { ...base, groups, pick, buckets };
+}
+
+// Hover and the pin are not the Utility pick. At each time they say what state every utility's sites are in.
+// Sites in the same state share a line; each utility on it is a pill with its count.
+function protoZoneStateLines(rows, allMeters, zones, { utilities, drawn, utility, pick }) {
+  const graph = (allMeters || []).filter(Boolean);
+  const sites = new Set(graph.map((meter) => meter.site || ""));
+  const pool = protoPanePoolMeters().filter((meter) => meter && sites.has(meter.site || ""));
+  const pickId = pick?.meters?.[0]?.id || "";
+  const sets = [];
+  utilities.forEach((name) => {
+    const seen = new Set();
+    const list = (drawn.includes(name) ? graph : pool).filter((meter) => {
+      if (protoMeterUtility(meter) !== name || seen.has(meter.id)) return false;
+      seen.add(meter.id);
+      return true;
+    });
+    protoZoneGroups(list, zones).forEach((group) => {
+      const rank = group.meters.some((meter) => meter.id === pickId) ? 0 : name === utility ? 1 : 2;
+      sets.push({ utility: name, meters: group.meters, rank });
     });
   });
-  return { ...base, groups, pick, buckets };
+  if (sets.length < 2) return null;
+  sets.sort((a, b) => a.rank - b.rank);
+  sets.forEach((set) => {
+    set.buckets = protoZoneBuckets(rows, set.meters.slice(0, 1));
+  });
+  return (rows || []).map((_, i) => {
+    const merged = new Map();
+    sets.forEach((set) => {
+      const at = set.buckets[i];
+      if (!at) return;
+      const words = protoZoneBits(at, zones);
+      if (!merged.has(words)) merged.set(words, { words, bucket: at, by: new Map() });
+      const by = merged.get(words).by;
+      if (!by.has(set.utility)) by.set(set.utility, new Set());
+      set.meters.forEach((meter) => by.get(set.utility).add(meter.site || ""));
+    });
+    return [...merged.values()].map((line) => ({
+      words: line.words,
+      bucket: line.bucket,
+      parts: PROTO_ZONE_UTILITIES.filter((name) => line.by.has(name)).map((name) => ({
+        utility: name,
+        sites: [...line.by.get(name)].filter(Boolean),
+      })),
+    }));
+  });
 }
 
 function protoZoneLayer(buckets, zones, pad, w, h, spanOf) {

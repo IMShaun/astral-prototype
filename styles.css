@@ -9066,20 +9066,42 @@ button.astral-state {
 
 .astral-tip-zone {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin: 0;
   color: var(--color-text-secondary);
 }
 
 .astral-tip-zone-state {
+  flex: 1 1 auto;
+  min-width: 0;
   color: #000;
 }
 
-.astral-tip-zone > .astral-zone-more {
+.astral-tip-zone-pills {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+.astral-tip-zone-pills > .astral-zone-more {
   display: inline-flex;
-  max-width: 100%;
+}
+
+.astral-zone-count {
+  gap: 3px;
+  padding: 0 6px 0 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.astral-zone-count > .astral-meter-mark {
+  width: 14px;
+  height: 14px;
+}
+
+.astral-icon-tip.is-list > .is-head {
+  margin-bottom: 2px;
+  font-weight: 600;
 }
 
 .astral-chart-settings {
