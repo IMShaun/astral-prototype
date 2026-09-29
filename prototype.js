@@ -4510,9 +4510,11 @@ function protoGraphPills(all, viewIds, options = {}) {
               : `<span class="astral-chart-key-mark" aria-hidden="true"></span>`
             : "";
           const tipText = item.tip ? String(item.tip) : "";
-          const label = `${
-            tipText ? `<span class="sr-only">${escapeHtml(tipText)}. </span>` : ""
-          }<span class="astral-meter-pill-label">${escapeHtml(item.label)}</span>`;
+          const spoken = tipText ? `<span class="sr-only">${escapeHtml(tipText)}. </span>` : "";
+          const name = `<span class="astral-meter-pill-label">${escapeHtml(item.label)}</span>`;
+          const label = item.tipAfter
+            ? `${name}${tipText ? `<span class="sr-only">. ${escapeHtml(tipText)}</span>` : ""}`
+            : `${spoken}${name}`;
           const tip = tipText ? protoTip(tipText) : "";
           const host = tipText ? " astral-tip-host" : "";
           if (!toggle) {
@@ -4570,6 +4572,17 @@ function protoMeterPills(meters, options = {}) {
   );
 }
 
+// How many meters of each utility a site has, such as Electricity 2 · Gas 1 · Water 1.
+function protoSiteUtilityCounts(site) {
+  // The pane can hide a utility, so count from the whole site.
+  const whole = protoSiteByMeter(protoSiteId(site)) || site;
+  const meters = (whole?.meters || []).filter(Boolean);
+  return PROTO_ZONE_UTILITIES.map((name) => [name, meters.filter((meter) => protoMeterUtility(meter) === name).length])
+    .filter(([, n]) => n)
+    .map(([name, n]) => `${name} ${n}`)
+    .join(" \u00b7 ");
+}
+
 function protoSitePills(viewSites, allSites) {
   const all = allSites?.length ? allSites : viewSites || [];
   const view = viewSites || [];
@@ -4578,6 +4591,8 @@ function protoSitePills(viewSites, allSites) {
   const items = all.map((site, i) => ({
     id: protoSiteId(site),
     label: site.name,
+    tip: protoSiteUtilityCounts(site),
+    tipAfter: true,
     color: colour ? protoLineStyle(i).color : "",
   }));
   return protoGraphPills(
