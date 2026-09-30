@@ -9777,6 +9777,8 @@ button.astral-state {
   color: #000;
   font-size: 0.8rem;
   font-weight: 600;
+  white-space: nowrap;
+  flex: none;
 }
 
 .astral-tag.is-point {
