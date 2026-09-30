@@ -8660,7 +8660,7 @@ function protoReportTenantsOf(draft) {
 
 function protoReportBlankTenant() {
   const [tenant] = protoReportNormalizeTenants(
-    { tenants: [{ id: `tenant-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}` }] },
+    { tenants: [{ id: `tenant-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, share: 100 }] },
     new Set()
   );
   return protoReportTenantDraft(tenant);
@@ -10961,9 +10961,9 @@ function protoReportUtilSplit(tenant, util, who) {
           `tenant:${tenant.id}:${util.id}Standing`,
           tenant[`${util.id}Standing`],
           "%",
-          "50"
+          "100"
         )}
-        ${protoReportUnitInput("Usage share", `tenant:${tenant.id}:${util.id}Usage`, tenant[`${util.id}Usage`], "%", "50")}
+        ${protoReportUnitInput("Usage share", `tenant:${tenant.id}:${util.id}Usage`, tenant[`${util.id}Usage`], "%", "100")}
       </div>
       ${protoReportSiteCharges(tenant, util)}`
           : `<p class="astral-muted">${escapeHtml(util.name)} stays off their bill.</p>`
