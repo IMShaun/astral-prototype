@@ -3806,7 +3806,6 @@ const CHROME_FIELDS = [
   "prototypeReportDraftFrom",
   "prototypeReportDraftTo",
   "prototypeReportGroup",
-  "prototypeReportTenantOpen",
   "prototypeReportQuery",
   "prototypeReportFilters",
   "prototypeReportLayout",
