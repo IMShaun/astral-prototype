@@ -11252,10 +11252,7 @@ function protoReportFileFields(draft) {
     def.fileSep === " " ? "Other symbols drop out." : "Spaces become hyphens. Other symbols drop out.",
   ];
   return `
-    <div class="astral-report-file-preview">
-      <div class="astral-report-file-now" role="status" data-proto-report-file-preview>${protoReportFilePreviewInner(draft)}</div>
-      <div class="astral-report-file-default" tabindex="-1" data-proto-report-file-default>${protoReportFileDefaultInner(draft)}</div>
-    </div>
+    <div class="astral-report-file-preview" role="status" data-proto-report-file-preview>${protoReportFilePreviewInner(draft)}</div>
     <div class="astral-report-pair">
       ${protoReportOptionSelect("report-file-prefix", "Start with", prefixes, prefix)}
       ${
@@ -11272,6 +11269,7 @@ function protoReportFileFields(draft) {
       ${protoReportOptionSelect("report-file-sep", "Join parts with", PROTO_REPORT_FILE_SEPS, def.fileSep)}
     </div>
     <p class="astral-muted">${escapeHtml(rules.join(" "))}</p>
+    <div class="astral-report-file-default" data-proto-report-file-default>${protoReportFileDefaultInner(draft)}</div>
   `;
 }
 
@@ -11307,19 +11305,29 @@ function protoReportFileIsDefault(draft) {
   return Object.keys(PROTO_REPORT_FILE_BASE).every((key) => String(now[key]) === String(base[key]));
 }
 
+// One tick saves this naming for the person's new reports. Unticking goes back to the standard naming.
 function protoReportFileDefaultInner(draft) {
   const saved = Boolean(protoReportFileSaved());
-  if (protoReportFileIsDefault(draft)) {
-    return `<p class="astral-report-file-is-default">${protoIconMark("check")}<span>${
-      saved ? "This is your default naming. New reports start with it." : "This is the standard naming. New reports start with it."
-    }</span></p>`;
-  }
+  const on = saved && protoReportFileIsDefault(draft);
+  const note = on
+    ? "Your new reports start with this naming."
+    : saved
+      ? "This replaces the naming you saved before."
+      : "Until you tick this, new reports use the standard naming.";
   return `
-    <p class="astral-muted">New reports start with ${saved ? "your default naming" : "the standard naming"}.</p>
-    <div class="astral-actions">
-      ${protoTextBtn("Make this my default", 'data-proto-report-file-default="save"')}
-      ${protoTextBtn(saved ? "Use my default" : "Use the standard naming", 'data-proto-report-file-default="use"')}
-    </div>
+    <button
+      type="button"
+      role="checkbox"
+      class="astral-report-consent${on ? " is-on" : ""}"
+      aria-checked="${on ? "true" : "false"}"
+      data-proto-report-file-default="toggle"
+    >
+      ${protoCheck(on)}
+      <span class="astral-report-consent-copy">
+        <span>Use this naming for my new reports</span>
+        <span class="astral-muted">${note}</span>
+      </span>
+    </button>
   `;
 }
 
@@ -27530,18 +27538,12 @@ function onPrototype(event) {
   if (fileDefaultBtn) {
     const draft = protoReportDraft();
     if (!draft) return;
-    if (fileDefaultBtn.dataset.protoReportFileDefault === "save") {
-      setProto({
-        prototypeReportFileDefaults: {
-          ...(store.prototypeReportFileDefaults || {}),
-          [protoReportFileDefaultsKey()]: protoReportFileOf(draft),
-        },
-      });
-      protoRestoreFocus("#astral-fs [data-proto-report-file-default]");
-    } else {
-      protoReportPatchDraft(protoReportFileDefault());
-      protoRestoreFocus('#astral-fs [data-proto-select="report-file-prefix"] .astral-select-btn');
-    }
+    const on = fileDefaultBtn.getAttribute("aria-checked") === "true";
+    const all = { ...(store.prototypeReportFileDefaults || {}) };
+    if (on) delete all[protoReportFileDefaultsKey()];
+    else all[protoReportFileDefaultsKey()] = protoReportFileOf(draft);
+    setProto({ prototypeReportFileDefaults: all });
+    protoRestoreFocus("#astral-fs [data-proto-report-file-default] button");
     return;
   }
   const utilTab = event.target.closest("[data-proto-report-util-tab]");
