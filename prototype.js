@@ -4804,8 +4804,10 @@ function protoFormatReading(value, unit) {
   return u ? `${amount} ${u}` : amount;
 }
 
-function protoReadingQualityMark(quality) {
-  return quality === "estimated" ? protoTag("Estimated") : "";
+// Estimated reads the same everywhere: warning colour on a warning-subtle highlight with a dotted underline.
+// Hover and screen readers name it.
+function protoEstAmount(amountHtml) {
+  return `<span class="astral-tip-host astral-reading-est"><span class="astral-est">${amountHtml}</span><span class="sr-only">, Estimated</span><span class="astral-icon-tip" role="tooltip">Estimated</span></span>`;
 }
 
 function protoReadingQualityWords(quality) {
@@ -4862,7 +4864,9 @@ function protoChartPointSeriesMark(label, color) {
 function protoChartPointReading(label, value, unit, color, quality, cls = "", drill = "") {
   const amount = escapeHtml(protoFormatReading(value, unit));
   const series = protoChartPointSeriesMark(label, color);
-  const inner = `${series}${protoReadingQualityMark(quality)}<span class="astral-query-pin-kwh">${amount}</span>`;
+  const plain = escapeHtml(protoFormatAmount(value));
+  const shown = quality === "estimated" && value != null ? amount.replace(plain, protoEstAmount(plain)) : amount;
+  const inner = `${series}<span class="astral-query-pin-kwh">${shown}</span>`;
   if (drill) {
     return `<button type="button" class="astral-query-pin-reading is-drill${cls ? ` ${cls}` : ""}" ${drill} aria-label="${escapeHtml(
       `Open ${label}, ${protoFormatReading(value, unit)}${protoReadingQualityWords(quality)}`
@@ -20388,8 +20392,7 @@ function protoBreakdownReading(value, quality) {
   if (value == null) return "No reading";
   const amount = protoFormatAmount(value);
   if (quality !== "estimated") return amount;
-  // Dotted means estimated, as on the graph line. Hover and screen readers name it.
-  return `<span class="astral-tip-host astral-reading-est"><span class="astral-est">${amount}</span><span class="sr-only">, Estimated</span><span class="astral-icon-tip" role="tooltip">Estimated</span></span>`;
+  return protoEstAmount(amount);
 }
 
 function protoIntervalRowHtml(point, dual, chart, sliceCols) {

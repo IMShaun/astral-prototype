@@ -12599,6 +12599,11 @@ button.astral-state:focus-visible,
   margin-inline: 0;
 }
 
+/* The highlight sits around the number without making its row taller. */
+.astral-reading-est .astral-est {
+  margin-block: -1px -3px;
+}
+
 .astral-reading-est {
   cursor: default;
 }
