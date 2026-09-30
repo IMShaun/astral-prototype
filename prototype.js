@@ -26559,24 +26559,10 @@ function protoThumb(view) {
 
 function protoLensTabs(items, current, attr, label) {
   if (!items.length) return "";
-  const tabs = items
-    .map((item) => {
-      const on = item.id === current;
-      return `
-      <button
-        type="button"
-        class="kind-tab"
-        role="tab"
-        ${attr}="${escapeHtml(item.id)}"
-        aria-selected="${on ? "true" : "false"}"
-      >${escapeHtml(item.name)}</button>
-    `;
-    })
-    .join("");
   return `
     <div class="proto-lens-row">
       <p class="proto-lens-kicker">${escapeHtml(label)}</p>
-      <div class="kind-tabs" role="tablist" aria-label="${escapeHtml(label)}">${tabs}</div>
+      ${protoTabs(items, current, attr, label)}
     </div>
   `;
 }
@@ -26653,15 +26639,17 @@ function protoGallery() {
     : "Pick the company, then access. This walk is a temporary user.";
   return `
     <div class="proto-desk">
-      <header class="page-head">
-        <section class="lead">
-          <h2>Prototype</h2>
-          <p>${escapeHtml(data.galleryLead || "")}</p>
-        </section>
-        <button type="button" class="page-add" data-proto-full="show">Open fullscreen</button>
+      <header class="astral-page-head astral-page-tools">
+        <div><h2>Prototype</h2></div>
+        <div class="astral-page-actions">
+          <button type="button" class="astral-btn" data-proto-full="show">Open fullscreen</button>
+        </div>
       </header>
-      ${protoLenses()}
-      <p class="section-help">${escapeHtml(help)}</p>
+      <p class="astral-muted astral-home-lead desk-lead">${escapeHtml(data.galleryLead || "")}</p>
+      <section class="astral-card proto-lens-card" aria-label="Who is walking">
+        ${protoLenses()}
+      </section>
+      <p class="astral-muted">${escapeHtml(help)}</p>
       <div class="proto-thumbs">${protoShownViews().map(protoThumb).join("")}</div>
     </div>
   `;

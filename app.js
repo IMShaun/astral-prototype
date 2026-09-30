@@ -38,6 +38,7 @@ const els = {
   headline: document.getElementById("headline"),
   situation: document.getElementById("situation"),
   todayCount: document.getElementById("today-count"),
+  todaySheetTitle: document.getElementById("today-sheet-title"),
   todayList: document.getElementById("today-list"),
   canList: document.getElementById("can-list"),
   cannotList: document.getElementById("cannot-list"),
@@ -498,36 +499,39 @@ function strategyMoveCount(current) {
   );
 }
 
+function knowCard(card, index, withBody) {
+  return `
+    <button
+      type="button"
+      class="astral-card astral-home-card desk-know-card"
+      data-open="know"
+      data-id="${index}"
+      aria-haspopup="dialog"
+    >
+      <span class="desk-step-index" aria-hidden="true">${index + 1}</span>
+      <span class="desk-know-title">${escapeHtml(card.title || "")}</span>
+      ${withBody && card.body ? `<span class="astral-muted desk-know-body">${escapeHtml(card.body)}</span>` : ""}
+    </button>
+  `;
+}
+
 function strategyStepCard(text, index) {
   return `
-    <article class="strategy-step">
-      <span class="know-index">${index + 1}</span>
-      <span class="card-title">${escapeHtml(text)}</span>
+    <article class="astral-card desk-step">
+      <span class="desk-step-index" aria-hidden="true">${index + 1}</span>
+      <p class="desk-step-title">${escapeHtml(text)}</p>
     </article>
   `;
 }
 
 function strategyOpenCard(group) {
   const status = group.status || "draft";
-  return `
-    <article class="brand-card insight-card">
-      <span class="card-top">
-        <span class="status" data-status="${escapeHtml(status)}">${escapeHtml(
-          STATUS_LABEL[status] || "Draft"
-        )}</span>
-      </span>
-      <button
-        type="button"
-        class="insight-open"
-        data-open="group"
-        data-id="${escapeHtml(group.id)}"
-        aria-haspopup="dialog"
-      >
-        <span class="card-title">${escapeHtml(group.name || "")}</span>
-        <span class="card-line">${escapeHtml(group.open || "")}</span>
-      </button>
-    </article>
-  `;
+  return deskCard({
+    open: { "data-open": "group", "data-id": group.id },
+    title: group.name || "",
+    tags: deskTag(STATUS_LABEL[status] || "Draft", status),
+    body: escapeHtml(group.open || ""),
+  });
 }
 
 function keiListOr(list, fallback) {
@@ -564,14 +568,13 @@ function keiTaxonomyCard(item, named, method) {
   const status = method ? "scaffold" : named ? "working" : "waiting";
   const label = method ? "Method" : named ? "In play" : "Waiting";
   const meta = keiHowKind(item);
-  return `
-    <article class="strategy-step">
-      <span class="status" data-status="${status}">${label}</span>
-      <span class="card-title">${escapeHtml(item.name)}</span>
-      ${meta ? `<span class="analytics-how-meta">${escapeHtml(meta)}</span>` : ""}
-      <span class="card-line">${escapeHtml(item.body)}</span>
-    </article>
-  `;
+  return deskCard({
+    title: item.name,
+    tags: deskTag(label, status),
+    body: `${meta ? `<span class="desk-card-meta">${escapeHtml(meta)}</span>` : ""}${escapeHtml(
+      item.body
+    )}`,
+  });
 }
 
 function keiStructureNamed(item, list) {
@@ -750,92 +753,49 @@ function keiCard(item) {
     : "Not measured";
   const rounds = keiRounds(item);
   const role = keiRoleName(item);
-  return `
-    <article class="brand-card insight-card analytics-card">
-      <span class="card-top">
-        <span class="status" data-status="${escapeHtml(maturity.status)}">${escapeHtml(
-          maturity.name
-        )}</span>
-        ${
-          role
-            ? `<span class="status" data-status="scaffold">${escapeHtml(role)}</span>`
-            : ""
-        }
-        <span class="status" data-status="${escapeHtml(change.status)}">${escapeHtml(
-          change.name
-        )}</span>
-      </span>
-      <button
-        type="button"
-        class="insight-open"
-        data-open="kei"
-        data-id="${escapeHtml(item.id)}"
-        aria-haspopup="dialog"
-      >
-        <span class="card-title">${escapeHtml(item.name || "")}</span>
-        <span class="analytics-value">${escapeHtml(value)}</span>
-        <span class="analytics-spark">
-          ${keiLineChart(rounds, { width: 280, height: 64, spark: true })}
-        </span>
-        <span class="card-line">${escapeHtml(item.question || item.feature || "")}</span>
-      </button>
-    </article>
-  `;
+  return deskCard({
+    open: { "data-open": "kei", "data-id": item.id },
+    title: item.name || "",
+    className: "desk-kei-card",
+    tags: `<span class="desk-card-tags">${deskTag(maturity.name, maturity.status)}${
+      role ? deskTag(role, "scaffold") : ""
+    }</span>`,
+    body: `<span class="desk-kei-value">${escapeHtml(value)}</span><span class="analytics-spark">${keiLineChart(
+      rounds,
+      { width: 280, height: 64, spark: true }
+    )}</span>${escapeHtml(item.question || item.feature || "")}`,
+    foot: deskTag(change.name, change.status),
+  });
 }
 
 function scoreField(item) {
-  return `
-    <span class="research-score">
-      <span class="field-label">Score</span>
-      <span class="score-value">${insightScore(item)}</span>
-    </span>
-  `;
+  return `<span class="desk-score"><span class="astral-muted">Score</span> <b>${insightScore(
+    item
+  )}</b></span>`;
 }
 
 function insightCard(item) {
   const severity = insightSeverity(item);
-  return `
-    <article class="brand-card insight-card">
-      <span class="card-top">
-        <span class="status" data-status="${escapeHtml(
-          researchSeverityStatus(severity)
-        )}">${escapeHtml(researchSeverityName(severity))}</span>
-        ${scoreField(item)}
-      </span>
-      <button
-        type="button"
-        class="insight-open"
-        data-open="insight"
-        data-id="${escapeHtml(item.id)}"
-        aria-haspopup="dialog"
-      >
-        <span class="card-title">${escapeHtml(item.title || "")}</span>
-        <span class="card-line">${escapeHtml(item.problem || "")}</span>
-      </button>
-    </article>
-  `;
+  return deskCard({
+    open: { "data-open": "insight", "data-id": item.id },
+    title: item.title || "",
+    tags: deskTag(researchSeverityName(severity), researchSeverityStatus(severity)),
+    body: escapeHtml(item.problem || ""),
+    foot: scoreField(item),
+  });
 }
 
 function insightRow(item) {
   const severity = insightSeverity(item);
-  return `
-    <li class="research-row">
-      ${scoreField(item)}
-      <span class="status" data-status="${escapeHtml(
-        researchSeverityStatus(severity)
-      )}">${escapeHtml(researchSeverityName(severity))}</span>
-      <button
-        type="button"
-        class="insight-open"
-        data-open="insight"
-        data-id="${escapeHtml(item.id)}"
-        aria-haspopup="dialog"
-      >
-        <span class="card-title">${escapeHtml(item.title || "")}</span>
-        <span class="card-line">${escapeHtml(item.problem || "")}</span>
-      </button>
-    </li>
-  `;
+  return deskRow({
+    open: { "data-open": "insight", "data-id": item.id },
+    title: item.title || "",
+    cells: [
+      deskTag(researchSeverityName(severity), researchSeverityStatus(severity)),
+      escapeHtml(String(insightScore(item))),
+      `<span class="desk-cell-line">${escapeHtml(item.problem || "")}</span>`,
+    ],
+  });
 }
 
 function board() {
@@ -1418,7 +1378,210 @@ function initials(name) {
 }
 
 function emptyCard(text) {
-  return `<div class="empty-card">${escapeHtml(text)}</div>`;
+  return `<div class="astral-empty desk-empty"><p class="astral-muted">${escapeHtml(text)}</p></div>`;
+}
+
+/* Desk pages reuse the prototype's pieces: summary stats as filters, a
+   sheet with Search and the view switch, report-grid cards, and tables. */
+const DESK_VIEWS = [
+  { id: "cards", name: "Cards", icon: "grid" },
+  { id: "list", name: "List", icon: "list" },
+];
+
+const DESK_SECTION_ICONS = {
+  today: "home",
+  groups: "users",
+  journeys: "chart-line",
+  research: "analyse",
+  strategy: "outgoing",
+  analytics: "chart-bar",
+  access: "profile",
+  library: "grid",
+  language: "comment",
+  patterns: "report",
+  skills: "servicing",
+  prototype: "expand",
+  branding: "tag",
+  workflow: "hours",
+};
+
+function deskView(section) {
+  if (section === "research" && typeof activeResearchView === "function") {
+    return activeResearchView() === "list" ? "list" : "cards";
+  }
+  return store?.deskViews?.[section] === "list" ? "list" : "cards";
+}
+
+function deskQuery(section) {
+  return String(store?.deskQueries?.[section] || "");
+}
+
+function deskMatch(section, ...fields) {
+  const q = deskQuery(section).trim().toLowerCase();
+  if (!q) return true;
+  return fields.some((field) => String(field || "").toLowerCase().includes(q));
+}
+
+function deskTag(label, status) {
+  return `<span class="astral-tag status" data-status="${escapeHtml(status || "draft")}">${escapeHtml(
+    label
+  )}</span>`;
+}
+
+function deskStats(items, active, attr, aria) {
+  return `
+    <div class="astral-summary-stats desk-stats" role="group" aria-label="${escapeHtml(aria)}">
+      ${items
+        .map((item) => {
+          const on = item.id === active;
+          const off = !on && Boolean(item.disabled);
+          return `
+        <button type="button" class="astral-stat astral-summary-stat${on ? " is-on" : ""}" aria-pressed="${
+          on ? "true" : "false"
+        }" ${attr}="${escapeHtml(item.id)}"${off ? " disabled" : ""}>
+          <span class="astral-stat-value">${escapeHtml(String(item.count))}</span>
+          <span>${escapeHtml(item.name)}</span>
+        </button>`;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function deskJumpStats(items, aria) {
+  return `
+    <div class="astral-summary-stats desk-stats" role="group" aria-label="${escapeHtml(aria)}">
+      ${items
+        .map(
+          (item) => `
+        <button type="button" class="astral-stat astral-summary-stat" data-desk-jump="${escapeHtml(
+          item.target
+        )}">
+          <span class="astral-stat-value">${escapeHtml(String(item.count))}</span>
+          <span>${escapeHtml(item.name)}</span>
+        </button>`
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function deskTools(section, placeholder, label) {
+  const views = DESK_VIEWS.map((item) => ({ ...item, id: `${section}:${item.id}` }));
+  return `
+    <div class="astral-sheet-head">
+      <div class="astral-sheet-tools">
+        ${protoSearchField({
+          name: `desk-q:${section}`,
+          value: deskQuery(section),
+          placeholder,
+          label,
+        })}
+        ${protoViewSwitch(views, `${section}:${deskView(section)}`, "data-desk-view", "View")}
+      </div>
+    </div>
+  `;
+}
+
+function deskOpenAttrs(open) {
+  return Object.entries(open || {})
+    .map(([key, value]) => `${key}="${escapeHtml(value)}"`)
+    .join(" ");
+}
+
+// A report-grid card. The title button stretches over the whole card.
+function deskCard({ open, title, tags, body, foot, lead, className }) {
+  const dialog = open && open["data-open"] ? ' aria-haspopup="dialog"' : "";
+  const heading = open
+    ? `<button type="button" class="desk-card-open" ${deskOpenAttrs(open)}${dialog}>${escapeHtml(
+        title
+      )}</button>`
+    : escapeHtml(title);
+  return `
+    <article class="astral-card desk-card${open ? " is-link" : ""}${className ? ` ${className}` : ""}">
+      <div class="astral-card-head">
+        ${lead || ""}
+        <h3>${heading}</h3>
+        ${tags || ""}
+      </div>
+      ${body ? `<p>${body}</p>` : ""}
+      ${foot ? `<div class="astral-actions desk-card-foot">${foot}</div>` : ""}
+    </article>
+  `;
+}
+
+function deskTable(cols, rows) {
+  return `
+    <div class="astral-table-wrap desk-table">
+      <table class="astral-table">
+        <thead><tr>${cols.map((col) => `<th scope="col">${escapeHtml(col)}</th>`).join("")}</tr></thead>
+        <tbody>${rows.join("")}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function deskRow({ open, title, cells }) {
+  const dialog = open && open["data-open"] ? ' aria-haspopup="dialog"' : "";
+  const head = open
+    ? `<button type="button" class="desk-row-open" ${deskOpenAttrs(open)}${dialog}>${escapeHtml(
+        title
+      )}</button>`
+    : escapeHtml(title);
+  return `
+    <tr class="${open ? "is-link" : ""}">
+      <th scope="row">${head}</th>
+      ${(cells || []).map((cell) => `<td>${cell}</td>`).join("")}
+    </tr>
+  `;
+}
+
+function deskSheet(section, { placeholder, label, cards, cols, rows, empty }) {
+  const list = deskView(section) === "list";
+  const count = list ? rows.length : cards.length;
+  let inner = emptyCard(deskQuery(section) ? "Nothing matches that search." : empty);
+  if (count) {
+    inner = list
+      ? deskTable(cols, rows)
+      : `<div class="astral-report-grid desk-grid">${cards.join("")}</div>`;
+  }
+  return `
+    <section class="astral-card astral-reports-sheet desk-sheet${list ? " is-list" : " is-cards"}">
+      ${deskTools(section, placeholder, label)}
+      ${inner}
+    </section>
+  `;
+}
+
+function deskDetailHead({ back, where, kicker, title, lead, extra }) {
+  return `
+    ${listBackButton(back, where)}
+    <header class="astral-page-head astral-page-tools desk-detail-head">
+      <div>
+        ${kicker ? `<div class="desk-detail-kicker">${kicker}</div>` : ""}
+        <h2>${escapeHtml(title)}</h2>
+      </div>
+    </header>
+    ${lead ? `<p class="astral-muted astral-home-lead desk-lead">${escapeHtml(lead)}</p>` : ""}
+    ${extra || ""}
+  `;
+}
+
+function deskSection(title, inner, help) {
+  return `
+    <section class="astral-card desk-block">
+      <div class="desk-block-head">
+        <h3>${escapeHtml(title)}</h3>
+        ${help ? `<p class="astral-muted">${escapeHtml(help)}</p>` : ""}
+      </div>
+      ${inner}
+    </section>
+  `;
+}
+
+function setPanelDetail(section, on) {
+  const panel = document.querySelector(`.panel[data-panel="${section}"]`);
+  if (panel) panel.classList.toggle("is-detail", Boolean(on));
 }
 
 function factRow(label, value) {
@@ -1439,7 +1602,7 @@ function removeButton(action, extra = "") {
 
 function taskItem(task, done) {
   const project = task.project
-    ? `<span class="chip">${escapeHtml(task.project)}</span>`
+    ? `<span class="astral-tag">${escapeHtml(task.project)}</span>`
     : "";
   return `
     <li class="task">
@@ -1458,30 +1621,42 @@ function taskItem(task, done) {
   `;
 }
 
+function deskAvatar(name) {
+  return `<span class="astral-avatar desk-avatar" aria-hidden="true">${escapeHtml(
+    initials(name)
+  )}</span>`;
+}
+
 function groupItem(group) {
   const status = group.status || "draft";
-  return `
-    <button
-      type="button"
-      class="group"
-      data-open="group"
-      data-id="${escapeHtml(group.id)}"
-      aria-haspopup="dialog"
-    >
-      <span class="group-top">
-        <span class="avatar" aria-hidden="true">${escapeHtml(
-          initials(group.name)
-        )}</span>
-        <span class="group-title">
-          <span class="status" data-status="${escapeHtml(status)}">${
-            STATUS_LABEL[status] || "Draft"
-          }</span>
-          <span class="card-title">${escapeHtml(group.name)}</span>
-        </span>
-      </span>
-      <span class="card-line">${escapeHtml(group.who || "Open for the rest.")}</span>
-    </button>
-  `;
+  return deskCard({
+    open: { "data-open": "group", "data-id": group.id },
+    lead: deskAvatar(group.name),
+    title: group.name,
+    tags: deskTag(STATUS_LABEL[status] || "Draft", status),
+    body: escapeHtml(group.who || "Open for the rest."),
+  });
+}
+
+function groupParentName(group) {
+  const parent = (board().groups || []).find((item) => item.id === group.parent);
+  return parent ? parent.name : "";
+}
+
+function groupRow(group, kind) {
+  const status = group.status || "draft";
+  const stages = (group.journey || []).length;
+  return deskRow({
+    open: { "data-open": kind, "data-id": group.id },
+    title: group.name,
+    cells: [
+      escapeHtml(groupParentName(group) || "—"),
+      deskTag(STATUS_LABEL[status] || "Draft", status),
+      kind === "journey"
+        ? escapeHtml(stages === 1 ? "1 stage" : `${stages} stages`)
+        : `<span class="desk-cell-line">${escapeHtml(group.who || "")}</span>`,
+    ],
+  });
 }
 
 function groupChildren(groups, parentId) {
@@ -1518,13 +1693,31 @@ function groupClusters(groups, itemFn, include) {
           : [];
       if (!cards.length) return "";
       return `
-        <section class="group-cluster">
-          <h3 class="group-cluster-head">${escapeHtml(group.name)}</h3>
-          <div class="group-grid">${cards.map(itemFn).join("")}</div>
+        <section class="desk-cluster">
+          <h4 class="desk-cluster-title">${escapeHtml(group.name)}</h4>
+          <div class="astral-report-grid desk-grid">${cards.map(itemFn).join("")}</div>
         </section>
       `;
     })
     .join("");
+}
+
+function groupSheet(section, groups, itemFn, include, placeholder, cols) {
+  const kind = section === "journeys" ? "journey" : "group";
+  const list = deskView(section) === "list";
+  const leaves = groupCards(groups, include);
+  let inner = emptyCard("Nothing matches that search.");
+  if (leaves.length) {
+    inner = list
+      ? deskTable(cols, leaves.map((group) => groupRow(group, kind)))
+      : `<div class="desk-clusters">${groupClusters(groups, itemFn, include)}</div>`;
+  }
+  return `
+    <section class="astral-card astral-reports-sheet desk-sheet${list ? " is-list" : " is-cards"}">
+      ${deskTools(section, placeholder, placeholder)}
+      ${inner}
+    </section>
+  `;
 }
 
 function journeyPath(group) {
@@ -1562,69 +1755,36 @@ function journeyPath(group) {
 }
 
 function journeyItem(group) {
-  return `
-    <button
-      type="button"
-      class="journey-card"
-      data-open="journey"
-      data-id="${escapeHtml(group.id)}"
-      aria-haspopup="dialog"
-    >
-      <span class="group-top">
-        <span class="avatar" aria-hidden="true">${escapeHtml(
-          initials(group.name)
-        )}</span>
-        <span class="group-title">
-          <span class="access-scope">${escapeHtml(
-            STATUS_LABEL[group.status] || "Draft"
-          )}</span>
-          <span class="card-title">${escapeHtml(group.name)}</span>
-        </span>
-      </span>
-      <span class="card-line">${escapeHtml(group.who || "Open for the map.")}</span>
-    </button>
-  `;
+  const status = group.status || "draft";
+  const stages = (group.journey || []).length;
+  return deskCard({
+    open: { "data-open": "journey", "data-id": group.id },
+    lead: deskAvatar(group.name),
+    title: group.name,
+    tags: deskTag(STATUS_LABEL[status] || "Draft", status),
+    body: escapeHtml(group.who || "Open for the map."),
+    foot: `<span class="astral-muted">${escapeHtml(
+      stages === 1 ? "1 stage" : `${stages} stages`
+    )}</span>`,
+  });
 }
 
 function accessItem(item, scope) {
-  return `
-    <button
-      type="button"
-      class="access-card"
-      data-open="tool"
-      data-id="${escapeHtml(item.id)}"
-      data-scope="${escapeHtml(scope)}"
-      aria-haspopup="dialog"
-    >
-      <span class="avatar avatar-tool" aria-hidden="true">${escapeHtml(
-        initials(item.name)
-      )}</span>
-      <span class="card-copy">
-        <span class="card-title">${escapeHtml(item.name)}</span>
-        <span class="card-line">${escapeHtml(item.have || (scope === "team" ? "This team" : "Company"))}</span>
-      </span>
-    </button>
-  `;
+  return deskCard({
+    open: { "data-open": "tool", "data-id": item.id, "data-scope": scope },
+    lead: deskAvatar(item.name),
+    title: item.name,
+    body: escapeHtml(item.have || (scope === "team" ? "This team" : "Company")),
+  });
 }
 
 function personItem(person) {
-  return `
-    <button
-      type="button"
-      class="access-card person-card"
-      data-open="person"
-      data-id="${escapeHtml(person.id)}"
-      aria-haspopup="dialog"
-    >
-      <span class="avatar" aria-hidden="true">${escapeHtml(
-        initials(person.name)
-      )}</span>
-      <span class="card-copy">
-        <span class="card-title">${escapeHtml(person.name)}</span>
-        <span class="card-line">${escapeHtml(person.helps || "Can restore access")}</span>
-      </span>
-    </button>
-  `;
+  return deskCard({
+    open: { "data-open": "person", "data-id": person.id },
+    lead: deskAvatar(person.name),
+    title: person.name,
+    body: escapeHtml(person.helps || "Can restore access"),
+  });
 }
 
 function tokenMark(token) {
@@ -1686,8 +1846,8 @@ function tokenRow(token) {
 
 function tokenTable(items) {
   return `
-    <div class="token-table-wrap">
-      <table class="token-table">
+    <div class="astral-table-wrap token-table-wrap">
+      <table class="astral-table token-table">
         <thead>
           <tr>
             <th>Name</th>
@@ -1721,36 +1881,54 @@ function stylePreview(style) {
 
 function styleItem(style) {
   return `
-    <button
-      type="button"
-      class="style-card"
-      data-open="textstyle"
-      data-id="${escapeHtml(style.id)}"
-      aria-haspopup="dialog"
-    >
-      <span class="style-sample"${stylePreview(style)}>${escapeHtml(style.name)}</span>
-      <span class="card-line">${escapeHtml(
-        `${style.group || "Type"} · ${style.figma || style.name}`
-      )}</span>
-    </button>
+    <article class="astral-card desk-card is-link desk-style-card">
+      <div class="astral-card-head">
+        <h3><button type="button" class="desk-card-open" data-open="textstyle" data-id="${escapeHtml(
+          style.id
+        )}" aria-haspopup="dialog"><span class="style-sample"${stylePreview(style)}>${escapeHtml(
+          style.name
+        )}</span></button></h3>
+      </div>
+      <p>${escapeHtml(`${style.group || "Type"} · ${style.figma || style.name}`)}</p>
+    </article>
   `;
 }
 
-function componentItem(item) {
-  const path = item.figma?.componentKey
+function componentPath(item) {
+  return item.figma?.componentKey
     ? `${item.figma.libraryName || "IMSERV Design System"} · ${item.figma.name || item.name}`
     : item.file || "";
-  return `
-    <button
-      type="button"
-      class="brand-card"
-      data-library-component="${escapeHtml(item.id)}"
-    >
-      <span class="card-title">${escapeHtml(item.react || item.name)}</span>
-      <span class="card-line">${escapeHtml(item.summary || "Waits until tokens are firm.")}</span>
-      <span class="token-path">${escapeHtml(path)}</span>
-    </button>
-  `;
+}
+
+function componentItem(item) {
+  return deskCard({
+    open: { "data-library-component": item.id },
+    title: item.react || item.name,
+    body: escapeHtml(item.summary || "Waits until tokens are firm."),
+    foot: `<span class="token-path">${escapeHtml(componentPath(item))}</span>`,
+  });
+}
+
+function componentRow(item) {
+  const family = COMPONENT_FAMILIES.find((fam) => fam.id === item.family);
+  return deskRow({
+    open: { "data-library-component": item.id },
+    title: item.react || item.name,
+    cells: [
+      escapeHtml(family ? family.name : "Other"),
+      `<span class="desk-cell-line">${escapeHtml(item.summary || "")}</span>`,
+    ],
+  });
+}
+
+function componentFamilyId(item) {
+  return COMPONENT_FAMILIES.some((fam) => fam.id === item.family) ? item.family : "other";
+}
+
+function activeComponentFamily(items) {
+  const id = store?.componentFamily || "all";
+  if (id === "all") return "all";
+  return (items || []).some((item) => componentFamilyId(item) === id) ? id : "all";
 }
 
 function groupedComponents(items) {
@@ -1780,7 +1958,7 @@ function deskFoldChevron() {
 function deskFoldBlock({ id, title, help, count, inner }) {
   const clipId = `library-fold-${foldSlug(id)}`;
   return `
-    <section class="board-block desk-fold token-group" data-library-fold="${escapeHtml(id)}">
+    <section class="astral-card desk-fold token-group" data-library-fold="${escapeHtml(id)}">
       <button
         type="button"
         class="desk-fold-head"
@@ -1793,7 +1971,7 @@ function deskFoldBlock({ id, title, help, count, inner }) {
           ${help ? `<span class="section-help">${help}</span>` : ""}
         </span>
         <span class="desk-fold-meta">
-          ${count ? `<span class="count">${escapeHtml(count)}</span>` : ""}
+          ${count ? `<span class="astral-tag">${escapeHtml(count)}</span>` : ""}
           ${deskFoldChevron()}
         </span>
       </button>
@@ -1894,19 +2072,18 @@ function setupPage(sys) {
   const groups = setup.groups || [];
   const needs = setup.needs || [];
   const counts = setupCounts(groups);
-  const intro = `
-    <section class="board-block">
-      <div class="section-head">
-        <div>
-          <h2>Base Gallery depth</h2>
-          <p class="section-help">${escapeHtml(setup.lead || "")}</p>
-        </div>
-        <p class="count">${counts.brand} named · ${counts.waiting} waiting</p>
+  const intro = deskSection(
+    "Base Gallery depth",
+    `
+      <div class="desk-card-tags">
+        ${deskTag(`${counts.brand} named`, "brand")}
+        ${deskTag(`${counts.waiting} waiting`, "waiting")}
       </div>
       <p>${escapeHtml(ref.have || "")}</p>
       <p class="token-path">${escapeHtml(ref.fileUrl || "")}</p>
-    </section>
-  `;
+    `,
+    setup.lead || ""
+  );
   const needBlock = needs.length
     ? deskFoldBlock({
         id: "setup:needs",
@@ -1989,48 +2166,41 @@ function componentPage(item) {
     .map((id) => tokenById(id))
     .filter(Boolean);
   return `
-    ${listBackButton("library-back", "all components")}
-    <div class="page-head">
-      <section class="lead">
-        <p class="hero-team">${escapeHtml(item.file || "React")}</p>
-        <h2>${escapeHtml(item.react || item.name)}</h2>
-        <p>${escapeHtml(item.summary || "")}</p>
-        ${componentFigmaLine(item)}
-      </section>
-    </div>
-    <section class="board-block">
-      <div class="section-head">
-        <div>
-          <h2>Preview</h2>
-          <p class="section-help">Live prototype. Quiet outlines are 1px Infra Grey B. Focus is a 2px black edge.</p>
-        </div>
-      </div>
-      ${componentPreview(item)}
-    </section>
-    <section class="board-block">
-      <h2>Use it</h2>
-      <p>${escapeHtml(item.usage || "")}</p>
-      <pre class="code"><code>${escapeHtml(item.snippet || "")}</code></pre>
-    </section>
-    <section class="board-block">
-      <h2>Kinds</h2>
+    ${deskDetailHead({
+      back: "library-back",
+      where: "all components",
+      kicker: `<p class="desk-kicker">${escapeHtml(item.file || "React")}</p>`,
+      title: item.react || item.name,
+      lead: item.summary || "",
+      extra: componentFigmaLine(item),
+    })}
+    ${deskSection(
+      "Preview",
+      componentPreview(item),
+      "Live prototype. Quiet outlines are 1px Infra Grey B. Focus is a 2px black edge."
+    )}
+    ${deskSection(
+      "Use it",
+      `<p>${escapeHtml(item.usage || "")}</p>
+      <pre class="code"><code>${escapeHtml(item.snippet || "")}</code></pre>`
+    )}
+    ${deskSection(
+      "Kinds and states",
+      `<h4 class="desk-sub-head">Kinds</h4>
       ${chipList(item.variants, "No kinds yet.")}
-      <h2 class="sub-head">States</h2>
-      ${chipList(item.states, "No states yet.")}
-    </section>
-    <section class="board-block">
-      <h2>Props</h2>
-      <div class="token-table-wrap">
-        <table class="token-table">
+      <h4 class="desk-sub-head">States</h4>
+      ${chipList(item.states, "No states yet.")}`
+    )}
+    ${deskSection(
+      "Props",
+      `<div class="astral-table-wrap token-table-wrap">
+        <table class="astral-table token-table">
           <thead><tr><th>Prop</th><th>Type</th><th>Note</th></tr></thead>
           <tbody>${props || "<tr><td colspan='3'>None listed.</td></tr>"}</tbody>
         </table>
-      </div>
-    </section>
-    <section class="board-block">
-      <h2>Tokens</h2>
-      ${tokens.length ? tokenTable(tokens) : emptyCard("No tokens named yet.")}
-    </section>
+      </div>`
+    )}
+    ${deskSection("Tokens", tokens.length ? tokenTable(tokens) : emptyCard("No tokens named yet."))}
   `;
 }
 
@@ -2105,9 +2275,9 @@ function brandPage(section, assets) {
   let extras = "";
   if (id === "logo") {
     extras = `
-      <h3>Wordmark</h3>
+      <h4 class="desk-sub-head">Wordmark</h4>
       <div class="brand-assets">${(assets.wordmarks || []).map(brandAssetFigure).join("")}</div>
-      <h3>Logomark</h3>
+      <h4 class="desk-sub-head">Logomark</h4>
       <div class="brand-assets">${(assets.logomarks || []).map(brandAssetFigure).join("")}</div>
     `;
   } else if (id === "colour") {
@@ -2193,9 +2363,11 @@ function brandPage(section, assets) {
         .join("")}</div>`
     : "";
   return `
-    <article class="board-block brand-article" id="brand-${escapeHtml(id)}">
-      <p class="field-label">${escapeHtml(section.summary || "")}</p>
-      <h2>${escapeHtml(section.title)}</h2>
+    <article class="astral-card desk-block brand-article" id="brand-${escapeHtml(id)}">
+      <div class="desk-block-head">
+        ${section.summary ? `<p class="desk-kicker">${escapeHtml(section.summary)}</p>` : ""}
+        <h3>${escapeHtml(section.title)}</h3>
+      </div>
       <p>${escapeHtml(
         section.short ||
           section.body ||
@@ -2215,65 +2387,64 @@ function activeBrandSection(sections) {
 }
 
 function brandSourceItem(item) {
-  return `
-    <button
-      type="button"
-      class="access-card"
-      data-open="brand-source"
-      data-id="${escapeHtml(item.id)}"
-      aria-haspopup="dialog"
-    >
-      <span class="avatar avatar-tool" aria-hidden="true">${escapeHtml(
-        initials(item.name)
-      )}</span>
-      <span class="card-copy">
-        <span class="card-title">${escapeHtml(item.name)}</span>
-        <span class="card-line">${escapeHtml(item.have || "Source")}</span>
-      </span>
-    </button>
-  `;
+  return deskCard({
+    open: { "data-open": "brand-source", "data-id": item.id },
+    lead: deskAvatar(item.name),
+    title: item.name,
+    body: escapeHtml(item.have || "Source"),
+  });
+}
+
+function languageLine(item) {
+  return item.say && item.say !== item.name ? item.say : item.note || "Waiting";
 }
 
 function languageItem(item) {
   const status = item.status || "waiting";
-  const line =
-    item.say && item.say !== item.name ? item.say : item.note || "Waiting";
-  return `
-    <button
-      type="button"
-      class="brand-card"
-      data-open="language"
-      data-id="${escapeHtml(item.id)}"
-      aria-haspopup="dialog"
-    >
-      <span class="card-top">
-        <span class="status" data-status="${escapeHtml(status)}">${escapeHtml(
-          STATUS_LABEL[status] || "Waiting"
-        )}</span>
-        <span class="card-title">${escapeHtml(item.name)}</span>
-      </span>
-      <span class="card-line">${escapeHtml(line)}</span>
-    </button>
-  `;
+  return deskCard({
+    open: { "data-open": "language", "data-id": item.id },
+    title: item.name,
+    tags: deskTag(STATUS_LABEL[status] || "Waiting", status),
+    body: escapeHtml(languageLine(item)),
+  });
+}
+
+function languageRow(item) {
+  const status = item.status || "waiting";
+  return deskRow({
+    open: { "data-open": "language", "data-id": item.id },
+    title: item.name,
+    cells: [
+      deskTag(STATUS_LABEL[status] || "Waiting", status),
+      `<span class="desk-cell-line">${escapeHtml(languageLine(item))}</span>`,
+    ],
+  });
 }
 
 function patternItem(item) {
   const status = item.status || "waiting";
-  return `
-    <button
-      type="button"
-      class="brand-card"
-      data-pattern="${escapeHtml(item.id)}"
-    >
-      <span class="card-top">
-        <span class="status" data-status="${escapeHtml(status)}">${escapeHtml(
-          STATUS_LABEL[status] || "Waiting"
-        )}</span>
-        <span class="card-title">${escapeHtml(item.name)}</span>
-      </span>
-      <span class="card-line">${escapeHtml(item.summary || "")}</span>
-    </button>
-  `;
+  const uses = (item.uses || []).length;
+  return deskCard({
+    open: { "data-pattern": item.id },
+    title: item.name,
+    tags: deskTag(STATUS_LABEL[status] || "Waiting", status),
+    body: escapeHtml(item.summary || ""),
+    foot: `<span class="astral-muted">${escapeHtml(
+      uses === 1 ? "Uses 1 piece" : `Uses ${uses} pieces`
+    )}</span>`,
+  });
+}
+
+function patternRow(item) {
+  const status = item.status || "waiting";
+  return deskRow({
+    open: { "data-pattern": item.id },
+    title: item.name,
+    cells: [
+      deskTag(STATUS_LABEL[status] || "Waiting", status),
+      `<span class="desk-cell-line">${escapeHtml(item.summary || "")}</span>`,
+    ],
+  });
 }
 
 function patternPage(item) {
@@ -2288,38 +2459,38 @@ function patternPage(item) {
          <p>Not sketched yet.</p>
        </div>`;
   const uses = (item.uses || [])
-    .map((id) => {
-      return `<button type="button" class="chip" data-action="open-component" data-id="${escapeHtml(
-        id
-      )}">${escapeHtml(componentName(id))}</button>`;
-    })
+    .map((id) =>
+      protoGhost(componentName(id), `data-action="open-component" data-id="${escapeHtml(id)}"`)
+    )
     .join("");
   const status = item.status || "waiting";
   return `
-    ${listBackButton("pattern-back", "all patterns")}
-    <div class="page-head">
-      <section class="lead">
-        <p class="hero-team">${escapeHtml(STATUS_LABEL[status] || "Waiting")}</p>
-        <h2>${escapeHtml(item.name)}</h2>
-        <p>${escapeHtml(item.summary || "")}</p>
-      </section>
-    </div>
-    <section class="board-block">
-      <div class="journey-now">
-        <p class="field-label">Now</p>
-        <p>${escapeHtml(item.now || "Not known yet.")}</p>
-      </div>
-      ${laterBlock}
-    </section>
-    <section class="board-block">
-      <h2>Uses</h2>
-      ${
+    ${deskDetailHead({
+      back: "pattern-back",
+      where: "all patterns",
+      kicker: deskTag(STATUS_LABEL[status] || "Waiting", status),
+      title: item.name,
+      lead: item.summary || "",
+    })}
+    ${deskSection(
+      "Now and later",
+      `<div class="desk-now-later">
+        <div class="journey-now">
+          <p class="field-label">Now</p>
+          <p>${escapeHtml(item.now || "Not known yet.")}</p>
+        </div>
+        ${laterBlock}
+      </div>`
+    )}
+    ${deskSection(
+      "Uses",
+      `${
         uses
           ? `<div class="pattern-uses">${uses}</div>`
-          : `<p class="section-help">No pieces named yet.</p>`
+          : `<p class="astral-muted">No pieces named yet.</p>`
       }
-      <p class="section-help">${escapeHtml(item.note || "")}</p>
-    </section>
+      ${item.note ? `<p class="astral-muted">${escapeHtml(item.note)}</p>` : ""}`
+    )}
   `;
 }
 
@@ -2352,29 +2523,34 @@ function skillUseCard(item) {
   );
   const chips = [...skills, ...library].join("");
   if (!chips) return "";
-  return `
-    <section class="board-block">
-      <h2>Uses</h2>
-      <div class="pattern-uses">${chips}</div>
-    </section>
-  `;
+  return deskSection("Uses", `<div class="pattern-uses">${chips}</div>`);
 }
 
 function skillItem(item) {
   const status = item.status || "waiting";
-  return `
-    <button
-      type="button"
-      class="brand-card"
-      data-skill="${escapeHtml(item.id)}"
-    >
-      <span class="card-top">
-        ${protoTag(STATUS_LABEL[status] || "Waiting")}
-        <span class="card-title">${escapeHtml(item.name)}</span>
-      </span>
-      <span class="card-line">${escapeHtml(item.summary || "")}</span>
-    </button>
-  `;
+  const how = (item.how || []).length;
+  return deskCard({
+    open: { "data-skill": item.id },
+    title: item.name,
+    tags: deskTag(STATUS_LABEL[status] || "Waiting", status),
+    body: escapeHtml(item.summary || ""),
+    foot: `<span class="astral-muted">${escapeHtml(item.groupName || "")}${
+      how ? ` · ${how} ${how === 1 ? "step" : "steps"}` : ""
+    }</span>`,
+  });
+}
+
+function skillRow(item) {
+  const status = item.status || "waiting";
+  return deskRow({
+    open: { "data-skill": item.id },
+    title: item.name,
+    cells: [
+      escapeHtml(item.groupName || ""),
+      deskTag(STATUS_LABEL[status] || "Waiting", status),
+      `<span class="desk-cell-line">${escapeHtml(item.summary || "")}</span>`,
+    ],
+  });
 }
 
 function skillPage(item) {
@@ -2398,24 +2574,24 @@ function skillPage(item) {
     ? `<p class="token-path">${escapeHtml(item.where)}</p>`
     : "";
   return `
-    ${skillBackButton()}
-    <div class="page-head">
-      <section class="lead">
-        ${protoTag(STATUS_LABEL[status] || "Waiting")}
-        <h2>${escapeHtml(item.name)}</h2>
-        <p>${escapeHtml(item.summary || "")}</p>
-      </section>
-    </div>
-    <section class="board-block">
-      ${invoke}
+    ${deskDetailHead({
+      back: "skill-back",
+      where: "all skills",
+      kicker: deskTag(STATUS_LABEL[status] || "Waiting", status),
+      title: item.name,
+      lead: item.summary || "",
+    })}
+    ${deskSection(
+      "How it runs",
+      `${invoke}
       ${when}
       <div class="group-block">
-        <p class="field-label">How it runs</p>
-        ${how ? `<ul class="notes">${how}</ul>` : `<p>Not written yet.</p>`}
+        <p class="field-label">Steps</p>
+        ${how ? `<ol class="notes">${how}</ol>` : `<p>Not written yet.</p>`}
       </div>
       ${where}
-      ${item.note ? `<p class="section-help">${escapeHtml(item.note)}</p>` : ""}
-    </section>
+      ${item.note ? `<p class="astral-muted">${escapeHtml(item.note)}</p>` : ""}`
+    )}
     ${skillUseCard(item)}
   `;
 }
@@ -2855,6 +3031,38 @@ function renderNav() {
   document.querySelectorAll(".panel").forEach((panel) => {
     panel.hidden = panel.dataset.panel !== store.activeSection;
   });
+
+  const bar = document.getElementById("desk-bar-page");
+  const current = document.querySelector(
+    `.desk-rail .side-link[data-section="${CSS.escape(store.activeSection || "")}"]`
+  );
+  if (bar && current) {
+    const label = current.querySelector(".desk-rail-label")?.textContent || "";
+    bar.innerHTML = `${protoIconMark(DESK_SECTION_ICONS[store.activeSection] || "home")}<span>${escapeHtml(
+      label
+    )}</span>`;
+  }
+}
+
+function deskShellIcons() {
+  document.querySelectorAll(".desk-rail .side-link[data-icon]").forEach((link) => {
+    if (link.querySelector("svg")) return;
+    link.insertAdjacentHTML("afterbegin", protoIconMark(link.dataset.icon));
+  });
+  const menu = document.querySelector(".desk-menu");
+  if (menu && !menu.querySelector("svg")) {
+    menu.innerHTML = `${protoIconMark("menu")}<span class="sr-only">Menu</span>`;
+  }
+  const close = document.getElementById("detail-close");
+  if (close && !close.querySelector("svg")) {
+    close.innerHTML = `${protoIconMark("close")}<span class="sr-only">Close</span>`;
+  }
+}
+
+function setDeskRail(open) {
+  document.body.classList.toggle("is-desk-rail-open", Boolean(open));
+  const menu = document.querySelector(".desk-menu");
+  if (menu) menu.setAttribute("aria-expanded", open ? "true" : "false");
 }
 
 function setNavCount(el, value) {
@@ -2874,23 +3082,10 @@ function renderTodayTabs(today, done) {
     })),
     { id: "done", name: "Done", count: (done || []).length },
   ];
-  els.todayTabs.innerHTML = items
-    .map((item) => {
-      const on = item.id === tab;
-      return `
-      <button
-        type="button"
-        class="kind-tab"
-        role="tab"
-        data-kind="${escapeHtml(item.id)}"
-        aria-selected="${on ? "true" : "false"}"
-      >
-        ${escapeHtml(item.name)}
-        <span class="nav-count">${item.count}</span>
-      </button>
-    `;
-    })
-    .join("");
+  els.todayTabs.innerHTML = deskStats(items, tab, "data-kind", "Task kind");
+  if (els.todaySheetTitle) {
+    els.todaySheetTitle.textContent = tab === "done" ? "Done" : kindName(tab);
+  }
 }
 
 function doneDaysHtml(done) {
@@ -2920,6 +3115,7 @@ function doneDaysHtml(done) {
 function renderLibrary() {
   const sys = teamSystem();
   const tab = activeLibraryTab();
+  setPanelDetail("library", false);
   if (els.libraryCopy) els.libraryCopy.hidden = !sys;
   if (!els.libraryLead || !els.libraryList) return;
 
@@ -2952,21 +3148,15 @@ function renderLibrary() {
   };
 
   if (els.libraryTabs) {
-    els.libraryTabs.innerHTML = LIBRARY_TABS.map((item) => {
-      const on = item.id === tab;
-      return `
-        <button
-          type="button"
-          class="kind-tab"
-          role="tab"
-          data-library-tab="${escapeHtml(item.id)}"
-          aria-selected="${on ? "true" : "false"}"
-        >
-          ${escapeHtml(item.name)}
-          <span class="nav-count">${counts[item.id] || 0}</span>
-        </button>
-      `;
-    }).join("");
+    els.libraryTabs.innerHTML = protoTabs(
+      LIBRARY_TABS.map((item) => ({
+        id: item.id,
+        name: `${item.name} ${counts[item.id] || 0}`,
+      })),
+      tab,
+      "data-library-tab",
+      "Library"
+    );
   }
 
   if (tab === "setup") {
@@ -2974,35 +3164,47 @@ function renderLibrary() {
   } else if (tab === "styles") {
     const styles = sys.styles?.text || [];
     els.libraryList.innerHTML = styles.length
-      ? `<div class="token-grid">${styles.map(styleItem).join("")}</div>`
+      ? `<div class="astral-report-grid desk-grid">${styles.map(styleItem).join("")}</div>`
       : emptyCard("No type styles yet.");
   } else if (tab === "components") {
     const items = sys.components || [];
     const open = items.find((item) => item.id === store.activeComponent);
+    setPanelDetail("library", Boolean(open));
     if (open) {
       els.libraryList.innerHTML = componentPage(open);
     } else {
       const how = sys.stack
-        ? `<section class="board-block">
-             <h2>React</h2>
-             <p>${escapeHtml(sys.stack.handover || "")}</p>
+        ? deskSection(
+            "React",
+            `<p>${escapeHtml(sys.stack.handover || "")}</p>
              <p>${escapeHtml(sys.stack.tokens || "")}</p>
-             <p class="token-path">${escapeHtml(sys.stack.file || "")}</p>
-           </section>`
+             <p class="token-path">${escapeHtml(sys.stack.file || "")}</p>`
+          )
         : "";
-      const boards = groupedComponents(items)
-        .map(([family, list]) =>
-          deskFoldBlock({
-            id: `components:${family.id}`,
-            title: family.name,
-            help: escapeHtml("From the live prototype."),
-            count: list.length === 1 ? "1 piece" : `${list.length} pieces`,
-            inner: `<div class="token-grid">${list.map(componentItem).join("")}</div>`,
-          })
-        )
-        .join("");
+      const family = activeComponentFamily(items);
+      const famItems = groupedComponents(items).map(([fam, list]) => ({
+        id: fam.id,
+        name: fam.name,
+        count: list.length,
+      }));
+      const stats = deskStats(
+        [{ id: "all", name: "All pieces", count: items.length }, ...famItems],
+        family,
+        "data-component-family",
+        "Component family"
+      );
+      const shown = items
+        .filter((item) => family === "all" || componentFamilyId(item) === family)
+        .filter((item) => deskMatch("components", item.name, item.react, item.summary));
       els.libraryList.innerHTML = items.length
-        ? `${how}${boards}`
+        ? `${stats}${deskSheet("components", {
+            placeholder: "Search components",
+            label: "Search components",
+            cards: shown.map(componentItem),
+            cols: ["Component", "Family", "Summary"],
+            rows: shown.map(componentRow),
+            empty: "No pieces in this family.",
+          })}${how}`
         : emptyCard("Components wait until tokens are firm.");
     }
   } else {
@@ -3064,22 +3266,12 @@ function renderBranding() {
   const current = activeBrandSection(sections);
   store.activeBrandSection = current;
   if (els.brandingTabs) {
-    els.brandingTabs.innerHTML = sections
-      .map((item) => {
-        const on = item.id === current;
-        return `
-          <button
-            type="button"
-            class="kind-tab"
-            role="tab"
-            data-brand-tab="${escapeHtml(item.id)}"
-            aria-selected="${on ? "true" : "false"}"
-          >
-            ${escapeHtml(item.title)}
-          </button>
-        `;
-      })
-      .join("");
+    els.brandingTabs.innerHTML = protoTabs(
+      sections.map((item) => ({ id: item.id, name: item.title })),
+      current,
+      "data-brand-tab",
+      "Guideline sections"
+    );
   }
   const open = sections.find((item) => item.id === current) || sections[0];
   els.brandingPage.innerHTML = open
@@ -3096,22 +3288,16 @@ function renderBranding() {
 function renderLanguageTabs(entries) {
   if (!els.languageTabs) return;
   const kind = activeLanguageKind();
-  els.languageTabs.innerHTML = LANGUAGE_TABS.map((item) => {
-    const count = entries.filter((entry) => entry.kind === item.id).length;
-    const on = item.id === kind;
-    return `
-      <button
-        type="button"
-        class="kind-tab"
-        role="tab"
-        data-language-tab="${escapeHtml(item.id)}"
-        aria-selected="${on ? "true" : "false"}"
-      >
-        ${escapeHtml(item.name)}
-        <span class="nav-count">${count}</span>
-      </button>
-    `;
-  }).join("");
+  els.languageTabs.innerHTML = deskStats(
+    LANGUAGE_TABS.map((item) => ({
+      id: item.id,
+      name: item.name,
+      count: entries.filter((entry) => entry.kind === item.id).length,
+    })),
+    kind,
+    "data-language-tab",
+    "Language kind"
+  );
 }
 
 function renderLanguage() {
@@ -3141,8 +3327,18 @@ function renderLanguage() {
       entries.length === 1 ? "1 line" : `${entries.length} lines`;
   }
   renderLanguageTabs(entries);
+  const matched = shown.filter((item) =>
+    deskMatch("language", item.name, item.say, item.note, item.avoid)
+  );
   els.languageList.innerHTML = shown.length
-    ? shown.map(languageItem).join("")
+    ? deskSheet("language", {
+        placeholder: "Search language",
+        label: "Search language",
+        cards: matched.map(languageItem),
+        cols: ["Line", "Status", "Say"],
+        rows: matched.map(languageRow),
+        empty: "Nothing in this tab yet.",
+      })
     : emptyCard("Nothing in this tab yet. Waiting copy is better than a guess.");
   setNavCount(els.navLanguageCount, entries.length);
 }
@@ -3158,59 +3354,39 @@ function renderResearch() {
     els.researchCount.textContent =
       insights.length === 1 ? "1 insight" : `${insights.length} insights`;
   }
-  if (els.researchView) {
-    els.researchView.innerHTML = RESEARCH_VIEWS.map((item) => {
-      const on = item.id === view;
-      return `
-        <button
-          type="button"
-          class="research-pill${on ? " is-on" : ""}"
-          role="tab"
-          data-research-view="${escapeHtml(item.id)}"
-          aria-selected="${on ? "true" : "false"}"
-        >
-          ${escapeHtml(item.name)}
-        </button>
-      `;
-    }).join("");
-  }
   if (els.researchFilters) {
-    els.researchFilters.innerHTML = RESEARCH_SEVERITIES.map((item) => {
-      const on = item.id === filter;
-      const count =
-        item.id === "all"
-          ? insights.length
-          : insights.filter((entry) => insightSeverity(entry) === item.id).length;
-      return `
-        <button
-          type="button"
-          class="research-pill${on ? " is-on" : ""}"
-          data-research-severity="${escapeHtml(item.id)}"
-          aria-pressed="${on ? "true" : "false"}"
-        >
-          ${escapeHtml(item.name)}
-          <span class="nav-count">${count}</span>
-        </button>
-      `;
-    }).join("");
+    els.researchFilters.innerHTML = deskStats(
+      RESEARCH_SEVERITIES.map((item) => {
+        const count =
+          item.id === "all"
+            ? insights.length
+            : insights.filter((entry) => insightSeverity(entry) === item.id).length;
+        return { id: item.id, name: item.name, count, disabled: !count };
+      }),
+      filter,
+      "data-research-severity",
+      "Severity"
+    );
+  }
+  const matched = shown.filter((item) =>
+    deskMatch("research", item.title, item.problem, item.where, item.why)
+  );
+  if (els.researchView) {
+    els.researchView.innerHTML = "";
+    els.researchView.hidden = true;
   }
   if (els.researchInsights) {
-    if (!shown.length) {
-      els.researchInsights.className = "card-grid";
-      els.researchInsights.innerHTML = emptyCard(
-        insights.length
-          ? "Nothing in this severity."
-          : "No insights for this team yet."
-      );
-    } else if (view === "list") {
-      els.researchInsights.className = "";
-      els.researchInsights.innerHTML = `<ul class="research-list">${shown
-        .map(insightRow)
-        .join("")}</ul>`;
-    } else {
-      els.researchInsights.className = "card-grid";
-      els.researchInsights.innerHTML = shown.map(insightCard).join("");
-    }
+    els.researchInsights.className = "";
+    els.researchInsights.innerHTML = insights.length
+      ? deskSheet("research", {
+          placeholder: "Search insights",
+          label: "Search insights",
+          cards: matched.map(insightCard),
+          cols: ["Insight", "Severity", "Score", "Problem"],
+          rows: matched.map(insightRow),
+          empty: "Nothing in this severity.",
+        })
+      : emptyCard("No insights for this team yet.");
   }
 
   setNavCount(els.navResearchCount, insights.length);
@@ -3226,8 +3402,15 @@ function renderStrategy() {
   const moves = strategyMoveCount(current);
 
   if (els.strategyCount) {
-    els.strategyCount.textContent =
-      moves === 1 ? "1 play" : `${moves} plays`;
+    els.strategyCount.innerHTML = deskJumpStats(
+      [
+        { name: "Do next", count: next.length, target: "strategy-next-heading" },
+        { name: "Known", count: know.length, target: "strategy-know-heading" },
+        { name: "Named problems", count: problems.length, target: "strategy-problems-heading" },
+        { name: "Unanswered", count: opens.length, target: "strategy-open-heading" },
+      ],
+      "Strategy sections"
+    );
   }
 
   if (els.strategyNext) {
@@ -3238,31 +3421,15 @@ function renderStrategy() {
 
   if (els.strategyKnow) {
     els.strategyKnow.innerHTML = know.length
-      ? know
-          .map(
-            (card, index) => `
-        <button
-          type="button"
-          class="know-card"
-          data-open="know"
-          data-id="${index}"
-          aria-haspopup="dialog"
-        >
-          <span class="know-index">${index + 1}</span>
-          <span class="card-title">${escapeHtml(card.title || "")}</span>
-          <span class="card-line">${escapeHtml(card.body || "")}</span>
-        </button>
-      `
-          )
-          .join("")
+      ? know.map((card, index) => knowCard(card, index, true)).join("")
       : emptyCard("No know cards on the briefing yet.");
   }
 
   if (els.strategyLimits) {
     els.strategyLimits.innerHTML = cannot.length
-      ? `<article class="brief-card is-cannot">
-          <h2>You cannot</h2>
-          <ul>${cannot
+      ? `<article class="astral-card desk-brief-card is-cannot">
+          <h4>You cannot</h4>
+          <ul class="desk-bullets">${cannot
             .map((item) => `<li>${escapeHtml(item)}</li>`)
             .join("")}</ul>
         </article>`
@@ -3301,22 +3468,14 @@ function renderAnalytics() {
   }
 
   if (els.analyticsKeis) {
-    els.analyticsKeis.innerHTML = list
-      .map((item) => {
-        const on = item.id === selected;
-        return `
-          <button
-            type="button"
-            class="research-pill${on ? " is-on" : ""}"
-            role="tab"
-            data-kei="${escapeHtml(item.id)}"
-            aria-selected="${on ? "true" : "false"}"
-          >
-            ${escapeHtml(item.name || item.id)}
-          </button>
-        `;
-      })
-      .join("");
+    els.analyticsKeis.innerHTML = list.length
+      ? protoTabs(
+          list.map((item) => ({ id: item.id, name: item.name || item.id })),
+          selected,
+          "data-kei",
+          "Measure"
+        )
+      : "";
   }
 
   if (els.analyticsChart) {
@@ -3330,10 +3489,10 @@ function renderAnalytics() {
         ? open.note || "A later round on the same measure shows whether this improved or got worse."
         : "A KEI is a score of something specific, important, and actionable. It appears when a study names a measure, a baseline, and a later round. Report the sample. A small round stays directional.";
     els.analyticsChart.innerHTML = `
-      <article class="analytics-plot">
-        <div class="analytics-plot-head">
-          <h3>${escapeHtml(title)}</h3>
-          <p>${escapeHtml(note)}</p>
+      <div class="analytics-plot">
+        <div class="astral-card-head analytics-plot-head">
+          <h4>${escapeHtml(title)}</h4>
+          ${note ? deskTag(note, change?.status || "waiting") : ""}
         </div>
         ${keiLineChart(rounds, {
           width: 640,
@@ -3341,8 +3500,8 @@ function renderAnalytics() {
           red: keiGuide(open?.red),
           target: keiGuide(open?.target),
         })}
-        <p class="section-help">${escapeHtml(caption)}</p>
-      </article>
+        <p class="astral-muted">${escapeHtml(caption)}</p>
+      </div>
     `;
   }
 
@@ -3404,14 +3563,50 @@ function renderPatterns() {
     els.patternsCount.textContent =
       items.length === 1 ? "1 recipe" : `${items.length} recipes`;
   }
+  setPanelDetail("patterns", Boolean(open));
   if (open) {
     els.patternsList.innerHTML = patternPage(open);
+  } else if (!items.length) {
+    els.patternsList.innerHTML = emptyCard("No patterns named yet.");
   } else {
-    els.patternsList.innerHTML = items.length
-      ? `<div class="card-grid">${items.map(patternItem).join("")}</div>`
-      : emptyCard("No patterns named yet.");
+    const status = activePatternStatus(items);
+    const statusItems = ["firm", "working", "draft", "waiting"]
+      .map((id) => ({
+        id,
+        name: STATUS_LABEL[id] || id,
+        count: items.filter((item) => (item.status || "waiting") === id).length,
+      }))
+      .filter((item) => item.count);
+    const byStatus = items.filter(
+      (item) => status === "all" || (item.status || "waiting") === status
+    );
+    const shown = byStatus.filter((item) =>
+      deskMatch("patterns", item.name, item.summary, item.now, item.note)
+    );
+    els.patternsList.innerHTML = `
+      ${deskStats(
+        [{ id: "all", name: "All patterns", count: items.length }, ...statusItems],
+        status,
+        "data-pattern-status",
+        "Pattern status"
+      )}
+      ${deskSheet("patterns", {
+        placeholder: "Search patterns",
+        label: "Search patterns",
+        cards: shown.map(patternItem),
+        cols: ["Pattern", "Status", "Summary"],
+        rows: shown.map(patternRow),
+        empty: "No patterns with this status.",
+      })}
+    `;
   }
   setNavCount(els.navPatternsCount, items.length);
+}
+
+function activePatternStatus(items) {
+  const id = store?.patternStatus || "all";
+  if (id === "all") return "all";
+  return (items || []).some((item) => (item.status || "waiting") === id) ? id : "all";
 }
 
 function renderSkills() {
@@ -3423,40 +3618,40 @@ function renderSkills() {
   if (els.skillsCount) {
     els.skillsCount.textContent = items.length === 1 ? "1 skill" : `${items.length} skills`;
   }
+  setPanelDetail("skills", Boolean(open));
   if (open) {
     els.skillsList.innerHTML = skillPage(open);
   } else {
-    els.skillsList.innerHTML = groups
-      .map((group) => {
-        const count = (group.items || []).length;
-        const clipId = `skill-fold-${group.id}`;
-        const cards = (group.items || []).map(skillItem).join("");
-        return `
-          <section class="board-block desk-fold" data-skill-fold="${escapeHtml(group.id)}">
-            <button
-              type="button"
-              class="desk-fold-head"
-              data-skill-fold-head
-              aria-expanded="false"
-              aria-controls="${escapeHtml(clipId)}"
-            >
-              <span class="desk-fold-copy">
-                <span class="desk-fold-title">${escapeHtml(group.name)}</span>
-                <p class="section-help">${escapeHtml(group.help || "")}</p>
-              </span>
-              <span class="desk-fold-meta">
-                ${protoCountChip(count)}
-                ${deskFoldChevron()}
-              </span>
-            </button>
-            <div class="desk-fold-clip" id="${escapeHtml(clipId)}" aria-hidden="true" inert>
-              <div class="card-grid">${cards || emptyCard("No skills in this group.")}</div>
-            </div>
-          </section>
-        `;
-      })
-      .join("");
-    applySkillFolds();
+    const group = skillFoldId() || "all";
+    const shown = items
+      .filter((item) => group === "all" || item.group === group)
+      .filter((item) => deskMatch("skills", item.name, item.summary, item.when));
+    const help = groups.find((entry) => entry.id === group)?.help || "";
+    els.skillsList.innerHTML = `
+      ${deskStats(
+        [
+          { id: "all", name: "All skills", count: items.length },
+          ...groups.map((entry) => ({
+            id: entry.id,
+            name: entry.name,
+            count: (entry.items || []).length,
+            disabled: !(entry.items || []).length,
+          })),
+        ],
+        group,
+        "data-skill-group",
+        "Skill group"
+      )}
+      ${help ? `<p class="astral-muted desk-sheet-help">${escapeHtml(help)}</p>` : ""}
+      ${deskSheet("skills", {
+        placeholder: "Search skills",
+        label: "Search skills",
+        cards: shown.map(skillItem),
+        cols: ["Skill", "Group", "Status", "Summary"],
+        rows: shown.map(skillRow),
+        empty: "No skills in this group.",
+      })}
+    `;
   }
   setNavCount(els.navSkillsCount, items.length);
 }
@@ -3501,9 +3696,9 @@ function render() {
     if (els.form) els.form.hidden = false;
     els.todayList.innerHTML = todayShown.length
       ? todayShown.map((task) => taskItem(task, false)).join("")
-      : `<li class="empty-card">Nothing in ${escapeHtml(
+      : `<li class="desk-row-empty astral-muted">Nothing in ${escapeHtml(
           kindName(tab)
-        )} yet. Add one below, or pick another tab.</li>`;
+        )} yet. Add one below, or pick another card.</li>`;
   }
 
   renderList(els.canList, current.can, false);
@@ -3511,28 +3706,21 @@ function render() {
   renderList(els.nextList, current.next, true);
 
   els.knowList.innerHTML = (current.know || [])
-    .map(
-      (card, index) => `
-        <button
-          type="button"
-          class="know-card"
-          data-open="know"
-          data-id="${index}"
-          aria-haspopup="dialog"
-        >
-          <span class="know-index">${index + 1}</span>
-          <span class="card-title">${escapeHtml(card.title)}</span>
-        </button>
-      `
-    )
+    .map((card, index) => knowCard(card, index, false))
     .join("");
 
   const groups = current.groups || [];
   const groupShown = groupCards(groups);
   els.groupsCount.textContent =
     groupShown.length === 1 ? "1 in play" : `${groupShown.length} in play`;
+  const groupHit = (group) => deskMatch("groups", group.name, group.who, group.need);
   els.groupsList.innerHTML = groups.length
-    ? groupClusters(groups, groupItem)
+    ? groupSheet("groups", groups, groupItem, groupHit, "Search groups", [
+        "Group",
+        "Sits on",
+        "Status",
+        "Who they are",
+      ])
     : emptyCard("No groups for this team yet. Add one from a discussion.");
 
   const mapped = groups.filter((group) => (group.journey || []).length);
@@ -3544,10 +3732,15 @@ function render() {
       journeyShown.length === 1 ? "1 map" : `${journeyShown.length} maps`;
   }
   if (els.journeysList) {
+    const journeyHit = (group) =>
+      (group.journey || []).length && deskMatch("journeys", group.name, group.who);
     els.journeysList.innerHTML = mapped.length
-      ? groupClusters(groups, journeyItem, (group) =>
-          (group.journey || []).length
-        )
+      ? groupSheet("journeys", groups, journeyItem, journeyHit, "Search journeys", [
+          "Group",
+          "Sits on",
+          "Status",
+          "Stages",
+        ])
       : emptyCard(
           "No journeys for this team yet. They appear when a talk names how someone moves through the product."
         );
@@ -3617,6 +3810,10 @@ const CHROME_FIELDS = [
   "activeBrandSection",
   "researchView",
   "researchSeverity",
+  "deskViews",
+  "deskQueries",
+  "patternStatus",
+  "componentFamily",
   "activeKei",
   "activeComponent",
   "activePattern",
@@ -3913,6 +4110,16 @@ function applyChrome() {
     : "words";
   store.activeBrandSection = store.activeBrandSection || "overview";
   store.researchView = store.researchView === "list" ? "list" : "cards";
+  store.deskViews =
+    store.deskViews && typeof store.deskViews === "object" && !Array.isArray(store.deskViews)
+      ? store.deskViews
+      : {};
+  store.deskQueries =
+    store.deskQueries && typeof store.deskQueries === "object" && !Array.isArray(store.deskQueries)
+      ? store.deskQueries
+      : {};
+  store.patternStatus = String(store.patternStatus || "all");
+  store.componentFamily = String(store.componentFamily || "all");
   store.researchSeverity = RESEARCH_SEVERITIES.some((item) => item.id === store.researchSeverity)
     ? store.researchSeverity
     : "all";
@@ -4687,6 +4894,100 @@ async function copyTokens() {
   }
 }
 
+function onDeskStageClick(event) {
+  const viewBtn = event.target.closest("[data-desk-view]");
+  if (viewBtn) {
+    const [section, view] = viewBtn.dataset.deskView.split(":");
+    const next = view === "list" ? "list" : "cards";
+    if (section === "research") store.researchView = next;
+    store.deskViews = { ...(store.deskViews || {}), [section]: next };
+    render();
+    persistChrome();
+    deskRefocus(`[data-desk-view="${CSS.escape(viewBtn.dataset.deskView)}"]`);
+    return;
+  }
+  const clear = event.target.closest("[data-proto-search-clear^='desk-q:']");
+  if (clear) {
+    const name = clear.dataset.protoSearchClear;
+    setDeskQuery(name.slice(7), "");
+    render();
+    persistChrome();
+    deskRefocus(`input[name="${CSS.escape(name)}"]`);
+    return;
+  }
+  const jump = event.target.closest("[data-desk-jump]");
+  if (jump) {
+    document.getElementById(jump.dataset.deskJump)?.scrollIntoView({ block: "start", behavior: "smooth" });
+    return;
+  }
+  const focus = event.target.closest("[data-desk-focus]");
+  if (focus) {
+    const field = document.getElementById(focus.dataset.deskFocus);
+    if (field) {
+      field.scrollIntoView({ block: "center", behavior: "smooth" });
+      field.focus({ preventScroll: true });
+    }
+    return;
+  }
+  const status = event.target.closest("[data-pattern-status]");
+  if (status) {
+    store.patternStatus = status.dataset.patternStatus;
+    render();
+    persistChrome();
+    deskRefocus(`[data-pattern-status="${CSS.escape(status.dataset.patternStatus)}"]`);
+    return;
+  }
+  const family = event.target.closest("[data-component-family]");
+  if (family) {
+    store.componentFamily = family.dataset.componentFamily;
+    render();
+    persistChrome();
+    deskRefocus(`[data-component-family="${CSS.escape(family.dataset.componentFamily)}"]`);
+    return;
+  }
+  const group = event.target.closest("[data-skill-group]");
+  if (group) {
+    const id = group.dataset.skillGroup;
+    store.skillFold = SKILL_FOLDS.includes(id) ? id : "";
+    render();
+    persistChrome();
+    deskRefocus(`[data-skill-group="${CSS.escape(id)}"]`);
+    return;
+  }
+  const row = event.target.closest("tr.is-link");
+  if (row && !event.target.closest("button, a, input")) {
+    row.querySelector(".desk-row-open")?.click();
+  }
+}
+
+function setDeskQuery(section, value) {
+  store.deskQueries = { ...(store.deskQueries || {}), [section]: String(value || "").slice(0, 120) };
+}
+
+function deskRefocus(selector) {
+  const el = document.querySelector(`.stage ${selector}`);
+  if (el) el.focus({ preventScroll: true });
+}
+
+function onDeskStageInput(event) {
+  const input = event.target.closest("input[name^='desk-q:']");
+  if (!input) return;
+  const name = input.name;
+  const caret = input.selectionStart;
+  setDeskQuery(name.slice(7), input.value);
+  render();
+  persistChrome();
+  const next = document.querySelector(`.stage input[name="${CSS.escape(name)}"]`);
+  if (next) {
+    next.focus({ preventScroll: true });
+    try {
+      next.setSelectionRange(caret, caret);
+    } catch {
+      /* Search inputs may not support selection in every browser. */
+    }
+  }
+}
+
 function setSection(section) {
   if (!sectionAllowed(section)) return;
   if (section !== store.activeSection) {
@@ -4871,10 +5172,26 @@ els.detailBody.addEventListener("click", (event) => {
 });
 els.detailBody.addEventListener("submit", onAddNote);
 document.querySelector(".stage").addEventListener("click", onOpenCard);
+document.querySelector(".stage").addEventListener("click", onDeskStageClick);
+document.querySelector(".stage").addEventListener("input", onDeskStageInput);
 if (els.teamSelect) els.teamSelect.addEventListener("change", onTeamChange);
 document.querySelector(".side").addEventListener("click", (event) => {
   const link = event.target.closest(".side-link");
   if (!link) return;
   setSection(link.dataset.section);
+  setDeskRail(false);
 });
+document.querySelectorAll("[data-desk-rail]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const open = !document.body.classList.contains("is-desk-rail-open");
+    setDeskRail(btn.dataset.deskRail === "close" ? false : open);
+  });
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  if (!document.body.classList.contains("is-desk-rail-open")) return;
+  setDeskRail(false);
+  document.querySelector(".desk-menu")?.focus();
+});
+deskShellIcons();
 load();

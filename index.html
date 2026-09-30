@@ -19,398 +19,387 @@
         /* No session storage. Stay on the prototype. */
       }
     </script>
-    <header class="nav">
-      <div class="nav-brand">
-        <p class="kicker">Morning board</p>
-        <h1>Work Desk</h1>
-      </div>
-    </header>
-
-    <div class="shell">
-      <nav class="side" aria-label="Sections">
+    <div class="shell desk-shell">
+      <aside id="desk-rail" class="side astral-rail desk-rail" aria-label="Work Desk">
+        <p class="astral-rail-brand desk-rail-brand">
+          <img class="astral-logo" src="assets/imserv-logomark.svg" alt="IMSERV" />
+          <span class="desk-rail-name">Work Desk</span>
+        </p>
         <p id="side-team" class="side-team"></p>
         <label class="sr-only" for="team-select">Team</label>
         <select id="team-select" class="side-team"></select>
-        <button type="button" class="side-link" data-section="today">
-          Today
-          <span id="nav-today-count" class="nav-count"></span>
-        </button>
-        <button type="button" class="side-link" data-section="groups">
-          User groups
-          <span id="nav-groups-count" class="nav-count"></span>
-        </button>
-        <button type="button" class="side-link" data-section="journeys">
-          Journeys
-          <span id="nav-journeys-count" class="nav-count"></span>
-        </button>
-        <button type="button" class="side-link" data-section="research">
-          Research
-          <span id="nav-research-count" class="nav-count"></span>
-        </button>
-        <button type="button" class="side-link" data-section="strategy">
-          Strategy
-          <span id="nav-strategy-count" class="nav-count"></span>
-        </button>
-        <button type="button" class="side-link" data-section="analytics">
-          Analytics
-          <span id="nav-analytics-count" class="nav-count"></span>
-        </button>
-        <button type="button" class="side-link" data-section="access">
-          Access
-          <span id="nav-access-count" class="nav-count"></span>
-        </button>
-        <button type="button" class="side-link" data-section="library">
-          UI library
-          <span id="nav-library-count" class="nav-count"></span>
-        </button>
-        <button type="button" class="side-link" data-section="language">
-          Language
-          <span id="nav-language-count" class="nav-count"></span>
-        </button>
-        <button type="button" class="side-link" data-section="patterns">
-          Patterns
-          <span id="nav-patterns-count" class="nav-count"></span>
-        </button>
-        <button type="button" class="side-link" data-section="skills">
-          Skills
-          <span id="nav-skills-count" class="nav-count"></span>
-        </button>
-        <button type="button" class="side-link" data-section="prototype">
-          Prototype
-          <span id="nav-prototype-count" class="nav-count"></span>
-        </button>
-        <button type="button" class="side-link" data-section="branding">
-          Branding
-          <span id="nav-branding-count" class="nav-count"></span>
-        </button>
-        <button type="button" class="side-link" data-section="workflow">
-          Workflow
-        </button>
-      </nav>
+        <nav class="astral-rail-links" aria-label="Sections">
+          <button type="button" class="side-link astral-rail-link" data-section="today" data-icon="home">
+            <span class="desk-rail-label">Today</span>
+            <span id="nav-today-count" class="nav-count"></span>
+          </button>
+          <button type="button" class="side-link astral-rail-link" data-section="groups" data-icon="users">
+            <span class="desk-rail-label">User groups</span>
+            <span id="nav-groups-count" class="nav-count"></span>
+          </button>
+          <button type="button" class="side-link astral-rail-link" data-section="journeys" data-icon="chart-line">
+            <span class="desk-rail-label">Journeys</span>
+            <span id="nav-journeys-count" class="nav-count"></span>
+          </button>
+          <button type="button" class="side-link astral-rail-link" data-section="research" data-icon="analyse">
+            <span class="desk-rail-label">Research</span>
+            <span id="nav-research-count" class="nav-count"></span>
+          </button>
+          <button type="button" class="side-link astral-rail-link" data-section="strategy" data-icon="outgoing">
+            <span class="desk-rail-label">Strategy</span>
+            <span id="nav-strategy-count" class="nav-count"></span>
+          </button>
+          <button type="button" class="side-link astral-rail-link" data-section="analytics" data-icon="chart-bar">
+            <span class="desk-rail-label">Analytics</span>
+            <span id="nav-analytics-count" class="nav-count"></span>
+          </button>
+          <button type="button" class="side-link astral-rail-link" data-section="access" data-icon="profile">
+            <span class="desk-rail-label">Access</span>
+            <span id="nav-access-count" class="nav-count"></span>
+          </button>
+          <button type="button" class="side-link astral-rail-link" data-section="library" data-icon="grid">
+            <span class="desk-rail-label">UI library</span>
+            <span id="nav-library-count" class="nav-count"></span>
+          </button>
+          <button type="button" class="side-link astral-rail-link" data-section="language" data-icon="comment">
+            <span class="desk-rail-label">Language</span>
+            <span id="nav-language-count" class="nav-count"></span>
+          </button>
+          <button type="button" class="side-link astral-rail-link" data-section="patterns" data-icon="report">
+            <span class="desk-rail-label">Patterns</span>
+            <span id="nav-patterns-count" class="nav-count"></span>
+          </button>
+          <button type="button" class="side-link astral-rail-link" data-section="skills" data-icon="servicing">
+            <span class="desk-rail-label">Skills</span>
+            <span id="nav-skills-count" class="nav-count"></span>
+          </button>
+          <button type="button" class="side-link astral-rail-link" data-section="prototype" data-icon="expand">
+            <span class="desk-rail-label">Prototype</span>
+            <span id="nav-prototype-count" class="nav-count"></span>
+          </button>
+          <button type="button" class="side-link astral-rail-link" data-section="branding" data-icon="tag">
+            <span class="desk-rail-label">Branding</span>
+            <span id="nav-branding-count" class="nav-count"></span>
+          </button>
+          <button type="button" class="side-link astral-rail-link" data-section="workflow" data-icon="hours">
+            <span class="desk-rail-label">Workflow</span>
+          </button>
+        </nav>
+      </aside>
+      <button type="button" class="desk-rail-scrim" data-desk-rail="close" aria-label="Close menu" tabindex="-1"></button>
 
-      <main class="stage">
+      <main class="stage desk-stage">
+        <header class="astral-rail-bar desk-bar">
+          <div class="astral-rail-now">
+            <button
+              type="button"
+              class="astral-icon-btn is-plain desk-menu"
+              data-desk-rail="toggle"
+              aria-controls="desk-rail"
+              aria-expanded="false"
+              aria-label="Open menu"
+            ></button>
+            <p id="desk-bar-page" class="astral-rail-page"></p>
+          </div>
+        </header>
         <div class="stage-inner">
           <section id="panel-today" class="panel" data-panel="today">
-            <section class="hero" aria-labelledby="headline">
-              <p id="hero-team" class="hero-team"></p>
-              <h2 id="headline"></h2>
-              <p id="situation"></p>
-            </section>
-
-            <section class="brief" aria-label="The picture">
-              <article class="brief-card is-can">
-                <h2>You can</h2>
-                <ul id="can-list"></ul>
-              </article>
-              <article class="brief-card is-cannot">
-                <h2>You cannot</h2>
-                <ul id="cannot-list"></ul>
-              </article>
-              <article class="brief-card is-next">
-                <h2>Do next</h2>
-                <ol id="next-list"></ol>
-              </article>
-            </section>
-
-            <section class="board-block" aria-labelledby="today-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="today-heading">To do list</h2>
-                  <p id="today-help" class="section-help">
-                    Pick a tab. Tick what you will do. Open a task for the note.
-                  </p>
-                </div>
-                <p id="today-count" class="count"></p>
+            <header class="page-head astral-page-head astral-page-tools">
+              <div>
+                <p id="hero-team" class="desk-kicker"></p>
+                <h2 id="headline"></h2>
               </div>
-              <div id="today-tabs" class="kind-tabs" role="tablist" aria-label="To do list"></div>
-              <ul id="today-list" class="task-list"></ul>
-              <div id="today-done" class="done" hidden></div>
-              <form id="add-form" class="add-form">
-                <label class="sr-only" for="new-task">New task</label>
-                <input
-                  id="new-task"
-                  name="title"
-                  type="text"
-                  maxlength="160"
-                  placeholder="Add something you need to do"
-                  autocomplete="off"
-                  required
-                />
-                <label class="sr-only" for="new-kind">Kind</label>
-                <select id="new-kind" name="kind">
-                  <option value="admin">Admin</option>
-                  <option value="ui">UI Design</option>
-                  <option value="ux">UX Design</option>
-                  <option value="research">Research</option>
-                </select>
-                <label class="sr-only" for="new-project">Project</label>
-                <input
-                  id="new-project"
-                  name="project"
-                  type="text"
-                  maxlength="40"
-                  placeholder="Project"
-                  autocomplete="off"
-                />
-                <button type="submit">Add</button>
-              </form>
+            </header>
+            <p id="situation" class="astral-muted astral-home-lead desk-lead"></p>
+
+            <section class="astral-home-section" aria-labelledby="brief-heading">
+              <h3 id="brief-heading" class="astral-home-section-title">The picture</h3>
+              <div class="astral-metrics desk-brief">
+                <article class="astral-card desk-brief-card">
+                  <h3>You can</h3>
+                  <ul id="can-list" class="desk-bullets"></ul>
+                </article>
+                <article class="astral-card desk-brief-card">
+                  <h3>You cannot</h3>
+                  <ul id="cannot-list" class="desk-bullets"></ul>
+                </article>
+                <article class="astral-card desk-brief-card">
+                  <h3>Do next</h3>
+                  <ol id="next-list" class="desk-bullets"></ol>
+                </article>
+              </div>
             </section>
 
-            <section class="board-block" aria-labelledby="know-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="know-heading">What to know</h2>
-                  <p class="section-help">A title on the card. Open it for the rest.</p>
-                </div>
+            <section class="astral-home-section" aria-labelledby="today-heading">
+              <div class="desk-section-head">
+                <h3 id="today-heading" class="astral-home-section-title">To do list</h3>
+                <p id="today-help" class="astral-muted">
+                  Pick a card. Tick what you will do. Open a task for the note.
+                </p>
               </div>
-              <div id="know-list" class="know-grid"></div>
+              <div id="today-tabs" class="desk-stats-host"></div>
+              <section class="astral-card astral-reports-sheet desk-sheet" aria-labelledby="today-heading">
+                <div class="astral-card-head desk-sheet-title">
+                  <h3 id="today-sheet-title">To do</h3>
+                  <span id="today-count" class="astral-tag"></span>
+                </div>
+                <ul id="today-list" class="task-list desk-rows"></ul>
+                <div id="today-done" class="done" hidden></div>
+                <form id="add-form" class="add-form desk-add">
+                  <label class="sr-only" for="new-task">New task</label>
+                  <input
+                    id="new-task"
+                    name="title"
+                    type="text"
+                    maxlength="160"
+                    placeholder="Add something you need to do"
+                    autocomplete="off"
+                    required
+                  />
+                  <label class="sr-only" for="new-kind">Kind</label>
+                  <select id="new-kind" name="kind">
+                    <option value="admin">Admin</option>
+                    <option value="ui">UI Design</option>
+                    <option value="ux">UX Design</option>
+                    <option value="research">Research</option>
+                  </select>
+                  <label class="sr-only" for="new-project">Project</label>
+                  <input
+                    id="new-project"
+                    name="project"
+                    type="text"
+                    maxlength="40"
+                    placeholder="Project"
+                    autocomplete="off"
+                  />
+                  <button type="submit" class="astral-btn">Add</button>
+                </form>
+              </section>
+            </section>
+
+            <section class="astral-home-section" aria-labelledby="know-heading">
+              <div class="desk-section-head">
+                <h3 id="know-heading" class="astral-home-section-title">What to know</h3>
+                <p class="astral-muted">A title on the card. Open it for the rest.</p>
+              </div>
+              <div id="know-list" class="astral-metrics desk-metrics"></div>
             </section>
           </section>
 
           <section id="panel-groups" class="panel" data-panel="groups" hidden>
-            <div class="page-head">
-              <section class="lead">
-                <h2 id="groups-heading">Who this is for</h2>
-                <p>
-                  Hats sit under the company they belong to. Open a card for
-                  who they are, what they need, and notes from talks.
-                </p>
-              </section>
-              <p id="groups-count" class="count count-pill"></p>
-            </div>
-            <div id="groups-list" class="group-grid"></div>
-            <form id="group-form" class="add-form group-form">
-              <label class="sr-only" for="new-group">Group name</label>
-              <input
-                id="new-group"
-                name="name"
-                type="text"
-                maxlength="80"
-                placeholder="Group name"
-                autocomplete="off"
-                required
-              />
-              <label class="sr-only" for="new-who">Who they are</label>
-              <input
-                id="new-who"
-                name="who"
-                type="text"
-                maxlength="180"
-                placeholder="Who they are"
-                autocomplete="off"
-                required
-              />
-              <button type="submit">Add group</button>
-            </form>
+            <header class="page-head astral-page-head astral-page-tools">
+              <div><h2 id="groups-heading">User groups</h2></div>
+              <div class="astral-page-actions">
+                <button type="button" class="astral-btn" data-desk-focus="new-group">Add group</button>
+              </div>
+            </header>
+            <p class="astral-muted astral-home-lead desk-lead">
+              Who this is for. Hats sit under the company they belong to. Open
+              a card for who they are, what they need, and notes from talks.
+            </p>
+            <p id="groups-count" class="sr-only"></p>
+            <div id="groups-list" class="desk-list-host"></div>
+            <section class="astral-home-section" aria-labelledby="group-add-heading">
+              <h3 id="group-add-heading" class="astral-home-section-title">Add a group</h3>
+              <form id="group-form" class="astral-card add-form group-form desk-add">
+                <label class="sr-only" for="new-group">Group name</label>
+                <input
+                  id="new-group"
+                  name="name"
+                  type="text"
+                  maxlength="80"
+                  placeholder="Group name"
+                  autocomplete="off"
+                  required
+                />
+                <label class="sr-only" for="new-who">Who they are</label>
+                <input
+                  id="new-who"
+                  name="who"
+                  type="text"
+                  maxlength="180"
+                  placeholder="Who they are"
+                  autocomplete="off"
+                  required
+                />
+                <button type="submit" class="astral-btn">Add group</button>
+              </form>
+            </section>
           </section>
 
           <section id="panel-journeys" class="panel" data-panel="journeys" hidden>
-            <div class="page-head">
-              <section class="lead">
-                <h2 id="journeys-heading">How they move through it</h2>
-                <p>
-                  One card per group. Hats sit under the company they belong
-                  to. Open it for now and later. Later is a sketch, not a
-                  promise.
-                </p>
-              </section>
-              <p id="journeys-count" class="count count-pill"></p>
-            </div>
-            <div id="journeys-list" class="journey-stack"></div>
+            <header class="page-head astral-page-head astral-page-tools">
+              <div><h2 id="journeys-heading">Journeys</h2></div>
+            </header>
+            <p class="astral-muted astral-home-lead desk-lead">
+              How they move through it. One card per group. Hats sit under the
+              company they belong to. Open it for now and later. Later is a
+              sketch, not a promise.
+            </p>
+            <p id="journeys-count" class="sr-only"></p>
+            <div id="journeys-list" class="desk-list-host"></div>
           </section>
 
           <section id="panel-research" class="panel" data-panel="research" hidden>
-            <div class="page-head">
-              <section class="lead">
-                <h2>Research</h2>
-                <p>
-                  Findings from walks. Open an insight for the rest. Switch to a
-                  list and filter by severity. Score ranks within a severity
-                  from what the walk named.
-                </p>
-              </section>
-              <p id="research-count" class="count count-pill"></p>
-            </div>
-
-            <section class="board-block" aria-labelledby="research-insights-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="research-insights-heading">Insights</h2>
-                  <p class="section-help">Sorted by severity, then score. Critical first.</p>
-                </div>
-                <div id="research-view" class="research-view" role="tablist" aria-label="Insights view"></div>
-              </div>
-              <div id="research-filters" class="research-pills" role="toolbar" aria-label="Severity"></div>
-              <div id="research-insights"></div>
-            </section>
+            <header class="page-head astral-page-head astral-page-tools">
+              <div><h2>Research</h2></div>
+            </header>
+            <p class="astral-muted astral-home-lead desk-lead">
+              Findings from walks. Open an insight for the rest. Pick a
+              severity card to filter. Score ranks within a severity from what
+              the walk named.
+            </p>
+            <p id="research-count" class="sr-only"></p>
+            <div id="research-filters" class="desk-stats-host"></div>
+            <div id="research-view" class="desk-tools-host" hidden></div>
+            <div id="research-insights"></div>
           </section>
 
           <section id="panel-strategy" class="panel" data-panel="strategy" hidden>
-            <div class="page-head">
-              <section class="lead">
-                <h2>Strategy</h2>
-                <p>
-                  What to do next from what this team already knows. Today is
-                  the daily list. This page is the play from the briefing, the
-                  walks, and the questions still open.
-                </p>
-              </section>
-              <p id="strategy-count" class="count count-pill"></p>
-            </div>
+            <header class="page-head astral-page-head astral-page-tools">
+              <div><h2>Strategy</h2></div>
+            </header>
+            <p class="astral-muted astral-home-lead desk-lead">
+              What to do next from what this team already knows. Today is the
+              daily list. This page is the play from the briefing, the walks,
+              and the questions still open.
+            </p>
+            <div id="strategy-count" class="desk-stats-host"></div>
 
-            <section class="board-block" aria-labelledby="strategy-next-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="strategy-next-heading">Do next</h2>
-                  <p class="section-help">From the briefing. In order.</p>
-                </div>
+            <section class="astral-home-section" aria-labelledby="strategy-next-heading">
+              <div class="desk-section-head">
+                <h3 id="strategy-next-heading" class="astral-home-section-title">Do next</h3>
+                <p class="astral-muted">From the briefing. In order.</p>
               </div>
-              <div id="strategy-next" class="know-grid"></div>
+              <div id="strategy-next" class="astral-metrics desk-metrics"></div>
             </section>
 
-            <section class="board-block" aria-labelledby="strategy-know-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="strategy-know-heading">From what we know</h2>
-                  <p class="section-help">The facts the next steps sit on. Open a card for the rest.</p>
-                </div>
+            <section class="astral-home-section" aria-labelledby="strategy-know-heading">
+              <div class="desk-section-head">
+                <h3 id="strategy-know-heading" class="astral-home-section-title">From what we know</h3>
+                <p class="astral-muted">The facts the next steps sit on. Open a card for the rest.</p>
               </div>
-              <div id="strategy-know" class="know-grid"></div>
+              <div id="strategy-know" class="astral-metrics desk-metrics"></div>
             </section>
 
-            <section class="board-block" aria-labelledby="strategy-limits-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="strategy-limits-heading">Stay inside this</h2>
-                  <p class="section-help">Hard limits. Do not plan past them.</p>
-                </div>
+            <section class="astral-home-section" aria-labelledby="strategy-limits-heading">
+              <div class="desk-section-head">
+                <h3 id="strategy-limits-heading" class="astral-home-section-title">Stay inside this</h3>
+                <p class="astral-muted">Hard limits. Do not plan past them.</p>
               </div>
               <div id="strategy-limits"></div>
             </section>
 
-            <section class="board-block" aria-labelledby="strategy-problems-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="strategy-problems-heading">Named problems first</h2>
-                  <p class="section-help">Critical and High from the walks. Open a card for the rest.</p>
-                </div>
+            <section class="astral-home-section" aria-labelledby="strategy-problems-heading">
+              <div class="desk-section-head">
+                <h3 id="strategy-problems-heading" class="astral-home-section-title">Named problems first</h3>
+                <p class="astral-muted">Critical and High from the walks. Open a card for the rest.</p>
               </div>
-              <div id="strategy-insights" class="card-grid"></div>
+              <div id="strategy-insights" class="astral-report-grid desk-grid"></div>
             </section>
 
-            <section class="board-block" aria-labelledby="strategy-open-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="strategy-open-heading">Still unanswered</h2>
-                  <p class="section-help">Questions sitting on user groups. A talk named them.</p>
-                </div>
+            <section class="astral-home-section" aria-labelledby="strategy-open-heading">
+              <div class="desk-section-head">
+                <h3 id="strategy-open-heading" class="astral-home-section-title">Still unanswered</h3>
+                <p class="astral-muted">Questions sitting on user groups. A talk named them.</p>
               </div>
-              <div id="strategy-open" class="card-grid"></div>
+              <div id="strategy-open" class="astral-report-grid desk-grid"></div>
             </section>
           </section>
 
           <section id="panel-analytics" class="panel" data-panel="analytics" hidden>
-            <div class="page-head">
-              <section class="lead">
-                <h2>Analytics</h2>
-                <p>
-                  How Key Experience Indicators are measured, and whether they
-                  improve or get worse over time. A KEI is a score of something
-                  specific, important, and actionable. A number waits until a
-                  study names it. A trend waits until two comparable rounds sit
-                  on the same measure.
+            <header class="page-head astral-page-head astral-page-tools">
+              <div><h2>Analytics</h2></div>
+            </header>
+            <p class="astral-muted astral-home-lead desk-lead">
+              How Key Experience Indicators are measured, and whether they
+              improve or get worse over time. A KEI is a score of something
+              specific, important, and actionable. A number waits until a study
+              names it. A trend waits until two comparable rounds sit on the
+              same measure.
+            </p>
+            <p id="analytics-count" class="sr-only"></p>
+
+            <section class="astral-home-section" aria-labelledby="analytics-time-heading">
+              <div class="desk-section-head">
+                <h3 id="analytics-time-heading" class="astral-home-section-title">Over time</h3>
+                <p class="astral-muted">
+                  One measure on the chart. Pick another when more than one is
+                  named. Report the sample with the score. A small qualitative
+                  round is directional only.
                 </p>
+              </div>
+              <section class="astral-card desk-chart-card" aria-labelledby="analytics-time-heading">
+                <div id="analytics-keis" class="astral-card-tabs"></div>
+                <div id="analytics-chart" class="analytics-chart"></div>
               </section>
-              <p id="analytics-count" class="count count-pill"></p>
-            </div>
-
-            <section class="board-block" aria-labelledby="analytics-time-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="analytics-time-heading">Over time</h2>
-                  <p class="section-help">
-                    One measure on the chart. Pick another below when more than
-                    one is named. Report the sample with the score. A small
-                    qualitative round is directional only.
-                  </p>
-                </div>
-                <div id="analytics-keis" class="research-pills" role="tablist" aria-label="Measures"></div>
-              </div>
-              <div id="analytics-chart" class="analytics-chart"></div>
             </section>
 
-            <section class="board-block" aria-labelledby="analytics-measures-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="analytics-measures-heading">Named measures</h2>
-                  <p class="section-help">
-                    Primary is the headline. Diagnostics explain it. Open a card
-                    for rounds, sample, and method.
-                  </p>
-                </div>
+            <section class="astral-home-section" aria-labelledby="analytics-measures-heading">
+              <div class="desk-section-head">
+                <h3 id="analytics-measures-heading" class="astral-home-section-title">Named measures</h3>
+                <p class="astral-muted">
+                  Primary is the headline. Diagnostics explain it. Open a card
+                  for rounds, sample, and method.
+                </p>
               </div>
-              <div id="analytics-list" class="card-grid"></div>
+              <div id="analytics-list" class="astral-report-grid desk-grid"></div>
             </section>
 
-            <section class="board-block" aria-labelledby="analytics-structure-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="analytics-structure-heading">How we structure</h2>
-                  <p class="section-help">
-                    A small set for the whole product, then one primary KEI per
-                    area and two to four diagnostics. In play means a study has
-                    named one. Waiting means none yet.
-                  </p>
-                </div>
+            <section class="astral-home-section" aria-labelledby="analytics-structure-heading">
+              <div class="desk-section-head">
+                <h3 id="analytics-structure-heading" class="astral-home-section-title">How we structure</h3>
+                <p class="astral-muted">
+                  A small set for the whole product, then one primary KEI per
+                  area and two to four diagnostics. In play means a study has
+                  named one. Waiting means none yet.
+                </p>
               </div>
-              <div id="analytics-structure" class="know-grid"></div>
+              <div id="analytics-structure" class="astral-report-grid desk-grid"></div>
             </section>
 
-            <section class="board-block" aria-labelledby="analytics-cuts-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="analytics-cuts-heading">How we cut</h2>
-                  <p class="section-help">
-                    A later slice by area, task, test type, named role, and
-                    time. Lab, live, survey, and support stay separate scores.
-                    Do not invent a filter a talk has not named.
-                  </p>
-                </div>
+            <section class="astral-home-section" aria-labelledby="analytics-cuts-heading">
+              <div class="desk-section-head">
+                <h3 id="analytics-cuts-heading" class="astral-home-section-title">How we cut</h3>
+                <p class="astral-muted">
+                  A later slice by area, task, test type, named role, and time.
+                  Lab, live, survey, and support stay separate scores. Do not
+                  invent a filter a talk has not named.
+                </p>
               </div>
-              <div id="analytics-cuts" class="know-grid"></div>
+              <div id="analytics-cuts" class="astral-report-grid desk-grid"></div>
             </section>
 
-            <section class="board-block" aria-labelledby="analytics-how-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="analytics-how-heading">How we measure</h2>
-                  <p class="section-help">
-                    Kinds of experience a KEI can name. Facility, engagement,
-                    and satisfaction sit here, with operational and
-                    accessibility as constraints. Leading signals show trouble
-                    early. Lagging ones show what already happened. In play
-                    means a study has named one. Waiting means none yet.
-                  </p>
-                </div>
+            <section class="astral-home-section" aria-labelledby="analytics-how-heading">
+              <div class="desk-section-head">
+                <h3 id="analytics-how-heading" class="astral-home-section-title">How we measure</h3>
+                <p class="astral-muted">
+                  Kinds of experience a KEI can name. Facility, engagement, and
+                  satisfaction sit here, with operational and accessibility as
+                  constraints. Leading signals show trouble early. Lagging ones
+                  show what already happened. In play means a study has named
+                  one. Waiting means none yet.
+                </p>
               </div>
-              <div id="analytics-how" class="know-grid"></div>
+              <div id="analytics-how" class="astral-report-grid desk-grid"></div>
             </section>
           </section>
 
           <section id="panel-access" class="panel" data-panel="access" hidden>
-            <div class="page-head">
-              <section class="lead">
-                <h2>What you can get into</h2>
-                <p>
-                  A name on the card. Open it for who to ask and what you have.
-                  New ones go in through Add. Do not put passwords here.
-                </p>
-              </section>
-              <button type="button" id="access-add" class="page-add">Add</button>
-            </div>
+            <header class="page-head astral-page-head astral-page-tools">
+              <div><h2>Access</h2></div>
+              <div class="astral-page-actions">
+                <button type="button" id="access-add" class="astral-btn">Add</button>
+              </div>
+            </header>
+            <p class="astral-muted astral-home-lead desk-lead">
+              What you can get into. A name on the card. Open it for who to ask
+              and what you have. New ones go in through Add. Do not put
+              passwords here.
+            </p>
 
             <section
-              class="board-block desk-fold"
+              class="astral-card desk-fold"
               data-access-fold="people"
               aria-labelledby="people-heading"
             >
@@ -423,10 +412,10 @@
               >
                 <span class="desk-fold-copy">
                   <span id="people-heading" class="desk-fold-title">Who can help</span>
-                  <span class="section-help">Open a person for how to reach them.</span>
+                  <span class="astral-muted">Open a person for how to reach them.</span>
                 </span>
                 <span class="desk-fold-meta">
-                  <span id="people-count" class="count"></span>
+                  <span id="people-count" class="astral-tag"></span>
                   <svg
                     class="desk-fold-chevron"
                     viewBox="0 0 12 12"
@@ -445,12 +434,12 @@
                 </span>
               </button>
               <div class="desk-fold-clip" id="people-fold-body" aria-hidden="true" inert>
-                <div id="people-list" class="card-grid"></div>
+                <div id="people-list" class="astral-report-grid desk-grid"></div>
               </div>
             </section>
 
             <section
-              class="board-block desk-fold"
+              class="astral-card desk-fold"
               data-access-fold="company"
               aria-labelledby="company-access-heading"
             >
@@ -463,10 +452,10 @@
               >
                 <span class="desk-fold-copy">
                   <span id="company-access-heading" class="desk-fold-title">Company</span>
-                  <span class="section-help">Shared across teams. Open a card for the rest.</span>
+                  <span class="astral-muted">Shared across teams. Open a card for the rest.</span>
                 </span>
                 <span class="desk-fold-meta">
-                  <span id="company-access-count" class="count"></span>
+                  <span id="company-access-count" class="astral-tag"></span>
                   <svg
                     class="desk-fold-chevron"
                     viewBox="0 0 12 12"
@@ -485,12 +474,12 @@
                 </span>
               </button>
               <div class="desk-fold-clip" id="company-fold-body" aria-hidden="true" inert>
-                <div id="company-access-list" class="card-grid"></div>
+                <div id="company-access-list" class="astral-report-grid desk-grid"></div>
               </div>
             </section>
 
             <section
-              class="board-block desk-fold"
+              class="astral-card desk-fold"
               data-access-fold="team"
               aria-labelledby="team-access-heading"
             >
@@ -503,10 +492,10 @@
               >
                 <span class="desk-fold-copy">
                   <span id="team-access-heading" class="desk-fold-title">This team</span>
-                  <span id="team-access-lead" class="section-help"></span>
+                  <span id="team-access-lead" class="astral-muted"></span>
                 </span>
                 <span class="desk-fold-meta">
-                  <span id="team-access-count" class="count"></span>
+                  <span id="team-access-count" class="astral-tag"></span>
                   <svg
                     class="desk-fold-chevron"
                     viewBox="0 0 12 12"
@@ -525,55 +514,51 @@
                 </span>
               </button>
               <div class="desk-fold-clip" id="team-fold-body" aria-hidden="true" inert>
-                <div id="team-access-list" class="card-grid"></div>
+                <div id="team-access-list" class="astral-report-grid desk-grid"></div>
               </div>
             </section>
           </section>
 
           <section id="panel-library" class="panel" data-panel="library" hidden>
-            <div class="page-head">
-              <section class="lead">
-                <h2 id="library-heading">UI library</h2>
-                <p id="library-lead"></p>
-              </section>
-              <button type="button" id="library-copy" class="page-add">Copy tokens</button>
+            <header class="page-head astral-page-head astral-page-tools">
+              <div><h2 id="library-heading">UI library</h2></div>
+              <div class="astral-page-actions">
+                <button type="button" id="library-copy" class="astral-btn library-copy">Copy tokens</button>
+              </div>
+            </header>
+            <p id="library-lead" class="astral-muted astral-home-lead desk-lead"></p>
+            <div class="astral-page-top">
+              <div id="library-tabs" class="astral-page-tabs"></div>
             </div>
-            <div id="library-tabs" class="kind-tabs" role="tablist" aria-label="Library layer"></div>
-            <div id="library-list"></div>
+            <div id="library-list" class="desk-list-host"></div>
           </section>
 
           <section id="panel-language" class="panel" data-panel="language" hidden>
-            <div class="page-head">
-              <section class="lead">
-                <h2 id="language-heading">Language</h2>
-                <p id="language-lead"></p>
-              </section>
-              <p id="language-count" class="count count-pill"></p>
-            </div>
-            <div id="language-tabs" class="kind-tabs" role="tablist" aria-label="Language kind"></div>
-            <div id="language-list" class="card-grid"></div>
+            <header class="page-head astral-page-head astral-page-tools">
+              <div><h2 id="language-heading">Language</h2></div>
+            </header>
+            <p id="language-lead" class="astral-muted astral-home-lead desk-lead"></p>
+            <p id="language-count" class="sr-only"></p>
+            <div id="language-tabs" class="desk-stats-host"></div>
+            <div id="language-list" class="desk-list-host"></div>
           </section>
 
           <section id="panel-patterns" class="panel" data-panel="patterns" hidden>
-            <div class="page-head">
-              <section class="lead">
-                <h2 id="patterns-heading">Patterns</h2>
-                <p id="patterns-lead"></p>
-              </section>
-              <p id="patterns-count" class="count count-pill"></p>
-            </div>
-            <div id="patterns-list"></div>
+            <header class="page-head astral-page-head astral-page-tools">
+              <div><h2 id="patterns-heading">Patterns</h2></div>
+            </header>
+            <p id="patterns-lead" class="astral-muted astral-home-lead desk-lead"></p>
+            <p id="patterns-count" class="sr-only"></p>
+            <div id="patterns-list" class="desk-list-host"></div>
           </section>
 
           <section id="panel-skills" class="panel" data-panel="skills" hidden>
-            <div class="page-head">
-              <section class="lead">
-                <h2 id="skills-heading">Skills</h2>
-                <p id="skills-lead"></p>
-              </section>
-              <p id="skills-count" class="count count-pill"></p>
-            </div>
-            <div id="skills-list"></div>
+            <header class="page-head astral-page-head astral-page-tools">
+              <div><h2 id="skills-heading">Skills</h2></div>
+            </header>
+            <p id="skills-lead" class="astral-muted astral-home-lead desk-lead"></p>
+            <p id="skills-count" class="sr-only"></p>
+            <div id="skills-list" class="desk-list-host"></div>
           </section>
 
           <section id="panel-prototype" class="panel proto-panel" data-panel="prototype" hidden>
@@ -581,47 +566,42 @@
           </section>
 
           <section id="panel-branding" class="panel" data-panel="branding" hidden>
-            <div class="page-head">
-              <section class="lead">
-                <h2 id="branding-heading">Branding</h2>
-                <p id="branding-lead"></p>
-              </section>
-              <p id="branding-count" class="count count-pill"></p>
+            <header class="page-head astral-page-head astral-page-tools">
+              <div><h2 id="branding-heading">Branding</h2></div>
+            </header>
+            <p id="branding-lead" class="astral-muted astral-home-lead desk-lead"></p>
+            <p id="branding-count" class="sr-only"></p>
+            <div class="astral-page-top">
+              <div id="branding-tabs" class="astral-page-tabs"></div>
             </div>
-            <div id="branding-tabs" class="kind-tabs" role="tablist" aria-label="Brand part"></div>
             <div id="branding-page"></div>
-            <section class="board-block" aria-labelledby="brand-source-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="brand-source-heading">Where it comes from</h2>
-                  <p class="section-help">
-                    Open a card for who to ask. Do not invent a source a talk has not named.
-                  </p>
-                </div>
+            <section class="astral-home-section" aria-labelledby="brand-source-heading">
+              <div class="desk-section-head">
+                <h3 id="brand-source-heading" class="astral-home-section-title">Where it comes from</h3>
+                <p class="astral-muted">
+                  Open a card for who to ask. Do not invent a source a talk has not named.
+                </p>
               </div>
-              <div id="branding-sources" class="card-grid"></div>
+              <div id="branding-sources" class="astral-report-grid desk-grid"></div>
             </section>
           </section>
 
           <section id="panel-workflow" class="panel workflow-panel" data-panel="workflow" hidden>
-            <section class="hero">
-              <p class="hero-team">How you work</p>
-              <h2>You own the experience layer</h2>
-              <p>
-                The developer owns the application plumbing. Do not hand over
-                Figma and say build this. Hand over a working React version
-                where the layout, interactions, states, and visual behaviour
-                already exist.
-              </p>
-            </section>
-
-            <section class="board-block" aria-labelledby="path-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="path-heading">The path</h2>
-                  <p class="section-help">Five steps from Figma to a joint check.</p>
-                </div>
+            <header class="page-head astral-page-head astral-page-tools">
+              <div>
+                <p class="desk-kicker">How you work</p>
+                <h2>You own the experience layer</h2>
               </div>
+            </header>
+            <p class="astral-muted astral-home-lead desk-lead">
+              The developer owns the application plumbing. Do not hand over
+              Figma and say build this. Hand over a working React version where
+              the layout, interactions, states, and visual behaviour already
+              exist.
+            </p>
+
+            <section class="astral-card desk-block" aria-labelledby="path-heading">
+              <div class="desk-block-head"><h3 id="path-heading">The path</h3><p class="astral-muted">Five steps from Figma to a joint check.</p></div>
               <ol class="path">
                 <li><strong>Figma</strong> Shape the experience.</li>
                 <li><strong>React UI</strong> Make the behaviour real.</li>
@@ -638,7 +618,7 @@
             <section class="own" aria-label="Who owns what">
               <article class="own-card is-you">
                 <p class="own-kicker">Your side</p>
-                <h2>You</h2>
+                <h3>You</h3>
                 <ul>
                   <li>Visual implementation, responsive behaviour, and design tokens.</li>
                   <li>Components, interactions, animation, and every UI state.</li>
@@ -647,7 +627,7 @@
               </article>
               <article class="own-card is-dev">
                 <p class="own-kicker">Their side</p>
-                <h2>Dev</h2>
+                <h3>Dev</h3>
                 <ul>
                   <li>API integration, authentication, and permissions.</li>
                   <li>Backend rules, server state, and the database.</li>
@@ -656,15 +636,10 @@
               </article>
             </section>
 
-            <section class="board-block" aria-labelledby="build-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="build-heading">How you build</h2>
-                  <p class="section-help">Stay inside the stack. Pass data in. Build pieces.</p>
-                </div>
-              </div>
+            <section class="astral-card desk-block" aria-labelledby="build-heading">
+              <div class="desk-block-head"><h3 id="build-heading">How you build</h3><p class="astral-muted">Stay inside the stack. Pass data in. Build pieces.</p></div>
               <div class="flow-block">
-                <h3>Agree the hangar doors first</h3>
+                <h4>Agree the hangar doors first</h4>
                 <p>
                   Ask what stack you must stay inside before you write a line.
                   React version, TypeScript or JavaScript, and the component
@@ -675,7 +650,7 @@
                 </p>
               </div>
               <div class="flow-block">
-                <h3>Fake data through props</h3>
+                <h4>Fake data through props</h4>
                 <p>
                   Do not fetch in the component. Pass the data in, so a
                   developer can swap the mock for an API without rebuilding the
@@ -688,7 +663,7 @@
 /&gt;</code></pre>
               </div>
               <div class="flow-block">
-                <h3>Pieces, not page blobs</h3>
+                <h4>Pieces, not page blobs</h4>
                 <p>
                   Think the way you think in Figma. Start small. Compose those
                   into features.
@@ -709,16 +684,11 @@
               </div>
             </section>
 
-            <section class="board-block" aria-labelledby="states-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="states-heading">States you actually ship</h2>
-                  <p class="section-help">
+            <section class="astral-card desk-block" aria-labelledby="states-heading">
+              <div class="desk-block-head"><h3 id="states-heading">States you actually ship</h3><p class="astral-muted">
                     This is where the UX work becomes an executable spec. The
                     happy path is not enough.
-                  </p>
-                </div>
-              </div>
+                  </p></div>
               <ul class="state-row">
                 <li>Loading</li>
                 <li>Empty</li>
@@ -733,15 +703,10 @@
               </ul>
             </section>
 
-            <section class="board-block" aria-labelledby="handover-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="handover-heading">How you hand it over</h2>
-                  <p class="section-help">Git, a clear seam, and tiny notes.</p>
-                </div>
-              </div>
+            <section class="astral-card desk-block" aria-labelledby="handover-heading">
+              <div class="desk-block-head"><h3 id="handover-heading">How you hand it over</h3><p class="astral-muted">Git, a clear seam, and tiny notes.</p></div>
               <div class="flow-block">
-                <h3>Git, not an export</h3>
+                <h4>Git, not an export</h4>
                 <p>
                   Work in the product repo on a branch such as
                   feature/customer-profile-ui. Commit, open a pull request, and
@@ -750,7 +715,7 @@
                 </p>
               </div>
               <div class="flow-block">
-                <h3>Leave the seam obvious</h3>
+                <h4>Leave the seam obvious</h4>
                 <p>
                   The UI should not care where the data came from. You log the
                   form for now. They replace that with the real update.
@@ -762,7 +727,7 @@
 await updateCustomer(formData)</code></pre>
               </div>
               <div class="flow-block">
-                <h3>Tiny notes, not a novel</h3>
+                <h4>Tiny notes, not a novel</h4>
                 <p>
                   For each feature, say what still needs plumbing. That is more
                   useful than a giant handover document.
@@ -776,13 +741,8 @@ await updateCustomer(formData)</code></pre>
               </div>
             </section>
 
-            <section class="board-block" aria-labelledby="stack-heading">
-              <div class="section-head">
-                <div>
-                  <h2 id="stack-heading">Where it sits</h2>
-                  <p class="section-help">You work below the split. They work above it.</p>
-                </div>
-              </div>
+            <section class="astral-card desk-block" aria-labelledby="stack-heading">
+              <div class="desk-block-head"><h3 id="stack-heading">Where it sits</h3><p class="astral-muted">You work below the split. They work above it.</p></div>
               <ol class="stack">
                 <li><span class="stack-side" aria-hidden="true">Dev</span>API and database</li>
                 <li><span class="stack-side" aria-hidden="true">Dev</span>Developer plumbing</li>
@@ -798,8 +758,8 @@ await updateCustomer(formData)</code></pre>
               </p>
             </section>
 
-            <section class="board-block" aria-labelledby="storybook-heading">
-              <h2 id="storybook-heading">Storybook if they have it</h2>
+            <section class="astral-card desk-block" aria-labelledby="storybook-heading">
+              <h3 id="storybook-heading">Storybook if they have it</h3>
               <p>
                 Production components in isolation, with mocked states. The
                 developer then uses those exact pieces in the app. A Figma
@@ -817,8 +777,8 @@ await updateCustomer(formData)</code></pre>
               </ul>
             </section>
 
-            <section class="board-block close-block" aria-labelledby="start-heading">
-              <h2 id="start-heading">Start small</h2>
+            <section class="astral-card desk-block close-block" aria-labelledby="start-heading">
+              <h3 id="start-heading">Start small</h3>
               <p>
                 You have just joined. Pick one isolated feature and run the
                 whole path with your developer. After that, agree what they are
@@ -839,15 +799,15 @@ await updateCustomer(formData)</code></pre>
       </main>
     </div>
 
-    <dialog id="detail-modal" class="modal detail-modal" aria-labelledby="detail-title">
-      <div class="detail-head">
-        <div>
-          <p id="detail-kicker" class="detail-kicker"></p>
-          <h2 id="detail-title"></h2>
+    <dialog id="detail-modal" class="modal detail-modal desk-modal" aria-labelledby="detail-title">
+      <div class="astral-modal-head detail-head">
+        <div class="astral-modal-copy">
+          <p id="detail-kicker" class="detail-kicker astral-muted"></p>
+          <h3 id="detail-title"></h3>
         </div>
-        <button type="button" id="detail-close" class="modal-cancel">Close</button>
+        <button type="button" id="detail-close" class="astral-icon-btn desk-modal-close" aria-label="Close"></button>
       </div>
-      <div id="detail-body" class="detail-body"></div>
+      <div id="detail-body" class="astral-modal-body detail-body"></div>
     </dialog>
 
     <dialog id="access-modal" class="modal" aria-labelledby="access-modal-title">
@@ -931,10 +891,10 @@ await updateCustomer(formData)</code></pre>
           />
         </fieldset>
         <div class="modal-actions">
-          <button type="button" id="access-modal-cancel" class="modal-cancel">
+          <button type="button" id="access-modal-cancel" class="astral-ghost modal-cancel">
             Cancel
           </button>
-          <button type="submit">Add</button>
+          <button type="submit" class="astral-btn">Add</button>
         </div>
       </form>
     </dialog>

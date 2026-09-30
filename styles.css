@@ -13349,3 +13349,1039 @@ html.is-classic-scroll #astral-fs .is-scroll-near {
 .astral-summary-stat.is-on .astral-stat-value {
   color: var(--color-action-primary);
 }
+
+
+/* ------------------------------------------------------------------
+   Work Desk in Astral.
+   The desk uses the prototype's own pieces: a side rail, page heads,
+   summary stats that filter, a sheet with Search and the view switch,
+   report-grid cards, tables, tags, and the modal. These rules only fit
+   those pieces to the desk shell. Keep new desk UI on Astral classes.
+------------------------------------------------------------------- */
+
+body:not(.is-share) .desk-shell {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 256px minmax(0, 1fr);
+  min-height: 0;
+  background: var(--color-background-canvas);
+}
+
+.desk-shell .desk-rail {
+  position: relative;
+  inset: auto;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  width: auto;
+  max-width: none;
+  height: 100%;
+  max-height: 100%;
+  padding: 16px;
+  overflow: hidden;
+  border: 0;
+  border-right: 1px solid var(--color-border-default);
+  background: var(--color-background-surface, #fff);
+  box-shadow: none;
+}
+
+.desk-rail .desk-rail-brand {
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.desk-rail .desk-rail-brand .astral-logo {
+  height: 24px;
+  width: auto;
+}
+
+.desk-rail-name {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.desk-rail .side-team,
+.desk-rail #team-select.side-team {
+  margin: 0 16px 12px;
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+}
+
+.desk-rail .astral-rail-links {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  gap: 2px;
+}
+
+.desk-rail .side-link.astral-rail-link {
+  flex: none;
+  justify-content: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius-button);
+  color: #000;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.desk-rail .side-link.astral-rail-link:hover,
+.desk-rail .side-link.astral-rail-link:focus-visible {
+  color: #000;
+  background: var(--color-background-hover);
+}
+
+.desk-rail .side-link.astral-rail-link[aria-current="page"] {
+  color: #000;
+  background: var(--color-background-subtle);
+  font-weight: 600;
+}
+
+.desk-rail-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.desk-rail .nav-count {
+  flex: none;
+  min-width: 0;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.desk-rail-scrim,
+.desk-bar {
+  display: none;
+}
+
+.desk-shell .desk-stage {
+  min-width: 0;
+  min-height: 0;
+  padding: 32px 24px 96px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--color-background-canvas);
+}
+
+.desk-shell .stage-inner {
+  max-width: 88rem;
+  margin: 0 auto;
+}
+
+.desk-shell .panel {
+  gap: 24px;
+}
+
+.desk-shell .stage:has(#panel-prototype:not([hidden])) .stage-inner {
+  max-width: 88rem;
+}
+
+/* Page head, lead, and section heads. */
+.desk-shell .page-head.astral-page-head {
+  background: transparent;
+}
+
+.desk-shell .astral-page-head h2 {
+  max-width: none;
+  font-size: 2rem;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.desk-kicker {
+  margin: 0 0 8px;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.desk-kicker:empty {
+  display: none;
+}
+
+.desk-shell .desk-lead {
+  max-width: 60rem;
+}
+
+.desk-section-head {
+  display: grid;
+  gap: 4px;
+}
+
+.desk-section-head .astral-muted {
+  max-width: 60rem;
+  font-size: 0.875rem;
+}
+
+.desk-shell .astral-home-section {
+  scroll-margin-top: 24px;
+}
+
+.desk-shell .astral-home-section-title {
+  scroll-margin-top: 24px;
+}
+
+.desk-stats-host:empty,
+.desk-tools-host:empty {
+  display: none;
+}
+
+.desk-shell .astral-page-top:has(> .astral-page-tabs:empty) {
+  display: none;
+}
+
+.desk-shell .astral-page-tabs > .astral-tabs {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.desk-list-host {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+
+.desk-sheet-help {
+  margin: -8px 0 0;
+  font-size: 0.875rem;
+}
+
+/* A detail page inside a section hides the list chrome above it. */
+.desk-shell .panel.is-detail > .astral-page-head,
+.desk-shell .panel.is-detail > .desk-lead,
+.desk-shell .panel.is-detail > .astral-page-top,
+.desk-shell .panel.is-detail > .desk-stats-host {
+  display: none;
+}
+
+.desk-detail-head {
+  margin-top: -8px;
+}
+
+.desk-detail-kicker {
+  margin: 0 0 8px;
+}
+
+.desk-shell .text-back {
+  justify-self: start;
+}
+
+/* Cards. */
+.desk-shell .astral-card h3,
+.desk-modal .astral-card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.desk-shell .astral-card h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.desk-card {
+  position: relative;
+}
+
+.desk-card.is-link {
+  cursor: pointer;
+}
+
+.desk-card.is-link:hover {
+  background: var(--color-background-hover);
+}
+
+.desk-card .astral-card-head {
+  align-items: center;
+  gap: 12px;
+}
+
+.desk-card .astral-card-head > .astral-tag,
+.desk-card .astral-card-head > .desk-card-tags {
+  align-self: flex-start;
+}
+
+.desk-card-open {
+  appearance: none;
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.desk-card-open::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 16px;
+}
+
+.desk-card-open:focus-visible {
+  outline: none;
+}
+
+.desk-card:has(.desk-card-open:focus-visible) {
+  outline: 2px solid #000;
+  outline-offset: -2px;
+}
+
+.desk-shell .desk-card > p,
+.desk-modal .desk-card > p {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.desk-shell .astral-report-grid .desk-card > p:last-child {
+  padding-bottom: 20px;
+}
+
+.desk-shell .astral-report-grid .desk-card .desk-card-foot {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  min-height: 56px;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.desk-card-foot .token-path {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.desk-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.desk-card-meta {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+}
+
+.desk-kei-value {
+  display: block;
+  color: #000;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.desk-kei-card .analytics-spark {
+  display: block;
+  margin: 8px 0;
+}
+
+.desk-avatar.astral-avatar {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  font-size: 0.75rem;
+}
+
+.desk-score b {
+  color: #000;
+  font-weight: 600;
+}
+
+.desk-grid {
+  overflow: visible;
+}
+
+.desk-clusters {
+  display: grid;
+  gap: 24px;
+}
+
+.desk-cluster {
+  display: grid;
+  gap: 12px;
+}
+
+.desk-cluster-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.desk-style-card .style-sample {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+/* Steps and know cards. */
+.desk-step,
+.desk-know-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 4px 12px;
+}
+
+.desk-step-index {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-background-subtle);
+  color: #000;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.desk-step-title,
+.desk-know-title {
+  margin: 0;
+  padding-top: 2px;
+  font-weight: 600;
+}
+
+.desk-know-body {
+  grid-column: 2;
+  font-size: 0.875rem;
+}
+
+.desk-shell .desk-know-card > span {
+  display: block;
+}
+
+.desk-shell .desk-know-card > .desk-step-index {
+  display: grid;
+}
+
+/* The picture on Today, and hard limits on Strategy. */
+.desk-brief-card {
+  align-content: start;
+  gap: 12px;
+}
+
+.desk-brief-card h3,
+.desk-brief-card h4 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.desk-bullets {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  font-size: 0.875rem;
+}
+
+.desk-bullets li::marker {
+  color: var(--color-text-secondary);
+}
+
+/* Tags carry the old desk status. In play and Brand fill teal. */
+.desk-shell .status,
+.desk-modal .status {
+  display: inline-flex;
+  width: max-content;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-button);
+  background: var(--color-background-subtle);
+  color: #000;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.desk-modal button.status {
+  cursor: pointer;
+}
+
+.desk-shell .status[data-status="brand"],
+.desk-shell .status[data-status="working"],
+.desk-shell .status[data-status="critical"],
+.desk-modal .status[data-status="brand"],
+.desk-modal .status[data-status="working"],
+.desk-modal .status[data-status="critical"] {
+  background: var(--color-action-primary);
+  border-color: var(--color-action-primary-border);
+  color: var(--color-action-on-primary);
+}
+
+.desk-shell .status[data-status="waiting"],
+.desk-modal .status[data-status="waiting"] {
+  background: #fff;
+  border-color: var(--color-border-control);
+}
+
+.desk-shell .status[data-status="firm"],
+.desk-modal .status[data-status="firm"] {
+  background: #fff;
+  border-color: #000;
+}
+
+/* Sheet: Search and view switch over cards or a table. */
+.desk-shell .desk-sheet {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.desk-sheet > .desk-empty,
+.desk-sheet > .astral-empty {
+  min-height: 8rem;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.desk-sheet .astral-report-grid {
+  overflow: visible;
+}
+
+.desk-table.astral-table-wrap {
+  overflow-x: auto;
+}
+
+.desk-table .astral-table tbody th {
+  font-weight: 600;
+}
+
+.desk-row-open {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #000;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.desk-row-open:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.desk-cell-line {
+  display: -webkit-box;
+  max-width: 40rem;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+}
+
+.desk-table td {
+  white-space: normal;
+}
+
+.desk-empty.astral-empty {
+  min-height: 8rem;
+  padding: 24px;
+}
+
+.desk-empty p {
+  max-width: 36rem;
+  margin: 0 auto;
+}
+
+/* Today: kind cards, one sheet of tasks, and the add row. */
+.desk-sheet-title {
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.desk-sheet-title .astral-tag:empty {
+  display: none;
+}
+
+.desk-rows.task-list,
+.desk-shell .done-day ul {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-border-strong);
+}
+
+.desk-shell .task {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px 8px;
+  border: 0;
+  border-bottom: 1px solid var(--color-border-strong);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.desk-shell .task:hover,
+.desk-shell .task:focus-within {
+  border-color: var(--color-border-strong);
+  background: var(--color-background-hover);
+}
+
+.desk-shell .task input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #000;
+}
+
+.desk-shell .task-open {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.desk-shell .task-title {
+  font-weight: 500;
+}
+
+.desk-shell .task-meta {
+  margin: 0;
+}
+
+.desk-row-empty {
+  padding: 16px 8px;
+  border-bottom: 1px solid var(--color-border-strong);
+  font-size: 0.875rem;
+}
+
+.desk-shell .done-day {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.desk-shell .done-day + .done-day {
+  margin-top: 16px;
+}
+
+.desk-shell .done-day h3 {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.desk-shell .done .task-title {
+  color: var(--color-text-secondary);
+}
+
+.desk-add.add-form,
+.desk-add.group-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(8.5rem, 11rem) minmax(7rem, 10rem) auto;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.desk-add.group-form {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
+}
+
+.desk-add input,
+.desk-add select,
+.desk-shell .note-form input {
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--color-border-control);
+  border-radius: var(--radius-button);
+  background-color: #fff;
+  color: #000;
+  font-size: 0.875rem;
+}
+
+.desk-add select {
+  padding-right: 32px;
+}
+
+.desk-add .astral-btn,
+.desk-shell .note-form button {
+  min-height: 36px;
+  width: auto;
+}
+
+/* Folds: Access and Library setup read as Astral accordion cards. */
+.desk-shell .astral-card.desk-fold {
+  display: block;
+  padding: 0;
+  overflow: hidden;
+}
+
+.desk-shell .desk-fold-head {
+  align-items: center;
+  padding: 16px 20px;
+}
+
+.desk-shell .desk-fold-title {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.desk-shell .desk-fold-copy .astral-muted,
+.desk-shell .desk-fold-copy .section-help {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.desk-shell .desk-fold.is-open .desk-fold-title {
+  color: var(--color-brand-extra-2, #000);
+}
+
+.desk-shell .desk-fold .astral-report-grid,
+.desk-shell .desk-fold .card-grid,
+.desk-shell .desk-fold .token-grid,
+.desk-shell .desk-fold .setup-list,
+.desk-shell .desk-fold .token-table-wrap {
+  padding: 0 20px 20px;
+  overflow: visible;
+}
+
+/* A block: one card with a head, for detail pages and Workflow. */
+.desk-block {
+  align-content: start;
+}
+
+.desk-block-head {
+  display: grid;
+  gap: 4px;
+}
+
+.desk-block-head .astral-muted {
+  max-width: 48rem;
+  font-size: 0.875rem;
+}
+
+.desk-block-head .desk-kicker {
+  margin: 0;
+}
+
+.desk-sub-head {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.desk-now-later {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.desk-shell .desk-block .astral-table-wrap {
+  overflow-x: auto;
+}
+
+.desk-shell .token-table.astral-table th,
+.desk-shell .token-table.astral-table td {
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--color-border-strong);
+}
+
+.desk-shell .token-table .token-name {
+  font-weight: 600;
+}
+
+.desk-shell .workflow-panel .own-card {
+  border-radius: 16px;
+  border-color: var(--color-border-strong);
+  box-shadow: none;
+  padding: 20px;
+}
+
+.desk-shell .workflow-panel .flow-block {
+  border: 0;
+  border-top: 1px solid var(--color-border-strong);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 16px 0 0;
+  background: none;
+}
+
+.desk-shell .workflow-panel .flow-block + .flow-block {
+  margin-top: 0;
+}
+
+.desk-shell .workflow-panel .flow-block h4 {
+  margin-bottom: 8px;
+}
+
+.desk-shell .brand-article {
+  gap: 16px;
+}
+
+/* Analytics chart card. */
+.desk-chart-card {
+  gap: 16px;
+}
+
+.desk-chart-card .astral-card-tabs:empty {
+  display: none;
+}
+
+.desk-chart-card .analytics-plot {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.desk-chart-card .analytics-plot-head {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Prototype gallery in the desk. */
+.desk-shell .proto-desk {
+  display: grid;
+  gap: 24px;
+}
+
+.desk-shell .proto-lens-card {
+  gap: 16px;
+}
+
+.desk-shell .proto-lens-kicker {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.desk-shell .proto-lens-row .astral-tabs {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.desk-shell .proto-thumb {
+  border-radius: 16px;
+  border-color: var(--color-border-strong);
+  box-shadow: none;
+}
+
+/* Detail modal as an Astral modal. */
+.desk-modal.modal {
+  width: min(40rem, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 16px 48px rgba(0, 2, 11, 0.16);
+  overflow: auto;
+}
+
+.desk-modal.detail-modal[data-wide="true"] {
+  width: min(64rem, calc(100vw - 32px));
+}
+
+.desk-modal::backdrop {
+  background: rgba(0, 2, 11, 0.4);
+}
+
+.desk-modal .detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0;
+}
+
+.desk-modal .detail-kicker {
+  margin: 0 0 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.desk-modal .detail-head h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.desk-modal-close {
+  flex: none;
+}
+
+#access-modal.modal {
+  border: 1px solid var(--color-border-strong);
+  border-radius: 16px;
+  box-shadow: 0 16px 48px rgba(0, 2, 11, 0.16);
+}
+
+#access-modal.modal::backdrop {
+  background: rgba(0, 2, 11, 0.4);
+}
+
+/* Narrow screens: the rail becomes a drawer behind a menu button. */
+@media (max-width: 900px) {
+  body:not(.is-share) .desk-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  .desk-shell .desk-rail {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 41;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 0;
+    width: 256px;
+    max-width: calc(100% - 48px);
+    height: auto;
+    max-height: none;
+    padding: 16px;
+    overflow: hidden;
+    border-right: 0;
+    border-bottom: 0;
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.12);
+    transform: translateX(-105%);
+    visibility: hidden;
+    transition: transform var(--motion-panel) ease, visibility 0s linear var(--motion-panel);
+  }
+
+  body.is-desk-rail-open .desk-shell .desk-rail {
+    transform: none;
+    visibility: visible;
+    transition: transform var(--motion-panel) ease;
+  }
+
+  .desk-rail .side-link.astral-rail-link {
+    width: 100%;
+  }
+
+  body.is-desk-rail-open .desk-rail-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: rgba(0, 0, 0, 0.45);
+    cursor: pointer;
+  }
+
+  .desk-shell .desk-stage {
+    padding: 0 16px 64px;
+  }
+
+  .desk-shell .desk-bar {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    display: flex;
+    margin: 0 -16px 16px;
+    padding: 8px 16px;
+    background: var(--color-background-canvas);
+    border-bottom: 1px solid var(--color-border-default);
+  }
+
+  .desk-add.add-form,
+  .desk-add.group-form,
+  .desk-now-later {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .desk-add .astral-btn {
+    width: 100%;
+  }
+
+  .desk-shell .astral-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desk-shell .desk-rail {
+    transition: none;
+  }
+}
+
+body.is-share .desk-rail,
+body.is-share .desk-rail-scrim,
+body.is-share .desk-bar {
+  display: none !important;
+}
+
+/* Work Desk polish after the browser pass. */
+.desk-rail .desk-rail-brand .astral-logo {
+  height: 18px;
+}
+
+.desk-rail-name {
+  white-space: nowrap;
+}
+
+.desk-stats-host .astral-summary-stats,
+.desk-shell .panel > .astral-summary-stats {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.desk-grid > .desk-empty,
+.astral-report-grid > .desk-empty {
+  grid-column: 1 / -1;
+}
+
+.desk-shell .astral-summary-stats {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.desk-table td:not(:last-child) {
+  white-space: nowrap;
+}
