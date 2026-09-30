@@ -11309,11 +11309,6 @@ function protoReportFileIsDefault(draft) {
 function protoReportFileDefaultInner(draft) {
   const saved = Boolean(protoReportFileSaved());
   const on = saved && protoReportFileIsDefault(draft);
-  const note = on
-    ? "Your new reports start with this naming."
-    : saved
-      ? "This replaces the naming you saved before."
-      : "Until you tick this, new reports use the standard naming.";
   return `
     <button
       type="button"
@@ -11324,8 +11319,7 @@ function protoReportFileDefaultInner(draft) {
     >
       ${protoCheck(on)}
       <span class="astral-report-consent-copy">
-        <span>Use this naming for my new reports</span>
-        <span class="astral-muted">${note}</span>
+        <span>Use this naming for my future reports</span>
       </span>
     </button>
   `;
