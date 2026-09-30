@@ -25870,7 +25870,11 @@ function protoSkelPaint(app) {
 // request skips it, as the data is already here.
 const PROTO_LOAD_MIN_RECORDS = 5000;
 const PROTO_LOAD_DONE_MS = 420;
-const PROTO_LOAD_TIP_MS = 3400;
+// A tip stays up long enough to read twice at a relaxed pace, and never under 6 seconds.
+function protoLoadTipMs(tip) {
+  const words = String(tip || "").split(/\s+/).filter(Boolean).length;
+  return Math.max(6000, 2500 + words * 350);
+}
 const PROTO_LOAD_TIPS = [
   "Click a point on the graph to raise a query about that reading.",
   "Pick Individual in Chart settings to see which sites or meters made the total.",
@@ -25949,12 +25953,6 @@ function protoLoadHtml(load, now) {
     <div class="astral-load${fresh ? " is-in" : ""}" data-proto-load>
       <div class="astral-load-ring" role="progressbar" aria-label="Loading interval records" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
         <svg viewBox="0 0 120 120" aria-hidden="true" focusable="false">
-          <defs>
-            <linearGradient id="astral-load-grad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="var(--color-brand-cyan)" />
-              <stop offset="1" stop-color="var(--color-brand-primary)" />
-            </linearGradient>
-          </defs>
           <circle class="astral-load-track" cx="60" cy="60" r="50" />
           <circle class="astral-load-arc" cx="60" cy="60" r="50" pathLength="100" stroke-dasharray="0 100" />
           <g class="astral-load-orbit"><circle cx="60" cy="4" r="3" /></g>
@@ -25964,7 +25962,7 @@ function protoLoadHtml(load, now) {
       </div>
       <p class="astral-load-title" role="status">Getting ${n} interval records</p>
       <p class="astral-load-count"><span data-proto-load-got>0</span> of ${n} loaded. Hang on, this takes a few seconds.</p>
-      <p class="astral-load-tip"><span class="astral-load-tip-label">Tip</span><span class="astral-load-tip-text" data-proto-load-tip="${load.tip}">${escapeHtml(
+      <p class="astral-load-tip"><span class="astral-tag astral-load-tip-label">Tip</span><span class="astral-load-tip-text" data-proto-load-tip="${load.tip}">${escapeHtml(
         PROTO_LOAD_TIPS[load.tip % PROTO_LOAD_TIPS.length]
       )}</span></p>
     </div>
@@ -25997,7 +25995,10 @@ function protoLoadUpdate(now) {
   const got = el.querySelector("[data-proto-load-got]");
   if (got) got.textContent = Math.round(p * protoLoad.records).toLocaleString("en-GB");
   el.classList.toggle("is-done", p >= 1);
-  if (now - protoLoadTipAt >= PROTO_LOAD_TIP_MS && p < 1) {
+  const tipEl = el.querySelector(".astral-load-tip");
+  if (tipEl?.matches(":hover")) protoLoadTipAt = now;
+  const shown = PROTO_LOAD_TIPS[protoLoad.tip % PROTO_LOAD_TIPS.length];
+  if (now - protoLoadTipAt >= protoLoadTipMs(shown) && p < 1) {
     protoLoadTipAt = now;
     protoLoad.tip += 1;
     const tip = el.querySelector(".astral-load-tip-text");
