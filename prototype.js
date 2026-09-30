@@ -8882,7 +8882,12 @@ function protoReportNormalize(raw) {
     quality: protoReportPick(PROTO_REPORT_QUALITY, raw.quality),
     format: protoReportPick(PROTO_REPORT_FORMAT, raw.format === "xls" ? "xlsx" : raw.format),
     time: protoReportPick(PROTO_REPORT_TIME, raw.time),
-    sendAt: PROTO_REPORT_SEND_AT.includes(String(raw.sendAt)) ? String(raw.sendAt) : "09:00",
+    sendAt:
+      raw.sendAt === "now" && protoReportPeriod(type, raw.period).id === "once"
+        ? "now"
+        : PROTO_REPORT_SEND_AT.includes(String(raw.sendAt))
+          ? String(raw.sendAt)
+          : "09:00",
     fileStart: String(raw.fileStart || "").trim().slice(0, 60),
     filePrefix: PROTO_REPORT_FILE_PREFIXES.some((item) => item.id === raw.filePrefix)
       ? raw.filePrefix
@@ -9354,7 +9359,8 @@ function protoReportNextSend(def) {
   const start = protoFromUkDate(def.start);
   const today = protoToday();
   const todayStamp = protoDayStamp(today);
-  if (protoReportOnce(def)) return start && protoDayStamp(start) >= todayStamp ? start : null;
+  // A one-off set to Now went when it was saved.
+  if (protoReportOnce(def)) return start && def.sendAt !== "now" && protoDayStamp(start) >= todayStamp ? start : null;
   const next = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
   if (def.period === "day") return next;
   if (def.period === "week") {
@@ -9394,10 +9400,14 @@ function protoReportSendAtSelect(draft) {
       label: "Send at",
       wide: true,
       value: draft.sendAt || "09:00",
-      options: PROTO_REPORT_SEND_AT.map((at) => {
-        const gone = protoReportHourGone(draft, at);
-        return { value: at, label: `${at} ${zone}`, disabled: gone, tip: gone ? "This time has gone today." : "" };
-      }),
+      options: [
+        // A one-off sent today can go straight away.
+        ...(protoReportSendsToday(draft) ? [{ value: "now", label: "Now", note: "As soon as you save" }] : []),
+        ...PROTO_REPORT_SEND_AT.map((at) => {
+          const gone = protoReportHourGone(draft, at);
+          return { value: at, label: `${at} ${zone}`, disabled: gone, tip: gone ? "This time has gone today." : "" };
+        }),
+      ],
     })
   );
 }
@@ -9572,9 +9582,9 @@ function protoReportTodayHoursLeft(draft) {
   return PROTO_REPORT_SEND_AT.filter((at) => protoReportAtMinutes(at) > now);
 }
 
-// Once cannot go before now: today while an hour is left, otherwise tomorrow.
-function protoReportFirstDay(draft) {
-  return protoReportTodayHoursLeft(draft).length ? protoToday() : protoAddDays(protoToday(), 1);
+// Once cannot go before today. Today always has Now.
+function protoReportFirstDay() {
+  return protoToday();
 }
 
 function protoReportSendsToday(draft) {
@@ -9584,15 +9594,25 @@ function protoReportSendsToday(draft) {
 }
 
 function protoReportHourGone(draft, at) {
-  return protoReportSendsToday(draft) && !protoReportTodayHoursLeft(draft).includes(at);
+  return at !== "now" && protoReportSendsToday(draft) && !protoReportTodayHoursLeft(draft).includes(at);
 }
 
 // Moves a Once draft off a day or hour that has gone. Returns the send time to keep.
+// Now only works for a one-off sent today.
 function protoReportFixOnce(draft) {
-  if (!draft || draft.period !== "once") return draft?.sendAt;
+  if (!draft) return undefined;
+  if (draft.period !== "once") return draft.sendAt === "now" ? draft.repeatSendAt || "09:00" : draft.sendAt;
   if (!protoReportSendOnOk()) store.prototypeReportDraftStart = protoFormatUkDate(protoReportFirstDay(draft));
-  if (protoReportHourGone(draft, draft.sendAt || "09:00")) return protoReportTodayHoursLeft(draft)[0] || draft.sendAt;
+  if (draft.sendAt === "now") return protoReportSendsToday(draft) ? "now" : "09:00";
+  if (protoReportHourGone(draft, draft.sendAt || "09:00")) return protoReportTodayHoursLeft(draft)[0] || "now";
   return draft.sendAt;
+}
+
+// The send time as a clock. Now is the time the report went.
+function protoReportSendClock(def) {
+  if (def.sendAt !== "now") return def.sendAt;
+  const mins = protoReportNowMinutes(def);
+  return `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
 }
 
 function protoReportCalField() {
@@ -9907,6 +9927,7 @@ function protoReportDraftPreview(draft) {
     const next = protoReportNextSend(def);
     const period = protoReportPeriod(def.type, def.period);
     const at = `${def.sendAt} ${protoReportZone(def)}`;
+    if (protoReportOnce(def) && def.sendAt === "now") return "Sends once, as soon as you save.";
     if (protoReportOnce(def)) {
       return next ? `Once, on ${protoReportSendLabel(next)} at ${at}.` : "Once. The send date has passed.";
     }
@@ -11449,9 +11470,9 @@ function protoReportFilePrefixText(def, raw) {
 function protoReportFileSuffixText(def, when) {
   if (def.fileSuffix === "none") return "";
   const stamp = (date, time) => `${protoReportFileDate(date, def.fileDate)}${def.fileSep}${time}`;
-  if (def.fileSuffix === "run") return stamp(when, def.sendAt.replace(":", ""));
+  if (def.fileSuffix === "run") return stamp(when, protoReportSendClock(def).replace(":", ""));
   const range = protoReportDataRange(def, when);
-  if (!range) return stamp(when, def.sendAt.replace(":", ""));
+  if (!range) return stamp(when, protoReportSendClock(def).replace(":", ""));
   return def.fileSuffix === "start" ? stamp(range.from, "0000") : stamp(range.to, "2359");
 }
 
@@ -27693,7 +27714,14 @@ function onPrototype(event) {
       const back = draft.repeatPeriod || (draft.type === "billing" ? "month" : "week");
       const period = oneOff ? "once" : back;
       const follow = draft.rangeAuto && !oneOff ? protoReportRangeFor(period) : {};
-      protoReportPatchDraft({ period, repeatPeriod: oneOff ? draft.period : back, ...follow });
+      if (oneOff) store.prototypeReportDraftStart = protoFormatUkDate(protoToday());
+      protoReportPatchDraft({
+        period,
+        repeatPeriod: oneOff ? draft.period : back,
+        sendAt: oneOff ? "now" : draft.repeatSendAt || "09:00",
+        repeatSendAt: oneOff ? draft.sendAt : draft.repeatSendAt,
+        ...follow,
+      });
     }
     protoRestoreFocus(`#astral-fs [data-proto-report-oneoff="${oneOff ? 1 : 0}"]`);
     return;
