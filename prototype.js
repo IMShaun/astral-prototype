@@ -20053,6 +20053,8 @@ function protoPaintPortfolioPane() {
     return;
   }
   pane.innerHTML = protoPortfolioDetail();
+  protoLoadCheck();
+  protoLoadPaint();
   protoScrollPane = protoScrollPaneKey();
   protoResetPaneScroll();
   protoBindBreakdown();
@@ -25863,6 +25865,171 @@ function protoSkelPaint(app) {
   }
 }
 
+// Big requests. All, a large group, or a long date range fakes a longer fetch: a progress ring
+// counts the interval records in, with a tip, then the graph grows in. A smaller or repeat
+// request skips it, as the data is already here.
+const PROTO_LOAD_MIN_RECORDS = 5000;
+const PROTO_LOAD_DONE_MS = 420;
+const PROTO_LOAD_TIP_MS = 3400;
+const PROTO_LOAD_TIPS = [
+  "Click a point on the graph to raise a query about that reading.",
+  "Pick Individual in Chart settings to see which sites or meters made the total.",
+  "Click a pill to take a site or meter off the graph. Click it again to put it back.",
+  "Open Breakdown for every reading in a table. Click a row to jump to that time.",
+  "Use the arrows at the top right of the graph to step back or forward in time.",
+  "Chart settings can show site hours and time of use on the graph.",
+  "Compare puts other sites or meters on the same graph.",
+  "A dotted line on the graph, or a dotted underline in a table, is estimated, not read.",
+  "Set up a Data extract in Reports to get this data sent to you.",
+  "Filter by utility to see electricity, gas, or water on its own.",
+];
+let protoLoad = null;
+let protoLoadKey = "";
+let protoLoadTipAt = 0;
+const protoLoaded = new Set();
+
+function protoLoadMeterCount() {
+  const state = protoState();
+  const current = protoMeter(state.meter);
+  const site = current ? protoSiteByMeter(current.id) : null;
+  const group = state.scope === "group" ? protoGroup(state.group) || protoGroupForSite(site) : null;
+  if (group) return protoGroupViewMeters(group).length + protoCompareIds().length;
+  return site ? protoMetersForPane(site.meters).length + protoCompareIds().length : 0;
+}
+
+function protoLoadRecords() {
+  const span = protoDateSpan();
+  const days = Math.max(1, Math.round((span.to - span.from) / 86400000) + 1);
+  return protoLoadMeterCount() * days * 48;
+}
+
+function protoLoadViewKey() {
+  if (protoViewId(store.activePrototypeView) !== "portfolio" || !protoPaneIsGraph()) return "";
+  const scope = store.prototypeScope || "";
+  return [
+    scope,
+    scope === "group" ? store.prototypeGroup || "" : store.activePrototypeMeter || "",
+    protoCompareIds().join(","),
+    protoDatePreset(),
+    store.prototypeDateFrom || "",
+    store.prototypeDateTo || "",
+  ].join("|");
+}
+
+function protoLoadCheck() {
+  const key = protoLoadViewKey();
+  if (key === protoLoadKey) return;
+  protoLoadKey = key;
+  if (protoLoad && protoLoad.key !== key) protoLoad = null;
+  if (!key || protoLoaded.has(key)) return;
+  const records = protoLoadRecords();
+  protoLoaded.add(key);
+  if (records < PROTO_LOAD_MIN_RECORDS) return;
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+  const ms = Math.round(Math.min(5200, Math.max(1800, 1500 + Math.sqrt(records) * 3.2)));
+  protoLoad = { key, records, start: performance.now(), ms, tip: Math.floor(Math.random() * PROTO_LOAD_TIPS.length) };
+  protoLoadTipAt = protoLoad.start;
+  requestAnimationFrame(protoLoadTick);
+}
+
+// Batches arrive quickly at first and slow towards the end, like a real fetch.
+function protoLoadProgress(now) {
+  if (!protoLoad) return 1;
+  const t = Math.min(1, (now - protoLoad.start) / Math.max(1, protoLoad.ms - PROTO_LOAD_DONE_MS));
+  const eased = 1 - Math.pow(1 - t, 2.4);
+  const batch = 480;
+  const got = t >= 1 ? protoLoad.records : Math.floor((eased * protoLoad.records) / batch) * batch;
+  return Math.min(protoLoad.records, got) / protoLoad.records;
+}
+
+function protoLoadHtml(load, now) {
+  const n = load.records.toLocaleString("en-GB");
+  const fresh = now - load.start < 120;
+  return `
+    <div class="astral-load${fresh ? " is-in" : ""}" data-proto-load>
+      <div class="astral-load-ring" role="progressbar" aria-label="Loading interval records" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <svg viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="astral-load-grad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="var(--color-brand-cyan)" />
+              <stop offset="1" stop-color="var(--color-brand-primary)" />
+            </linearGradient>
+          </defs>
+          <circle class="astral-load-track" cx="60" cy="60" r="50" />
+          <circle class="astral-load-arc" cx="60" cy="60" r="50" pathLength="100" stroke-dasharray="0 100" />
+          <g class="astral-load-orbit"><circle cx="60" cy="4" r="3" /></g>
+          <path class="astral-load-tick" d="M44 61 55 72 77 49" pathLength="1" />
+        </svg>
+        <span class="astral-load-pct" aria-hidden="true">0%</span>
+      </div>
+      <p class="astral-load-title" role="status">Getting ${n} interval records</p>
+      <p class="astral-load-count"><span data-proto-load-got>0</span> of ${n} loaded. Hang on, this takes a few seconds.</p>
+      <p class="astral-load-tip"><span class="astral-load-tip-label">Tip</span><span class="astral-load-tip-text" data-proto-load-tip="${load.tip}">${escapeHtml(
+        PROTO_LOAD_TIPS[load.tip % PROTO_LOAD_TIPS.length]
+      )}</span></p>
+    </div>
+  `;
+}
+
+function protoLoadPaint() {
+  const wrap = document.querySelector("#astral-fs .astral-pane .astral-chart-wrap");
+  if (!protoLoad) {
+    document.querySelectorAll("#astral-fs .astral-chart-wrap.is-loading").forEach((el) => el.classList.remove("is-loading"));
+    return;
+  }
+  if (!wrap) return;
+  wrap.classList.add("is-loading");
+  wrap.setAttribute("aria-busy", "true");
+  if (!wrap.querySelector("[data-proto-load]")) wrap.insertAdjacentHTML("beforeend", protoLoadHtml(protoLoad, performance.now()));
+  protoLoadUpdate(performance.now());
+}
+
+function protoLoadUpdate(now) {
+  const el = document.querySelector("#astral-fs [data-proto-load]");
+  if (!el || !protoLoad) return;
+  const p = protoLoadProgress(now);
+  const pct = Math.round(p * 100);
+  el.querySelector(".astral-load-arc")?.setAttribute("stroke-dasharray", `${(p * 100).toFixed(2)} 100`);
+  const ring = el.querySelector(".astral-load-ring");
+  if (ring && ring.getAttribute("aria-valuenow") !== String(pct)) ring.setAttribute("aria-valuenow", String(pct));
+  const pctEl = el.querySelector(".astral-load-pct");
+  if (pctEl) pctEl.textContent = `${pct}%`;
+  const got = el.querySelector("[data-proto-load-got]");
+  if (got) got.textContent = Math.round(p * protoLoad.records).toLocaleString("en-GB");
+  el.classList.toggle("is-done", p >= 1);
+  if (now - protoLoadTipAt >= PROTO_LOAD_TIP_MS && p < 1) {
+    protoLoadTipAt = now;
+    protoLoad.tip += 1;
+    const tip = el.querySelector(".astral-load-tip-text");
+    if (tip) {
+      const next = tip.cloneNode(false);
+      next.dataset.protoLoadTip = String(protoLoad.tip);
+      next.textContent = PROTO_LOAD_TIPS[protoLoad.tip % PROTO_LOAD_TIPS.length];
+      next.classList.add("is-new");
+      tip.replaceWith(next);
+    }
+  }
+}
+
+function protoLoadTick(now) {
+  if (!protoLoad) return;
+  protoLoadUpdate(now);
+  if (now - protoLoad.start < protoLoad.ms) {
+    requestAnimationFrame(protoLoadTick);
+    return;
+  }
+  const el = document.querySelector("#astral-fs [data-proto-load]");
+  protoLoad = null;
+  const finish = () => {
+    protoDrawnScene = "";
+    render();
+  };
+  if (el) {
+    el.classList.add("is-out");
+    window.setTimeout(finish, 180);
+  } else finish();
+}
+
 function renderPrototype() {
   protoRenderTick += 1;
   const root = els.prototypeRoot;
@@ -25944,6 +26111,8 @@ function renderPrototype() {
   protoSlideNavPillsSoon();
   protoFitNavSoon();
   protoFitEmailsSoon();
+  protoLoadCheck();
+  protoLoadPaint();
   protoEqualReportCardsSoon();
   protoBindScrollRegions();
   requestAnimationFrame(protoBindScrollRegions);
