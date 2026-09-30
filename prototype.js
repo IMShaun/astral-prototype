@@ -10016,7 +10016,7 @@ function protoReportPeriodSelect(draft, label) {
       label,
       wide: true,
       value: protoReportPeriod(draft.type, draft.period).id,
-      options: protoReportPeriods(draft.type).map((item) => ({
+      options: protoReportPeriods(draft.type).filter((item) => item.id !== "once").map((item) => ({
         value: item.id,
         label: item.every,
         note: item.note,
@@ -10056,12 +10056,44 @@ function protoReportSendDaySelect(draft) {
   return "";
 }
 
+// A report is a one-off or repeats. Repeating picks how often.
 function protoReportWhenFields(draft) {
   const once = draft.period === "once";
+  const every = protoReportOrList(
+    protoReportPeriods(draft.type)
+      .filter((item) => item.id !== "once")
+      .map((item) => item.word)
+  );
+  const items = [
+    { id: "1", on: once, name: "One-off", note: "Sends once, on the day you pick" },
+    { id: "0", on: !once, name: "Repeating", note: `Sends ${every}` },
+  ];
   return `
+    <div class="astral-report-type-field">
+      <span class="astral-report-type-label" id="astral-report-oneoff-label">How should it send?</span>
+      <div class="astral-report-types is-pair" role="radiogroup" aria-labelledby="astral-report-oneoff-label">
+        ${items
+          .map(
+            (item) => `
+              <button
+                type="button"
+                role="radio"
+                class="astral-report-type${item.on ? " is-on" : ""}"
+                aria-checked="${item.on ? "true" : "false"}"
+                tabindex="${item.on ? "0" : "-1"}"
+                data-proto-report-oneoff="${item.id}"
+              >
+                <span class="astral-report-type-head">${protoRadio(item.on)}<span>${item.name}</span></span>
+                <span class="astral-muted">${escapeHtml(item.note)}</span>
+              </button>
+            `
+          )
+          .join("")}
+      </div>
+    </div>
     <div class="astral-report-pair">
-      ${protoReportPeriodSelect(draft, "How often")}
-      ${once ? protoReportDayCalHtml(protoReportDraftStart(), "Send on") : protoReportSendDaySelect(draft)}
+      ${once ? protoReportDayCalHtml(protoReportDraftStart(), "Send on") : protoReportPeriodSelect(draft, "How often")}
+      ${once ? "" : protoReportSendDaySelect(draft)}
     </div>
   `;
 }
@@ -27650,6 +27682,20 @@ function onPrototype(event) {
   if (event.target.closest("[data-proto-report-attach]")) {
     const draft = protoReportDraft();
     if (draft) protoReportPatchDraft({ attach: draft.attach === false });
+    return;
+  }
+  const oneOffBtn = event.target.closest("[data-proto-report-oneoff]");
+  if (oneOffBtn) {
+    const oneOff = oneOffBtn.dataset.protoReportOneoff === "1";
+    const draft = protoReportDraft();
+    if (draft && (draft.period === "once") !== oneOff) {
+      // Going back to repeating picks up the last schedule, or the type's usual one.
+      const back = draft.repeatPeriod || (draft.type === "billing" ? "month" : "week");
+      const period = oneOff ? "once" : back;
+      const follow = draft.rangeAuto && !oneOff ? protoReportRangeFor(period) : {};
+      protoReportPatchDraft({ period, repeatPeriod: oneOff ? draft.period : back, ...follow });
+    }
+    protoRestoreFocus(`#astral-fs [data-proto-report-oneoff="${oneOff ? 1 : 0}"]`);
     return;
   }
   const rangeModeBtn = event.target.closest("[data-proto-report-range-mode]");
