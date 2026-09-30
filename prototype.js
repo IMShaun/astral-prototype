@@ -8578,8 +8578,29 @@ function protoReportNumber(raw, fallback, min, max) {
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
 }
 
+// Electricity and gas split usage into on-peak and off-peak. Water has one unit rate, so one usage share.
+function protoReportUtilShareKeys(util) {
+  return util.id === "water"
+    ? [`${util.id}Standing`, `${util.id}Usage`]
+    : [`${util.id}Standing`, `${util.id}OnPeak`, `${util.id}OffPeak`];
+}
+
 function protoReportShareKeys() {
-  return PROTO_REPORT_BILL_UTILS.flatMap((util) => [`${util.id}Standing`, `${util.id}Usage`]);
+  return PROTO_REPORT_BILL_UTILS.flatMap(protoReportUtilShareKeys);
+}
+
+// A tenant saved with one usage share takes it for on-peak and off-peak.
+function protoReportShareLegacy(item, key) {
+  return item[key] ?? item[key.replace(/(OnPeak|OffPeak)$/, "Usage")];
+}
+
+function protoReportTenantPeakFill(tenant) {
+  const missing = protoReportShareKeys().filter((key) => !(key in tenant));
+  if (!missing.length) return tenant;
+  return {
+    ...tenant,
+    ...Object.fromEntries(missing.map((key) => [key, String(protoReportShareLegacy(tenant, key) ?? "")])),
+  };
 }
 
 // One billing report holds many tenants. Each tenant is on one site and gets their own bill.
@@ -8596,7 +8617,7 @@ function protoReportNormalizeTenants(raw, known) {
             name: raw.tenant,
             email: raw.tenantEmail,
             share: raw.share,
-            ...Object.fromEntries(protoReportShareKeys().map((key) => [key, raw[key]])),
+            ...Object.fromEntries(protoReportShareKeys().map((key) => [key, protoReportShareLegacy(raw, key)])),
           },
         ]
       : [];
@@ -8612,7 +8633,10 @@ function protoReportNormalizeTenants(raw, known) {
         name: String(item.name || "").replace(/\s+/g, " ").trim().slice(0, 80),
         email: protoReportEmails(String(item.email || "")).join(", "),
         ...Object.fromEntries(
-          protoReportShareKeys().map((key) => [key, protoReportNumber(item[key] ?? share, share, 0, 100)])
+          protoReportShareKeys().map((key) => [
+            key,
+            protoReportNumber(protoReportShareLegacy(item, key) ?? share, share, 0, 100),
+          ])
         ),
         ...Object.fromEntries(PROTO_REPORT_BILL_UTILS.map((util) => [`${util.id}Pays`, item[`${util.id}Pays`] !== false])),
         taxes: protoReportNormalizeTaxes(item, vat),
@@ -8647,11 +8671,16 @@ function protoReportTenantDraft(tenant) {
 function protoReportTenantsOf(draft) {
   if (Array.isArray(draft?.tenants)) {
     // Tenants drafted before taxes moved onto each tenant take VAT at the old rate.
-    if (draft.tenants.every((tenant) => Array.isArray(tenant.taxes))) return draft.tenants;
+    const keys = protoReportShareKeys();
+    if (draft.tenants.every((tenant) => Array.isArray(tenant.taxes) && keys.every((key) => key in tenant))) {
+      return draft.tenants;
+    }
     return draft.tenants.map((tenant) =>
-      Array.isArray(tenant.taxes)
-        ? tenant
-        : { ...tenant, taxes: [{ id: "tax-1", name: "VAT", rate: String(tenant.vat ?? draft.vat ?? 20) }] }
+      protoReportTenantPeakFill(
+        Array.isArray(tenant.taxes)
+          ? tenant
+          : { ...tenant, taxes: [{ id: "tax-1", name: "VAT", rate: String(tenant.vat ?? draft.vat ?? 20) }] }
+      )
     );
   }
   if (draft?.type !== "billing") return [];
@@ -8820,7 +8849,8 @@ function protoReportSeed() {
           email: "accounts@northgate-retail.co.uk",
           share: 35,
           electricityStanding: 50,
-          electricityUsage: 35,
+          electricityOnPeak: 35,
+          electricityOffPeak: 35,
         },
         ...(ids[1]
           ? [
@@ -9010,12 +9040,14 @@ function protoReportMeterDay(meter, util, siteAttrs) {
   const amount = meter.direction === "Export" ? 0 : protoDayKwh(meter);
   const standing = Number(attrs[`standing${key}`]) || 0;
   if (util.id === "water") {
-    return { standing, onUse: amount, offUse: 0, usage: (amount * (Number(attrs.unitWater) || 0)) / 100 };
+    const usage = (amount * (Number(attrs.unitWater) || 0)) / 100;
+    return { standing, onUse: amount, offUse: 0, onCost: usage, offCost: 0, usage };
   }
   const onUse = amount * protoReportPeakShare(meter);
   const offUse = amount - onUse;
-  const usage = (onUse * (Number(attrs[`on${key}`]) || 0) + offUse * (Number(attrs[`off${key}`]) || 0)) / 100;
-  return { standing, onUse, offUse, usage };
+  const onCost = (onUse * (Number(attrs[`on${key}`]) || 0)) / 100;
+  const offCost = (offUse * (Number(attrs[`off${key}`]) || 0)) / 100;
+  return { standing, onUse, offUse, onCost, offCost, usage: onCost + offCost };
 }
 
 function protoReportBill(def, tenant) {
@@ -9027,10 +9059,25 @@ function protoReportBill(def, tenant) {
         const siteAttrs = protoReportSiteAttrs(site);
         const days = meters.map((meter) => protoReportMeterDay(meter, util, siteAttrs));
         const usage = days.reduce((n, day) => n + day.usage, 0) * period.days;
+        const onCost = days.reduce((n, day) => n + day.onCost, 0) * period.days;
+        const offCost = days.reduce((n, day) => n + day.offCost, 0) * period.days;
         const standing = days.reduce((n, day) => n + day.standing, 0) * period.days;
         const pays = tenant[`${util.id}Pays`] !== false;
-        const standingShare = pays ? Number(tenant[`${util.id}Standing`]) || 0 : 0;
-        const usageShare = pays ? Number(tenant[`${util.id}Usage`]) || 0 : 0;
+        const share = (key) => (pays ? Number(protoReportShareLegacy(tenant, `${util.id}${key}`)) || 0 : 0);
+        const standingShare = share("Standing");
+        const peak = util.id !== "water";
+        const onShare = peak ? share("OnPeak") : share("Usage");
+        const offShare = peak ? share("OffPeak") : onShare;
+        // Each charge the tenant sees on the file: its cost and their share of it.
+        const charges = [
+          { name: "Standing charge", cost: standing, share: standingShare },
+          ...(peak
+            ? [
+                { name: "On-peak usage", cost: onCost, share: onShare, day: "onCost" },
+                { name: "Off-peak usage", cost: offCost, share: offShare, day: "offCost" },
+              ]
+            : [{ name: "Usage", cost: usage, share: onShare, day: "usage" }]),
+        ];
         return {
           util,
           pays,
@@ -9038,9 +9085,8 @@ function protoReportBill(def, tenant) {
           days,
           usage,
           standing,
-          standingShare,
-          usageShare,
-          due: (standing * standingShare + usage * usageShare) / 100,
+          charges,
+          due: charges.reduce((n, item) => n + (item.cost * item.share) / 100, 0),
         };
       })
     : [];
@@ -9628,7 +9674,7 @@ function protoReportDraftIssueBase(draft) {
       );
       if (!paid.length) return `Answer Yes for at least one utility ${who} pays for.`;
       for (const util of paid) {
-        const shares = [`${util.id}Standing`, `${util.id}Usage`].map((key) => String(tenant[key] ?? "").trim());
+        const shares = protoReportUtilShareKeys(util).map((key) => String(tenant[key] ?? "").trim());
         if (shares.some((raw) => raw === "" || !(Number(raw) >= 0 && Number(raw) <= 100))) {
           return `Each share for ${who} must be between 0 and 100%.`;
         }
@@ -10955,7 +11001,7 @@ function protoReportUtilSplit(tenant, util, who) {
       ${
         pays
           ? `
-      <div class="astral-report-pair">
+      <div class="astral-report-pair${util.id === "water" ? "" : " is-three"}">
         ${protoReportUnitInput(
           "Standing charge share",
           `tenant:${tenant.id}:${util.id}Standing`,
@@ -10963,7 +11009,18 @@ function protoReportUtilSplit(tenant, util, who) {
           "%",
           "100"
         )}
-        ${protoReportUnitInput("Usage share", `tenant:${tenant.id}:${util.id}Usage`, tenant[`${util.id}Usage`], "%", "100")}
+        ${
+          util.id === "water"
+            ? protoReportUnitInput("Usage share", `tenant:${tenant.id}:${util.id}Usage`, tenant[`${util.id}Usage`], "%", "100")
+            : [
+                ["On-peak usage share", "OnPeak"],
+                ["Off-peak usage share", "OffPeak"],
+              ]
+                .map(([label, key]) =>
+                  protoReportUnitInput(label, `tenant:${tenant.id}:${util.id}${key}`, tenant[`${util.id}${key}`], "%", "100")
+                )
+                .join("")
+        }
       </div>
       ${protoReportSiteCharges(tenant, util)}`
           : `<p class="astral-muted">${escapeHtml(util.name)} stays off their bill.</p>`
@@ -11873,41 +11930,39 @@ function protoReportRows(def) {
         bill.due.toFixed(2),
       ]),
       [],
-      [
-        "tenant",
-        "utility",
-        "standing charge (GBP)",
-        "standing charge share (%)",
-        "usage cost (GBP)",
-        "usage share (%)",
-        "tenant pays before tax (GBP)",
-      ],
-      ...all.bills.flatMap((bill) =>
-        bill.lines.filter((line) => line.pays).map((line) => [
-          bill.tenant.name,
-          line.util.name,
-          line.standing.toFixed(2),
-          line.standingShare,
-          line.usage.toFixed(2),
-          line.usageShare,
-          line.due.toFixed(2),
-        ])
-      ),
-      [],
-      ["tenant", "meter", "utility", "usage cost (GBP)", "usage share (%)", "tenant pays before tax (GBP)"],
+      ["tenant", "utility", "charge", "cost (GBP)", "tenant share (%)", "tenant pays before tax (GBP)"],
       ...all.bills.flatMap((bill) =>
         bill.lines.filter((line) => line.pays).flatMap((line) =>
-          line.meters.map((meter, m) => {
-            const cost = line.days[m].usage * bill.period.days;
-            return [
-              bill.tenant.name,
-              meter.name,
-              line.util.name,
-              cost.toFixed(2),
-              line.usageShare,
-              ((cost * line.usageShare) / 100).toFixed(2),
-            ];
-          })
+          line.charges.map((item) => [
+            bill.tenant.name,
+            line.util.name,
+            item.name,
+            item.cost.toFixed(2),
+            item.share,
+            ((item.cost * item.share) / 100).toFixed(2),
+          ])
+        )
+      ),
+      [],
+      ["tenant", "meter", "utility", "charge", "usage cost (GBP)", "tenant share (%)", "tenant pays before tax (GBP)"],
+      ...all.bills.flatMap((bill) =>
+        bill.lines.filter((line) => line.pays).flatMap((line) =>
+          line.meters.flatMap((meter, m) =>
+            line.charges
+              .filter((item) => item.day)
+              .map((item) => {
+                const cost = line.days[m][item.day] * bill.period.days;
+                return [
+                  bill.tenant.name,
+                  meter.name,
+                  line.util.name,
+                  item.name,
+                  cost.toFixed(2),
+                  item.share,
+                  ((cost * item.share) / 100).toFixed(2),
+                ];
+              })
+          )
         )
       ),
     ];

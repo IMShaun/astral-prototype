@@ -10488,6 +10488,10 @@ tr.is-off .astral-person-mark {
   align-items: start;
 }
 
+.astral-report-pair.is-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .astral-report-pair .astral-day-cal .astral-field > span {
   font-weight: 600;
 }
@@ -11082,7 +11086,8 @@ tr.is-off .astral-person-mark {
 @media (max-width: 560px) {
   .astral-report-types,
   .astral-template-sources,
-  .astral-report-pair {
+  .astral-report-pair,
+  .astral-report-pair.is-three {
     grid-template-columns: minmax(0, 1fr);
   }
 }
