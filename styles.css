@@ -13002,24 +13002,34 @@ html.is-classic-scroll #astral-fs .is-scroll-near {
   }
 }
 
-/* Report type cards: a count per type that filters the list below. */
-.astral-report-type-stats {
+/* Summary cards: a count per kind that filters the list below. Reports, Downloads, and Alerts. */
+.astral-summary-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: var(--space-16);
 }
 
-.astral-report-type-stat {
+.astral-summary-stat {
   gap: var(--space-4);
   padding: var(--space-16);
   transition: border-color var(--motion-panel) ease, box-shadow var(--motion-panel) ease, background-color var(--motion-panel) ease;
 }
 
-.astral-report-type-stat.is-on {
+.astral-summary-stat.is-on {
   border-color: var(--color-action-primary);
   box-shadow: inset 0 0 0 1px var(--color-action-primary);
 }
 
-.astral-report-type-stat.is-on .astral-stat-value {
+.astral-summary-stat:disabled {
+  cursor: default;
+  color: var(--color-text-secondary);
+  background: var(--color-background-surface);
+}
+
+.astral-summary-stat:disabled .astral-stat-value {
+  color: var(--color-text-secondary);
+}
+
+.astral-summary-stat.is-on .astral-stat-value {
   color: var(--color-action-primary);
 }

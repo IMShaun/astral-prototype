@@ -18757,7 +18757,7 @@ function protoDownloadsSection() {
 
 function protoDownloadsPage() {
   return astralShell(`
-    ${protoReportsAreaHead("downloads")}
+    ${protoReportsAreaHead("downloads", protoDownloadTypeCards())}
     ${protoDownloadsSection()}
   `);
 }
@@ -21739,19 +21739,10 @@ function protoAlerts() {
   const state = protoState();
   const facet = protoAlertFacetId(state.facet);
   const alerts = (protoData()?.alerts || []).filter((item) => protoAlertMatchesFacet(item, facet));
-  const chips = PROTO_ALERT_FACETS.map((item) => {
-    const on = item.id === facet;
-    return `
-      <button type="button" class="astral-chip${on ? " is-on" : ""}" data-proto-facet="${escapeHtml(
-        item.id
-      )}" aria-pressed="${on ? "true" : "false"}">${escapeHtml(item.name)}</button>
-    `;
-  }).join("");
   const cards = alerts.map((item) => protoAlertCard(item, item.meter)).join("");
   return astralShell(`
-    ${protoReportsAreaHead("alerts")}
+    ${protoReportsAreaHead("alerts", protoAlertFacetCards(facet))}
     <section class="astral-card astral-reports-sheet astral-alerts-sheet">
-      <div class="astral-stage-tools astral-pills" role="group" aria-label="Filter flags">${chips}</div>
       <div class="astral-stack">${cards || `<p class="astral-empty">No flags in this filter.</p>`}</div>
       <p class="astral-muted">Every flag here is something a customer would otherwise find from a bill or a missed reading.</p>
     </section>
@@ -22090,9 +22081,22 @@ function protoReportTypeIds(tab = protoReportSheetTab()) {
   return (protoReportFilterGroups(tab).find((group) => group.id === "type")?.items || []).map((item) => item.id);
 }
 
-// One card per report type, with how many there are. A card sets the Type filter, so the menu and pills stay in step.
+// Summary cards on the page under the tabs: a count per kind that filters the list below.
+function protoSummaryCards(label, cards) {
+  // A card with none is disabled, like an empty option in Filter.
+  const card = ({ attr, n, name, on }) => `
+    <button type="button" class="astral-stat astral-summary-stat${on ? " is-on" : ""}" aria-pressed="${on ? "true" : "false"}" ${attr}${
+      !n && !on ? ' disabled title="None in this view"' : ""
+    }>
+      <span class="astral-stat-value">${n}</span>
+      <span>${escapeHtml(name)}</span>
+    </button>
+  `;
+  return `<div class="astral-summary-stats" role="group" aria-label="${escapeHtml(label)}">${cards.map(card).join("")}</div>`;
+}
+
+// One card per report or alert type, with how many there are. A card sets the Type filter, so the menu and pills stay in step.
 function protoReportTypeCards(tab, defs) {
-  if (tab !== "reports") return "";
   const types = protoReportFilterGroups(tab).find((group) => group.id === "type")?.items || [];
   const picked = protoReportFilterIds(null, tab);
   const cards = types
@@ -22100,18 +22104,46 @@ function protoReportTypeCards(tab, defs) {
     .filter((item) => item.n);
   if (cards.length < 2) return "";
   const on = cards.map((item) => item.id).filter((id) => picked.includes(id));
-  const card = (id, n, name, pressed) => `
-    <button type="button" class="astral-stat astral-report-type-stat${pressed ? " is-on" : ""}" aria-pressed="${pressed}" data-proto-report-type-card="${escapeHtml(id)}">
-      <span class="astral-stat-value">${n}</span>
-      <span>${escapeHtml(name)}</span>
-    </button>
-  `;
-  return `
-    <div class="astral-report-type-stats" role="group" aria-label="Show reports by type">
-      ${card("all", defs.length, "All reports", !on.length)}
-      ${cards.map((item) => card(item.id, item.n, item.name, on.includes(item.id))).join("")}
-    </div>
-  `;
+  const attr = (id) => `data-proto-report-type-card="${escapeHtml(id)}"`;
+  const noun = tab === "alerts" ? "alerts" : "reports";
+  return protoSummaryCards(`Show ${noun} by type`, [
+    { attr: attr("all"), n: defs.length, name: `All ${noun}`, on: !on.length },
+    ...cards.map((item) => ({ attr: attr(item.id), n: item.n, name: item.name, on: on.includes(item.id) })),
+  ]);
+}
+
+const PROTO_DOWNLOAD_TYPE_IDS = ["report", "export", "document"];
+
+function protoDownloadTypeCards() {
+  const all = protoDownloads();
+  if (!all.length) return "";
+  const picked = protoDownloadFilterIds().filter((id) => PROTO_DOWNLOAD_TYPE_IDS.includes(id));
+  const types = PROTO_DOWNLOAD_FILTERS.find((group) => group.id === "type").items;
+  const attr = (id) => `data-proto-download-type-card="${escapeHtml(id)}"`;
+  return protoSummaryCards("Show downloads by type", [
+    { attr: attr("all"), n: all.length, name: "All downloads", on: !picked.length },
+    ...types.map((item) => ({
+      attr: attr(item.id),
+      n: all.filter((row) => protoDownloadType(row) === item.id).length,
+      name: item.name,
+      on: picked.includes(item.id),
+    })),
+  ]);
+}
+
+// Alerts Activity: one card per flag kind. They replace the filter chips.
+function protoAlertFacetCards(facet) {
+  const all = protoData()?.alerts || [];
+  const attr = (id) => `data-proto-facet="${escapeHtml(id)}"`;
+  return protoSummaryCards(
+    "Show flags by kind",
+    PROTO_ALERT_FACETS.map((item) => ({
+      attr: attr(item.id),
+      n: all.filter((row) => protoAlertMatchesFacet(row, item.id)).length,
+      name: item.id === "all" ? "Open flags" : item.name,
+      on: item.id === facet,
+    }))
+  );
 }
 
 function protoReportsSheet(active, defs, empty) {
@@ -25707,7 +25739,7 @@ var protoRenderTick = 0;
 const PROTO_SKEL_REGIONS = [
   ".astral-hero",
   ".astral-metrics",
-  ".astral-report-type-stats",
+  ".astral-summary-stats",
   ".astral-catch",
   ".astral-chart-heading",
   ".astral-chart-keys",
@@ -29054,7 +29086,10 @@ function onPrototype(event) {
   }
   const facetBtn = event.target.closest("[data-proto-facet]");
   if (facetBtn) {
-    setProto({ activePrototypeFacet: protoAlertFacetId(facetBtn.dataset.protoFacet) });
+    const id = protoAlertFacetId(facetBtn.dataset.protoFacet);
+    const next = id !== "all" && id === protoAlertFacetId(protoState().facet) ? "all" : id;
+    setProto({ activePrototypeFacet: next });
+    protoRestoreFocus(`#astral-fs [data-proto-facet="${CSS.escape(next)}"]`);
     return;
   }
   const rangeBtn = event.target.closest("[data-proto-range]");
@@ -29412,6 +29447,17 @@ function onPrototype(event) {
     const next = id === "all" || (onTypes.length === 1 && onTypes[0] === id) ? rest : [...rest, id];
     setProto({ prototypeReportFilters: protoReportFilterIds(next), prototypeReportFilterOpen: false });
     protoRestoreFocus(`#astral-fs [data-proto-report-type-card="${CSS.escape(next.includes(id) || id === "all" ? id : "all")}"]`);
+    return;
+  }
+  const downloadTypeCard = event.target.closest("[data-proto-download-type-card]");
+  if (downloadTypeCard) {
+    const id = downloadTypeCard.dataset.protoDownloadTypeCard;
+    const cur = protoDownloadFilterIds();
+    const rest = cur.filter((item) => !PROTO_DOWNLOAD_TYPE_IDS.includes(item));
+    const onTypes = cur.filter((item) => PROTO_DOWNLOAD_TYPE_IDS.includes(item));
+    const next = id === "all" || (onTypes.length === 1 && onTypes[0] === id) ? rest : [...rest, id];
+    setProto({ prototypeDownloadFilters: protoDownloadFilterIds(next), prototypeDownloadFilterOpen: false });
+    protoRestoreFocus(`#astral-fs [data-proto-download-type-card="${CSS.escape(next.includes(id) || id === "all" ? id : "all")}"]`);
     return;
   }
   const reportFilterBtn = event.target.closest("[data-proto-report-filter], [data-proto-report-filter-all]");
