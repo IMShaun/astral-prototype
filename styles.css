@@ -4589,9 +4589,9 @@ button.astral-avatar {
 }
 
 .astral-person.is-tip:hover .astral-icon-tip,
-.astral-person.is-tip:focus-within .astral-icon-tip,
+.astral-person.is-tip:is(:focus-visible, :has(:focus-visible)) .astral-icon-tip,
 .astral-tip-host:hover > .astral-icon-tip,
-.astral-tip-host:focus-within > .astral-icon-tip {
+.astral-tip-host:is(:focus-visible, :has(:focus-visible)) > .astral-icon-tip {
   opacity: 1;
   visibility: visible;
   transition-delay: var(--tip-delay);
@@ -5975,7 +5975,7 @@ button.astral-catch {
 }
 
 .astral-report-table tbody tr:hover,
-.astral-report-table tbody tr:focus-within {
+.astral-report-table tbody tr:has(:focus-visible) {
   background: var(--color-background-hover);
 }
 
@@ -8140,7 +8140,7 @@ button.astral-state {
   user-select: none;
 }
 
-.astral-query-pin:focus-within {
+.astral-query-pin:is(:focus-visible, :has(:focus-visible)) {
   outline: 2px solid #000;
   outline-offset: 2px;
 }
@@ -8804,7 +8804,7 @@ button.astral-state {
 .astral-hit-group.is-picked .astral-gap,
 .astral-hit-group.is-on .astral-gap,
 .astral-hit-group:hover .astral-gap,
-.astral-hit-group:focus-within .astral-gap {
+.astral-hit-group:has(:focus-visible) .astral-gap {
   fill: color-mix(in srgb, var(--color-background-subtle) 70%, #737373);
 }
 
@@ -8923,7 +8923,7 @@ button.astral-state {
 .astral-hit-group.is-on .astral-point,
 .astral-hit-group.is-query .astral-point,
 .astral-hit-group:hover .astral-point,
-.astral-hit-group:focus-within .astral-point {
+.astral-hit-group:has(:focus-visible) .astral-point {
   opacity: 1;
 }
 
@@ -8953,7 +8953,7 @@ button.astral-state {
 }
 
 .astral-hit-group.is-picked > .astral-hit-focus,
-.astral-hit-group:focus-within > .astral-hit-focus {
+.astral-hit-group:has(:focus-visible) > .astral-hit-focus {
   opacity: 1;
 }
 
@@ -8990,10 +8990,10 @@ button.astral-state {
 
 .astral-hit-group.is-on .astral-bar:not(.is-est),
 .astral-hit-group:hover .astral-bar:not(.is-est),
-.astral-hit-group:focus-within .astral-bar:not(.is-est),
+.astral-hit-group:has(:focus-visible) .astral-bar:not(.is-est),
 .astral-hit-group.is-on .astral-bar-out:not(.is-est),
 .astral-hit-group:hover .astral-bar-out:not(.is-est),
-.astral-hit-group:focus-within .astral-bar-out:not(.is-est) {
+.astral-hit-group:has(:focus-visible) .astral-bar-out:not(.is-est) {
   fill-opacity: 0.72;
 }
 
@@ -9590,7 +9590,7 @@ button.astral-state {
 }
 
 .astral-table-wrap.is-tips tr:has(.astral-person.is-tip:hover),
-.astral-table-wrap.is-tips tr:has(.astral-person.is-tip:focus-within),
+.astral-table-wrap.is-tips tr:has(.astral-person.is-tip:is(:focus-visible, :has(:focus-visible))),
 .astral-table-wrap.is-tips tr:has(td:hover > .astral-person.is-tip),
 .astral-table-wrap.is-tips tr:has(.astral-ack [aria-expanded="true"]) {
   position: relative;
@@ -9602,7 +9602,7 @@ button.astral-state {
 }
 
 .astral-table-wrap.is-tips td:has(.astral-person.is-tip):hover .astral-icon-tip,
-.astral-table-wrap.is-tips td:has(.astral-person.is-tip:focus-within) .astral-icon-tip {
+.astral-table-wrap.is-tips td:has(.astral-person.is-tip:is(:focus-visible, :has(:focus-visible))) .astral-icon-tip {
   opacity: 1;
   visibility: visible;
   transition-delay: var(--tip-delay);
@@ -9700,7 +9700,7 @@ button.astral-state {
 .astral-table tbody tr[data-proto-see-as-company]:hover,
 .astral-table tbody tr.is-link:hover,
 .astral-downloads .astral-table tbody tr:has([scope="row"]):hover,
-.astral-downloads .astral-table tbody tr:has([scope="row"]):focus-within {
+.astral-downloads .astral-table tbody tr:has([scope="row"]):has(:focus-visible) {
   background: var(--color-background-hover);
 }
 

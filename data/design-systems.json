@@ -3448,7 +3448,7 @@
           "react": "Tooltip",
           "file": "src/components/Tooltip.tsx",
           "family": "messaging",
-          "summary": "A short black note on white with a 1px Infra Grey B edge. It waits 0.7 seconds. The tip sits outside the control, over the page, so a card does not clip it.",
+          "summary": "A short black note on white with a 1px Infra Grey B edge. It waits 0.7 seconds. The tip sits outside the control, over the page, so a card does not clip it. Keyboard focus shows it too. A mouse click does not keep it, and it goes when the pointer leaves. Row and chart highlights work the same way.",
           "usage": "Use on icon buttons and on the report status tag. Hover for the action. Do not hide a required label in a tooltip. Export. Filter. Account. Clear. More. Previous. Next. Resolve. Comment. Close.",
           "variants": [
             "default"
@@ -6226,7 +6226,7 @@
             "status": "working",
             "say": "",
             "avoid": "",
-            "note": "An icon button has a tooltip. Hover for the action. It waits 0.7 seconds. The tip sits outside the control, over the page, so a card does not clip it. Export. Download. Filter. Account. Clear. More. Previous month. Next month. Previous. Next. Resolve. Comment. Close. Help. Settings. The report status tag also explains on hover.",
+            "note": "An icon button has a tooltip. Hover for the action. It waits 0.7 seconds. The tip sits outside the control, over the page, so a card does not clip it. Keyboard focus shows it too. A mouse click does not keep it, and it goes when the pointer leaves. Row and chart highlights work the same way. Export. Download. Filter. Account. Clear. More. Previous month. Next month. Previous. Next. Resolve. Comment. Close. Help. Settings. The report status tag also explains on hover.",
             "from": "Shaun on icon buttons, 5 Sep"
           },
           {

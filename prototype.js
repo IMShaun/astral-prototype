@@ -27239,6 +27239,8 @@ function protoPlaceQueryPin() {
 }
 
 function onPrototypeTip(event) {
+  // A mouse click focuses too; only keyboard focus shows a tip.
+  if (event.type === "focusin" && !event.target.matches?.(":focus-visible")) return;
   const iconHost = event.target.closest?.(".astral-tip-host, .astral-person.is-tip");
   if (event.type === "pointerout") {
     if (!iconHost) return;
