@@ -25890,6 +25890,7 @@ const PROTO_LOAD_TIPS = [
 let protoLoad = null;
 let protoLoadKey = "";
 let protoLoadTipAt = 0;
+let protoLoadFoldsIn = false;
 const protoLoaded = new Set();
 
 function protoLoadMeterCount() {
@@ -25969,12 +25970,29 @@ function protoLoadHtml(load, now) {
   `;
 }
 
+// The breakdowns under the graph come from the same records, so they hold as skeletons until the ring completes.
+function protoLoadSkelFolds() {
+  document.querySelectorAll("#astral-fs .astral-pane .astral-accordion").forEach((fold) => {
+    if (fold.closest(".is-skel")) return;
+    fold.querySelectorAll("[data-proto-breakdown-rows]").forEach(protoPaintBreakdownRows);
+    protoSkelWrapText(fold);
+    fold.classList.add("is-skel");
+    fold.setAttribute("aria-busy", "true");
+    fold.inert = true;
+  });
+}
+
 function protoLoadPaint() {
   const wrap = document.querySelector("#astral-fs .astral-pane .astral-chart-wrap");
   if (!protoLoad) {
     document.querySelectorAll("#astral-fs .astral-chart-wrap.is-loading").forEach((el) => el.classList.remove("is-loading"));
+    if (protoLoadFoldsIn) {
+      protoLoadFoldsIn = false;
+      document.querySelectorAll("#astral-fs .astral-pane .astral-accordion").forEach((el) => el.classList.add("astral-skel-in"));
+    }
     return;
   }
+  protoLoadSkelFolds();
   if (!wrap) return;
   wrap.classList.add("is-loading");
   wrap.setAttribute("aria-busy", "true");
@@ -26023,6 +26041,7 @@ function protoLoadTick(now) {
   protoLoad = null;
   const finish = () => {
     protoDrawnScene = "";
+    protoLoadFoldsIn = true;
     render();
   };
   if (el) {
