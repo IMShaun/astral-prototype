@@ -8456,12 +8456,27 @@ function protoReportType(raw) {
 
 function protoReportPeriods(type) {
   return type === "billing"
-    ? PROTO_REPORT_PERIODS.filter((item) => item.id !== "once")
+    ? PROTO_REPORT_PERIODS.map((item) => (item.id === "once" ? { ...item, note: "One bill for the dates you pick" } : item))
     : PROTO_REPORT_PERIODS.filter((item) => item.id !== "quarter");
 }
 
 function protoReportOnce(def) {
-  return protoReportSends(def?.type) && def?.period === "once";
+  return (protoReportSends(def?.type) || def?.type === "billing") && def?.period === "once";
+}
+
+// A bill for a custom range covers each day from Data from to Data to.
+function protoReportBillPeriod(def) {
+  const period = protoReportPeriod("billing", def.period);
+  const range = protoReportOnce(def) ? protoReportRange(def) : null;
+  if (!range) return period;
+  const days = Math.max(1, Math.round((range.to - range.from) / 86400000) + 1);
+  return { ...period, days, from: range.from, to: range.to };
+}
+
+function protoReportBillCostWords(period) {
+  return period.from
+    ? `cost for ${protoFormatFullDay(period.from)} to ${protoFormatFullDay(period.to)} is`
+    : `${period.word} cost`;
 }
 
 function protoReportDefaultRange() {
@@ -9068,7 +9083,7 @@ function protoReportMeterDay(meter, util, siteAttrs) {
 
 function protoReportBill(def, tenant) {
   const site = protoReportSiteById(tenant?.site);
-  const period = protoReportPeriod("billing", def.period);
+  const period = protoReportBillPeriod(def);
   const lines = site
     ? protoReportBillUtils(site).map((util) => {
         const meters = (site.meters || []).filter((meter) => protoReportMeterUtil(meter) === util.id);
@@ -9118,7 +9133,7 @@ function protoReportBill(def, tenant) {
 
 // Every tenant's bill. A site counts once in the cost, even with two tenants on it.
 function protoReportBills(def) {
-  const period = protoReportPeriod("billing", def.period);
+  const period = protoReportBillPeriod(def);
   const bills = protoReportTenantsOf(def).map((tenant) => protoReportBill(def, tenant));
   const seen = new Set();
   const cost = bills.reduce((n, bill) => {
@@ -9134,7 +9149,7 @@ function protoReportBills(def) {
 function protoReportTenantBillLine(def, tenant) {
   const bill = protoReportBill(def, tenant);
   if (!bill.site) return "Pick a site to project this bill.";
-  return `Projected ${bill.period.word} cost ${protoSpendMoney(bill.cost)}. ${
+  return `Projected ${protoReportBillCostWords(bill.period)} ${protoSpendMoney(bill.cost)}. ${
     tenant.name || "The tenant"
   } pays ${protoSpendMoney(bill.net)}${
     bill.taxes.length
@@ -9281,7 +9296,7 @@ function protoReportSummary(def) {
     const bill = all.bills[0];
     if (!bill) return "Add the tenant to project their bill.";
     if (!bill.site) return "Pick a site to project its cost.";
-    return `${bill.site.name}. Projected ${bill.period.word} cost ${protoSpendMoney(bill.cost)}. ${
+    return `${bill.site.name}. Projected ${protoReportBillCostWords(bill.period)} ${protoSpendMoney(bill.cost)}. ${
       bill.tenant.name || "The tenant"
     } pays ${protoSpendMoney(bill.due)}${bill.taxes.length ? `, including ${protoReportTaxRates(bill)}` : ""}.`;
   }
@@ -9632,7 +9647,6 @@ function protoReportDraftIssueBase(draft) {
   if (!draft) return "Pick a report type.";
   const people =
     (Array.isArray(draft.people) ? draft.people.length : 0) + protoReportEmails(draft.emails).length;
-  const startOk = Boolean(protoFromUkDate(protoReportDraftStart()));
   if (protoReportSends(draft.type)) {
     if (!draft.sites?.length) return "Pick at least one site.";
     if (!draft.delivery?.length) return "Pick how to send it.";
@@ -9653,18 +9667,7 @@ function protoReportDraftIssueBase(draft) {
         if (!protoReportFingerprintOk(print)) return "Check the SSH fingerprint. It starts with SHA256.";
       }
     }
-    if (draft.period === "once") {
-      const from = protoFromUkDate(protoReportDraftDate("from"));
-      const to = protoFromUkDate(protoReportDraftDate("to"));
-      if (!from || !to) return "Pick the dates the file covers.";
-      if (from > to) return "Data from must come before Data to.";
-      if (to > protoToday()) return "Pick dates up to today.";
-      if (!startOk) return "Pick the send date.";
-      if (!protoReportSendOnOk()) return "Pick today or a later day to send it.";
-      if (protoReportHourGone(draft, draft.sendAt || "09:00")) return "That time has gone today. Pick a later time.";
-      return "";
-    }
-    return "";
+    return protoReportOnceIssue(draft, "file");
   }
   if (draft.type === "billing") {
     const tenants = protoReportTenantsOf(draft).slice(0, 1);
@@ -9711,7 +9714,7 @@ function protoReportDraftIssueBase(draft) {
         if (Number(rate) > 0 && !String(tax.name || "").trim()) return `Add a tax name for ${who}.`;
       }
     }
-    return "";
+    return protoReportOnceIssue(draft, "bill");
   }
   if (draft.type === "alert") {
     const value = Number(draft.basis === "absolute" ? draft.amount : draft.percent);
@@ -9722,6 +9725,20 @@ function protoReportDraftIssueBase(draft) {
   }
   if (!protoReportIsFile(draft.type) && !(draft.notify || []).length) return "Pick how to tell people.";
   if (!people) return "Add at least one person or email.";
+  return "";
+}
+
+// Once needs a range up to today and a send date that has not gone.
+function protoReportOnceIssue(draft, what) {
+  if (draft.period !== "once") return "";
+  const from = protoFromUkDate(protoReportDraftDate("from"));
+  const to = protoFromUkDate(protoReportDraftDate("to"));
+  if (!from || !to) return `Pick the dates the ${what} covers.`;
+  if (from > to) return "Data from must come before Data to.";
+  if (to > protoToday()) return "Pick dates up to today.";
+  if (!protoFromUkDate(protoReportDraftStart())) return "Pick the send date.";
+  if (!protoReportSendOnOk()) return "Pick today or a later day to send it.";
+  if (protoReportHourGone(draft, draft.sendAt || "09:00")) return "That time has gone today. Pick a later time.";
   return "";
 }
 
@@ -11810,8 +11827,8 @@ function protoReportRows(def) {
   if (tpl) return protoTemplateRows(tpl, def, 5000);
   if (def.type === "billing") {
     const all = protoReportBills(def);
-    const from = protoAddDays(today, -all.period.days);
-    const to = protoAddDays(today, -1);
+    const from = all.period.from || protoAddDays(today, -all.period.days);
+    const to = all.period.to || protoAddDays(today, -1);
     return [
       [
         "tenant",
