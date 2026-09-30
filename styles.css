@@ -9282,6 +9282,15 @@ button.astral-state {
   border-top: 1px solid var(--color-border-strong);
 }
 
+/* Breakdown folds stack flush, one rule between each, like every accordion stack. */
+.astral-breakdown + .astral-breakdown {
+  margin-top: calc(var(--space-stack-tight) * -1);
+}
+
+.astral-breakdown:not(:has(~ .astral-breakdown)) {
+  border-bottom: 1px solid var(--color-border-strong);
+}
+
 .astral-breakdown-body {
   display: flex;
   flex-direction: column;

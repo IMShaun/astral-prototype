@@ -20643,17 +20643,45 @@ function protoBindBreakdownNavWrap(el) {
   }
 }
 
+// Like every accordion stack, opening one fold closes the others.
 function protoToggleBreakdown(btn) {
   const kind = PROTO_BREAKDOWN_FOLDS[btn?.dataset.protoBreakdown] ? btn.dataset.protoBreakdown : "toggle";
   const fold = PROTO_BREAKDOWN_FOLDS[kind];
   const root = btn?.closest(".astral-breakdown");
   const next = !store[fold.field];
   store[fold.field] = next;
+  const closing = next
+    ? Object.entries(PROTO_BREAKDOWN_FOLDS).filter(([id, spec]) => id !== kind && store[spec.field])
+    : [];
+  closing.forEach(([, spec]) => (store[spec.field] = false));
   persistChrome();
   if (!root) {
     render();
     protoRestoreFocus(`#astral-fs [data-proto-breakdown="${kind}"]`);
     return;
+  }
+  closing.forEach(([id, spec]) => {
+    const head = document.querySelector(`#astral-fs [data-proto-breakdown="${id}"]`);
+    const other = document.getElementById(spec.id);
+    if (!head || !other) return;
+    const start = protoFoldHeight(other);
+    head.setAttribute("aria-expanded", "false");
+    head.closest(".astral-breakdown")?.classList.remove("is-open");
+    other.setAttribute("aria-hidden", "true");
+    other.setAttribute("inert", "");
+    protoFoldMotion(other, start, false);
+  });
+  // A fold closing above would pull the clicked head off screen; hold it still.
+  const scroller = btn.closest(".astral-pane-body");
+  if (closing.length && scroller) {
+    const anchor = btn.getBoundingClientRect().top;
+    const until = performance.now() + PROTO_FOLD_MS + 40;
+    const hold = () => {
+      const drift = btn.getBoundingClientRect().top - anchor;
+      if (Math.abs(drift) > 0.5) scroller.scrollTop += drift;
+      if (performance.now() < until && btn.isConnected) requestAnimationFrame(hold);
+    };
+    requestAnimationFrame(hold);
   }
   const panel = document.getElementById(fold.id);
   const from = protoFoldHeight(panel);
@@ -20667,12 +20695,14 @@ function protoToggleBreakdown(btn) {
       protoBindBreakdown();
       protoBindBreakdownNav();
     }
-    requestAnimationFrame(() => {
-      document.getElementById(fold.id)?.scrollIntoView({
+    // Wait for a fold above to close, or the scroll lands short.
+    const reveal = () =>
+      document.getElementById(fold.id)?.closest(".astral-breakdown")?.scrollIntoView({
         block: "nearest",
         inline: "nearest",
       });
-    });
+    if (closing.length) setTimeout(reveal, PROTO_FOLD_MS + 20);
+    else requestAnimationFrame(reveal);
   }
   root.classList.toggle("is-open", next);
   if (!next && panel) {
@@ -20680,7 +20710,7 @@ function protoToggleBreakdown(btn) {
     panel.setAttribute("inert", "");
   }
   protoFoldMotion(panel, from, next);
-  btn.focus();
+  btn.focus({ preventScroll: true });
 }
 
 function protoBreakdownPanel(inner, fold = "toggle", name = "Breakdown") {
