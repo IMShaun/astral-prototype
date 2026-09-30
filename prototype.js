@@ -8012,6 +8012,21 @@ function protoPickSelect(id, value) {
     protoRestoreFocus(`#astral-fs [data-proto-select="${CSS.escape(id)}"] .astral-select-btn`);
     return;
   }
+  if (id === "report-period") {
+    const draft = protoReportDraft();
+    if (!draft) return;
+    const next = protoReportPeriod(draft.type, value).id;
+    // Until someone sets the dates, a new report's range follows How often.
+    const follow = draft.rangeAuto && next !== "once" ? protoReportRangeFor(next) : {};
+    protoReportPatchDraft({ period: next, ...follow });
+    protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
+    return;
+  }
+  if (id === "report-range-preset" || id === "report-range-unit") {
+    protoReportPatchDraft({ [id === "report-range-unit" ? "rangeUnit" : "rangePreset"]: value, rangeAuto: false });
+    protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
+    return;
+  }
   const PROTO_REPORT_SELECT_KEYS = {
     "report-period": "period",
     "report-basis": "basis",
@@ -8300,12 +8315,38 @@ const PROTO_REPORT_FILE_SEPS = [
 ];
 
 const PROTO_REPORT_PERIODS = [
-  { id: "once", name: "Custom range", every: "Once", word: "once", days: 0, note: "One file for the dates you pick" },
-  { id: "day", name: "Last day", every: "Daily", word: "daily", days: 1, note: "The day before each send" },
-  { id: "week", name: "Last week", every: "Weekly", word: "weekly", days: 7, note: "The week before each send" },
-  { id: "month", name: "Last month", every: "Monthly", word: "monthly", days: 30, note: "The month before each send" },
-  { id: "quarter", name: "Last quarter", every: "Quarterly", word: "quarterly", days: 91, note: "The quarter before each send" },
+  { id: "once", name: "Once", every: "Once", word: "once", note: "Sends one time" },
+  { id: "day", name: "Daily", every: "Daily", word: "daily", note: "Every day" },
+  { id: "week", name: "Weekly", every: "Weekly", word: "weekly", note: "Once a week" },
+  { id: "month", name: "Monthly", every: "Monthly", word: "monthly", note: "Once a month" },
+  { id: "quarter", name: "Quarterly", every: "Quarterly", word: "quarterly", note: "Every three months" },
 ];
+
+// The dates a report's data covers. Separate from when it sends.
+const PROTO_REPORT_RANGE_MODES = [
+  { id: "dates", name: "Exact dates", note: "Pick a start and end date" },
+  { id: "preset", name: "Common range", note: "Such as last month or this year" },
+  { id: "rolling", name: "Custom range", note: "Such as the last 3 months" },
+];
+
+const PROTO_REPORT_RANGE_PRESETS = [
+  { id: "yesterday", name: "Yesterday" },
+  { id: "this-week", name: "This week" },
+  { id: "this-month", name: "This month" },
+  { id: "this-year", name: "This year" },
+  { id: "last-week", name: "Last week" },
+  { id: "last-month", name: "Last month" },
+  { id: "last-year", name: "Last year" },
+  { id: "last-31", name: "Last 31 days" },
+];
+
+const PROTO_REPORT_RANGE_UNITS = [
+  { id: "day", name: "Days", one: "day", many: "days", current: "today" },
+  { id: "week", name: "Weeks", one: "week", many: "weeks", current: "this week" },
+  { id: "month", name: "Months", one: "month", many: "months", current: "this month" },
+];
+
+const PROTO_REPORT_RANGE_MAX = 365;
 
 // Three date fields share one calendar. store.prototypeReportCalOpen holds the open one.
 const PROTO_REPORT_DATES = {
@@ -8455,28 +8496,116 @@ function protoReportType(raw) {
 }
 
 function protoReportPeriods(type) {
-  return type === "billing"
-    ? PROTO_REPORT_PERIODS.map((item) => (item.id === "once" ? { ...item, note: "One bill for the dates you pick" } : item))
-    : PROTO_REPORT_PERIODS.filter((item) => item.id !== "quarter");
+  return type === "billing" ? PROTO_REPORT_PERIODS : PROTO_REPORT_PERIODS.filter((item) => item.id !== "quarter");
 }
 
 function protoReportOnce(def) {
   return (protoReportSends(def?.type) || def?.type === "billing") && def?.period === "once";
 }
 
-// A bill for a custom range covers each day from Data from to Data to.
+// A bill covers each day in its date range, worked out for the next send.
 function protoReportBillPeriod(def) {
   const period = protoReportPeriod("billing", def.period);
-  const range = protoReportOnce(def) ? protoReportRange(def) : null;
-  if (!range) return period;
-  const days = Math.max(1, Math.round((range.to - range.from) / 86400000) + 1);
-  return { ...period, days, from: range.from, to: range.to };
+  const range = protoReportDataRange(def) || protoReportRangeAt({ ...def, rangeMode: "preset", rangePreset: "last-month" }, protoToday());
+  return { ...period, name: protoReportRangeWords(def), days: protoReportRangeDays(range), from: range.from, to: range.to };
 }
 
 function protoReportBillCostWords(period) {
-  return period.from
-    ? `cost for ${protoFormatFullDay(period.from)} to ${protoFormatFullDay(period.to)} is`
-    : `${period.word} cost`;
+  return `cost for ${protoReportSpanWords(period)} is`;
+}
+
+// "1 Aug 2026 to 31 Aug 2026", or one date for a single day.
+function protoReportSpanWords(range) {
+  if (!range) return "";
+  const from = protoFormatFullDay(range.from);
+  return protoDayStamp(range.from) === protoDayStamp(range.to) ? from : `${from} to ${protoFormatFullDay(range.to)}`;
+}
+
+function protoReportRangeDays(range) {
+  return Math.max(1, Math.round((range.to - range.from) / 86400000) + 1);
+}
+
+// How a report with no range yet starts: the period before each send.
+function protoReportRangeFor(period) {
+  const base = { rangeMode: "preset", rangePreset: "last-month", rangeCount: 3, rangeUnit: "month", rangeCurrent: false };
+  if (period === "once") return { ...base, rangeMode: "dates" };
+  if (period === "day") return { ...base, rangePreset: "yesterday" };
+  if (period === "week") return { ...base, rangePreset: "last-week" };
+  if (period === "quarter") return { ...base, rangeMode: "rolling" };
+  return base;
+}
+
+// The from and to dates for a send on ref. This week, month and year run up to ref itself.
+function protoReportRangeAt(def, ref) {
+  if (def.rangeMode === "dates") return protoReportRange(def);
+  const day = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+  const monday = protoAddDays(day, -((day.getDay() + 6) % 7));
+  const month = (back) => new Date(day.getFullYear(), day.getMonth() - back, 1);
+  const before = (date) => protoAddDays(date, -1);
+  if (def.rangeMode === "rolling") {
+    const n = Math.max(1, Math.round(Number(def.rangeCount) || 1));
+    const now = Boolean(def.rangeCurrent);
+    if (def.rangeUnit === "week") {
+      return now ? { from: protoAddDays(monday, -7 * (n - 1)), to: day } : { from: protoAddDays(monday, -7 * n), to: before(monday) };
+    }
+    if (def.rangeUnit === "month") return now ? { from: month(n - 1), to: day } : { from: month(n), to: before(month(0)) };
+    return now ? { from: protoAddDays(day, 1 - n), to: day } : { from: protoAddDays(day, -n), to: before(day) };
+  }
+  const year = day.getFullYear();
+  switch (def.rangePreset) {
+    case "yesterday":
+      return { from: before(day), to: before(day) };
+    case "this-week":
+      return { from: monday, to: day };
+    case "this-month":
+      return { from: month(0), to: day };
+    case "this-year":
+      return { from: new Date(year, 0, 1), to: day };
+    case "last-week":
+      return { from: protoAddDays(monday, -7), to: before(monday) };
+    case "last-year":
+      return { from: new Date(year - 1, 0, 1), to: new Date(year - 1, 11, 31) };
+    case "last-31":
+      return { from: protoAddDays(day, -31), to: before(day) };
+    default:
+      return { from: month(1), to: before(month(0)) };
+  }
+}
+
+// The range for a send. With no date given, the next send, or the Send on date for Once.
+function protoReportDataRange(def, when) {
+  const ref = when || (protoReportOnce(def) ? protoFromUkDate(def.start) : protoReportNextSend(def)) || protoToday();
+  return protoReportRangeAt(def, ref);
+}
+
+// The days a sample file holds: the range as if it sent today, up to today.
+function protoReportSampleDays(def) {
+  const today = protoToday();
+  const range = protoReportRangeAt(def, today);
+  const days = [];
+  if (!range) return days;
+  const to = range.to > today ? today : range.to;
+  for (let day = range.from; day <= to && days.length < 800; day = protoAddDays(day, 1)) days.push(day);
+  days.splice(0, Math.max(0, days.length - PROTO_REPORT_FILE_DAYS));
+  return days;
+}
+
+function protoReportRangeUnit(id) {
+  return PROTO_REPORT_RANGE_UNITS.find((item) => item.id === id) || PROTO_REPORT_RANGE_UNITS[2];
+}
+
+// "Last month", "Last 3 months including this month" or "1 Aug 2026 to 31 Aug 2026".
+function protoReportRangeWords(def) {
+  if (def.rangeMode === "dates") {
+    const range = protoReportRange(def);
+    return range ? protoReportSpanWords(range) : "Exact dates";
+  }
+  if (def.rangeMode === "rolling") {
+    const unit = protoReportRangeUnit(def.rangeUnit);
+    const n = Math.max(1, Math.round(Number(def.rangeCount) || 1));
+    return `Last ${n} ${n === 1 ? unit.one : unit.many}${def.rangeCurrent ? ` including ${unit.current}` : ""}`;
+  }
+  return protoReportOptionName(PROTO_REPORT_RANGE_PRESETS, def.rangePreset);
 }
 
 function protoReportDefaultRange() {
@@ -8703,6 +8832,19 @@ function protoReportBlankTenant() {
   return protoReportTenantDraft(tenant);
 }
 
+// Reports saved before the Date range tab keep the period before each send, or their Data from and Data to.
+function protoReportRangeOf(raw, period) {
+  const base = protoReportRangeFor(period);
+  const mode = PROTO_REPORT_RANGE_MODES.some((item) => item.id === raw.rangeMode) ? raw.rangeMode : base.rangeMode;
+  return {
+    rangeMode: mode,
+    rangePreset: PROTO_REPORT_RANGE_PRESETS.some((item) => item.id === raw.rangePreset) ? raw.rangePreset : base.rangePreset,
+    rangeCount: Math.round(protoReportNumber(raw.rangeCount, base.rangeCount, 1, PROTO_REPORT_RANGE_MAX)),
+    rangeUnit: PROTO_REPORT_RANGE_UNITS.some((item) => item.id === raw.rangeUnit) ? raw.rangeUnit : base.rangeUnit,
+    rangeCurrent: raw.rangeCurrent == null ? base.rangeCurrent : Boolean(raw.rangeCurrent),
+  };
+}
+
 function protoReportNormalize(raw) {
   if (!raw || typeof raw !== "object") return null;
   const type = protoReportTypeId(raw.type);
@@ -8731,6 +8873,7 @@ function protoReportNormalize(raw) {
     roles: protoReportRoles(raw.roles),
     sites,
     period: protoReportPeriod(type, raw.period).id,
+    ...protoReportRangeOf(raw, protoReportPeriod(type, raw.period).id),
     ...protoReportSendDayOf(raw, start),
     delivery: delivery.length ? delivery : ["email"],
     content: protoReportPick(PROTO_REPORT_CONTENT, raw.content),
@@ -9282,14 +9425,12 @@ function protoReportSummary(def) {
         : protoReportOptionName(PROTO_REPORT_CONTENT, def.content).toLowerCase();
     const where =
       names.length && names.length === protoEstateSites().length ? "all sites" : protoReportJoin(names) || "no sites yet";
-    const range = protoReportOnce(def) ? protoReportRange(def) : null;
-    if (range) {
-      const what1 = what.charAt(0).toUpperCase() + what.slice(1);
-      return `${what1} for ${where}, ${protoFormatFullDay(range.from)} to ${protoFormatFullDay(
-        range.to
-      )}, ${rows}as ${protoReportFileLine(def)}.`;
-    }
-    return `${period.name} of ${what} for ${where}, ${rows}as ${protoReportFileLine(def)}.`;
+    const range = protoReportOnce(def) ? protoReportDataRange(def) : null;
+    const when = range
+      ? protoReportSpanWords(range)
+      : protoReportRangeWords(def).replace(/^[A-Z]/, (c) => (def.rangeMode === "dates" ? c : c.toLowerCase()));
+    const what1 = what.charAt(0).toUpperCase() + what.slice(1);
+    return `${what1} for ${where}, ${when}, ${rows}as ${protoReportFileLine(def)}.`;
   }
   if (def.type === "billing") {
     const all = protoReportBills(def);
@@ -9557,6 +9698,7 @@ function protoReportDraftFrom(def) {
     roles: { ...(def.roles || {}) },
     tenants: (def.tenants || []).map(protoReportTenantDraft),
     vat: String(def.vat),
+    rangeCount: String(def.rangeCount),
     amount: String(def.amount),
     percent: String(def.percent),
   };
@@ -9567,7 +9709,7 @@ function protoReportNewDraft(type, templateId = "") {
   const base = protoTemplateApply({ type, people: ["me"], template: templateId, sendDay: 1, sendDate: 1 }, tpl);
   if (templateId && tpl) base.step = protoTemplateStepOf(tpl);
   const def = protoReportNormalize(base);
-  const draft = { ...protoReportDraftFrom(def), ...protoReportFileDefault(), name: "" };
+  const draft = { ...protoReportDraftFrom(def), ...protoReportFileDefault(), name: "", rangeAuto: true };
   if (type === "billing") draft.tenants = [protoReportBlankTenant()];
   return draft;
 }
@@ -9602,13 +9744,13 @@ function protoReportDraftDef(draft) {
 function protoReportAutoName(def) {
   const tpl = protoReportTemplateOf(def);
   if (protoReportOnce(def)) {
-    const range = protoReportRange(def);
+    const range = protoReportDataRange(def);
     const what = tpl
       ? protoTemplateTitle(tpl)
       : def.type === "dcda"
         ? "DC and DA reads"
         : protoReportOptionName(PROTO_REPORT_CONTENT, def.content);
-    return range ? `${what}, ${protoFormatFullDay(range.from)} to ${protoFormatFullDay(range.to)}` : what;
+    return range ? `${what}, ${protoReportSpanWords(range)}` : what;
   }
   if (tpl) return `${protoReportPeriod("extract", def.period).every} ${protoTemplateTitle(tpl).toLowerCase()}`;
   if (def.type === "extract") {
@@ -9728,14 +9870,30 @@ function protoReportDraftIssueBase(draft) {
   return "";
 }
 
-// Once needs a range up to today and a send date that has not gone.
+// Exact dates run up to today. A custom range needs a whole number.
+function protoReportRangeIssue(draft, what) {
+  if (draft.rangeMode === "dates") {
+    const from = protoFromUkDate(protoReportDraftDate("from"));
+    const to = protoFromUkDate(protoReportDraftDate("to"));
+    if (!from || !to) return `Pick the dates the ${what} covers.`;
+    if (from > to) return "Data from must come before Data to.";
+    if (to > protoToday()) return "Pick dates up to today.";
+  }
+  if (draft.rangeMode === "rolling") {
+    const n = Number(String(draft.rangeCount ?? "").trim());
+    const unit = protoReportRangeUnit(draft.rangeUnit).many;
+    if (!(Number.isInteger(n) && n >= 1 && n <= PROTO_REPORT_RANGE_MAX)) {
+      return `Enter how many ${unit}, a whole number from 1 to ${PROTO_REPORT_RANGE_MAX}.`;
+    }
+  }
+  return "";
+}
+
+// Once needs a send date that has not gone.
 function protoReportOnceIssue(draft, what) {
+  const range = protoReportRangeIssue(draft, what);
+  if (range) return range;
   if (draft.period !== "once") return "";
-  const from = protoFromUkDate(protoReportDraftDate("from"));
-  const to = protoFromUkDate(protoReportDraftDate("to"));
-  if (!from || !to) return `Pick the dates the ${what} covers.`;
-  if (from > to) return "Data from must come before Data to.";
-  if (to > protoToday()) return "Pick dates up to today.";
   if (!protoFromUkDate(protoReportDraftStart())) return "Pick the send date.";
   if (!protoReportSendOnOk()) return "Pick today or a later day to send it.";
   if (protoReportHourGone(draft, draft.sendAt || "09:00")) return "That time has gone today. Pick a later time.";
@@ -9905,15 +10063,92 @@ function protoReportWhenFields(draft) {
       ${protoReportPeriodSelect(draft, "How often")}
       ${once ? protoReportDayCalHtml(protoReportDraftStart(), "Send on") : protoReportSendDaySelect(draft)}
     </div>
-    ${
-      once
-        ? `<div class="astral-report-pair">
-            ${protoReportDayCalHtml(protoReportDraftDate("from"), "Data from", "from")}
-            ${protoReportDayCalHtml(protoReportDraftDate("to"), "Data to", "to")}
-          </div>`
-        : ""
-    }
   `;
+}
+
+// The Date range tab: exact dates, a common range, or the last so many days, weeks or months.
+function protoReportRangeFields(draft) {
+  const mode = PROTO_REPORT_RANGE_MODES.some((item) => item.id === draft.rangeMode) ? draft.rangeMode : "preset";
+  const def = protoReportDraftDef(draft);
+  const ref = protoReportOnce(def) ? protoFromUkDate(def.start) || protoToday() : protoReportNextSend(def) || protoToday();
+  const unit = protoReportRangeUnit(draft.rangeUnit);
+  const on = Boolean(draft.rangeCurrent);
+  const body =
+    mode === "dates"
+      ? `<div class="astral-report-pair">
+          ${protoReportDayCalHtml(protoReportDraftDate("from"), "Data from", "from")}
+          ${protoReportDayCalHtml(protoReportDraftDate("to"), "Data to", "to")}
+        </div>`
+      : mode === "preset"
+        ? `<div class="astral-report-pair">
+            ${protoReportField(
+              "Range",
+              protoSelect({
+                id: "report-range-preset",
+                label: "Range",
+                wide: true,
+                value: protoReportPick(PROTO_REPORT_RANGE_PRESETS, draft.rangePreset),
+                options: PROTO_REPORT_RANGE_PRESETS.map((item) => ({
+                  value: item.id,
+                  label: item.name,
+                  note: protoReportSpanWords(protoReportRangeAt({ rangeMode: "preset", rangePreset: item.id }, ref)),
+                })),
+              })
+            )}
+          </div>`
+        : `<div class="astral-report-pair">
+            ${protoReportInput("Last", "rangeCount", draft.rangeCount, 'inputmode="numeric" placeholder="3" maxlength="3"')}
+            ${protoReportOptionSelect("report-range-unit", "Of", PROTO_REPORT_RANGE_UNITS, unit.id)}
+          </div>
+          <button
+            type="button"
+            role="checkbox"
+            class="astral-report-consent${on ? " is-on" : ""}"
+            aria-checked="${on ? "true" : "false"}"
+            data-proto-report-range-current
+          >
+            ${protoCheck(on)}
+            <span class="astral-report-consent-copy"><span>${escapeHtml(`Include ${unit.current}`)}</span></span>
+          </button>`;
+  return `
+    <div class="astral-report-type-field">
+      <span class="astral-report-type-label" id="astral-report-range-label">How do you want to set the dates?</span>
+      <div class="astral-report-types is-three" role="radiogroup" aria-labelledby="astral-report-range-label">
+        ${PROTO_REPORT_RANGE_MODES.map((item) => {
+          const picked = item.id === mode;
+          return `
+            <button
+              type="button"
+              role="radio"
+              class="astral-report-type${picked ? " is-on" : ""}"
+              aria-checked="${picked ? "true" : "false"}"
+              tabindex="${picked ? "0" : "-1"}"
+              data-proto-report-range-mode="${item.id}"
+            >
+              <span class="astral-report-type-head">${protoRadio(picked)}<span>${escapeHtml(item.name)}</span></span>
+              <span class="astral-muted">${escapeHtml(item.note)}</span>
+            </button>
+          `;
+        }).join("")}
+      </div>
+    </div>
+    ${body}
+    <p class="astral-muted" data-proto-report-range-line>${escapeHtml(protoReportRangeLine(draft))}</p>
+  `;
+}
+
+// What the next send holds, in dates.
+function protoReportRangeLine(draft) {
+  if (protoReportRangeIssue(draft, "file")) return "";
+  const def = protoReportDraftDef(draft);
+  const range = protoReportDataRange(def);
+  if (!range) return "";
+  const dates = protoReportSpanWords(range);
+  const holds = def.type === "billing" ? "covers" : "holds";
+  if (protoReportOnce(def)) return `${def.type === "billing" ? "The bill" : "The file"} ${holds} ${dates}.`;
+  if (def.rangeMode === "dates") return `Every send ${holds} ${dates}.`;
+  const next = protoReportNextSend(def);
+  return `Each send works out its own dates. The next one${next ? `, on ${protoReportSendLabel(next)},` : ""} ${holds} ${dates}.`;
 }
 
 function protoReportRecipientsHtml(draft) {
@@ -11152,6 +11387,7 @@ const PROTO_REPORT_GROUP_NAMES = {
   delivery: "Delivery",
   file: "File name",
   charges: "Charges",
+  range: "Date range",
 };
 
 // Spaces as the separator keep words and capitals as typed. Otherwise words join with hyphens.
@@ -11178,20 +11414,11 @@ function protoReportFilePrefixText(def, raw) {
   return protoReportFileSlug(String(raw.name || "").trim() || protoReportAutoName(def), def.fileSep) || "report";
 }
 
-// The data a repeating send holds: the period before the send day.
-function protoReportFileRange(def, when) {
-  const to = protoAddDays(when, -1);
-  if (def.period === "day") return { from: to, to };
-  if (def.period === "week") return { from: protoAddDays(when, -7), to };
-  if (def.period === "quarter") return { from: protoAddMonths(when, -3), to };
-  return { from: protoAddMonths(when, -1), to };
-}
-
 function protoReportFileSuffixText(def, when) {
   if (def.fileSuffix === "none") return "";
   const stamp = (date, time) => `${protoReportFileDate(date, def.fileDate)}${def.fileSep}${time}`;
   if (def.fileSuffix === "run") return stamp(when, def.sendAt.replace(":", ""));
-  const range = protoReportOnce(def) ? protoReportRange(def) : protoReportFileRange(def, when);
+  const range = protoReportDataRange(def, when);
   if (!range) return stamp(when, def.sendAt.replace(":", ""));
   return def.fileSuffix === "start" ? stamp(range.from, "0000") : stamp(range.to, "2359");
 }
@@ -11370,6 +11597,7 @@ function protoReportGroups(draft, opts = {}) {
             <p class="astral-muted">Holds the reads your data collector and data aggregator sent.</p>
           `
       ),
+      protoReportGroup("range", protoReportRangeFields(draft)),
       protoReportGroup("schedule", `${protoReportWhenFields(draft)}${protoReportSendTimeFields(draft)}`),
       protoReportGroup("delivery", protoReportDeliveryFields(draft, opts)),
       protoReportGroup("file", protoReportFileFields(draft)),
@@ -11379,6 +11607,7 @@ function protoReportGroups(draft, opts = {}) {
     return [
       protoReportGroup("details", protoReportTenantDetails(draft)),
       protoReportGroup("charges", protoReportTenantCharges(draft)),
+      protoReportGroup("range", protoReportRangeFields(draft)),
       protoReportGroup(
         "schedule",
         `${protoReportWhenFields(draft)}<div class="astral-report-pair">${protoReportSendAtSelect(draft)}</div>`
@@ -11664,6 +11893,8 @@ function protoReportRefreshForm() {
   }
   const fileHost = modal.querySelector("[data-proto-report-file-preview]");
   if (fileHost) fileHost.innerHTML = protoReportFilePreviewInner(draft);
+  const rangeLine = modal.querySelector("[data-proto-report-range-line]");
+  if (rangeLine) rangeLine.textContent = protoReportRangeLine(draft);
   const fileDefaultHost = modal.querySelector("[data-proto-report-file-default]");
   if (fileDefaultHost && !fileDefaultHost.contains(document.activeElement)) {
     fileDefaultHost.innerHTML = protoReportFileDefaultInner(draft);
@@ -11827,8 +12058,7 @@ function protoReportRows(def) {
   if (tpl) return protoTemplateRows(tpl, def, 5000);
   if (def.type === "billing") {
     const all = protoReportBills(def);
-    const from = all.period.from || protoAddDays(today, -all.period.days);
-    const to = all.period.to || protoAddDays(today, -1);
+    const { from, to } = all.period;
     return [
       [
         "tenant",
@@ -11892,16 +12122,8 @@ function protoReportRows(def) {
       ),
     ];
   }
-  const period = protoReportPeriod(def.type, def.period);
   const zone = def.time === "uk" ? "UK time" : "UTC";
-  const days = [];
-  const range = protoReportOnce(def) ? protoReportRange(def) : null;
-  if (range) {
-    for (let day = range.from; day <= range.to && days.length < 800; day = protoAddDays(day, 1)) days.push(day);
-    days.splice(0, Math.max(0, days.length - PROTO_REPORT_FILE_DAYS));
-  } else {
-    for (let back = period.days; back >= 1; back -= 1) days.push(protoAddDays(today, -back));
-  }
+  const days = protoReportSampleDays(def);
   const each = (fn) =>
     protoReportScopeSites(def).forEach((site) =>
       protoReportMeters(def, site).forEach((meter) => fn(site, meter))
@@ -13976,16 +14198,7 @@ function protoTemplateValue(tpl, id, def) {
 // Seeded sample rows in the template's shape. The admin preview uses the walk estate. A customer's file uses their sites.
 // The days a template report's file covers, the same as a built-in extract.
 function protoTemplateSpan(def) {
-  const today = protoToday();
-  const range = protoReportOnce(def) ? protoReportRange(def) : null;
-  const days = [];
-  if (range) {
-    for (let day = range.from; day <= range.to && days.length < 800; day = protoAddDays(day, 1)) days.push(day);
-    days.splice(0, Math.max(0, days.length - PROTO_REPORT_FILE_DAYS));
-  } else {
-    for (let back = protoReportPeriod("extract", def.period).days; back >= 1; back -= 1) days.push(protoAddDays(today, -back));
-  }
-  return days;
+  return protoReportSampleDays(def);
 }
 
 function protoTemplateRows(tpl, def, limit = 6) {
@@ -27439,6 +27652,20 @@ function onPrototype(event) {
     if (draft) protoReportPatchDraft({ attach: draft.attach === false });
     return;
   }
+  const rangeModeBtn = event.target.closest("[data-proto-report-range-mode]");
+  if (rangeModeBtn) {
+    const rangeMode = rangeModeBtn.dataset.protoReportRangeMode;
+    const draft = protoReportDraft();
+    if (draft && draft.rangeMode !== rangeMode) protoReportPatchDraft({ rangeMode, rangeAuto: false });
+    protoRestoreFocus(`#astral-fs [data-proto-report-range-mode="${rangeMode}"]`);
+    return;
+  }
+  if (event.target.closest("[data-proto-report-range-current]")) {
+    const draft = protoReportDraft();
+    if (draft) protoReportPatchDraft({ rangeCurrent: !draft.rangeCurrent, rangeAuto: false });
+    protoRestoreFocus("#astral-fs [data-proto-report-range-current]");
+    return;
+  }
   const bySiteBtn = event.target.closest("[data-proto-report-bysite]");
   if (bySiteBtn) {
     const bySite = bySiteBtn.dataset.protoReportBysite === "1";
@@ -29214,7 +29441,7 @@ function onPrototypeInput(event) {
           ...draft,
           tenants: protoReportTenantsOf(draft).map((tenant) => (tenant.id === bits[1] ? taxField(tenant) : tenant)),
         }
-      : { ...draft, [key]: value };
+      : { ...draft, [key]: value, ...(key === "rangeCount" ? { rangeAuto: false } : {}) };
     protoReportRefreshForm();
     return;
   }
