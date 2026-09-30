@@ -12775,7 +12775,7 @@ function protoAlertsArea(view) {
 }
 
 function protoAlertsCardTabs(active) {
-  return `<div class="astral-card-tabs">${protoTabs(
+  return `<div class="astral-page-tabs">${protoTabs(
     [
       { id: "alerts", name: "Activity" },
       { id: PROTO_ALERT_RULES_VIEW, name: "Settings" },
@@ -12799,7 +12799,8 @@ function protoReportsDownloadsTabs(active) {
   );
 }
 
-function protoReportsAreaHead(active) {
+// Page order on Reports, Downloads, and Alerts: title and main action, tabs, summary cards, then one content card.
+function protoReportsAreaHead(active, below = "") {
   const addBtn =
     active === "reports" && protoCanAddReports()
       ? protoBtn(
@@ -12820,12 +12821,18 @@ function protoReportsAreaHead(active) {
       </div>
       <div class="astral-page-actions">${addBtn}</div>
     </header>
+    ${protoPageTop(`${protoAlertsArea(active) ? protoAlertsCardTabs(active) : protoReportsCardTabs(active)}${below}`)}
   `;
+}
+
+// Sits between the page head and the scrolling body, so the content card stays the only child there.
+function protoPageTop(inner) {
+  return String(inner || "").trim() ? `<div class="astral-page-top">${inner}</div><!-- /astral-page-top -->` : "";
 }
 
 function protoReportsCardTabs(active) {
   const tabs = protoReportsDownloadsTabs(active);
-  return tabs ? `<div class="astral-card-tabs">${tabs}</div>` : "";
+  return tabs ? `<div class="astral-page-tabs">${tabs}</div>` : "";
 }
 
 function astralWalk(state) {
@@ -12920,13 +12927,14 @@ function astralWrapStage(inner) {
   const html = String(inner || "");
   if (/\bastral-split\b/.test(html)) return html;
   const match = html.match(
-    /^(\s*<header class="astral-page-head[\s\S]*?<\/header>)(\s*<div class="astral-stage-tools[\s\S]*?<\/div>)?([\s\S]*)$/
+    /^(\s*<header class="astral-page-head[\s\S]*?<\/header>)(\s*<div class="astral-page-top"[\s\S]*?<!-- \/astral-page-top -->)?(\s*<div class="astral-stage-tools[\s\S]*?<\/div>)?([\s\S]*)$/
   );
   if (!match) return html;
-  const tools = match[2] || "";
-  const body = match[3] || "";
-  if (!astralStageFillsBody(body)) return `${match[1]}\n${tools}\n${body}`;
-  return `${match[1]}\n${tools}\n<div class="astral-stage-body">${body}</div>`;
+  const top = match[2] || "";
+  const tools = match[3] || "";
+  const body = match[4] || "";
+  if (!astralStageFillsBody(body)) return `${match[1]}\n${top}\n${tools}\n${body}`;
+  return `${match[1]}\n${top}\n${tools}\n<div class="astral-stage-body">${body}</div>`;
 }
 
 function protoSeeAsBar() {
@@ -18716,7 +18724,6 @@ function protoDownloadsSection() {
     : `<tr><td colspan="6" class="astral-muted">${escapeHtml(empty)}</td></tr>`;
   return `
     <section class="astral-card astral-downloads" id="astral-downloads">
-      ${protoReportsCardTabs("downloads")}
       <div class="astral-downloads-head">
         <div class="astral-downloads-tools">
           ${protoSearchField({
@@ -21744,7 +21751,6 @@ function protoAlerts() {
   return astralShell(`
     ${protoReportsAreaHead("alerts")}
     <section class="astral-card astral-reports-sheet astral-alerts-sheet">
-      ${protoAlertsCardTabs("alerts")}
       <div class="astral-stage-tools astral-pills" role="group" aria-label="Filter flags">${chips}</div>
       <div class="astral-stack">${cards || `<p class="astral-empty">No flags in this filter.</p>`}</div>
       <p class="astral-muted">Every flag here is something a customer would otherwise find from a bill or a missed reading.</p>
@@ -22110,12 +22116,11 @@ function protoReportTypeCards(tab, defs) {
 
 function protoReportsSheet(active, defs, empty) {
   const tab = active === PROTO_ALERT_RULES_VIEW ? "alerts" : "reports";
-  const cardTabs = tab === "alerts" ? protoAlertsCardTabs(active) : protoReportsCardTabs(active);
-  const top = `${protoReportsAreaHead(active)}${protoReportNoticeHtml()}${protoReportPickModal()}`;
+  const top = `${protoReportsAreaHead(active, protoReportTypeCards(tab, defs))}${protoReportNoticeHtml()}${protoReportPickModal()}`;
   if (!defs.length) {
     return astralShell(`
       ${top}
-      <section class="astral-card astral-reports-sheet">${cardTabs}<div class="astral-empty">${empty}</div></section>
+      <section class="astral-card astral-reports-sheet"><div class="astral-empty">${empty}</div></section>
     `);
   }
   const q = protoReportQuery();
@@ -22136,7 +22141,7 @@ function protoReportsSheet(active, defs, empty) {
         }</div>`;
   return astralShell(`
     ${top}
-    <section class="astral-card astral-reports-sheet is-${layout}">${cardTabs}${protoReportTypeCards(tab, defs)}${protoReportTools(tab)}${body}</section>
+    <section class="astral-card astral-reports-sheet is-${layout}">${protoReportTools(tab)}${body}</section>
   `);
 }
 
@@ -25702,6 +25707,7 @@ var protoRenderTick = 0;
 const PROTO_SKEL_REGIONS = [
   ".astral-hero",
   ".astral-metrics",
+  ".astral-report-type-stats",
   ".astral-catch",
   ".astral-chart-heading",
   ".astral-chart-keys",
@@ -26923,7 +26929,7 @@ function protoSlideNavPills(options) {
   const root = document.querySelector("#astral-fs");
   if (!root) return;
   protoSlideHost(
-    root.querySelector(".astral-card-tabs .astral-tabs"),
+    root.querySelector(".astral-page-tabs .astral-tabs"),
     "button.is-on",
     "reportTabs",
     snap
