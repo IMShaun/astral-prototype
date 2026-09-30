@@ -6474,7 +6474,7 @@ button.astral-state {
   line-height: 20px;
   font-weight: 500;
   white-space: nowrap;
-  border-bottom-color: var(--color-text-primary);
+  border-bottom-color: var(--color-border-strong);
 }
 
 .astral-meter-list .astral-meter-ref {
@@ -9626,14 +9626,14 @@ button.astral-state {
   white-space: nowrap;
 }
 
-/* Column headers: Body S in Infra Grey C on white, sentence case, over a black rule. */
+/* Column headers: Body S in Infra Grey C on white, sentence case, over an Infra Grey B rule. */
 .astral-table thead th {
   color: var(--color-text-secondary);
   font-size: 0.875rem;
   line-height: 20px;
   font-weight: 500;
   white-space: nowrap;
-  border-bottom-color: var(--color-text-primary);
+  border-bottom-color: var(--color-border-strong);
 }
 
 .astral-sort {

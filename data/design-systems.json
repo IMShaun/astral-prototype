@@ -2807,7 +2807,7 @@
           "name": "Table",
           "react": "Table",
           "file": "src/components/Table.tsx",
-          "summary": "Dense lists of meters, sites, and readings. Body type is black. Headers use Infra Grey C on white, never a grey fill, which fails AA. They are Body S in sentence case, with no capitals or letter spacing, over a black rule that parts them from the rows. Breakdown heads put the name on the first line and the note in Caption under it. A head with no note, such as Time, sits in the middle. The State column uses State pills. Breakdown In and Out are text headings.",
+          "summary": "Dense lists of meters, sites, and readings. Body type is black. Headers use Infra Grey C on white, never a grey fill, which fails AA. They are Body S in sentence case, with no capitals or letter spacing, over an Infra Grey B rule, the same as the row lines, so the head sits quietly on the page. Breakdown heads put the name on the first line and the note in Caption under it. A head with no note, such as Time, sits in the middle. The State column uses State pills. Breakdown In and Out are text headings.",
           "usage": "Pass columns and rows. Do not fetch inside the table. The pane scrolls the interval table. On a group or All, there are two. Site breakdown has a column for each site on the graph and a Total. Meter point breakdown sits under it, one level deeper, with a column for each meter point on the sites that are on, its site under the MPAN, and a Total. Each opens on its own and pages its own columns. A site keeps one Breakdown, a column for each meter point. The site list sits in its own Sites accordion under them, closed until they open it. A group comparison has Groups. The graph stays the same height. Total, Individual, Bar, Line, Hours, and filter pills do not change it. Do not give Breakdown its own scrollbar. Rows load as they scroll. Empty uses Empty. Queries sits the list in a card. Column headers sort. A pair of arrows sits in the header. Click for A to Z or lowest first. Click again to reverse. Words are alphabetical. Numbers and dates go lowest to highest, then the reverse. Resolve and other actions do not sort. An action column has no sort. Its heading is hidden but read aloud. Remove on recipients.",
           "variants": [
             "default"
@@ -4117,7 +4117,7 @@
                 "id": "table",
                 "name": "Table",
                 "status": "brand",
-                "note": "Headers are Body S in Infra Grey C on white, over a black rule. State column uses State pills. Breakdown In and Out are text headings. The pane scrolls. Do not give Breakdown its own scrollbar. Column headers sort. Click for A to Z or lowest first. Click again to reverse."
+                "note": "Headers are Body S in Infra Grey C on white, over an Infra Grey B rule, the same as the row lines. State column uses State pills. Breakdown In and Out are text headings. The pane scrolls. Do not give Breakdown its own scrollbar. Column headers sort. Click for A to Z or lowest first. Click again to reverse."
               },
               {
                 "id": "empty",
