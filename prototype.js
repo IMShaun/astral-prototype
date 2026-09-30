@@ -13557,6 +13557,45 @@ function protoLibraryOn() {
   return Boolean(store.prototypeLibraryOn);
 }
 
+// The Work Desk is hidden. Shift and click Library three times on the preview bar to open it.
+// Do it again from the desk to go back to the prototype. It lasts for this tab only.
+const PROTO_DESK_KEY = "astral-work-desk";
+const PROTO_DESK_KNOCKS = 3;
+const PROTO_DESK_KNOCK_GAP_MS = 1500;
+let protoDeskKnocks = [];
+
+function protoDeskKnock(event, libraryTab) {
+  if (!libraryTab || !event.shiftKey) {
+    protoDeskKnocks = [];
+    return false;
+  }
+  const now = Date.now();
+  const last = protoDeskKnocks[protoDeskKnocks.length - 1];
+  if (last && now - last > PROTO_DESK_KNOCK_GAP_MS) protoDeskKnocks = [];
+  protoDeskKnocks.push(now);
+  if (protoDeskKnocks.length < PROTO_DESK_KNOCKS) return false;
+  protoDeskKnocks = [];
+  protoToggleDesk();
+  return true;
+}
+
+function protoToggleDesk() {
+  const open = protoShareWalk();
+  try {
+    if (open) sessionStorage.setItem(PROTO_DESK_KEY, "1");
+    else sessionStorage.removeItem(PROTO_DESK_KEY);
+  } catch (err) {
+    return;
+  }
+  store.prototypeLibraryOn = false;
+  if (open) {
+    store.activeSection = "today";
+    store.prototypeFullscreen = false;
+  }
+  persistChrome();
+  location.reload();
+}
+
 function astralPreviewMenu() {
   if (store.prototypePreviewHidden) {
     return `
@@ -29552,6 +29591,7 @@ function onPrototype(event) {
   const shareBtn = event.target.closest("[data-proto-share]");
   if (shareBtn) {
     const on = shareBtn.dataset.protoShare === "library";
+    if (protoDeskKnock(event, on)) return;
     setProto({ prototypeLibraryOn: on });
     protoRestoreFocus(`#astral-fs [data-proto-share="${on ? "library" : "prototype"}"]`);
     return;

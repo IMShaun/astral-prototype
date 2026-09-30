@@ -1,7 +1,7 @@
 {
   "updated": "2026-09-23",
   "activeTeam": "imserv",
-  "activeSection": "prototype",
+  "activeSection": "today",
   "teams": [
     {
       "id": "imserv",
@@ -17,81 +17,3601 @@
     }
   ],
   "access": {
-    "company": [],
-    "people": []
+    "company": [
+      {
+        "id": "work-desk",
+        "name": "Work Desk",
+        "have": "This folder on your machine, opened with the preview script",
+        "ask": "You. The files stay in the folder even if the page is gone",
+        "lost": "Run the preview script again from this folder"
+      },
+      {
+        "id": "cursor",
+        "name": "Cursor",
+        "have": "The editor this desk lives in",
+        "ask": "Use Add once you know who handles company tools",
+        "lost": "Sign in again. Do not store the password here"
+      },
+      {
+        "id": "lastpass",
+        "name": "LastPass",
+        "have": "Still useful. Max has already handed you UAT details separately. Do not store those here.",
+        "ask": "Ben K or Ira",
+        "lost": "Ask Ben or Ira. Do not store a password here."
+      },
+      {
+        "id": "zscaler",
+        "name": "Company VPN",
+        "have": "James asked about Nord. Ira said Nord is not needed. Zscaler or the company VPN is enough to reach UAT.",
+        "ask": "Ira or Ben",
+        "lost": "Ask IT for VPN. Do not store a password here."
+      },
+      {
+        "id": "figma-brand",
+        "name": "Figma brand file",
+        "have": "The IMSERV Brand Book copy is in the IMSERV Figma team. Colour, type, logo, and voice are now in the desk library.",
+        "ask": "Camilla",
+        "lost": "Ask Camilla to send the link again."
+      },
+      {
+        "id": "brand-hub",
+        "name": "Brand Hub",
+        "have": "On the intranet under Communications. PDFs, Word files, and PowerPoints live there. Camilla showed it on the call.",
+        "ask": "Camilla if the intranet is locked",
+        "lost": "Ask Camilla. Do not store a password here."
+      },
+      {
+        "id": "github",
+        "name": "GitHub Enterprise",
+        "have": "Peter is with Barry to finish config. Keegan has some permissions, not all. Joe told Andrew to provide everything.",
+        "ask": "Peter or Keegan. Andrew Howard if a repo is blocked. Clive if IT says no.",
+        "lost": "Use the enterprise sign in, not a personal GitHub. Do not store a password here."
+      },
+      {
+        "id": "slack",
+        "name": "Slack",
+        "have": "Pipeline alerts still land here. Peter is adding people so they can see them. Clive still wants it shut as a place to talk. Look, do not chat.",
+        "ask": "Peter. Ben or Ira if you need the alert channel.",
+        "lost": "Ask Ben or Ira. Do not store a password here."
+      }
+    ],
+    "people": [
+      {
+        "id": "clive",
+        "name": "Clive",
+        "helps": "Product direction, demo urgency, IT blockers, and the customer migration stream",
+        "how": "Send a no to him. He deals with IT, or Joe shouts. Shape walks so a stakeholder can see a module."
+      },
+      {
+        "id": "emily-haddon",
+        "name": "Emily Haddon",
+        "helps": "Customer demos, what has been shown, and whether a walk matches what people expect",
+        "how": "Ask before you treat a screen as signed. She and Max sign off Portfolio."
+      },
+      {
+        "id": "anna",
+        "name": "Anna",
+        "helps": "SharePoint, invites, DevOps, huddles, backlog, and who should look next",
+        "how": "Away Monday. Peter books Tuesday. Then she is in Slovenia for the rest of the week. Treat that as what she is doing, not a title."
+      },
+      {
+        "id": "james-gymer",
+        "name": "James Gymer",
+        "helps": "Architecture, legacy logic, APIs, SpecKit, and whether a design can sit on the current structure",
+        "how": "Monday with you. Tree as a flat list, help, and Prime. He is around until the 30th. Capture him before he leaves."
+      },
+      {
+        "id": "max-lake",
+        "name": "Max Lake",
+        "helps": "DataVision behaviour, energy-domain detail, user stories, and the V1 spikes",
+        "how": "Friday walk is in the archive. Ask what capability hides in a DataVision screen, not how to copy it. Bevis for Meterpower."
+      },
+      {
+        "id": "helen-hurst",
+        "name": "Helen Hurst",
+        "helps": "Shell, BP, and Flow Gas on the old portals, and the campaign manager she and James built instead of Shell's wish list",
+        "how": "Mikhail said bugs she raised were deployed to manual test. Ask her if they are actually gone."
+      },
+      {
+        "id": "barry-smith",
+        "name": "Barry Smith",
+        "helps": "Azure, environments, FTP, DevOps, and GitHub config",
+        "how": "Peter is with him on GitHub. Ask Anna if that stalls."
+      },
+      {
+        "id": "ira",
+        "name": "Ira",
+        "helps": "LastPass, machine plugins, environments, and UAT with Ben K",
+        "how": "Ask Ben or Ira. James said they got him going. Plugins must be installed or the portal throws odd errors."
+      },
+      {
+        "id": "ben",
+        "name": "Ben K",
+        "helps": "Mailtrap, LastPass, UAT, and environments with Ira",
+        "how": "His reset link got you into Mailtrap. Infrastructure was his and Ira's job. Pipelines were Desislav's."
+      },
+      {
+        "id": "anne",
+        "name": "Anne",
+        "helps": "User access testing. Extra admin fields are still going in. There is still no proper UI for her to run those checks.",
+        "how": "Ask Anna. Anne is from the IMSERV test pool."
+      },
+      {
+        "id": "peter",
+        "name": "Peter",
+        "helps": "React plumbing, GitHub, the parallel Dev, and the Tuesday backlog check",
+        "how": "With Barry on GitHub. Invite him on Max's spikes. He books Tuesday. Do not store a password here."
+      },
+      {
+        "id": "camilla",
+        "name": "Camilla",
+        "helps": "Brand Hub, the Figma brand file, Astral logos, and getting the website repo back from the old agency",
+        "how": "Teams. She forwarded the agency email. Book Claire through her if the diary is awkward."
+      },
+      {
+        "id": "claire",
+        "name": "Claire",
+        "helps": "WordPress, the dummy Astral pages, and what is hard coded so it cannot be edited",
+        "how": "Digital marketing lead. Camilla said book Monday. Diary is open."
+      },
+      {
+        "id": "nick",
+        "name": "Nick",
+        "helps": "Where data comes from. Star, D365, interval data, sub meters, and the gold layer question",
+        "how": "Ask Max or James to pull him into the TMA spike."
+      },
+      {
+        "id": "stephen",
+        "name": "Stephen",
+        "helps": "The data pipeline, FTP files, and how often test data should refresh",
+        "how": "He and Simon are walking the disabled pipelines. Keep going. Do not wait for Desislav."
+      },
+      {
+        "id": "charanjit",
+        "name": "Charanjit",
+        "helps": "How user access and modules actually flow, written into the wiki with Alexi",
+        "how": "He is out today and back Wednesday. Read the wiki once he has updated it."
+      },
+      {
+        "id": "sui-b",
+        "name": "Sui B",
+        "helps": "Web Portal and Meterpower",
+        "how": "They already opened both. Ask them again if either login dies."
+      },
+      {
+        "id": "eray-h",
+        "name": "Eray H",
+        "helps": "Mailtrap, with Ben K",
+        "how": "They already opened it. You need it before the Astral portal Ann H set up will work."
+      },
+      {
+        "id": "ann-h",
+        "name": "Ann H",
+        "helps": "The Astral portal login",
+        "how": "They have already set you up. Open Mailtrap first or you cannot finish the sign in."
+      },
+      {
+        "id": "adrian-cox",
+        "name": "Adrian Cox",
+        "helps": "Brand approvals. The Brand Book says check with Marketing and Brand before using assets.",
+        "how": "The book lists him as contact. Ask Camilla if you need an intro. Do not store a password here."
+      },
+      {
+        "id": "keegan",
+        "name": "Keegan",
+        "helps": "Turning an agreed walk into buildable React work and stories",
+        "how": "Some GitHub permissions, not all. Pull him into design talks once the walk is agreed. Storybook waits until you are back."
+      },
+      {
+        "id": "anthony",
+        "name": "Anthony",
+        "helps": "Multi-tenancy and user-access stories. How entitlement, role, and groups stack",
+        "how": "Ask him before you design a single permissions page. Charanjit holds the wiki."
+      },
+      {
+        "id": "joe",
+        "name": "Joe",
+        "helps": "CEO. Tooling for Astral, and shouting at IT when a no will not lift",
+        "how": "He told Andrew to provide everything. Send the blocker to Clive first."
+      },
+      {
+        "id": "andrew-howard",
+        "name": "Andrew Howard",
+        "helps": "GitHub when a repo is blocked, and whatever Astral needs from ops",
+        "how": "Joe told him to provide everything. Ask Clive if that stall continues."
+      },
+      {
+        "id": "verona-frey",
+        "name": "Veronique",
+        "helps": "DataVision as the internal power user. If a customer has a problem, they go to her.",
+        "how": "Too late today. Message her and book next week. Clive called her V. Max said Verona Frey."
+      },
+      {
+        "id": "katie",
+        "name": "Katie",
+        "helps": "Customer and supplier onboarding. Panorama, Star, job loading, and the hand-off to V.",
+        "how": "Book a follow-up on exception cases and validation rules."
+      },
+      {
+        "id": "simon",
+        "name": "Simon",
+        "helps": "Sample files through the pipeline with Stephen",
+        "how": "He is walking the disabled ADF jobs. Ask Stephen if you need him."
+      },
+      {
+        "id": "bevis-rotherham",
+        "name": "Bevis Rotherham",
+        "helps": "Meterpower and TMA. What that product actually does.",
+        "how": "Max named him. Ask Max for an intro if you need the Meterpower picture."
+      }
+    ]
   },
   "boards": {
     "imserv": {
-      "headline": "Astral prototype",
-      "situation": "This copy is the live Astral walk. The briefing desk stays off this download.",
+      "headline": "Astral is the customer portal, not a DataVision rebuild.",
+      "situation": "The product combines energy pictures, portfolio, documents, and access from the contract. The first view stays readable, with detail behind drill-down, not a DataVision wall of everything.",
       "can": [
-        "Open a screen and walk the estate.",
-        "Change company type from the preview bar.",
-        "Leave. This copy does not save to a shared file."
+        "Walk Features for who, what, why, and confirmation.",
+        "Keep entitlement, role, and scope as three questions.",
+        "Share Prototype and Library with the same password."
       ],
       "cannot": [
-        "See the morning board in this copy.",
-        "Change the live product from this page.",
-        "Invite people or restore a tool here."
+        "Mix Team with Group, or treat Estimated as an Alert.",
+        "Design one permissions blob, or assume every login gets the same shell.",
+        "Store a password, mix m³ with kWh, or invent a SPID."
       ],
       "next": [
-        "Pick a company type.",
-        "Open Portfolio.",
-        "Send notes back to Shaun."
+        "Get Emily and Max to sign off Portfolio.",
+        "Ask Anthony how entitlement, role, and groups stack.",
+        "Ask Max to settle Teams versus Groups and the Scotland meter rule."
       ],
-      "know": [],
-      "today": [],
-      "done": [],
-      "groups": [],
-      "access": []
+      "know": [
+        {
+          "title": "Three kinds of access",
+          "body": "What the company bought sits apart from what the person can do, and from which sites, MPANs, reports, and documents they can see."
+        },
+        {
+          "title": "Team is people, Group is data",
+          "body": "A Team is who they work with. A Group can decide which sites, MPANs, reports, and documents they inherit. Do not treat them as the same thing."
+        },
+        {
+          "title": "Documents only or full Astral",
+          "body": "Version one has two bought experiences. Documents only may skip Portfolio. Full Astral gets the energy walk. The customer does not pick the tier."
+        }
+      ],
+      "today": [
+        {
+          "id": "ds-finish-library",
+          "title": "Finish the shared library so every developer builds from the same pieces",
+          "note": "The live Astral library is the walk. Figma extract, Storybook, and remaining components still wait. Do not auto-delete a duplicate.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "ds-figma-flows",
+          "title": "Convert prototype flows into Figma, screen by screen",
+          "note": "Developers need a linear reference. Keep the prototype as the source until those frames exist.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "pf-hierarchy",
+          "title": "Confirm company, site, MPAN, then meter, and who gets meter level",
+          "note": "The walk tree is group then site. MPAN sits on hover. Serial for water. Company, then Portfolio, then Group, then Site, then MPAN, then Meter, then channel. Scotland stays its own case. Do not invent a SPID.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "pg-custom-groups",
+          "title": "Let customers make custom groups and switch them off the regional default",
+          "note": "An MPAN can sit in more than one group. Do not show it twice in the tree. Creating a group stays separate from viewing it.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "pg-manage-mpans",
+          "title": "Define how MPANs are added or removed from a group",
+          "note": "Viewing regional groups is in. The management flow still waits so development can start on the tree.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "pf-scale",
+          "title": "Plan for huge portfolios and say when a query is too heavy",
+          "note": "Warn before a heavy run, like DataVision. Last month is the default. Named scale is about 8,000 MPANs on a customer and about 45,000 on internal access.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "vis-confirm-utility",
+          "title": "Confirm the utility filter with product and technical people before React",
+          "note": "Filter ticks are the walk. Water stays off until ticked. Consumption is m³ for water and kWh for electricity and gas. They do not share one axis. Cost and Carbon can share. Confirm that split before React.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "graph-hold-complex",
+          "title": "Hold complex graph work until this interaction stays agreed",
+          "note": "The walk is one graph with filters. Home cards still need a decision. Do not start a second model.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "alerts-later",
+          "title": "Leave user-defined alert thresholds and extra collaboration for later",
+          "note": "V1 flags Odd use, Missing data, and Not sending. Queries already sit on the graph.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "perm-obvious",
+          "title": "Make it obvious that two people in one company can see different sites",
+          "note": "Restrict by group, site, or MPAN. Brokers can sit on more than one customer. The customer manages their own people.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "perm-contract-cut",
+          "title": "Tie access to the contract and cut it when the dates end",
+          "note": "Start and end already sit on the person. Auto remove after expiry still waits.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "docs-my-documents",
+          "title": "Build My Documents so files are not only emailed around",
+          "note": "Document-only users skip Portfolio. Keep these files separate from Downloads. Say when a new file is in.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "docs-confidential",
+          "title": "Mark some files confidential and let Admin pick who sees them",
+          "note": "A department such as Finance can have its own set. People must not find a file outside their group.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "reports-who-sees",
+          "title": "Decide who can schedule a report and who can see someone else's",
+          "note": "Clockwork is in. Admin may see more than a standard user. Keep scheduled reports off the documents pile.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "tier-docs-vs-full",
+          "title": "Support documents only or the full product from the contract, not a customer pick",
+          "note": "Hide Portfolio from a documents-only login. Self-serve upgrades wait.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "auth-demo-logins",
+          "title": "Make working demo logins for stakeholder walks",
+          "note": "The prototype walk is temporary. Do not store a password on this desk.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "stories-api-source",
+          "title": "Put API, Angular reuse, and data source on each story before it hits development",
+          "note": "Portfolio stories have confirmation and shots. Missing modules still need stories. Keep each one small enough to point.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "refine-dev-walk",
+          "title": "Walk developers through the approved flow, then point it",
+          "note": "They split the work. They say what can run in parallel. Repeat this module by module.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "react-customer-first",
+          "title": "Build the customer React on the shared library and existing APIs",
+          "note": "Primitives first. Replace Angular gradually. Do not rewrite working backend logic.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "james-speckit",
+          "title": "Capture James on APIs, architecture, and SpecKit before he leaves",
+          "note": "Shared specs so developers and AI tools use the same instructions. Keep the notes where the team can open them.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "net10-upgrade",
+          "title": "Plan the .NET 10 upgrade with the legacy team and test after",
+          "note": "Do not leave framework work until late. People who know the live product check regressions.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "signoff-module",
+          "title": "Get explicit sign-off before a module is development-ready",
+          "note": "Emily on customer expectation. Max on the live product. James on technical gaps while he is here. Move once they agree.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22"
+        },
+        {
+          "id": "library-check",
+          "title": "Run the library check on Prototype and desk chrome",
+          "note": "Code against astral-ui.js and the named components. Figma extract and Storybook still wait. Do not auto-delete a duplicate.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-18"
+        },
+        {
+          "id": "walk-login-hats",
+          "title": "Walk Prototype as Energy, Asset, then Broker / TPI",
+          "note": "Energy is MCA shaped. Asset is Southern Water shaped. Broker is Advantage shaped. Do not add CX or UMSO screens.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-12"
+        },
+        {
+          "id": "walk-group-lenses",
+          "title": "Walk Prototype as company type, access, then temporary",
+          "note": "Four company tabs first. Customer and Supplier get Admin, Manager, Contributor, and Viewer. Broker / TPI only gets Viewer. Super admin is only on Platform admin. Temporary shows the contract dates. What they see is navbar then other features, as labels.",
+          "project": "Astral",
+          "added": "2026-09-07",
+          "kind": "ux"
+        },
+        {
+          "id": "walk-prototype",
+          "title": "Walk Prototype from Home to Interval, then Quality",
+          "note": "EDF looking at Network Rail. Import and export share a site. Gaps stay gaps. CSV is local time.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ui"
+        },
+        {
+          "id": "base-gallery-setup",
+          "title": "Build the Astral Figma library to Base Gallery depth",
+          "note": "Monday screens come from this walk. One library before Wednesday. Clive's screens are still a play. Values stay IMSERV.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ui"
+        },
+        {
+          "id": "product-logins",
+          "title": "Look around UAT with the details Max handed",
+          "note": "Admin is in. Companies, brokers, and users sit on the side. That live side map is the Super admin research next, not Tickets or Billing. Do not expect consumption data until the pipeline runs. Do not store the login here.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "research"
+        },
+        {
+          "id": "james-figma",
+          "title": "Put the UAT components into Figma",
+          "note": "Clive's screens are not the source. Match James to UAT, then own one library. Live UAT uses PrimeNG.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ui"
+        },
+        {
+          "id": "time-based",
+          "title": "Sketch time-based attributes before you ask Clive",
+          "note": "Static values sit in Angular today. They are moving to Synapse. Alexi, Mikhail, and Arman. Do not give this to a new dev.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ux"
+        },
+        {
+          "id": "alexi-theme-video",
+          "title": "Watch the Teams video of Alexi changing the portal style",
+          "note": "James sent it after the call. Pair it with the styles page. Clive still has to say if customers pick a skin.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "admin"
+        },
+        {
+          "id": "front-end-scope",
+          "title": "Keep the React epic in view when you talk to Clive",
+          "note": "New Dev resource group. New UI on the existing APIs first. GitHub with Barry. Joe told Andrew to provide everything.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "admin"
+        },
+        {
+          "id": "widgets-area",
+          "title": "Agree what area means and how many dashboard cards to show",
+          "note": "Portfolio is one graph with filters. Home cards still need a decision. Site performance by area has no data.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ux"
+        },
+        {
+          "id": "tma-access",
+          "title": "Get into TMA so you can see channel level data",
+          "note": "Look around Meterpower. Bevis Rotherham knows it better than Max. Max was allotted more to finance than data visualisation.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "research"
+        },
+        {
+          "id": "book-claire",
+          "title": "Book Claire for Monday on the WordPress Astral pages",
+          "note": "She has started a dummy build. Camilla cannot open it. Clive has a wireframe for the public pages.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "admin"
+        },
+        {
+          "id": "agency-repo-email",
+          "title": "Read the agency email Camilla forwarded about the website repo",
+          "note": "Until that repo is back, live updates get overwritten. She thought beginning of next week if not this week.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "admin"
+        },
+        {
+          "id": "clive-site-wireframe",
+          "title": "Open Clive's wireframe for the public IMSERV Astral pages",
+          "note": "This is the front facing site for the Telegraph link, not the product. Ask Camilla if it still wants a password. Do not store it here.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "admin"
+        },
+        {
+          "id": "look-repo",
+          "title": "Look around Astral Repository on branch dev/imserv",
+          "note": "Five environments still the goal. Keegan wants a mono repo that describes itself. Do not commit.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "admin"
+        },
+        {
+          "id": "walk-astrotech-site",
+          "title": "Look at the old Astrotech site before it comes down",
+          "note": "Public pages are still on astraltech.energy. The marketing pages name CX, BX, and EDM.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "admin"
+        },
+        {
+          "id": "review-journeys",
+          "title": "Read the Journeys drafts and mark what feels off",
+          "note": "Open Journeys in the side menu. Later is the prompt-and-fix picture, not a promise.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "admin"
+        },
+        {
+          "id": "walk-admin-as-user",
+          "title": "Open a company in admin, then log in as a user, then find the way back",
+          "note": "This is live DataVision, not the prototype. Caprino's Pizza was the demo. The prototype already has Log in as user on the person and Back to admin. Do not store the login here.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "research"
+        },
+        {
+          "id": "datavision-login",
+          "title": "Ask for DataVision admin, or ABC Co if they will not",
+          "note": "Max walked live admin on EDF and Network Rail. You still need your own login. Read only. Never create or update a record. The prototype walk is not a substitute.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "admin"
+        },
+        {
+          "id": "mailtrap-bug",
+          "title": "Push the Mailtrap user login error to Dev",
+          "note": "It says user login error, please try again later. Max said it is a persistent bug, not a password mistake.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "admin"
+        },
+        {
+          "id": "sit-veronique",
+          "title": "Sit with Veronique, then sit in customer service",
+          "note": "Too late today. Message her after this call and book next week. She and her team live in DataVision. The prototype walk is in. The next Super admin screen still comes from sitting with her, not from generic admin advice.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "research"
+        },
+        {
+          "id": "customer-migration",
+          "title": "Join the customer migration stream when Clive invites you",
+          "note": "British Gas and Scottish Water asked to beta. They have waited about 15 months. Who else is still open.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "admin"
+        },
+        {
+          "id": "label-multitenancy",
+          "title": "When you name a foundation in Figma, mark that it must survive multi-tenancy",
+          "note": "Do not build the tenancy now. Clive wants the label so January does not throw the work away.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ux"
+        },
+        {
+          "id": "keegan-storybook",
+          "title": "Ask Keegan for a Storybook you can point Figma MCP at",
+          "note": "After you are back from leave. The library comes first.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ui"
+        },
+        {
+          "id": "say-no-data",
+          "title": "When a graph has no interval data for the date, say so on the screen",
+          "note": "Missing coloured lines are not enough. Max had to infer that most ticked meters had nothing in range.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ux"
+        },
+        {
+          "id": "amend-alert",
+          "title": "Let someone change an alert threshold without deleting it",
+          "note": "Max could not amend a scheduled alert. He had to delete it and start again. That is the system, not the user.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ux"
+        }
+      ],
+      "done": [
+        {
+          "id": "pane-filter-pills-off",
+          "title": "Take filter pills off the pane head",
+          "note": "The pane Filter stays to the right of Compare. The count sits on that button. Pills under the heading wait while we rethink that control.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-23",
+          "doneOn": "2026-09-23"
+        },
+        {
+          "id": "compare-hover-more",
+          "title": "Keep compare hover to seven rows, then more",
+          "note": "A group comparison stacks those groups, not every site. Hover and the pin list the first seven. The rest sit as +17 more sites, groups, or MPANs. Hide puts them away.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-23",
+          "doneOn": "2026-09-23"
+        },
+        {
+          "id": "hover-estimated-row",
+          "title": "Mark estimated on that reading, not the whole hover",
+          "note": "Estimated sits as Tag on the site or meter that is guessed. Actual stays unmarked. The overlay does not say the whole time is estimated.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-23",
+          "doneOn": "2026-09-23"
+        },
+        {
+          "id": "chart-height-stable",
+          "title": "Keep the graph the same height when the view changes",
+          "note": "Total, Individual, Bar, Line, Hours, and filter pills do not resize the graph. The pane scrolls extra keys and Breakdown.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-23",
+          "doneOn": "2026-09-23"
+        },
+        {
+          "id": "date-weekday-short",
+          "title": "Put a short weekday on a single-day date",
+          "note": "The date button and the graph heading use Sun 7 Dec 2025. Short weekday, then the date. A preset keeps its name.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-23",
+          "doneOn": "2026-09-23"
+        },
+        {
+          "id": "year-daily-explore",
+          "title": "Keep Last 12 months as months, not 365 daily bars",
+          "note": "A year of days could show a spike. Bars that thin cannot take a hover or a click. Test it first. Zoom, pan, or a different picture may be needed. Do not squeeze 365 bars onto the graph.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-23",
+          "doneOn": "2026-09-23"
+        },
+        {
+          "id": "readable-first",
+          "title": "Keep the first graph readable, and drill for more",
+          "note": "Total is the first view. Breakdown stays closed. Hours stay off. Individual, Analyse, and Hours add detail. Do not open like DataVision's wall of everything.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-23",
+          "doneOn": "2026-09-23"
+        },
+        {
+          "id": "graph-utc",
+          "title": "Keep graph times on UTC",
+          "note": "The graph shows UTC. The date sits next to the title, then UTC. It is a label, not a pick. Local time waits as a preference, a table option, or a report setting. Daylight saving can repeat a local clock. Keep both rows.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-23",
+          "doneOn": "2026-09-23"
+        },
+        {
+          "id": "graph-point-tags",
+          "title": "Keep tags on a graph point, and keep them when they come back",
+          "note": "Add tag sits on the reading. A new name gets a colour. The tag stays on that bar. Peak is Time of use, not a tag. Do not put tags in Settings. Do not pick a tag to list every reading. Reports on tagged data wait.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-23",
+          "doneOn": "2026-09-23"
+        },
+        {
+          "id": "hover-more-sites",
+          "title": "Keep stacked bars, and let hover open the rest of the list",
+          "note": "The overlay shows the first seven. The rest sit as +17 more sites. Click it for the complete list. The list scrolls. Colour matches the stack.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-23",
+          "doneOn": "2026-09-23"
+        },
+        {
+          "id": "chart-total-individual",
+          "title": "Keep Total and Individual as two different graph questions",
+          "note": "Total consumption is how much the group used. Individual consumption is which sites or meters made that total. Total stays one combined reading. Individual names the parts.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-23",
+          "doneOn": "2026-09-23"
+        },
+        {
+          "id": "filter-select-all",
+          "title": "Let someone tick All in a filter group",
+          "note": "All selects every child in that group. If a child is off, All is mixed. Hours All puts the complete operating and tariff breakdown on.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-23",
+          "doneOn": "2026-09-23"
+        },
+        {
+          "id": "hours-tariff-combined",
+          "title": "Keep operating state and tariff together on the graph",
+          "note": "Hours and Time of use ticks cross. The graph and Breakdown use Operational · Peak through Closed · Off-peak, so Closed · Peak use is visible.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-23",
+          "doneOn": "2026-09-23"
+        },
+        {
+          "id": "hours-operating-states",
+          "title": "Keep Operational, Non-operational, and Closed as three site states",
+          "note": "Operational is trading. Non-operational is people may be there, not trading. Closed is shut. Hours ticks cut the graph and Breakdown.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-23",
+          "doneOn": "2026-09-23"
+        },
+        {
+          "id": "last-month-rolling",
+          "title": "Make Last month a rolling month, not 28 days",
+          "note": "This day last month to today. The number of days follows the calendar, so a longer month keeps the 29th, 30th, or 31st.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-23",
+          "doneOn": "2026-09-23"
+        },
+        {
+          "id": "graph-analyse",
+          "title": "Let someone drill into a graph point without rebuilding filters",
+          "note": "Analyse sits on the pin, left of Add tag. Last 12 months opens that month. A month opens that day. Half-hourly hides the action. The site, meters, and filters stay.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-23",
+          "doneOn": "2026-09-23"
+        },
+        {
+          "id": "consumption-mix-notice",
+          "title": "Explain when water cannot share Consumption with electricity and gas",
+          "note": "The notice says this combination cannot be shown. View water consumption ticks Water. View electricity & gas consumption ticks Electricity and Gas.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-23",
+          "doneOn": "2026-09-23"
+        },
+        {
+          "id": "meter-settings-page",
+          "title": "Open meter settings on a page from the accordion overview",
+          "note": "Hours, time of use, and attributes sit in the open row. Settings sits as a cog with the word Settings. It opens a page for that meter. Back sits to the left of the heading. It goes back to Site profile.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-22",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "meter-section-folds",
+          "title": "Open a meter as an accordion, and fold hours, time of use, and attributes",
+          "note": "Hours, time of use, and attributes sit in the open row. Settings sits as a cog with the word Settings. It opens a page for that meter. Back sits to the left of the heading. It goes back to Site profile. Operational hours, Time of use, and Attributes sit as accordions on that page. Opening one closes the others. Click it again to hide it.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-22",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "walk-200-meters",
+          "title": "Give the walk about 200 meters, and give water a serial",
+          "note": "Walk sites hold a water meter. Dummy site A1 still holds one. Serial then the number. Do not invent a SPID. Do not invent extra groups.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "site-tariff-edit",
+          "title": "Let customers enter tariffs and site attributes, then edit one field later",
+          "note": "Click a meter row to open it. Click it again to hide it. Opening one closes the others. Hours, time of use, and attributes sit in the open row. Settings sits as a cog with the word Settings. It opens a page for that meter. Back sits to the left of the heading. It goes back to Site profile. Operational hours, Time of use, and Attributes sit as accordions on that page. Opening one closes the others. Save changes waits until they change a line. Units sit grey next to the number. GBP stays GBP.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "pf-signoff",
+          "title": "Get Portfolio signed off by people who know the customer and the live product",
+          "note": "Emily holds the demo picture. Max holds DataVision. Do not treat the walk as signed until they say so.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "ds-tokens-pack",
+          "title": "Export tokens and pack the library download",
+          "note": "Colours, space, type, and borders sit on Tokens. Download picks Components, Tokens, and Prototype for the React starter.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-22",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "ds-proto-library",
+          "title": "Link Prototype and Library so developers can switch",
+          "note": "The preview bar holds both. Features sits on the library. The live walk is the source until Figma flows exist.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-22",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "ds-type-auth",
+          "title": "Keep type on Roobert and keep auth light",
+          "note": "Sign in, recovery, onboarding, and invite sit on Infra Grey. Do not rebuild authentication from scratch.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-22",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "pf-tree-simple",
+          "title": "Build the left tree and keep the overview simple",
+          "note": "All sits at the top. Groups open to sites. Click a site for the pane. Meter rows sit on Site profile.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-22",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "pg-regional-default",
+          "title": "Use regional groups as the default view",
+          "note": "The walk estate is Network Rail by route. Viewing groups can ship before customers create their own.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "vis-water-filter",
+          "title": "Put electricity, gas, and water on Filter, and keep Water off until ticked",
+          "note": "Walk sites hold a water meter. Dummy site A1 still holds one. Serial then the number. Use is m³. Cost is £. Carbon is kgCO2e. Do not mix m³ with kWh on one axis. Do not invent a SPID.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "graph-one-flex",
+          "title": "Use one graph with filters instead of a pile of widgets",
+          "note": "Pills take sites or meters off. Dates are Last 24 hours, Last 7 days, Last month, Last 12 months, and Custom. Total and Individual sit on the Select. Consumption, Cost, and Carbon are tabs.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-22",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "alerts-v1-simple",
+          "title": "Start alerts with Odd use, Missing data, and Not sending",
+          "note": "A star sits on the graph. Investigate opens the point. Thresholds stay system-defined. User-defined rules wait.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "auth-core-flows",
+          "title": "Walk sign in, recovery, onboarding, invite, and log out",
+          "note": "After sign in they land on Home. Do not store a password or the code.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-22",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "nav-patterns",
+          "title": "Keep the top nav and tooltip as reusable patterns",
+          "note": "The tree is secondary navigation. Hover waits 0.7 seconds. The tip sits over the page so a card does not clip it.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "stories-portfolio",
+          "title": "Write Portfolio stories from the live walk",
+          "note": "Who, what, and why. Confirmation is Given When Then. Points are 1, 2, 3, 5, 8, or 13. Find a site or meter is the 2. A 13 means split.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "reports-clockwork",
+          "title": "Ship a small set of scheduled reports",
+          "note": "On or off. People, occurrence, and starts on sit in Settings. Super admin sets them up. Downloads stay separate from the live card.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-22",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "access-contract-dates",
+          "title": "Give temporary users start and end dates, and let Admin renew",
+          "note": "Sites they can see sits on the person. Broker / TPI only gets Viewer. Do not store the file password.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "compare-meters",
+          "title": "Make comparing a few meters feel possible, not pixel hunting",
+          "note": "Tick the icon, not the number. Graph a subset. Say when a meter has no data in the date. CSV is local time. Export numbers stay positive.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ux",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "nav-map",
+          "title": "Sketch how someone finds a meter when the list is huge",
+          "note": "Hunt export and gas in the tree. DataVision splits one site into two named rows. Astral has no icons yet. Do not copy that split.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ux",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "site-profile-reach",
+          "title": "Put site hours and time of use where someone can open a site and see them",
+          "note": "Operational hours, time of use, and rates sit in site profile. You search name by name. Tenant billing needs this.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ux",
+          "doneOn": "2026-09-22"
+        },
+        {
+          "id": "impersonate-pattern",
+          "title": "Sketch a way to see as a user that is not buried in Actions, and a way back that is not named Log out",
+          "note": "IMSERV admin starts on companies. Log in as user sits on the person. Back to admin is the way back. Log out still leaves. You cannot see a combined EDF portfolio.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-04",
+          "doneOn": "2026-09-14"
+        },
+        {
+          "id": "customer-hats-nest",
+          "title": "Sit Energy, Finance, Asset, and Data under A customer",
+          "note": "A customer is a heading. Energy, Finance, Asset, and Data sit under it. Broker / TPI, Supplier, and Platform admin stay as cards beside that set.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-12",
+          "doneOn": "2026-09-12"
+        },
+        {
+          "id": "groups-customer-map",
+          "title": "Fold the public customer map into User groups",
+          "note": "Sixteen groups are now ten. Company types stay. Hats stay. TMA, owner Super User, and portfolio home sit on A customer. Owner and back office sit on A platform admin. Field workers sit on An asset manager as a stakeholder.",
+          "project": "Astral",
+          "kind": "research",
+          "added": "2026-09-12",
+          "doneOn": "2026-09-12"
+        },
+        {
+          "id": "person-role-team-row",
+          "title": "Put Role and Team on one line",
+          "note": "On the person, Role and Team sit side by side. Last active stays above. Sites they can see stays below.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-11",
+          "doneOn": "2026-09-11"
+        },
+        {
+          "id": "finance-top5",
+          "title": "Show Highest spend as the top 5",
+          "note": "The Finance list is five sites. Incoming last 24 hours. Dummy sites stay off. Hero is still the single highest.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-11",
+          "doneOn": "2026-09-11"
+        },
+        {
+          "id": "people-fold-motion",
+          "title": "Animate Users and Site profile accordions",
+          "note": "All people, each team, meter rows, and Breakdown grow and hide with the panel motion. Opening one still closes the others.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-11",
+          "doneOn": "2026-09-11"
+        },
+        {
+          "id": "cost-carbon-tabs",
+          "title": "Put Cost and Carbon on the site pane",
+          "note": "Tabs are Consumption, Cost, Carbon, Site profile, Alerts, and Queries. Cost is pounds. Carbon is kgCO2e. Same window as Consumption.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-11",
+          "doneOn": "2026-09-11"
+        },
+        {
+          "id": "chart-height-lock",
+          "title": "Keep the graph height when Breakdown opens",
+          "note": "The graph stays the same height. The pane scrolls the table. Breakdown does not get its own scrollbar.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-11",
+          "doneOn": "2026-09-11"
+        },
+        {
+          "id": "point-tag",
+          "title": "Add a tag on a graph reading",
+          "note": "Add tag sits on the right of the reading card. Overlay uses Search, Current tags, Recent tags, and the Switch. Create a tag from the search. Groups still wait.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-11",
+          "doneOn": "2026-09-11"
+        },
+        {
+          "id": "users-walk-companies",
+          "title": "Fill Users with people, teams, and companies Super admin can see",
+          "note": "Network Rail, Scottish Water, Tesco, and EDF. Customer and Supplier only see their own. Last active stays off the table.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-11",
+          "doneOn": "2026-09-11"
+        },
+        {
+          "id": "team-company-lock",
+          "title": "Lock Company on Add a team when they cannot pick another",
+          "note": "Super admin can pick. Admin and Manager see their company disabled. Grey, not faded.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-11",
+          "doneOn": "2026-09-11"
+        },
+        {
+          "id": "users-no-last-active",
+          "title": "Take Last active off the Users table",
+          "note": "It stays on the person. Now for you. Invited until they join.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-11",
+          "doneOn": "2026-09-11"
+        },
+        {
+          "id": "users-fold",
+          "title": "Fold Users groups into accordions in Settings",
+          "note": "The people card holds All people, then companies or departments. Add a team sits left of Invite users. The Users tree is gone.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-11",
+          "doneOn": "2026-09-11"
+        },
+        {
+          "id": "finance-spend",
+          "title": "Show Finance as spend last 24 hours",
+          "note": "The list is pounds. Dummy sites stay off. Invoices and cut spend advice still wait.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-11",
+          "doneOn": "2026-09-11"
+        },
+        {
+          "id": "finance-nav",
+          "title": "Replace Energy with Finance",
+          "note": "Navbar is Finance. The list is the top 5 incoming spend last 24 hours. Reports is the file. Alerts for why. Cut spend advice still waits.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-11",
+          "doneOn": "2026-09-11"
+        },
+        {
+          "id": "brand-pages-kit",
+          "title": "Fold the Brand Book Presentation Deck into recipes you can print",
+          "note": "1920 by 1080. 40px inset. Open Branding Layouts then Open page maker. Official PowerPoint still lives on Figma and Brand Hub.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-10",
+          "doneOn": "2026-09-10"
+        },
+        {
+          "id": "help-copy",
+          "title": "Own the help text once James has empty help slots on widgets",
+          "note": "James will cover this Monday. One framework for a modal, a title, and a help icon.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ux",
+          "doneOn": "2026-09-09"
+        },
+        {
+          "id": "monday-james-prime",
+          "title": "Sit with James Monday on the tree as a flat list, help on modals, and PrimeNG",
+          "note": "Tree as a flat list, help on modals, and PrimeNG. Take the import and export split with you. Do not copy Prime colour.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ui",
+          "doneOn": "2026-09-09"
+        },
+        {
+          "id": "ux-writing-skill",
+          "title": "Put an ORCA+ UX writing skill on the desk",
+          "note": "en-GB-oxendict. Object, relationship, CTA, and attributes first. Role, intent, state, surface, locale, and risk after that. Do not infer Viewer from broker.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-09",
+          "doneOn": "2026-09-09"
+        },
+        {
+          "id": "library-ux-writing-pass",
+          "title": "Run UX writing on the Astral library chrome",
+          "note": "Start, Tokens, and Components now say copy, snippet, and choose. Product labels such as Add a team stay until Language changes.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-09",
+          "doneOn": "2026-09-09"
+        },
+        {
+          "id": "library-icon-set",
+          "title": "Put every live mark on the Icon page at one size",
+          "note": "Electricity, gas, and water sit in the 24 box. Incoming, outgoing, tick, warning, chevron, hours, time of use, and rates sit with the rest. Tree still waits.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "broker-viewer-only",
+          "title": "Keep Broker / TPI on Viewer only",
+          "note": "They are third party on the link to a customer. Admin, Manager, and Contributor stay on Customer and Supplier.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "filter-tenant-owned",
+          "title": "Put Tenant owned in the Filter overlay",
+          "note": "Needs action stays on Alerts. Dummy site A1 and A2 are tenant owned so the tick has a hit. Do not invent ownership on Network Rail.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "pane-kicker-above",
+          "title": "Put only the level above in the pane kicker",
+          "note": "On a group that is the company they are signed in as. The heading is the group.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "library-holiday-files",
+          "title": "Put the files developers need on the Astral library pages",
+          "note": "Icon.tsx, tokens, look CSS, Roobert, the IMSERV mark, and the auth grid copy or download from the library link.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "library-file-hint",
+          "title": "Say where to put a component, not a folder they can open",
+          "note": "The library helper is Copy the snippet into the product repo as Icon.tsx.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "library-work-facing",
+          "title": "Keep the Astral library work-facing",
+          "note": "No Uber, no Base Gallery, and no desk names on the shared library pages.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "library-access-logic",
+          "title": "Put access logic in the Astral library",
+          "note": "Access sits in the library nav. Company type, then access, then login, then what they see.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "pane-inset-default",
+          "title": "Use the larger inset on the tree and the pane",
+          "note": "Both white cards use 16px padding. That is the default inset, not the tight 8px.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "downloads-icon-button",
+          "title": "Make Downloads an icon button",
+          "note": "When the file is ready, Download is the export mark. Hover for Download. Complete stays in Tag.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "table-heading-one-line",
+          "title": "Keep table headings on one line",
+          "note": "Raised by, Last active, and Time of use stay whole. They do not wrap.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "onboarding-picture-card",
+          "title": "Put the Onboarding picture in a card",
+          "note": "The mark and Upload picture sit in a white card with a 1px Infra Grey B outline. Profile stays as it is.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "onboarding-no-picture-help",
+          "title": "Take the JPEG help off Onboarding",
+          "note": "Upload picture stays. Use a JPEG or PNG still shows if they pick the wrong file. The help line stays on Profile.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "select-menu-matches-button",
+          "title": "Make Select menus match the button",
+          "note": "The listbox is the same width as the control it sits on. Discipline, role, Flow, and the graph date all follow that.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "sign-up-no-sign-in-link",
+          "title": "Take Sign in off Sign-up",
+          "note": "Don't have an account and Sign-up stay on Sign in. Already have an account stays on the invite review.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "sign-in-dont-have-account",
+          "title": "Put Don't have an account on Sign in",
+          "note": "It sits under the line with Sign-up.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "auth-disabled-infra-grey",
+          "title": "Make disabled Sign in Infra Grey",
+          "note": "A disabled primary is Infra Grey A with a 1px Infra Grey B outline. Black type. Do not fade the cyan.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "check-email-no-extra-links",
+          "title": "Take Change email and Back to sign in off Check your email",
+          "note": "Didn't get it and Resend email stay. Back to sign in stays on Reset your password.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "invite-review-no-walk-edges",
+          "title": "Take expired, already joined, and wrong account off the invite review",
+          "note": "Review keeps Already have an account and Sign in. Those three states stay as their own screens, not walk links on the card.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "hover-lighter-than-page",
+          "title": "Make quiet hover lighter than the page",
+          "note": "Cards, rows, and icon buttons now mix Infra Grey A towards white. A white card no longer sinks into the canvas. Filled primary still darkens so white type stays.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "tip-delay-one-second",
+          "title": "Bring the hover tip in a bit sooner",
+          "note": "Icon tips now wait a second, not two. Filter, Export, and the rest share that wait.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "split-tight-inset",
+          "title": "Tighten the split so the graph can grow",
+          "note": "The tree, the pane, and the gap between them now use the library tight inset of 8px. The chart fills the space that frees.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "tree-long-name",
+          "title": "Test a long group name in the tree",
+          "note": "Dummy group A now uses a long name. The name stays on one line. The site count stays. The rest truncates.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "reports-in-card",
+          "title": "Sit the report list in a page card",
+          "note": "Reports and compliance now uses the same white card as Queries and Downloads. The heading stays. The card fills. The grid scrolls inside.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "tips-over-cards",
+          "title": "Sit hover tips over the page",
+          "note": "Close and the other icon tips sit outside the control, over the card, so the pane does not clip them.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "imserv-extra-cyan-2",
+          "title": "Use Extra Cyan 2 as the IMSERV secondary",
+          "note": "Buttons, chips, and Incoming use #028178. White type stays. IMSERV Cyan is still the company brand colour.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "group-breakdown-table",
+          "title": "Put the group table in Breakdown",
+          "note": "On All and a group the site list sits in Breakdown, closed until they open it, same as the interval table.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "split-same-inset",
+          "title": "Give the tree and the pane the same inset",
+          "note": "Both white cards now use 16px padding.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "alerts-sticky-head",
+          "title": "Keep Alerts heading and filters still",
+          "note": "The helper line under the pills is off. Heading and filters stay while the cards scroll.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "undo-icon-clean",
+          "title": "Draw Undo as a clear back arrow",
+          "note": "The resolved alert mark was a broken circle. It is now a left arrow with a U-turn.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "card-fill-scroll",
+          "title": "Fill the page card and scroll inside it",
+          "note": "On Downloads and Queries the white card goes to the bottom. Rounded corners stay. Only the card scrolls.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "downloads-progress-demo",
+          "title": "Play a dummy bar when they press Download",
+          "note": "This walk shows the cyan bar filling, then Complete, then the file. Export still queues processing.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "downloads-row-button",
+          "title": "Make Download a button on the row",
+          "note": "Ready rows use the filled Button. Processing still waits.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "downloads-status-complete",
+          "title": "Show Complete on Downloads Status",
+          "note": "The column is Status. Ready rows use Complete in Tag. Processing still shows the bar and time left.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "alerts-dummy-filters",
+          "title": "Put dummy cards in every Alerts filter",
+          "note": "Odd use, Missing data, and Not sending have unread cards. Resolved keeps Euston.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "pane-alert-unread-resolved",
+          "title": "Filter pane alerts by Unread and Resolved",
+          "note": "Unread is the default. The tab count is unread. Resolved sits in its own chip.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "pane-filter-own-section",
+          "title": "Keep the pane Filter on the pane",
+          "note": "The tree Filter still works on the tree. Next is Infra Grey when they cannot move the window.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "in-out-key-toggle",
+          "title": "Let In and Out turn a series off",
+          "note": "The key sits in the middle under Incoming and outgoing. Off pills strike through. They can take the last one off.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "page-scroll-one-way",
+          "title": "Keep page scroll the same",
+          "note": "The heading stays. The body scrolls. On Portfolio the tree stays and the pane scrolls.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "company-type-not-third-party",
+          "title": "Keep Third party as a relationship",
+          "note": "Customer, Supplier, and Broker / TPI are company types. Third party sits on the link to a customer.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "discipline-hats-not-roles",
+          "title": "Keep Discipline as industry hats",
+          "note": "Energy, Finance, Asset, and Data. Not platform roles or company types.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "settings-imserv-logo-preview",
+          "title": "Show the IMSERV mark in Settings",
+          "note": "The Organisation preview uses that mark until they upload their own.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "resolved-alert-undo",
+          "title": "Keep a resolved alert card white",
+          "note": "Investigate becomes View alert. Undo sits where the tick was, in case they resolve by mistake.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "tree-group-open-close-motion",
+          "title": "Animate the Portfolio tree groups",
+          "note": "A named group grows and hides its sites with the panel motion. Opening one still closes the others. All stays a row.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "breakdown-open-close-motion",
+          "title": "Animate Breakdown open and close",
+          "note": "The table grows and hides with the panel motion. The chevron turns with it.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "no-consumption-alert-banner",
+          "title": "Drop the View alerts banner on Consumption",
+          "note": "The Alerts tab already holds the count. View alerts stays under Notifications.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "custom-date-chip-range",
+          "title": "Show only the dates on a Custom window",
+          "note": "The chip is the from and to. Custom stays in the menu.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "research-walk-scores",
+          "title": "Rank Research insights from what the walks named",
+          "note": "Score is no longer a desk input. Harm to access, customer data, and scale sits above extra effort within a severity.",
+          "project": "Astral",
+          "kind": "research",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "research-insights-only",
+          "title": "Keep Research as insights only",
+          "note": "Today already holds the list. Walk work still to do goes there.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "katie-onboarding-research",
+          "title": "Put Katie's onboarding walk on Research",
+          "note": "Twelve insights from the walk sit with V's. Critical is only for the estimated versus actual data finding she named.",
+          "project": "Astral",
+          "kind": "research",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "research-insights-board",
+          "title": "Put V's client setup walk on Research",
+          "note": "Insights sit as cards. Switch to a list. Filter by All, High, Medium high, and Medium. Score ranks within a severity.",
+          "project": "Astral",
+          "kind": "research",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "downloads-search-filter",
+          "title": "Add Search and Filter on Downloads",
+          "note": "Search downloads sits in the card. Filter sits to the right. Kind is CSV and PDF. Time left is Processing. Pills sit under Search when a filter is on.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "downloads-subpage-progress",
+          "title": "Put Downloads on its own page with time left",
+          "note": "View downloads opens Downloads. A bar and minutes left while it processes. Seconds if under a minute. Download waits until it is ready.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "export-downloads-notice",
+          "title": "Queue CSV and PDF on Reports Downloads",
+          "note": "Pick from Export raises a banner under the nav, in the middle. A 1px Infra Grey B outline. It goes after 10 seconds. View downloads opens Downloads. Hide puts the banner away.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "pane-filter-after-compare",
+          "title": "Sit pane Filter to the right of Compare",
+          "note": "The date stays first. Compare, then Filter, then Export.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "users-expiry",
+          "title": "Show Expiry on Users",
+          "note": "The pill is years if more than 12 months, months if a month or more, and days if under a month.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "pills-more-fit",
+          "title": "Keep Show x more the same size as the pill",
+          "note": "Show x more uses the same type as the pill. Every pill that fits on the line stays whole. The rest sit in the count.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "pill-one-line",
+          "title": "Keep graph pill names on one line",
+          "note": "The name stays on one line. Extra pills sit behind Show x more. Hide puts them away.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "queries-white-card",
+          "title": "Sit Queries in a white card",
+          "note": "The list sits in a white card. Your queries stays on the canvas. Cards, tree, and pane stay white.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "switch-slide",
+          "title": "Let the switch slide on and off",
+          "note": "The circle slides. The fill follows. Stay on the same control so the move can play.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "switch-on-white",
+          "title": "Take the black rim off the on switch",
+          "note": "On is the cyan fill and a white circle. Off stays a grey edge and a black circle. Focus is still a 2px black edge.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "alerts-resolved-filter",
+          "title": "Put Resolved in the Alerts filters",
+          "note": "All, Missing data, Not sending, and Odd use are unread. Resolve sends the card there. The card stays white. Investigate becomes View alert. After resolve, Undo puts it back. Do not use Acknowledged on the card.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "notice-me-gap",
+          "title": "Give Notifications the same overlay space as ME",
+          "note": "A gap sits between the bar and the overlay. Same inset as the account menu.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "tree-all",
+          "title": "Put All at the top of the Portfolio tree",
+          "note": "Click it for a collective overview. The count is the sites in the list. Dummy groups stay in that overview because they sit in the tree.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "invite-link-walk",
+          "title": "Walk Invite link from You've been invited to You're in",
+          "note": "Same centred card as Sign in. Review the team, sign in or create an account, then join. Do not put expired, already joined, or wrong account walk links on the review.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "password-recovery-walk",
+          "title": "Walk password recovery from Forgot password to Password updated",
+          "note": "Centred card. Send reset link, Check your email with a code, Continue, live password rules, then Sign in. The password and the code are not stored.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-08",
+          "doneOn": "2026-09-08"
+        },
+        {
+          "id": "roobert-licence",
+          "title": "Get a Roobert licence so the desk and product can use the named type",
+          "note": "Medium and Semibold are on this machine. The desk and Prototype load them. Figma still uses Inter until that family is available inside Figma.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ui",
+          "doneOn": "2026-09-07"
+        },
+        {
+          "id": "darker-cyan-primary",
+          "title": "Use Extra Cyan 1 as the Astral primary fill",
+          "note": "Buttons, chips, and Incoming use #02C2B7. Black type stays. The Brand Book still names IMSERV Cyan #03F4E8.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-07",
+          "doneOn": "2026-09-07"
+        },
+        {
+          "id": "stack-user-groups",
+          "title": "Stack user groups as company, access, tenure, then what they see",
+          "note": "Owner and the hats are no longer first-row tabs. Super admin is only for Platform admin.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-07",
+          "doneOn": "2026-09-07"
+        },
+        {
+          "id": "library-from-prototype",
+          "title": "Bring the desk component library in line with the prototype",
+          "note": "Icon button, State, Flow pill, Count, Filter, Meter pill, and Date picker now match the live shell. Status colour still waits.",
+          "project": "Astral",
+          "added": "2026-09-07",
+          "kind": "ui",
+          "doneOn": "2026-09-07"
+        },
+        {
+          "id": "stand-up-prototype",
+          "title": "Stand up Prototype as the new Astral build",
+          "note": "Home, Meters, Interval, Quality, and a thin Alerts queue. DataVision walk plus the energy-portfolio research. Maps and field work wait.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ui",
+          "doneOn": "2026-09-04"
+        },
+        {
+          "id": "watch-max-tour",
+          "title": "Watch Max's recording of DataVision and the current Astral",
+          "note": "The live Friday walk is in the archive. Keep the recording if you want to see the graphs again.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "admin",
+          "doneOn": "2026-09-04"
+        },
+        {
+          "id": "mailtrap",
+          "title": "Open Mailtrap so the Astral portal sign in can finish",
+          "note": "You are in the shared Astrotech inbox. The user login error still happens. Ben's reset link worked. Do not store the login here.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "admin",
+          "doneOn": "2026-09-04"
+        },
+        {
+          "id": "fold-brand-book",
+          "title": "Fold the IMSERV Brand Book copy into the library",
+          "note": "Colour and type now come from the Figma copy. This is company brand, not a product component kit.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ui",
+          "doneOn": "2026-09-04"
+        },
+        {
+          "id": "brand-files",
+          "title": "Open Brand Hub and the Figma brand file",
+          "note": "The IMSERV Brand Book copy is folded into UI library and Branding. Astral product logos still wait on Camilla's folder.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "admin",
+          "doneOn": "2026-09-04"
+        },
+        {
+          "id": "astral-ds-guidelines",
+          "title": "Drop the Astral guidelines so the UI library can take real values",
+          "note": "The IMSERV Brand Book copy filled colour and type. Status colour is still empty. Astral product logos still wait.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ui",
+          "doneOn": "2026-09-04"
+        },
+        {
+          "id": "web-meterpower",
+          "title": "Open Web Portal and Meterpower",
+          "note": "Sui B opened both. Have a poke. Do not store the logins here.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "admin",
+          "doneOn": "2026-09-04"
+        },
+        {
+          "id": "lastpass",
+          "title": "Get LastPass working so UAT logins can be shared",
+          "note": "Less blocking for UAT now. Still useful. Ben K or Ira if you lose it.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "admin",
+          "doneOn": "2026-09-04"
+        },
+        {
+          "id": "book-clive",
+          "title": "Sit with Clive at one",
+          "note": "He sent you things. Take admin stays separate, time-based attributes, styles, and a warning for letters of authority. No upload screen.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "admin",
+          "doneOn": "2026-09-04"
+        },
+        {
+          "id": "access-landed",
+          "title": "Collect the new logins without putting passwords on the desk",
+          "note": "Sui B, Eray H, Ben K, Max, and Ann H. Mailtrap still blocks the Astral portal.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "doneOn": "2026-09-04",
+          "kind": "admin"
+        },
+        {
+          "id": "max-datavision",
+          "title": "Walk the DataVision front end with Max",
+          "note": "Max walked interval reports, sites, submeters, brokers, and letters of authority.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "doneOn": "2026-09-04",
+          "kind": "admin"
+        },
+        {
+          "id": "james-tree",
+          "title": "Stay with James on the tree, widgets, and site pages",
+          "note": "James walked the live admin and customer portals, DataVision, and his Figma. Remaining questions go to Clive and the Figma file.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "doneOn": "2026-09-04",
+          "kind": "admin"
+        },
+        {
+          "id": "camilla-brand",
+          "title": "Meet Camilla about design and branding guidelines",
+          "note": "Shaun flagged this in the 930 huddle as coming soon.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "doneOn": "2026-09-04",
+          "kind": "admin"
+        },
+        {
+          "id": "james-kt",
+          "title": "Join James, Peter, and Max at half 10",
+          "note": "Anna confirmed it is later today. Ask about both UAT portals.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "doneOn": "2026-09-04",
+          "kind": "admin"
+        },
+        {
+          "id": "imserv-talks",
+          "title": "Send IMSERV discussions so user groups can be drafted",
+          "note": "Paste in chat, or drop files in inbox.",
+          "project": "IMSERV",
+          "added": "2026-09-04",
+          "doneOn": "2026-09-04",
+          "kind": "admin"
+        },
+        {
+          "id": "fill-access",
+          "title": "Write down the tools you have and who can restore them",
+          "note": "Open Access in the side menu. No passwords.",
+          "project": "Work Desk",
+          "added": "2026-09-04",
+          "doneOn": "2026-09-04",
+          "kind": "admin"
+        },
+        {
+          "id": "send-transcripts",
+          "title": "Send the first batch of work transcripts",
+          "note": "Paste in chat, or drop files in inbox.",
+          "project": "Work Desk",
+          "added": "2026-09-04",
+          "doneOn": "2026-09-04",
+          "kind": "admin"
+        }
+      ],
+      "groups": [
+        {
+          "id": "end-customer",
+          "name": "A customer",
+          "status": "working",
+          "who": "Company type. Scottish Water, Tesco, and Network Rail sit here. Energy, Finance, Asset, and Data sit inside.",
+          "need": "See their own estate, know meters are working, get invoices and reports, and follow problems. Export is more common than staring at graphs.",
+          "heard": "I just want a steady stream of business as usual data, and I want the system to warn me when something is exceeding various parameters.",
+          "from": "Max DataVision, 4 Sep",
+          "open": "Who else is on the customer migration list besides British Gas and Scottish Water?",
+          "notes": [
+            {
+              "text": "Version one has to do enough of what DataVision does or the move will fail.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "There is no customer portal to look at yet. You can only bring up the admin portal.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Clive and Emily Haddon did a dozen plus customer interviews. Those notes sit with Clive.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Max recorded a mini tour of DataVision. Anna shared it on OneDrive until you have a login of your own.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "James named a UAT customer portal as well as admin. Alexi said the portfolio tree is empty until they copy a test database.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "James walked a live tree of company, site, and meters on the left. He is writing version one stories against that layout. That surface is yours.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Version one of the tree is simple. Alexi marked electricity and gas. Import and export would be tags later. Water has never been tested.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Site address is read only. Site name can be edited. Times of use means on peak and off peak, not terms of use.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "They log into the new customer portal, not the admin beast. About a third of the left icons show, depending on access. DataVision makes them find a client first. This portal lets them click around.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Dashboard widgets can be dragged, not resized. James's later picture was a drag and drop graphical home, then a details page whose core cards stay on, then reports without the tree.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "A premium customer can rebrand the portal. James mocked an Octopus skin in Figma. Enterprise customers on the old stack had their own colours and features switched on and off.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Shaun is walking DataVision with Max so the old screens sit next to James's new portal, not as a rumour.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Premium branding is still open. Either a styles page where they pick colours, or one stylesheet and no picker. James showed the picker. Clive decides.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "If site attributes change over time, area, capacity, and emissions reports have to follow the date. James thinks that is extra version one work, not a given.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "They pick sites and meters, compare them to each other or to a fixed number, then export a file. They do not stare at the whole portfolio.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "A site is a physical address. Nested sites exist, like flats in a tower. A fiscal meter counts power into the building. Submeters count rooms. Adding both into the site total double counts unless a flag says to.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Someone higher in the chain can look down. EDF can see Network Rail. Network Rail cannot look up or sideways at EDF's other customers.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Astral already has scheduled reports and alerts. DataVision also lets them pull an ad hoc interval report. Estimated versus actual is a real versus guessed reading.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Alexi is checking that Dev has users who can actually open the customer portal, with the right groups, so smoke tests mean something.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Clive would rather be late by a week or two than ship a bodge and start again in January.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "British Gas and Scottish Water asked to beta. Clive will invite you to the customer migration stream.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "UAT may have no consumption data until the pipeline actually runs.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Interval reports are the job. Max ignores a mostly blank dashboard and goes straight to the tree.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "IMSERV masters site names. Import is the default. Export is written on the site name.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "DataVision splits one physical site into two rows with two MPANs. A meter can count both ways.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "CSV from the screen is local time. The store is UTC. Export values are positive numbers.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "You cannot save a subset of MPANs on the interval screen. Scheduled reports can.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Max said editable names and addresses wait. That is out of scope for version one.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Many dashboard widgets show nothing. There is no clue what is missing. You would raise a ticket.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "This is a company type, not a job hat. The same person can also be finance, asset, or energy.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "Home is a portfolio overview. Total sites, meters, faults, missing data, queries, invoices, alerts, and use if it is relevant.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "Invoices and reports still wait as working screens. The prototype points at Reports and Alerts until those lists exist.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "This is a company type on the first layer. Access inside is Admin, Manager, Contributor, or Viewer. Then permanent or temporary. What they need to see comes after, and the product still looks the same.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "The company type word is Customer. Third party is not this type. It is how another company is linked to this one.",
+              "added": "2026-09-08"
+            },
+            {
+              "text": "TMA is channel data under an MPAN, not a different person. Max is raising the import spike. Anna is finding access.",
+              "added": "2026-09-12"
+            },
+            {
+              "text": "Owner Super User is now Admin on a Customer. Invite, role, and list sit on Users. Super admin stays on Platform admin.",
+              "added": "2026-09-12"
+            },
+            {
+              "text": "A portfolio manager was a draft home layout. Estate overview is the customer home. Faults hand to Asset. Spend hands to Finance. It is not a separate login.",
+              "added": "2026-09-12"
+            },
+            {
+              "text": "Public pages verify IMSERV customers. John Lewis Partnership, Southern Water, University of Sussex, and the Maritime and Coastguard Agency are named. Do not assume they use Astral. Their published cases name DataVision or metering services.",
+              "added": "2026-09-12"
+            },
+            {
+              "text": "A Head of Capital Projects at Sussex used IMSERV as a delivery partner. Treat that as a service stakeholder unless a talk names a login.",
+              "added": "2026-09-12"
+            },
+            {
+              "text": "A meeting about four weeks ago with Nick, Max, and Alexi said the product can store channel data. Import and process are the gap.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "James would keep search at MPAN level and put an icon on a row when meter data sits underneath, so you drill only if you want it.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Max is raising this as the priority spike. Anna will help you get TMA access.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "On the customer portal James walked, meter level is not shown in the tree. That is the channel data sitting underneath an MPAN.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "A meter on the wall has make, model, age, and more than one channel. Power in, power out, active, reactive. That sits under the MPAN, not beside it in the tree.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Astral is not DataVision rebuilt in React. It is becoming the place a customer goes for energy data and outputs. Visualisation, portfolio, documents, permissions, and later contract-driven access sit together.",
+              "added": "2026-09-22"
+            },
+            {
+              "text": "Three access questions. What has this company bought. What can this person do. Which sites, MPANs, reports, and documents can they see. Do not design one permissions blob.",
+              "added": "2026-09-22"
+            },
+            {
+              "text": "Version one has two bought experiences. Documents only may see My Documents, notifications, and profile. Full Astral gets Portfolio and the energy walk. The customer does not pick the tier.",
+              "added": "2026-09-22"
+            },
+            {
+              "text": "The first graph is Total. Individual, Hours, and Breakdown wait until they ask. Analyse drills in. Do not open like DataVision's wall of everything. A customer needs the important information explained. An analytical user can still go deeper.",
+              "added": "2026-09-23"
+            },
+            {
+              "text": "Site profile feeds analytics. Hours, time of use, people, occupancy, floor area, and rates. Without a tariff, do not show £0. Say cost is unavailable.",
+              "added": "2026-09-22"
+            }
+          ],
+          "journey": [
+            {
+              "stage": "Arrive",
+              "now": "DataVision always opens on a dashboard. Huge portfolios are already unwieldy before they reach a report.",
+              "later": "A first screen that matches what they bought. Documents only opens My Documents. Full Astral opens the estate."
+            },
+            {
+              "stage": "See",
+              "now": "The graph opens on Total consumption. Breakdown is closed. Hours and Time of use stay off. They can pick Individual, Analyse, Hours, or Breakdown when they want more.",
+              "later": "How is my portfolio doing, then this region, then which sites, then this MPAN."
+            },
+            {
+              "stage": "Notice",
+              "now": "Push alerts exist when spend or use crosses a line they set, like more than a hundred pounds a day. Scheduled reports already sit in Astral.",
+              "later": "Have you noticed this has been trending down for the last 7 days?"
+            },
+            {
+              "stage": "Act",
+              "now": "They export CSV or PDF, or wait for a clockwork email. They cannot fix a meter from here.",
+              "later": "This meter has been offline for 3 days. An escalation is already up for you to get it fixed."
+            }
+          ]
+        },
+        {
+          "id": "energy-manager",
+          "name": "An energy manager",
+          "status": "draft",
+          "who": "A job hat on a Customer. They came to understand use, spikes, and which sites waste energy. Public pages name Energy Engineering and Innovation Manager at John Lewis Partnership, and Sustainable Development Manager at the Maritime and Coastguard Agency.",
+          "need": "View graphs, compare sites and periods, find high consuming meters, and export the file.",
+          "heard": "This sounds closer to the user type you were initially imagining when looking at spikes.",
+          "from": "User group write-up, 7 Sep",
+          "open": "Which customer-made tags are in version one, if any?",
+          "notes": [
+            {
+              "text": "Tags and groups support this work, including customer-made tags such as high consuming.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "A year of daily bars could show a spike. Bars that thin cannot take a hover or a click. Test it first. Zoom, pan, or a different picture may be needed. Last 12 months stays months. Analyse opens a month, then a day.",
+              "added": "2026-09-23"
+            },
+            {
+              "text": "The first graph is Total. Individual, Hours, and Breakdown wait until they ask. Analyse drills in. Do not open like DataVision's wall of everything.",
+              "added": "2026-09-23"
+            },
+            {
+              "text": "The current estate home with the use chart is the closest live picture.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "This is what they need to see after the person is defined, not a company type. The shell stays the same.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "Public pages verify a login user. MCA used EDV for site compare, forecasting, and a monthly board pack. Property managers then acted on poorly performing sites. Do not assume they use Astral.",
+              "added": "2026-09-12"
+            },
+            {
+              "text": "John Lewis Partnership feeds half-hourly data into its own energy systems around the clock. Export still matters more than staring at graphs.",
+              "added": "2026-09-12"
+            },
+            {
+              "text": "Estate overview can be the first picture, then hand faults to Asset and spend to Finance. That was the draft portfolio manager home, not a new group.",
+              "added": "2026-09-12"
+            },
+            {
+              "text": "Company type and hat still do not change the shell. Product entitlement can. Documents only may skip Portfolio. Full Astral starts broad, then group, then site, then MPAN.",
+              "added": "2026-09-22"
+            }
+          ],
+          "journey": [
+            {
+              "stage": "Arrive",
+              "now": "Home opens on the estate with this year against last year.",
+              "later": ""
+            },
+            {
+              "stage": "See",
+              "now": "They pick sites and meters, compare them, and graph interval data.",
+              "later": "A year of days to spot a spike. Test it first. Do not squeeze 365 bars."
+            },
+            {
+              "stage": "Notice",
+              "now": "Odd use sits on Alerts. Push alerts exist when spend or use crosses a line they set.",
+              "later": "Have you noticed this has been trending down for the last 7 days?"
+            },
+            {
+              "stage": "Act",
+              "now": "Export CSV or PDF. They cannot fix a meter from here.",
+              "later": ""
+            }
+          ],
+          "parent": "end-customer"
+        },
+        {
+          "id": "finance-user",
+          "name": "A finance user",
+          "status": "draft",
+          "who": "A job hat on a Customer. They care about highest spend, why it is high, and where they can cut.",
+          "need": "See where spend is highest, report why, and find where they can cut.",
+          "heard": "There will be people who are only interested in where the highest spending is.",
+          "from": "Shaun on Finance, 11 Sep",
+          "open": "Where do invoices land in Astral if they still sit in another system?",
+          "notes": [
+            {
+              "text": "They do not normally need meter kit, field jobs, complex use graphs, or platform config.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "Invoice list, missing bills, and cost trends still wait. Reports is the stand in.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "This is what they need to see after the person is defined, not a company type. The shell stays the same.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "Finance sits on the navbar. The list is incoming spend last 24 hours. Reports is the file they send back. Odd use sits on Alerts. Cut spend advice still waits.",
+              "added": "2026-09-11"
+            },
+            {
+              "text": "Highest spend is the top 5, not the whole estate. Incoming last 24 hours.",
+              "added": "2026-09-11"
+            },
+            {
+              "text": "The hero and the list are pounds. Open a site for the graph. Invoices and cut spend advice still wait.",
+              "added": "2026-09-11"
+            },
+            {
+              "text": "Public pages leave this hat inferred inside a Customer. Bill variance and spend sit in the John Lewis story. No named finance title. Invoice list still waits.",
+              "added": "2026-09-12"
+            }
+          ],
+          "journey": [
+            {
+              "stage": "Arrive",
+              "now": "Finance lists the top 5 incoming spend last 24 hours.",
+              "later": "A finance dashboard of latest and missing invoices."
+            },
+            {
+              "stage": "See",
+              "now": "The list is the top 5. State sits on the row. Open a site, then Cost, for the graph.",
+              "later": ""
+            },
+            {
+              "stage": "Notice",
+              "now": "Odd use sits on Alerts. Missing invoices are not listed.",
+              "later": ""
+            },
+            {
+              "stage": "Act",
+              "now": "Run a live report. Export, then Downloads. Cut spend advice still waits.",
+              "later": ""
+            }
+          ],
+          "parent": "end-customer"
+        },
+        {
+          "id": "asset-manager",
+          "name": "An asset manager",
+          "status": "draft",
+          "who": "A job hat on a Customer. They care whether something has a fault and whether that fault has been repaired. Public pages name Metering Co-ordinator at Southern Water. Technicians are a stakeholder, not a login.",
+          "need": "See what is broken, how bad it is, who is fixing it, and whether it is done.",
+          "heard": "The asset manager primarily cares whether something has a fault and whether that fault has been repaired.",
+          "from": "User group write-up, 7 Sep",
+          "open": "Does a job raise from Alerts, or does it stay in a field system?",
+          "notes": [
+            {
+              "text": "Consumption is supporting context. The portal observes the job. Technicians work in their own system.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "Jobs, appointments, and recurrence still wait. Alerts is the stand in.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "This is what they need to see after the person is defined, not a company type. The shell stays the same.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "Public pages verify an operational user. Southern Water named Metering Co-ordinator. Twice-weekly operational calls. About 99 percent actual AMR data in settlement. Do not assume they use Astral.",
+              "added": "2026-09-12"
+            },
+            {
+              "text": "Technicians have their own system. Fold them here as a stakeholder. The named chain is fault detected, job raised, technician assigned, visit booked, work completed, meter healthy. Do not give them a Prototype tab.",
+              "added": "2026-09-12"
+            }
+          ],
+          "journey": [
+            {
+              "stage": "Arrive",
+              "now": "Alerts lists odd use, missing data, and not sending.",
+              "later": "A home of faulty meters and open jobs."
+            },
+            {
+              "stage": "See",
+              "now": "State sits in pills on the tree. Odd use, missing data, and not sending have a warning.",
+              "later": ""
+            },
+            {
+              "stage": "Notice",
+              "now": "The Alerts tab holds the count. Site and meter counts sit next to the group heading.",
+              "later": ""
+            },
+            {
+              "stage": "Act",
+              "now": "Raise a query from a reading. Raise a job still waits.",
+              "later": "Fault detected, job raised, visit booked, meter healthy."
+            }
+          ],
+          "parent": "end-customer"
+        },
+        {
+          "id": "data-user",
+          "name": "A data user",
+          "status": "draft",
+          "who": "A job hat on a Customer, also common for brokers and suppliers. Get reliable information out of the platform and into another process.",
+          "need": "Download half-hourly data, schedule reports, watch failed exports, and feed other systems.",
+          "heard": "The transcript repeatedly points towards data retrieval being a major real-world job.",
+          "from": "User group write-up, 7 Sep",
+          "open": "Who receives a scheduled report, and where do failed runs show?",
+          "notes": [
+            {
+              "text": "This is not much of a dashboard. Reports and data is the job.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "Live reports can run. Custom is a name only. Failed exports still wait.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "This is what they need to see after the person is defined, not a company type. The shell stays the same.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "Public pages verify file users. Advantage Utilities named Senior Analyst. Larger brokers automate extracts and barely use dashboards. Failed exports still wait.",
+              "added": "2026-09-12"
+            },
+            {
+              "text": "Keep four file kinds apart. Scheduled report is clockwork from Astral. My Documents is a file IMSERV placed for them. Export is CSV or PDF from the view they are on. Data provision is the service behind those outputs.",
+              "added": "2026-09-22"
+            },
+            {
+              "text": "Documents only may arrive at My Documents with no Portfolio. Do not dump those files onto Downloads.",
+              "added": "2026-09-22"
+            }
+          ],
+          "journey": [
+            {
+              "stage": "Arrive",
+              "now": "Reports is a list. Live, waiting, or custom.",
+              "later": "A reports and data home, not a use chart."
+            },
+            {
+              "stage": "See",
+              "now": "Clockwork email stays on Reports. CSV from this walk stays UTC.",
+              "later": "Local time as a report or export setting. Daylight saving can repeat a local clock. Keep both rows."
+            },
+            {
+              "stage": "Notice",
+              "now": "Waiting means not in yet. There is no failed run list.",
+              "later": ""
+            },
+            {
+              "stage": "Act",
+              "now": "Run a live report or add a custom name. Recipients still wait.",
+              "later": ""
+            }
+          ],
+          "parent": "end-customer"
+        },
+        {
+          "id": "broker",
+          "name": "A broker / TPI",
+          "status": "working",
+          "who": "A broker or third-party intermediary that acts on behalf of one or more customers. They may need more than one customer, selected portfolios, reports, invoices, energy data, and a set access period.",
+          "need": "Move between customers on a live letter of authority. Download invoices and data. Never see outside the authorised period.",
+          "heard": "What builds that link is the letter of authority.",
+          "from": "Max DataVision, 4 Sep",
+          "open": "Where does the six week warning sit if they cannot renew the letter in this product yet?",
+          "notes": [
+            {
+              "text": "The old marketing site names Astral BX for brokers, enrollments, and reporting. That is the catalogue, not the DataVision replacement you can touch.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Anne has been checking this in the production admin portal and hits a bug every other day.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Charanjit and Keegan are learning access control. James said a profile module may have been removed for a demo.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "The same tree can tick more than one row in some places. Alexi still needs to make that selection faster, with fewer extra clicks.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Groups already let a person bunch MPANs, for example north and east. Michelle once wanted area as a layer between company and site. James thinks groups may already cover that.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Later access work has a broker versus customer split on top of modules and features. Not in version one.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "James named customer, broker, and TPI as company types that want slightly different things. An energy supplier may not want energy management because they already have their own.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "The company type on Prototype is Broker / TPI. Third party is the relationship when they are linked to a customer, with who they can see and when it ends.",
+              "added": "2026-09-08"
+            },
+            {
+              "text": "Flow Gas asked for search and a simple way to look at one thing now, not another click path. Shell's wish list was turned into a campaign manager with Helen, not built item by item.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Two flavours. An introducer brings a customer. IMSERV signs with them. The introducer still sees the data. A framework partner signs as proxy. IMSERV never meets the end customer.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "A letter of authority in sales is what links a broker to a company. DataVision does not check it. A person refreshes it by hand. Astral will check sales itself.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Day one can warn that a letter is about to lapse. There will be no screen to upload a new one until a later partner portal.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "The letter of authority sets the customer, the start, the end, and which data. More than one broker can overlap during contracting.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "Home should be customers, expiring letters, reports, and missing data. Not a giant consumption chart.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "Larger brokers automate extracts and scheduled pushes. They barely use individual dashboards.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "This is a company type on the first layer. Access is Viewer. They are third party on the link to a customer. A temporary login is bound to the contract dates on the system, same idea as the letter of authority window.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "Broker / TPI only gets Viewer. They cannot invite, raise a query, resolve, run a report, or change Settings.",
+              "added": "2026-09-08"
+            },
+            {
+              "text": "Public pages verify a login user. Advantage Utilities named Senior Analyst. They used Energy DataVision to advise clients. Day plus 1 half-hourly data sits in that story.",
+              "added": "2026-09-12"
+            },
+            {
+              "text": "TPI copy still offers Astral and DataVision together. Astral BX stays catalogue. Do not build enrolments or commissions on this walk.",
+              "added": "2026-09-12"
+            }
+          ],
+          "journey": [
+            {
+              "stage": "Arrive",
+              "now": "They get in because sales said the letter is live. DataVision itself never checked.",
+              "later": "A home that opens on customers and letters, not one account."
+            },
+            {
+              "stage": "See",
+              "now": "They look across the companies on their letter. They cannot look up the chain or sideways at another broker's customers.",
+              "later": "Every customer they cover, in one list they can scan."
+            },
+            {
+              "stage": "Notice",
+              "now": "Nothing in DataVision tells them a letter is about to lapse. A person in sales has to catch it.",
+              "later": "Your letter of authority for this company is going to expire in 6 weeks."
+            },
+            {
+              "stage": "Act",
+              "now": "They cannot upload a new letter here. That waits for a later partner portal.",
+              "later": "Raise a fix for that customer without leaving the list."
+            }
+          ]
+        },
+        {
+          "id": "portfolio-customer",
+          "name": "An energy supplier",
+          "status": "working",
+          "who": "The organisation supplying energy to many customers. Max used EDF looking at Network Rail.",
+          "need": "Data availability, meter status, reports, and exceptions at portfolio scale. Not energy management in this product.",
+          "heard": "There is no way to see a single combined EDF portfolio.",
+          "from": "Max DataVision usability, 4 Sep",
+          "open": "Should EDF see Network Rail next to their other customers at once, or stay client by client?",
+          "notes": [
+            {
+              "text": "DataVision forces a lower customer to sit under a portfolio customer. That is a quirk of the old product, not a law of the industry.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "They must not see another customer at the same level. Network Rail must not see EDF's other sites.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Max used EDF and Network Rail because they have good data.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "You have to zone in on particular clients. Hunt for a gas or export MPAN is client by client.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "The first graph is Total. Individual, Hours, and Breakdown wait until they ask. Analyse drills in. Do not open like DataVision's wall of everything. A supplier who already knows what they want can still go deeper.",
+              "added": "2026-09-23"
+            },
+            {
+              "text": "Suppliers already have their own consumption systems. A giant use dashboard would be noise.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "They still zone in on one client. A combined EDF portfolio does not exist.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "This is a company type on the first layer. Access is Admin, Manager, Contributor, or Viewer. Finance stays off. What they need to see can change after they are defined.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "The company type word is Supplier. Their needs and scale sit apart from a Customer. Finance stays off because they already have their own.",
+              "added": "2026-09-08"
+            },
+            {
+              "text": "Public pages verify the supplier segment. Yu Energy is a named IMSERV supplier for settlement and metering work. An RF score moved from about 80 percent to 90 percent. Do not assume Yu uses this portal.",
+              "added": "2026-09-12"
+            },
+            {
+              "text": "Astral CX and CRM modules sit in the catalogue. This walk stays data health and exceptions. Finance stays off.",
+              "added": "2026-09-12"
+            }
+          ],
+          "journey": [
+            {
+              "stage": "Arrive",
+              "now": "Admin starts by picking a client. The picker felt clunky. You cannot scan the whole estate.",
+              "later": "A home of data health and exceptions, not a use chart."
+            },
+            {
+              "stage": "See",
+              "now": "You come in as EDF looking at Network Rail. You cannot see EDF's other customers in one list. The graph opens on Total, not every slice.",
+              "later": "Drill for granularity. Do not open on a wall of everything."
+            },
+            {
+              "stage": "Notice",
+              "now": "Unknown.",
+              "later": ""
+            },
+            {
+              "stage": "Act",
+              "now": "Same reports and extracts as an end customer, over a wider set.",
+              "later": ""
+            }
+          ]
+        },
+        {
+          "id": "admin-user",
+          "name": "A platform admin",
+          "status": "working",
+          "who": "Internal platform staff at IMSERV. Veronique runs DataVision day to day. An owner was a draft type for the same organisation. It folds in here.",
+          "need": "Keep the platform running. Configure companies, users, and access. Diagnose when a customer cannot.",
+          "heard": "If stuff is burst into flames and we need to save the customers from themselves.",
+          "from": "Max DataVision usability, 4 Sep",
+          "open": "",
+          "notes": [
+            {
+              "text": "Back to admin is the way back after Log in as user. Log out still leaves the session.",
+              "added": "2026-09-14"
+            },
+            {
+              "text": "Anne has been logging into production to check user access and getting blocked by bugs.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "The team want her in a test environment once the pipeline and a Synapse store exist.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "The same recording includes Max poking around the current Astral interface as it stands.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Dennis is adding missing fields so Anne can test and validate data. About 50 hours remain. Arman is deploying what Dennis finished.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "James is writing the backlog against the current Angular screens. He asked you to say now if the tree should work another way.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Paid access tiers sit on a modules and plans framework. James said the database for good, better, best is done. The rest is still partial.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Version one is one default user group with every feature in scope. The good, better, best database is there. Clive has not said how to split plans. Do not build that signup UI yet.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "The same MPAN field can show different values for different roles. Show the latest value for that person's role, not the latest value in the system.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Every widget and modal is meant to have a help icon. The slot exists. Devs add a row. You write the help with the technical team.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Customer service agents still work in the old admin portal. James does not think that surface is being replaced. User groups, companies, and permissions live there.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "There is an inbox of queries in James's old map. Clive has not said what happens to it.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Charanjit is writing the access and modules flow with Alexi and will put it in the wiki. The old wiki page did not cover the whole path.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Anthony is working through multi-tenancy and user-access stories. Ask him how entitlement, role, and groups stack. Do not design one permissions page.",
+              "added": "2026-09-22"
+            },
+            {
+              "text": "A Team on Users is who they work with. A Group can decide which sites, MPANs, reports, and documents they see. Permission user groups stay in admin. The final Teams versus Groups model is still open.",
+              "added": "2026-09-22"
+            },
+            {
+              "text": "Anne's manual test environment must not refresh overnight. Weekly at most, or by hand when they need a reset.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Version one does not move email, CMS, or paging config into the customer portal. Agents stay on the old Astral Tech admin. Moving them in would mean agents see every customer in the new portal.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Say user groups, not roles. Dennis already built the screens that assign groups.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "DataVision is told each day which customers and MPANs exist. Astral should create records when a sold contract includes visualisation, and keep historic data after the appointment ends.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Anne still cannot run user access in a proper UI. Dennis is on friendlier MPAN tabs. Arman is deploying to manual test. Helen has bugs to recheck there.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Max walked the live admin. Companies, brokers, and users sit on the side.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Actions then Log in as user shows the portal as that person. Log out switches account.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "James wrote the logged in as user story. Monday with Shaun is the tree as a flat list, help on modals, and PrimeNG.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "CIS test manual and UAT must not wipe overnight during a two or three day test. A job still runs at 10am.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Anne still needs a test environment once Synapse has data. That pipeline is not producing consumption data yet.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Super admin first asks which client to impersonate. You cannot look across the whole database.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Max always comes in as EDF looking at Network Rail. There is no combined EDF portfolio.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Two factor is annoying to Max. He asked to drop it unless a standard forces it.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Alerts and scheduled reports share a screen. You cannot amend an alert. You delete it and start again.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Users is where a customer super user adds people from their own company.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Invite opens a modal. Email plus a role. Super user or User. Last active is Now for you and Invited until they join. Search, filter by role, and download CSV. User groups stay in admin.",
+              "added": "2026-09-05"
+            },
+            {
+              "text": "Shaun named customer roles Manager, Contributor, and Viewer. Viewer can look. They cannot invite, raise a query, acknowledge, run a report, or change Settings. User groups stay in admin.",
+              "added": "2026-09-05"
+            },
+            {
+              "text": "Platform administrator manages the platform itself rather than an energy portfolio. Their UI is more powerful than a customer account.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "Company administration and user groups still live in the old admin. This prototype can only open Users for one organisation.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "The first layer is Platform admin. Super admin sits only here. They get visibility on everything. They are not a customer Admin.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "An owner was a draft company type for IMSERV. It is not a first layer. Platform admin is the type.",
+              "added": "2026-09-12"
+            },
+            {
+              "text": "Back office is this group, not a separate login. Sit with Veronique to see how customers actually work. Max is not the person who lives in the system.",
+              "added": "2026-09-12"
+            },
+            {
+              "text": "Public pages treat this group as a service operator, not an energy user. Do not add a Prototype tab for UMSO or field jobs from those pages.",
+              "added": "2026-09-12"
+            },
+            {
+              "text": "Clive called her V and Veronique. Max said Verona Frey. Same person.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Max said sit with V. He is not the person who lives in this system day to day.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Katie walked customer and supplier onboarding. She creates identifiers that then go to V for DataVision setup.",
+              "added": "2026-09-08"
+            },
+            {
+              "text": "They investigate issues customers cannot resolve, and they may switch reports on or off.",
+              "added": "2026-09-07"
+            },
+            {
+              "text": "A later picture for this group is a service view across customers they operate, and a way to see as a user without a fake log out.",
+              "added": "2026-09-12"
+            }
+          ],
+          "journey": [
+            {
+              "stage": "Arrive",
+              "now": "Agents still log into the original Astral Tech admin. Version one is not rebuilding those config pages.",
+              "later": "A test environment, so production stops being the place people poke."
+            },
+            {
+              "stage": "See",
+              "now": "Company, site, MPAN, then meter details in admin. User groups and permissions are edited here, not in the customer portal.",
+              "later": "A clear view of companies, users, and who can see which customer."
+            },
+            {
+              "stage": "Notice",
+              "now": "A bug every other day stops the check.",
+              "later": "The product tells her when access is wrong."
+            },
+            {
+              "stage": "Act",
+              "now": "Dennis already has screens to assign user groups. Version one may only need the default group, so some of that UI might not ship.",
+              "later": "Promote into test and stop using production as the sandbox."
+            }
+          ]
+        },
+        {
+          "id": "pda-unmetered",
+          "name": "An unmetered customer",
+          "status": "draft",
+          "who": "Councils and motorways. PDA collects unmetered data. IMSERV bought them about two years ago. Public pages name Asset Manager at Lancashire County Council.",
+          "need": "Get the monthly file without waiting on email.",
+          "heard": "Each month they send a spreadsheet.",
+          "from": "Clive, 4 Sep",
+          "open": "Is the first useful screen just a login to collect that file?",
+          "notes": [
+            {
+              "text": "Clive named stage one as they log in and collect their spreadsheet. That is after version one.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Public pages verify this segment. Lancashire named Asset Manager and monthly reporting. Cumbria and Warwickshire sit in the same service. First useful screen is still a login to collect the file. After version one.",
+              "added": "2026-09-12"
+            },
+            {
+              "text": "Do not invent UMSO screens on this prototype. Network-operator work stays a service until a talk names a login.",
+              "added": "2026-09-12"
+            }
+          ],
+          "journey": [
+            {
+              "stage": "Arrive",
+              "now": "They wait for a spreadsheet by email.",
+              "later": "They log in and collect their spreadsheet."
+            },
+            {
+              "stage": "See",
+              "now": "Unknown until someone walks a live file with you.",
+              "later": ""
+            },
+            {
+              "stage": "Notice",
+              "now": "Unknown.",
+              "later": ""
+            },
+            {
+              "stage": "Act",
+              "now": "Unknown.",
+              "later": ""
+            }
+          ]
+        },
+        {
+          "id": "legacy-portal",
+          "name": "Someone on the old Astrotech portal",
+          "status": "draft",
+          "who": "Staff at BP, Shell, or Flow Gas on a single-tenant instance Helen still looks after. True Power was in the original five.",
+          "need": "Keep their live instance working. Raise a ticket if it breaks. Not be forgotten while the new portal is built.",
+          "heard": "She would be the face to Shell and to BP.",
+          "from": "Anna briefing, 4 Sep",
+          "open": "What change requests still come in from those three, and are they config or code?",
+          "notes": [
+            {
+              "text": "Each company had its own instance, with shared code plus special behaviour, not just a logo.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "The old site is still up at astraltech.energy. Anna said to look before it comes down.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "No decision yet on mothball, merge onto the new portal, or keep paying to run them.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Alexi and Ben deployed EXL changes to the Flow Gas Trinity environment. That is the old stack, not the new portals.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Each live customer had their own database and import path, not one shared tenancy. One-time colour setup, then styles locked down. IMSERV, Flow Gas, Shell, BP, EDF, and True Power all wanted different things from the same admin.",
+              "added": "2026-09-04"
+            },
+            {
+              "text": "Public pages do not cover these single-tenant instances. Keep them apart from the DataVision walk.",
+              "added": "2026-09-12"
+            }
+          ],
+          "journey": [
+            {
+              "stage": "Arrive",
+              "now": "They still log into their own instance. Helen is the face.",
+              "later": "A decision on mothball, merge, or keep."
+            },
+            {
+              "stage": "See",
+              "now": "Bespoke to what Shell or BP asked for, not a shared skin.",
+              "later": "Unknown until Helen walks a live instance with you."
+            },
+            {
+              "stage": "Notice",
+              "now": "EXL in India triages tickets. Not many land.",
+              "later": "Unknown until a real ticket is walked."
+            },
+            {
+              "stage": "Act",
+              "now": "Maintenance only. This team is not building new work on that platform.",
+              "later": "Unknown."
+            }
+          ]
+        }
+      ],
+      "research": {
+        "insights": [
+          {
+            "id": "manual-client-setup",
+            "title": "Client setup is highly manual",
+            "problem": "Setting up a new client means V moves information between several systems and keeps progress in her head.",
+            "where": "CRM and email into DataVision, then her tracking spreadsheet, then back to Data Provision.",
+            "why": "Teams did not all use the same system, so work still arrives in emails and she handles it by hand. She said the current walk works, and that much of it is still manual.",
+            "note": "The process depends on one person remembering where everything is and what stage each client has reached.",
+            "severity": "high",
+            "score": 50
+          },
+          {
+            "id": "no-setup-tracking",
+            "title": "There is no built-in way to track client setup progress",
+            "problem": "DataVision does not show what is set up, what is waiting for data, and what still needs action, so V made her own spreadsheet.",
+            "where": "Client onboarding and administration.",
+            "why": "She records client IDs, company details, dates, and users herself so she can search previous work and see what she has finished. She said this exists because there was no process or tracking in the product.",
+            "note": "This is a shadow system outside the product, and the walk depends on V's personal process.",
+            "severity": "high",
+            "score": 46
+          },
+          {
+            "id": "duplicate-date-entry",
+            "title": "The same information has to be entered more than once",
+            "problem": "Contract dates often need updating at the client, then again against each user.",
+            "where": "Client renewals and user administration.",
+            "why": "On the renewal walk, V updated the contract end date and then the user's active-to date. She said this duplication happens a lot.",
+            "note": "Extra effort, and a risk that one date moves while the other stays.",
+            "severity": "medium-high",
+            "score": 50
+          },
+          {
+            "id": "access-date-rules",
+            "title": "Access-date rules are difficult to understand",
+            "problem": "Access rules change depending on whether the person works for the customer or is an external third party.",
+            "where": "User management and access management.",
+            "why": "A customer employee normally inherits access from the company contract. A third-party user's access depends on a separate LOA expiry. V said understanding those dates took time because the model is complicated.",
+            "note": "This affects data access. Get it wrong and you get security and GDPR trouble.",
+            "severity": "high",
+            "score": 86
+          },
+          {
+            "id": "fragmented-contracts",
+            "title": "Contract information is fragmented across systems",
+            "problem": "The document that proves why a date or access change exists may live somewhere different from where the change is made.",
+            "where": "CRM, Fire Safe, V's local filing, and DataVision.",
+            "why": "V said contracts should be stored centrally, but historical contracts have sometimes been hard to find. She needs written evidence before she changes access dates, so she keeps her own copies as a fallback.",
+            "note": "The walk works largely because V fills the gaps.",
+            "severity": "medium-high",
+            "score": 70
+          },
+          {
+            "id": "third-party-wrong-problem",
+            "title": "Third-party user management may be solving the wrong problem",
+            "problem": "IMSERV sometimes creates third-party users and manages their LOAs even when those people only need to receive customer data.",
+            "where": "Third-party access and LOA management.",
+            "why": "V said the intended walk was often for the customer to schedule reports straight to third parties. That would avoid IMSERV creating accounts and managing LOAs for people it has no direct relationship with.",
+            "note": "Bigger than a UI issue. Part of the current walk may not need to exist.",
+            "severity": "high",
+            "score": 82
+          },
+          {
+            "id": "loa-access-risk",
+            "title": "LOA management creates avoidable operational and data-access risk",
+            "problem": "Once IMSERV manages a third party's access, it also has to make sure that access stops when it should.",
+            "where": "Third-party user access.",
+            "why": "V said scheduled reports controlled by the customer would remove much of the need for IMSERV to manage these relationships. The current walk creates risk if access or reporting continues after things change.",
+            "note": "This is governance and possibly GDPR. Treat it as a design constraint, not just an inconvenience.",
+            "severity": "high",
+            "score": 90
+          },
+          {
+            "id": "weak-company-match",
+            "title": "Duplicate companies can be created because matching is weak",
+            "problem": "The system does not reliably see that slightly different company names are the same organisation.",
+            "where": "New client creation.",
+            "example": "Example Limited and Example LTD could be treated as different clients.",
+            "why": "V searches DataVision when she recognises a name, because something presented as new can be an existing client or a renewal.",
+            "note": "The safety net is V's experience and memory, not the system.",
+            "severity": "medium",
+            "score": 50
+          },
+          {
+            "id": "specialist-knowledge",
+            "title": "The workflow depends heavily on specialist knowledge",
+            "problem": "V has years of knowledge about how DataVision, contracts, portfolios, users, and external systems fit together.",
+            "where": "The whole client setup walk.",
+            "why": "The wider team described V as one of the remaining people who understands DataVision under the bonnet, and the person people go to when clients need setting up or when day to day problems arise.",
+            "note": "Part of the system logic lives in a person. That is a major migration risk.",
+            "severity": "high",
+            "score": 54
+          },
+          {
+            "id": "onboarding-too-many-systems",
+            "title": "Customer onboarding is spread across too many systems",
+            "problem": "The onboarding team has to move between several systems to finish one customer setup.",
+            "where": "Supplier and customer onboarding across spreadsheets, Access databases, Panorama, Star, MOP Views, Fuse, Click, DataVision, and email.",
+            "why": "Katie repeatedly moved between tools to validate contracts, create services, create identifiers, check jobs, configure data access, and finally get information visible to the customer. Much of this has to be coordinated by hand.",
+            "note": "The walk is fragmented, hard to learn, and creates many chances for information to fall between systems.",
+            "severity": "high",
+            "score": 42
+          },
+          {
+            "id": "job-validation-manual",
+            "title": "Job validation is extremely manual",
+            "problem": "Before raising installation or meter jobs, staff have to decide by hand whether the job is actually required.",
+            "where": "Supplier loader, then onboarding validation, then Fuse and job creation.",
+            "why": "Suppliers can send spreadsheets with tens to thousands of MPANs. Staff have to check whether IMSERV is appointed, whether a job already exists, whether a previous job failed, and whether the same contact details caused a previous failure. Katie gave the example of a withdrawn job being sent again with exactly the same contact information.",
+            "note": "At large volumes, checking individual MPANs by hand is unrealistic and raises avoidable work.",
+            "severity": "high",
+            "score": 58
+          },
+          {
+            "id": "previous-failures-not-useful",
+            "title": "The system does not make previous failures useful enough",
+            "problem": "Historic job information exists, but staff cannot easily use it to stop the same failed job being created again.",
+            "where": "Job onboarding and previous job history.",
+            "why": "Katie wanted to see that a previous job had been withdrawn because of incorrect contact details, compare that with the new details, and stop the same job being raised again. That still means inspecting historic records by hand.",
+            "note": "The information exists, but it is not turned into a useful decision. A future system could warn that a previous job was withdrawn for incorrect contact details, and that the new submission has the same contact information.",
+            "severity": "medium-high",
+            "score": 60
+          },
+          {
+            "id": "supplier-batches-unscalable",
+            "title": "Large supplier batches make the current workflow unscalable",
+            "problem": "The same manual validation is used whether the team receives 55 MPANs or thousands.",
+            "where": "Supplier onboarding.",
+            "why": "Katie contrasted a small Octopus batch with a British Gas batch of thousands of MPANs. The team does not have the people to inspect every historic job one by one.",
+            "note": "This is not just an inconvenience. The current walk struggles as portfolio size grows.",
+            "severity": "high",
+            "score": 62
+          },
+          {
+            "id": "duplicate-panorama-star",
+            "title": "New customer setup requires duplicate manual configuration",
+            "problem": "The same customer has to be created and configured separately in more than one system.",
+            "where": "Panorama and Star onboarding.",
+            "why": "Katie described creating the customer and service in Panorama, then setting them up again in Star, including participant IDs, service configuration, and other records. She said these stages are entirely manual.",
+            "note": "This adds setup time and creates the chance that two systems no longer agree about the same customer.",
+            "severity": "high",
+            "score": 34
+          },
+          {
+            "id": "manual-technical-ids",
+            "title": "Staff must manually invent and manage technical identifiers",
+            "problem": "The onboarding team has to find unused identifiers and create records by hand.",
+            "where": "Star customer setup.",
+            "why": "Katie described searching for an unused participant ID, creating it, linking it to a customer, and configuring the associated services.",
+            "note": "This is technical system administration pushed onto an operational user. The platform should generate or manage these identifiers behind the scenes.",
+            "severity": "medium-high",
+            "score": 40
+          },
+          {
+            "id": "estimated-over-actual",
+            "title": "DataVision can show estimated data even when actual data exists",
+            "problem": "The customer can keep seeing estimated data even when better actual readings already exist elsewhere.",
+            "where": "Star to DataVision data synchronisation.",
+            "why": "Katie said DataVision effectively checks whether it already has data, rather than whether newer, more accurate data exists. Actual readings in Star therefore do not automatically replace estimated readings in DataVision.",
+            "note": "This directly affects the accuracy of what customers see. The platform can knowingly display worse data than the business already has.",
+            "severity": "critical",
+            "score": 90
+          },
+          {
+            "id": "stale-data-specialist-reset",
+            "title": "Correcting stale data requires a specialist manual reset",
+            "problem": "Staff cannot simply refresh incorrect DataVision data.",
+            "where": "DataVision data correction.",
+            "why": "If estimated data needs replacing, V may need to raise a ticket with Schneider, have existing DataVision data wiped, run an export from Star by hand, and repopulate DataVision.",
+            "note": "A basic data refresh depends on several people and systems. The new system should treat actual as better than estimated, and replace lower-quality data when authoritative data arrives.",
+            "severity": "high",
+            "score": 78
+          },
+          {
+            "id": "mpan-missing-without-reason",
+            "title": "MPANs sometimes fail to appear without explanation",
+            "problem": "MPANs that should be visible to a customer sometimes do not appear.",
+            "where": "Star to DataVision portfolio synchronisation.",
+            "why": "Katie described setups that look correct, but the MPAN does not appear in DataVision. The workaround can be deleting part of the configuration, recreating it, and rerunning an extract in the hope that it reloads.",
+            "note": "The user has no clear diagnosis or recovery path. This is a candidate for a future sync status, not a delete-and-recreate ritual.",
+            "severity": "high",
+            "score": 74
+          },
+          {
+            "id": "termination-unclear-access",
+            "title": "Contract termination and reactivation can leave unclear data-access states",
+            "problem": "An MPAN can be terminated and later reopened, but historic end dates may interfere with current access or data visibility.",
+            "where": "Contract and MPAN access lifecycle.",
+            "why": "Katie showed an MPAN that had been terminated and later reopened. On paper the new access dates looked valid, but DataVision still had an issue and nobody could immediately explain why.",
+            "note": "The system does not clearly model terminated, re-contracted, currently active, and historic access periods. That matters when deciding which historic data a customer should see.",
+            "severity": "high",
+            "score": 70
+          },
+          {
+            "id": "cannot-diagnose-breaks",
+            "title": "Operational staff cannot easily diagnose why something is broken",
+            "problem": "When data or access fails, users can see the symptom but not the cause.",
+            "where": "Across Star, DataVision, and contract configuration.",
+            "why": "Several times Katie could see that something was wrong but could not tell why from the available information. Troubleshooting depended on V, Schneider, or further manual investigation.",
+            "note": "The future platform should expose states such as waiting for source data, MPAN not appointed, contract expired, awaiting sync, actual data available, data import failed, and user access expired, rather than only showing that something is missing.",
+            "severity": "high",
+            "score": 66
+          },
+          {
+            "id": "onboarding-handoffs",
+            "title": "Customer onboarding depends on hand-offs between individual people",
+            "problem": "One person's setup work frequently becomes another person's manual input.",
+            "where": "Onboarding team to V to DataVision.",
+            "why": "Katie creates information and identifiers that are then passed to V, who does another set of manual setup steps to make the customer visible in DataVision.",
+            "note": "This introduces delays and makes the process depend on individual availability. It connects to V's walk, so both sides of the same hand-off are now named.",
+            "severity": "high",
+            "score": 38
+          },
+          {
+            "id": "mixed-access-layers",
+            "title": "Entitlement, role, and scope get mixed into one permissions idea",
+            "problem": "A person's experience is controlled by what the company bought, what that person can do, and which data they can see. Designing those as one blob makes user management hard to reason about.",
+            "where": "User management, Users, and Access.",
+            "why": "The handoff named three separate layers. Product entitlement is documents only or full Astral. Role is Admin, Manager, Contributor, or Viewer. Group membership can decide which sites, MPANs, reports, and documents they see.",
+            "note": "Ask Anthony before you design a single permissions page. The exact role matrix is still open.",
+            "severity": "high",
+            "score": 88
+          },
+          {
+            "id": "huge-portfolio-load",
+            "title": "Huge portfolios cannot be treated as a long list",
+            "problem": "A customer can sit on thousands of MPANs. Loading them all, drawing thousands of series, or showing thousands of ticks will fail.",
+            "where": "Portfolio, Compare, and Filter.",
+            "why": "The handoff named about 8,000 MPANs on a customer and about 45,000 on internal access. Max wants people to start with what is happening, then narrow to a place.",
+            "note": "Progressive disclosure already sits on the walk. All, then group, then site, then MPAN. Do not dump the whole estate.",
+            "severity": "high",
+            "score": 84
+          },
+          {
+            "id": "teams-not-groups",
+            "title": "Teams and Groups get treated as the same thing",
+            "problem": "People groups and data groups were muddled in talks. Treating them as identical will produce a permissions spaghetti.",
+            "where": "Users, Portfolio tree, reports, and documents.",
+            "why": "The handoff said teams are mostly for workflow. Group membership can decide which MPANs, reports, and documents someone sees. An MPAN can sit in more than one group.",
+            "note": "Team is who I work with. Group is what I can access. They might later link. The final model is still open. Ask Max and Anthony. Permission user groups stay in admin.",
+            "severity": "high",
+            "score": 80
+          },
+          {
+            "id": "documents-only-shell",
+            "title": "The shell cannot assume every login gets Portfolio",
+            "problem": "A documents-only customer may log in and see My Documents, notifications, and profile, with no energy walk.",
+            "where": "Navigation and first screen after sign in.",
+            "why": "Version one has two bought experiences. Documents only and full Astral. The entitlement is determined from sold services, not a customer pick.",
+            "note": "Hide Portfolio from a documents-only login. Self-serve upgrades wait. Do not design a huge entitlement UI that Super admin ticks by hand if the contract will do that work.",
+            "severity": "high",
+            "score": 76
+          },
+          {
+            "id": "estimated-versus-alert",
+            "title": "Estimated readings and Alerts get the same pattern",
+            "problem": "A guessed reading and an abnormal reading are different states. Using the same mark mixes confidence with attention.",
+            "where": "Graphs, Site profile, and Alerts.",
+            "why": "The handoff named Estimated as we do not have an actual reading. Alert is unusually high, unusually low, or outside expected range. Version one alerts stay simple, such as high and low from the system.",
+            "note": "Estimated is confidence. Alert is attention. Odd use, Missing data, and Not sending stay on Alerts. Do not invent a statistical threshold builder for version one.",
+            "severity": "high",
+            "score": 72
+          },
+          {
+            "id": "four-file-words",
+            "title": "Reports, documents, and exports get the same word",
+            "problem": "People and developers start talking about different files as if they were one thing.",
+            "where": "Reports, Downloads, and My Documents.",
+            "why": "The handoff named four kinds. Scheduled report is clockwork from Astral. My Documents is a file IMSERV placed for the customer. Export is CSV or PDF from the current view. Data provision is the service behind those outputs.",
+            "note": "Keep scheduled reports off the documents pile. Keep My Documents off Downloads. Do not invent Excel.",
+            "severity": "medium-high",
+            "score": 68
+          }
+        ]
+      },
+      "access": [
+        {
+          "id": "azure-devops",
+          "name": "Azure DevOps",
+          "have": "SSO at dev.azure.com. You cloned Astral Repository and checked out branch dev/imserv. Do not commit.",
+          "ask": "Peter for the clone path. Ira or Ben if access breaks. Barry if that stalls.",
+          "lost": "Ask Barry. Do not store a password here."
+        },
+        {
+          "id": "sharepoint-astral",
+          "name": "SharePoint Astral Project",
+          "have": "Anna made a shared folder and said she would make you an owner. The quiet folder holds steer packs and budget.",
+          "ask": "Anna",
+          "lost": "Ask Anna to add you again."
+        },
+        {
+          "id": "datavision",
+          "name": "DataVision",
+          "have": "Max walked live admin. EDF looking at Network Rail has good data. You still need your own login. Read only.",
+          "ask": "Max or Veronique. Bevis if the question is Meterpower.",
+          "lost": "Ask Max. Do not store a password here. Never create or update a record."
+        },
+        {
+          "id": "astrotech-site",
+          "name": "Astrotech site",
+          "have": "Public pages still on astraltech.energy, including CX, BX, and EDM. The homepage failed when checked. Inner pages still loaded in search.",
+          "ask": "No login. It is a public site.",
+          "lost": "If it is gone, imserv.com still describes the modules."
+        },
+        {
+          "id": "admin-portal",
+          "name": "UAT admin portal",
+          "have": "Max walked live admin. Companies, brokers, users. Log in as user sits under Actions. Log out switches account. Do not expect consumption data yet.",
+          "ask": "Ben K or Ira",
+          "lost": "Ask Ben K or Ira. Do not store a password here."
+        },
+        {
+          "id": "max-tour",
+          "name": "Max tour recording",
+          "have": "A OneDrive recording Anna shared, plus Friday's live walk in the archive.",
+          "ask": "Anna if the share did not land",
+          "lost": "Ask Anna to share it again."
+        },
+        {
+          "id": "uat-customer",
+          "name": "Customer portal",
+          "have": "Max handed you the details. Look around and put components in Figma. The tree on the left is PrimeNG. Do not store the login here.",
+          "ask": "Max if the details die. Ben K or Ira if you need LastPass as well.",
+          "lost": "Ask Max. Do not store a password here."
+        },
+        {
+          "id": "imserv-wordpress",
+          "name": "IMSERV website",
+          "have": "WordPress, built by Pony as a magazine site. Claire found headers, banners, and graphics hard coded. An old agency repo still overwrites live edits.",
+          "ask": "Claire once the repo is back. Camilla until then.",
+          "lost": "Ask Claire or Camilla. Do not store a password here."
+        },
+        {
+          "id": "clive-wireframe",
+          "name": "Clive public page wireframe",
+          "have": "A passworded wireframe for the front facing Astral pages. Camilla sent the link. This is the website, not the product.",
+          "ask": "Camilla or Clive",
+          "lost": "Ask Camilla for the link again. Do not store a password here."
+        },
+        {
+          "id": "claire-dummy",
+          "name": "Claire dummy Astral pages",
+          "have": "Claire started building Clive's wireframe in a dummy WordPress. Camilla's link errored. Bones exist.",
+          "ask": "Claire on Monday",
+          "lost": "Ask Claire. Do not store a password here."
+        },
+        {
+          "id": "tma",
+          "name": "TMA",
+          "have": "Meterpower is the public face of TMA. You already have Meterpower. People say TMA for the same thing.",
+          "ask": "Sui B for Meterpower. Max if channel data sits somewhere else.",
+          "lost": "Ask Anna. Do not store a password here."
+        },
+        {
+          "id": "james-figma",
+          "name": "James product Figma",
+          "have": "Screens, a component library, and an unfinished sitemap. Clive's own screens are a play. You own the real library.",
+          "ask": "James",
+          "lost": "Ask James to invite you again."
+        },
+        {
+          "id": "wiki",
+          "name": "DevOps wiki",
+          "have": "Has a thin page on access. Charanjit is expanding it with the end to end flow once Alexi has reviewed his notes. He is back Wednesday.",
+          "ask": "Charanjit, or Alexi if he is still out",
+          "lost": "Ask Peter or Charanjit. Do not store a password here."
+        },
+        {
+          "id": "sales-loa",
+          "name": "Sales letters of authority",
+          "have": "The live letters sit in sales, not in DataVision. Astral will check that system itself. You do not need a login to design the warning.",
+          "ask": "Max if you need to see what a letter looks like",
+          "lost": "Ask Max. Do not store a password here."
+        },
+        {
+          "id": "mailtrap",
+          "name": "Mailtrap",
+          "have": "You are in the shared Astrotech inbox. Skip sandbox. Ben's reset link worked after a user login error. That error is a known bug.",
+          "ask": "Ben K or Eray H. Dev for the login error.",
+          "lost": "Ask Eray H or Ben K. Do not store a password here."
+        },
+        {
+          "id": "web-portal",
+          "name": "Web Portal",
+          "have": "Sui B opened it. Have a poke. Do not store the login here.",
+          "ask": "Sui B",
+          "lost": "Ask Sui B. Do not store a password here."
+        },
+        {
+          "id": "meterpower",
+          "name": "Meterpower",
+          "have": "Sui B opened it. It is the public face of TMA. More granular than DataVision. Astral has to replace it.",
+          "ask": "Sui B",
+          "lost": "Ask Sui B. Do not store a password here."
+        },
+        {
+          "id": "astral-portal",
+          "name": "Astral portal",
+          "have": "You are in. Admin has companies, brokers, and users on the side. Look and feel has already shifted. Do not store the login here.",
+          "ask": "Ann H. Ben K if Mailtrap dies again.",
+          "lost": "Ask Ann H. Do not store a password here."
+        },
+        {
+          "id": "claude",
+          "name": "Claude",
+          "have": "ELT can use it. Joe approved Astral picking tools until client data is in play. Do not point it at client records.",
+          "ask": "Clive if IT says no.",
+          "lost": "Ask Clive. Do not store a key here."
+        },
+        {
+          "id": "clive-screens",
+          "name": "Clive product screens",
+          "have": "A play. Brand book plus a DataVision walk. Claude generated, then he refined. Not the source of truth.",
+          "ask": "Clive",
+          "lost": "Ask Clive. Do not copy them as the library."
+        },
+        {
+          "id": "synapse-adf",
+          "name": "Synapse and Data Factory",
+          "have": "Tables exist. Pipelines are mostly disabled. Files are not copying. No consumption data is coming out. UAT SFTP has reports, not uploads.",
+          "ask": "Stephen or Simon. Do not wait for Desislav.",
+          "lost": "Ask Stephen. Do not store a password here."
+        }
+      ]
     },
     "off-axis": {
-      "headline": "Astral prototype",
-      "situation": "This copy is the live Astral walk. The briefing desk stays off this download.",
+      "headline": "Off Axis already has three groups in play.",
+      "situation": "These came from the caption lab and the 26 Aug ticketing walkthrough. They sit in User groups, not on Today.",
       "can": [
-        "Open a screen and walk the estate.",
-        "Change company type from the preview bar.",
-        "Leave. This copy does not save to a shared file."
+        "Open User groups and mark what feels off.",
+        "Add a note when a talk adds detail.",
+        "Tick Off Axis work on Today."
       ],
       "cannot": [
-        "See the morning board in this copy.",
-        "Change the live product from this page.",
-        "Invite people or restore a tool here."
+        "Treat the access group as firm. It is still a draft.",
+        "Invent a promoter or venue manager.",
+        "Change the live product from this folder."
       ],
       "next": [
-        "Pick a company type.",
-        "Open Portfolio.",
-        "Send notes back to Shaun."
+        "Open User groups and read the three drafts.",
+        "Add a group if a talk named someone we missed.",
+        "Send the next Off Axis discussion."
       ],
-      "know": [],
-      "today": [],
+      "know": [
+        {
+          "title": "Where groups live",
+          "body": "Use the side menu. User groups is its own section for this team."
+        },
+        {
+          "title": "What firm means",
+          "body": "Firm is only for a group a talk has named and a real task has backed."
+        },
+        {
+          "title": "How ticks stick",
+          "body": "Open the board with the preview script so checks save into the file."
+        }
+      ],
+      "today": [
+        {
+          "id": "review-groups",
+          "title": "Read the three user groups and mark what feels off",
+          "note": "Open User groups in the side menu.",
+          "project": "Off Axis",
+          "added": "2026-09-04",
+          "kind": "admin"
+        }
+      ],
       "done": [],
-      "groups": [],
+      "groups": [
+        {
+          "id": "the-band",
+          "name": "The band",
+          "status": "working",
+          "who": "A small UK band using the product as themselves. Eyes of Home is the live example.",
+          "need": "Talk to fans in their own voice, get people to a gig, and see if a post actually worked.",
+          "heard": "As a band I want to get more people to buy tickets to a live show.",
+          "from": "Caption lab, 26 Aug",
+          "open": "Is the person writing captions the same person who puts the gig up?",
+          "notes": [
+            {
+              "text": "Asked for first person, the band speaking to their fans, not a marketing voice.",
+              "added": "2026-08-26"
+            },
+            {
+              "text": "Built first as a one-band tool, not a multi-artist product.",
+              "added": "2026-08-26"
+            }
+          ],
+          "journey": [
+            {
+              "stage": "Arrive",
+              "now": "They are in the product as themselves. Eyes of Home is the live example.",
+              "later": ""
+            },
+            {
+              "stage": "See",
+              "now": "They wanted first person, the band talking to fans, not a marketing voice.",
+              "later": ""
+            },
+            {
+              "stage": "Notice",
+              "now": "They still cannot tell if a post actually worked.",
+              "later": ""
+            },
+            {
+              "stage": "Act",
+              "now": "Get people to a gig in their own voice.",
+              "later": ""
+            }
+          ]
+        },
+        {
+          "id": "ticket-buyer",
+          "name": "Someone buying a ticket",
+          "status": "working",
+          "who": "A person going through checkout for a small gig, tested on an Eyes of Home show.",
+          "need": "A checkout that does not fight them, a price they trust, and a ticket they can scan on the door.",
+          "heard": "I think the QR code should be the first thing that comes up for ease of use.",
+          "from": "Ticketing walkthrough, 26 Aug",
+          "open": "Did the confirmation email ever arrive, and what should My Gigs show first?",
+          "notes": [
+            {
+              "text": "Personal details felt cramped beside the order summary.",
+              "added": "2026-08-26"
+            },
+            {
+              "text": "Raising the ticket count to 50 left the total stuck high after going back to one.",
+              "added": "2026-08-26"
+            },
+            {
+              "text": "Apple Pay worked. The order page showed the ticket, but no email had come through yet.",
+              "added": "2026-08-26"
+            }
+          ],
+          "journey": [
+            {
+              "stage": "Arrive",
+              "now": "Checkout for a small gig, tested on an Eyes of Home show.",
+              "later": ""
+            },
+            {
+              "stage": "See",
+              "now": "Personal details felt cramped beside the order summary. The total stuck high after changing the count.",
+              "later": ""
+            },
+            {
+              "stage": "Notice",
+              "now": "The QR code should be the first thing that comes up.",
+              "later": ""
+            },
+            {
+              "stage": "Act",
+              "now": "A ticket they can scan on the door. Apple Pay worked. The email had not arrived yet.",
+              "later": ""
+            }
+          ]
+        },
+        {
+          "id": "access-check",
+          "name": "Someone checking if they can get in",
+          "status": "draft",
+          "who": "A person who needs a straight answer about the room before they buy.",
+          "need": "A plain sentence about access, not a yes or no flag.",
+          "heard": "It says accessibility, no. I think the message should be a bit better than that.",
+          "from": "Ticketing walkthrough, 26 Aug",
+          "open": "We have one example about wheelchairs. What else does the room need to say?",
+          "notes": [
+            {
+              "text": "Wanted copy like there are no facilities for wheelchairs at the venue, not a bare no.",
+              "added": "2026-08-26"
+            }
+          ],
+          "journey": [
+            {
+              "stage": "Arrive",
+              "now": "They check the room before they buy.",
+              "later": ""
+            },
+            {
+              "stage": "See",
+              "now": "It says accessibility, no.",
+              "later": ""
+            },
+            {
+              "stage": "Notice",
+              "now": "They wanted a plain sentence about the room, not a bare flag.",
+              "later": ""
+            },
+            {
+              "stage": "Act",
+              "now": "Decide whether they can get in.",
+              "later": ""
+            }
+          ]
+        }
+      ],
+      "research": {
+        "insights": []
+      },
       "access": []
     },
     "stagerise": {
-      "headline": "Astral prototype",
-      "situation": "This copy is the live Astral walk. The briefing desk stays off this download.",
+      "headline": "Stagerise is on the desk. The talks are not.",
+      "situation": "You can switch to this team and keep a list. User groups stay empty until a Stagerise discussion names someone.",
       "can": [
-        "Open a screen and walk the estate.",
-        "Change company type from the preview bar.",
-        "Leave. This copy does not save to a shared file."
+        "Add today's Stagerise work here.",
+        "Open User groups when a talk names someone.",
+        "Look back at the Done tab for this team only."
       ],
       "cannot": [
-        "See the morning board in this copy.",
-        "Change the live product from this page.",
-        "Invite people or restore a tool here."
+        "See a Stagerise user picture until those talks are in.",
+        "Borrow Off Axis groups and treat them as Stagerise.",
+        "Change the live product from this folder."
       ],
       "next": [
-        "Pick a company type.",
-        "Open Portfolio.",
-        "Send notes back to Shaun."
+        "Send Stagerise discussions when you have them.",
+        "Add anything you already know you need to do.",
+        "Keep IMSERV selected when that is the day's work."
       ],
-      "know": [],
+      "know": [
+        {
+          "title": "Teams",
+          "body": "Each team keeps its own Today, User groups, Access, and Done tab."
+        },
+        {
+          "title": "User groups",
+          "body": "They live in the side menu. Do not invent names to fill the page."
+        },
+        {
+          "title": "How ticks stick",
+          "body": "Open the board with the preview script so checks save into the file."
+        }
+      ],
       "today": [],
       "done": [],
       "groups": [],
+      "research": {
+        "insights": []
+      },
       "access": []
     }
-  }
+  },
+  "activeKind": "ux",
+  "activeLibraryTab": "setup",
+  "activeComponent": "",
+  "activeLanguageKind": "empty",
+  "activePattern": "card-stack",
+  "revision": 8,
+  "researchView": "list",
+  "researchSeverity": "all",
+  "activeBrandSection": "graphics",
+  "activeSkill": "",
+  "skillFold": "desk",
+  "accessFold": "",
+  "libraryFold": "",
+  "activeKei": ""
 }

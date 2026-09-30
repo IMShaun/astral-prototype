@@ -1,0 +1,12 @@
+.cursor
+.git
+.env
+.env.*
+inbox
+archive
+share-dist
+node_modules
+.venv
+*.log
+.DS_Store
+.staticrypt.json

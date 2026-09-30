@@ -1,0 +1,96 @@
+# Index only. Do not invent patterns. Fill from inspected product evidence via /ux-patterns.
+version: 1
+patterns:
+  - id: foundation.native-overflow
+    name: Native overflow
+    level: foundation
+    user_goal: Reach content that does not fit the view without losing keyboard or platform scroll behaviour
+    objects: [pane, stage, table, tree, modal, reports]
+    actions: [scroll, contain, wrap]
+    used_in: [Portfolio, Reports, Settings, Users, Alerts, Queries, Compare, Sign in]
+    entry_points:
+      - Overflow on a named owner
+    structure: One CSS overflow owner → native bar → keyboard reach if no tab stop
+    components: [pane-body, stage-body, table-wrap, modal-body, tabs]
+    states: [fits, overflows, nested, reduced-motion]
+    permissions: all
+    content_terms: []
+    variants:
+      - Tabs hide the bar inside the pill
+    exceptions:
+      - Tabs. Tab buttons are the keyboard path. Do not put a track in the pill.
+    accessibility: WCAG 2.1.1 keyboard on the region or a descendant. Thumb versus track at least 3:1. Focus is a 2px black edge.
+    implementation_refs:
+      - styles.css
+      - prototype.js protoBindScrollRegions
+      - .cursor/skills/ux-patterns/references/scrollbars.md
+    evidence:
+      - Named desk rule: native scroll, Tabs hide the bar, Breakdown loads as they scroll, Reports wrap
+    maturity: emerging
+    health: healthy
+    last_reviewed: "2026-09-18"
+    decision_refs:
+      - UXDR-2026-09-18-native-overflow
+  - id: foundation.card-stack
+    name: Card stack
+    level: foundation
+    user_goal: Scan sibling cards without them touching or using a one-off margin
+    objects: [card, board-block, list]
+    actions: [scan, compare]
+    used_in: [Today, Skills, Patterns, UI library, Access, User groups]
+    entry_points:
+      - Any list or detail that paints more than one card
+    structure: Named stack with gap 16px → cards → labelled blocks inside a board-block use the same gap
+    components: [card, board-block]
+    states: [stack, fold-closed, fold-open]
+    permissions: all
+    content_terms: []
+    variants: []
+    exceptions:
+      - Desk folds. Head and clip sit flush. The grid lives in the open clip.
+      - Table rows and notes lists use a 1px line.
+      - Compact title-and-line cards keep 8px inside.
+    accessibility: Gap is layout. Focus is a 2px black edge.
+    implementation_refs:
+      - styles.css
+      - .cursor/skills/ux-patterns/references/spacing.md
+    evidence:
+      - Named desk rule: 16px card stacks. Skills detail had labelled blocks with no gap.
+    maturity: emerging
+    health: healthy
+    last_reviewed: "2026-09-18"
+    decision_refs:
+      - UXDR-2026-09-18-card-stack
+  - id: foundation.library-check
+    name: Library check
+    level: foundation
+    user_goal: Keep painted UI on the named Astral pieces and catch a duplicate before it spreads
+    objects: [component, token, builder]
+    actions: [inventory, compare, flag]
+    used_in: [Prototype, Skills, UI library, desk chrome]
+    entry_points:
+      - After painting a control
+      - A suspected duplicate of Button, Tag, or Back
+    structure: Named library → live builders → scan prototype and desk → suggest → wait for Yes
+    components: [button, tag, icon-button, count]
+    states: [match, drift, named-exception]
+    permissions: all
+    content_terms: []
+    variants: []
+    exceptions:
+      - Desk .status pills until status colour ships
+      - Figma extract waits
+      - Storybook and visual CI wait
+    accessibility: The check does not replace axe. Focus is a 2px black edge.
+    implementation_refs:
+      - astral-ui.js
+      - data/design-systems.json
+      - .cursor/skills/ux-patterns/scripts/check-library.mjs
+      - .cursor/skills/ux-patterns/references/library-check.md
+    evidence:
+      - Methods brief. Skills Back used an Icon button scale. Card stacks had no gap.
+    maturity: emerging
+    health: healthy
+    last_reviewed: "2026-09-18"
+    decision_refs:
+      - UXDR-2026-09-18-library-check

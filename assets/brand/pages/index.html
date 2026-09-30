@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>IMSERV presentation pages</title>
+    <link rel="stylesheet" href="pages.css" />
+  </head>
+  <body>
+    <div class="chrome">
+      <aside class="rail">
+        <h1>Presentation pages</h1>
+        <p>
+          Recipes from the IMSERV Brand Book. 1920 × 1080. Type over a line, then
+          Present or Print this page. Official PowerPoint still lives on Figma and Brand Hub.
+        </p>
+        <div class="tools">
+          <label>
+            Skin
+            <select id="skin"></select>
+          </label>
+          <button type="button" id="present">Present</button>
+          <button type="button" id="print">Print this page</button>
+        </div>
+        <p id="hint" class="hint"></p>
+        <div id="rail-list" class="rail-list"></div>
+      </aside>
+      <main class="stage-wrap" id="stage-wrap">
+        <div class="stage" id="stage">
+          <article class="slide" id="slide"></article>
+        </div>
+      </main>
+    </div>
+    <script src="pages.js"></script>
+  </body>
+</html>

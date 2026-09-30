@@ -3,3 +3,6 @@
 .env.*
 *.log
 .staticrypt.json
+node_modules/
+.venv/
+share-dist/

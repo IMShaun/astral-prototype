@@ -7,6 +7,18 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="is-share"><script>window.WORK_DESK_SHARE=true;</script>
+    <script>
+      // Shift and click Library three times on the preview bar to open the Work Desk in this tab.
+      try {
+        if (sessionStorage.getItem("astral-work-desk") === "1") {
+          window.WORK_DESK_SHARE = false;
+          document.body.classList.remove("is-share");
+          document.title = "Work Desk";
+        }
+      } catch (err) {
+        /* No session storage. Stay on the prototype. */
+      }
+    </script>
     <header class="nav">
       <div class="nav-brand">
         <p class="kicker">Morning board</p>

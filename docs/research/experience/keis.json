@@ -1,0 +1,127 @@
+{
+  "updated": "",
+  "keis": [],
+  "how": [
+    {
+      "id": "effectiveness",
+      "name": "Effectiveness",
+      "family": "Facility",
+      "kind": "Behavioral",
+      "lead": "Leading",
+      "body": "Task success. Can they finish the job. A drop here can show later churn."
+    },
+    {
+      "id": "ease",
+      "name": "Ease",
+      "family": "Facility",
+      "kind": "Attitudinal",
+      "lead": "Leading",
+      "body": "How easy the work feels. Customer Effort sits here. Low effort tends to hold people."
+    },
+    {
+      "id": "efficiency",
+      "name": "Efficiency",
+      "family": "Facility",
+      "kind": "Behavioral",
+      "lead": "Leading",
+      "body": "Time, steps, rework, or assists. Use the median so one slow attempt does not skew it."
+    },
+    {
+      "id": "confidence",
+      "name": "Confidence",
+      "family": "Facility",
+      "kind": "Attitudinal",
+      "lead": "Leading",
+      "body": "Do they understand and feel safe proceeding. Rechecking and hesitation sit here."
+    },
+    {
+      "id": "usefulness",
+      "name": "Usefulness",
+      "family": "Engagement",
+      "kind": "Attitudinal",
+      "lead": "Leading",
+      "body": "Does it meet the need. A feature they ignore is a later churn risk."
+    },
+    {
+      "id": "satisfaction",
+      "name": "Satisfaction",
+      "family": "Satisfaction",
+      "kind": "Attitudinal",
+      "lead": "Leading",
+      "body": "How they feel after the work. CSAT and SUS sit here. Company NPS stays too broad for one feature."
+    },
+    {
+      "id": "engagement",
+      "name": "Engagement",
+      "family": "Engagement",
+      "kind": "Behavioral",
+      "lead": "Both",
+      "body": "How often they come back and what they use. Adoption and stickiness are leading. Retention and churn are lagging."
+    },
+    {
+      "id": "operational",
+      "name": "Operational",
+      "family": "Operational",
+      "kind": "Operational",
+      "lead": "Leading",
+      "body": "Errors, tickets, and wait. High friction here drives churn. Track this with logs and support, not gut feel."
+    },
+    {
+      "id": "accessibility",
+      "name": "Accessibility",
+      "family": "Constraint",
+      "kind": "Constraint",
+      "lead": "Leading",
+      "body": "Can they use it. Failures block the work. A high average cannot cancel them."
+    }
+  ],
+  "structure": [
+    {
+      "id": "product",
+      "name": "Product-wide",
+      "body": "A small set for the whole product. Adoption, retention, CSAT or SUS, and help volume sit here."
+    },
+    {
+      "id": "area",
+      "name": "Area",
+      "body": "Each product surface gets its own KEIs. Portfolio, Alerts, Queries, Reports, Users, and Finance. Do not invent an area the product does not have."
+    },
+    {
+      "id": "primary",
+      "name": "Primary",
+      "body": "One headline per area. Task success is the usual thermometer."
+    },
+    {
+      "id": "diagnostic",
+      "name": "Diagnostic",
+      "body": "Two to four supporting scores. Time, effort, errors, or abandon, to explain the headline."
+    }
+  ],
+  "cuts": [
+    {
+      "id": "area",
+      "name": "Product area",
+      "body": "Portfolio, Alerts, Queries, Reports, Users, or Finance. Alerts and Queries cover faults. Meters sit in Portfolio."
+    },
+    {
+      "id": "task",
+      "name": "Journey or task",
+      "body": "A named flow inside that area. Success and time are per task, not a blended average."
+    },
+    {
+      "id": "test",
+      "name": "Test type",
+      "body": "Lab, live use, survey, or support. Do not mix them in one score."
+    },
+    {
+      "id": "role",
+      "name": "User role",
+      "body": "A named group from User groups. Do not invent a hat."
+    },
+    {
+      "id": "time",
+      "name": "Time",
+      "body": "A window with a sample. A wide band means wait for more data."
+    }
+  ]
+}

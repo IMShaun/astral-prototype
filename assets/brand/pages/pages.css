@@ -1,0 +1,426 @@
+@font-face {
+  font-family: Roobert;
+  src: url("/assets/fonts/Roobert-Medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Roobert;
+  src: url("/assets/fonts/Roobert-SemiBold.otf") format("opentype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --cyan: #03f4e8;
+  --grey-a: #efefef;
+  --grey-b: #dfdfdf;
+  --grey-c: #737373;
+  --black: #000000;
+  --white: #ffffff;
+  --font: "Roobert", Aptos, "Segoe UI", sans-serif;
+  --inset: 40px;
+  --gutter: 40px;
+  --grid: 128px;
+  --slide-w: 1920px;
+  --slide-h: 1080px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: var(--font);
+  font-weight: 500;
+  background: var(--grey-a);
+  color: var(--black);
+}
+
+button,
+select {
+  font: inherit;
+}
+
+.chrome {
+  display: grid;
+  grid-template-columns: minmax(16rem, 20rem) 1fr;
+  min-height: 100vh;
+}
+
+.rail {
+  padding: 16px;
+  background: var(--white);
+  border-right: 1px solid var(--grey-b);
+}
+
+.rail h1 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.rail p,
+.hint {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--grey-c);
+  max-width: 40ch;
+}
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.tools button,
+.tools select {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--grey-b);
+  background: var(--white);
+  color: var(--black);
+  cursor: pointer;
+}
+
+.tools button:focus,
+.tools select:focus,
+.rail button:focus {
+  outline: 2px solid var(--black);
+  outline-offset: 2px;
+}
+
+.tools .is-on {
+  background: var(--black);
+  color: var(--white);
+  border-color: var(--black);
+}
+
+.rail-list {
+  display: grid;
+  gap: 16px;
+}
+
+.rail-list h2 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rail-list button {
+  display: block;
+  width: 100%;
+  margin: 0 0 4px;
+  padding: 8px 10px;
+  text-align: left;
+  border: 1px solid var(--grey-b);
+  background: var(--white);
+  cursor: pointer;
+}
+
+.rail-list button.is-on {
+  background: var(--black);
+  color: var(--white);
+  border-color: var(--black);
+}
+
+.stage-wrap {
+  padding: 16px;
+  overflow: auto;
+}
+
+.stage {
+  width: var(--slide-w);
+  height: var(--slide-h);
+  transform-origin: top left;
+}
+
+.slide {
+  position: relative;
+  width: var(--slide-w);
+  height: var(--slide-h);
+  overflow: hidden;
+  background: var(--white);
+  color: var(--black);
+}
+
+.slide [contenteditable="true"] {
+  outline: none;
+}
+
+.slide [contenteditable="true"]:focus {
+  outline: 2px solid var(--black);
+  outline-offset: 2px;
+}
+
+.skin-ink,
+.skin-photo {
+  background: var(--black);
+  color: var(--white);
+}
+
+.skin-cyan {
+  background: var(--cyan);
+  color: var(--black);
+}
+
+.skin-paper {
+  background: var(--white);
+  color: var(--black);
+}
+
+.slide-photo,
+.slide-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.slide-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.slide-grid {
+  background-image: repeating-linear-gradient(
+      to right,
+      rgba(3, 244, 232, 0.35) 0 1px,
+      transparent 1px var(--grid)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(3, 244, 232, 0.35) 0 1px,
+      transparent 1px var(--grid)
+    );
+}
+
+.skin-cyan .slide-grid {
+  background-image: repeating-linear-gradient(
+      to right,
+      rgba(0, 0, 0, 0.2) 0 1px,
+      transparent 1px var(--grid)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.2) 0 1px,
+      transparent 1px var(--grid)
+    );
+}
+
+.slide-field {
+  position: absolute;
+  inset: 0;
+  background: var(--black) url("../graphics/arrows.svg") center / cover;
+  pointer-events: none;
+}
+
+.skin-cyan .slide-field {
+  background-color: var(--cyan);
+}
+
+.skin-paper .slide-field {
+  background-color: var(--white);
+}
+
+.wordmark,
+.mark {
+  position: absolute;
+  display: block;
+  object-fit: contain;
+}
+
+.wordmark {
+  top: 40px;
+  left: 40px;
+  width: 158px;
+  height: 27px;
+}
+
+.wordmark.is-mid {
+  top: 530px;
+}
+
+.mark {
+  top: 958px;
+  left: 1798px;
+  width: 82px;
+  height: 82px;
+}
+
+.skin-photo .wordmark,
+.skin-photo .mark,
+.skin-ink .wordmark,
+.skin-ink .mark {
+  mix-blend-mode: screen;
+}
+
+.t-cover,
+.t-page,
+.t-kicker,
+.t-body,
+.t-label,
+.t-stat,
+.t-divider {
+  position: absolute;
+  margin: 0;
+  font-weight: 500;
+}
+
+.t-cover {
+  top: 393px;
+  left: 40px;
+  width: 658px;
+  font-size: 80px;
+  line-height: 98px;
+}
+
+.t-page {
+  top: 40px;
+  left: 40px;
+  width: 900px;
+  font-size: 60px;
+  line-height: 72px;
+}
+
+.t-kicker {
+  top: 956px;
+  left: 40px;
+  width: 207px;
+  font-size: 24px;
+  line-height: 28px;
+}
+
+.t-divider {
+  top: 470px;
+  left: 980px;
+  width: 487px;
+  font-size: 48px;
+  line-height: 70px;
+}
+
+.t-label {
+  font-size: 20px;
+  line-height: 24px;
+}
+
+.t-body {
+  font-size: 20px;
+  line-height: 24px;
+}
+
+.t-stat {
+  font-size: 180px;
+  line-height: 200px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  background: var(--cyan);
+}
+
+.skin-cyan .dot,
+.skin-paper .dot {
+  background: var(--black);
+}
+
+.panel {
+  position: absolute;
+  background: var(--black);
+  color: var(--white);
+}
+
+.skin-ink .panel {
+  background: var(--white);
+  color: var(--black);
+}
+
+.card {
+  position: absolute;
+  padding: 20px;
+  background: var(--grey-a);
+}
+
+.skin-ink .card {
+  background: #111;
+}
+
+.skin-cyan .card {
+  background: var(--white);
+}
+
+.rule {
+  position: absolute;
+  left: 40px;
+  width: 1840px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.35;
+}
+
+body.is-present .chrome {
+  display: block;
+}
+
+body.is-present .rail {
+  display: none;
+}
+
+body.is-present .stage-wrap {
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--black);
+}
+
+body.is-present .stage {
+  transform: none !important;
+}
+
+@media print {
+  @page {
+    size: 13.333in 7.5in;
+    margin: 0;
+  }
+
+  html,
+  body {
+    background: white;
+  }
+
+  .chrome {
+    display: block;
+  }
+
+  .rail {
+    display: none !important;
+  }
+
+  .stage-wrap {
+    padding: 0;
+    overflow: visible;
+  }
+
+  .stage {
+    transform: none !important;
+    width: 13.333in;
+    height: 7.5in;
+  }
+
+  .slide {
+    width: 13.333in;
+    height: 7.5in;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
