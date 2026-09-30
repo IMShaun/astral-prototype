@@ -12991,3 +12991,25 @@ html.is-classic-scroll #astral-fs .is-scroll-near {
     animation: none;
   }
 }
+
+/* Report type cards: a count per type that filters the list below. */
+.astral-report-type-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-16);
+}
+
+.astral-report-type-stat {
+  gap: var(--space-4);
+  padding: var(--space-16);
+  transition: border-color var(--motion-panel) ease, box-shadow var(--motion-panel) ease, background-color var(--motion-panel) ease;
+}
+
+.astral-report-type-stat.is-on {
+  border-color: var(--color-action-primary);
+  box-shadow: inset 0 0 0 1px var(--color-action-primary);
+}
+
+.astral-report-type-stat.is-on .astral-stat-value {
+  color: var(--color-action-primary);
+}

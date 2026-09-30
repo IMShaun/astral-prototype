@@ -22080,6 +22080,34 @@ function protoReportTable(tab, defs) {
   `;
 }
 
+function protoReportTypeIds(tab = protoReportSheetTab()) {
+  return (protoReportFilterGroups(tab).find((group) => group.id === "type")?.items || []).map((item) => item.id);
+}
+
+// One card per report type, with how many there are. A card sets the Type filter, so the menu and pills stay in step.
+function protoReportTypeCards(tab, defs) {
+  if (tab !== "reports") return "";
+  const types = protoReportFilterGroups(tab).find((group) => group.id === "type")?.items || [];
+  const picked = protoReportFilterIds(null, tab);
+  const cards = types
+    .map((item) => ({ ...item, n: defs.filter((def) => protoReportFacet(def, "type").includes(item.id)).length }))
+    .filter((item) => item.n);
+  if (cards.length < 2) return "";
+  const on = cards.map((item) => item.id).filter((id) => picked.includes(id));
+  const card = (id, n, name, pressed) => `
+    <button type="button" class="astral-stat astral-report-type-stat${pressed ? " is-on" : ""}" aria-pressed="${pressed}" data-proto-report-type-card="${escapeHtml(id)}">
+      <span class="astral-stat-value">${n}</span>
+      <span>${escapeHtml(name)}</span>
+    </button>
+  `;
+  return `
+    <div class="astral-report-type-stats" role="group" aria-label="Show reports by type">
+      ${card("all", defs.length, "All reports", !on.length)}
+      ${cards.map((item) => card(item.id, item.n, item.name, on.includes(item.id))).join("")}
+    </div>
+  `;
+}
+
 function protoReportsSheet(active, defs, empty) {
   const tab = active === PROTO_ALERT_RULES_VIEW ? "alerts" : "reports";
   const cardTabs = tab === "alerts" ? protoAlertsCardTabs(active) : protoReportsCardTabs(active);
@@ -22108,7 +22136,7 @@ function protoReportsSheet(active, defs, empty) {
         }</div>`;
   return astralShell(`
     ${top}
-    <section class="astral-card astral-reports-sheet is-${layout}">${cardTabs}${protoReportTools(tab)}${body}</section>
+    <section class="astral-card astral-reports-sheet is-${layout}">${cardTabs}${protoReportTypeCards(tab, defs)}${protoReportTools(tab)}${body}</section>
   `);
 }
 
@@ -29366,6 +29394,18 @@ function onPrototype(event) {
         ? "#astral-fs [data-proto-download-filter='toggle']"
         : `#astral-fs [data-proto-download-filter="${CSS.escape(act)}"]`
     );
+    return;
+  }
+  const reportTypeCard = event.target.closest("[data-proto-report-type-card]");
+  if (reportTypeCard) {
+    const id = reportTypeCard.dataset.protoReportTypeCard;
+    const types = new Set(protoReportTypeIds());
+    const cur = protoReportFilterIds();
+    const rest = cur.filter((item) => !types.has(item));
+    const onTypes = cur.filter((item) => types.has(item));
+    const next = id === "all" || (onTypes.length === 1 && onTypes[0] === id) ? rest : [...rest, id];
+    setProto({ prototypeReportFilters: protoReportFilterIds(next), prototypeReportFilterOpen: false });
+    protoRestoreFocus(`#astral-fs [data-proto-report-type-card="${CSS.escape(next.includes(id) || id === "all" ? id : "all")}"]`);
     return;
   }
   const reportFilterBtn = event.target.closest("[data-proto-report-filter], [data-proto-report-filter-all]");
