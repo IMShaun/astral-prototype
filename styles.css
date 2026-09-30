@@ -12587,6 +12587,16 @@ button.astral-state:focus-visible,
   text-decoration-thickness: 2px;
   text-underline-offset: 4px;
   font-variant-numeric: tabular-nums;
+  padding: 1px 4px 3px;
+  margin-inline: -4px;
+  border-radius: 4px;
+  background: var(--color-status-warning-subtle);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.astral-est-sample {
+  margin-inline: 0;
 }
 
 .astral-reading-est {
