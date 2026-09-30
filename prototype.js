@@ -689,6 +689,7 @@ function protoPageFilterReset() {
     prototypeMeterAttrTab: "",
     prototypeMeterUpload: null,
     prototypeBreakdownOpen: false,
+    prototypeMeterBreakdownOpen: false,
     prototypeListOpen: false,
     prototypeChartPoint: null,
     prototypeChartView: "total",
@@ -19591,7 +19592,17 @@ function protoGroupDetail(group) {
           ? `<p class="astral-banner">No reading in ${missing} intervals. That is missing data, not zero use.</p>`
           : ""
       }
-      ${protoPaneBreakdown({ tracks: siteTracks, points, meters: viewMeters, dual, by: "site" })}
+      ${protoPaneBreakdown({ tracks: siteTracks, points, meters: viewMeters, dual, by: "site", name: "Site breakdown" })}
+      ${
+        viewMeters.length && !protoConsumptionUnitsMixed(viewMeters)
+          ? protoMeterCompareTable(viewMeters, paneSites.flatMap((site) => site.meters || []), {
+              chart: protoPaneChartLabel(false),
+              site: true,
+              fold: "meters",
+              name: `${protoBelowSiteHeading(1)} breakdown`,
+            })
+          : ""
+      }
       ${rows ? protoPaneListTable(["Site", protoBelowSiteHeading(2), "State"], rows, "Sites") : ""}
           `
   );
@@ -20223,16 +20234,18 @@ function protoQualityWord(quality, value) {
 
 const PROTO_BREAKDOWN_ROW = 45;
 const PROTO_BREAKDOWN_OVERSCAN = 8;
-let protoBreakdownCache = null;
+// One cache per Breakdown table, keyed by its fold, so a group can show sites and meter points.
+let protoBreakdownCaches = {};
 let protoBreakdownPaintQueued = false;
 
 function protoBreakdownOpen() {
   return Boolean(store.prototypeBreakdownOpen);
 }
 
-// The pane body can hold two folds: the list (Sites, Groups, Meter points) and the interval Breakdown.
+// The pane body can hold the interval Breakdown, a Meter point breakdown on a group, and the list (Sites, Groups, Meter points).
 const PROTO_BREAKDOWN_FOLDS = {
-  toggle: { field: "prototypeBreakdownOpen", id: "astral-breakdown-panel" },
+  toggle: { field: "prototypeBreakdownOpen", id: "astral-breakdown-panel", rows: true },
+  meters: { field: "prototypeMeterBreakdownOpen", id: "astral-meter-breakdown-panel", rows: true },
   list: { field: "prototypeListOpen", id: "astral-list-panel" },
 };
 
@@ -20403,8 +20416,7 @@ function protoIntervalRowHtml(point, dual, chart, sliceCols) {
   `;
 }
 
-function protoBreakdownClip() {
-  const tbody = document.querySelector("#astral-fs [data-proto-breakdown-rows]");
+function protoBreakdownClip(tbody) {
   const pane = tbody?.closest(".astral-pane-body");
   const stage = tbody?.closest(".astral-stage");
   const a = pane?.getBoundingClientRect();
@@ -20418,11 +20430,16 @@ function protoBreakdownClip() {
 }
 
 function protoPaintBreakdown() {
-  const tbody = document.querySelector("#astral-fs [data-proto-breakdown-rows]");
-  const clip = protoBreakdownClip();
-  if (!tbody || !clip || !protoBreakdownCache) return;
-  const { points, dual, chart, sliceCols = [], rowHtml } = protoBreakdownCache;
-  const cols = protoBreakdownCache.cols || (sliceCols.length ? 2 : 3);
+  document.querySelectorAll("#astral-fs [data-proto-breakdown-rows]").forEach(protoPaintBreakdownRows);
+}
+
+function protoPaintBreakdownRows(tbody) {
+  const cache = protoBreakdownCaches[tbody?.dataset.protoBreakdownRows || "toggle"];
+  const clip = protoBreakdownClip(tbody);
+  if (!tbody || !clip || !cache) return;
+  if (tbody.closest("[inert]")) return;
+  const { points, dual, chart, sliceCols = [], rowHtml } = cache;
+  const cols = cache.cols || (sliceCols.length ? 2 : 3);
   const paintRow = rowHtml || ((point) => protoIntervalRowHtml(point, dual, chart, sliceCols));
   const row = PROTO_BREAKDOWN_ROW;
   const offset = clip.top - tbody.getBoundingClientRect().top;
@@ -20476,8 +20493,11 @@ function protoBindBreakdown() {
   if (!tbody) return;
   protoPaintBreakdown();
   requestAnimationFrame(() => protoPaintBreakdown());
-  if (tbody.dataset.protoBound === "1") return;
-  tbody.dataset.protoBound = "1";
+  const scrollers = [tbody.closest(".astral-pane-body"), tbody.closest(".astral-stage")].filter(
+    (el) => el && el.dataset.protoBreakdownBound !== "1"
+  );
+  if (!scrollers.length) return;
+  scrollers.forEach((el) => (el.dataset.protoBreakdownBound = "1"));
   const onScroll = () => {
     if (protoBreakdownPaintQueued) return;
     protoBreakdownPaintQueued = true;
@@ -20486,14 +20506,12 @@ function protoBindBreakdown() {
       protoPaintBreakdown();
     });
   };
-  [tbody.closest(".astral-pane-body"), tbody.closest(".astral-stage")]
-    .filter(Boolean)
-    .forEach((el) => el.addEventListener("scroll", onScroll, { passive: true }));
+  scrollers.forEach((el) => el.addEventListener("scroll", onScroll, { passive: true }));
 }
 
 // Horizontal paging for a wide Breakdown. Steps land on whole column heads, so a click never
 // leaves a column cut in half behind the sticky Time column.
-let protoBreakdownScrollMemo = { key: "", left: 0 };
+let protoBreakdownScrollMemo = {};
 
 // Filters keep the columns in view. A new place in the tree starts back at the first column.
 function protoBreakdownScrollKey(wrap) {
@@ -20506,8 +20524,7 @@ function protoBreakdownScrollKey(wrap) {
   ].join("|");
 }
 
-function protoBreakdownNavParts() {
-  const wrap = document.querySelector("#astral-fs .astral-breakdown-scroll");
+function protoBreakdownNavParts(wrap) {
   const bar = wrap?.parentElement?.querySelector("[data-proto-breakdown-nav]");
   const table = wrap?.querySelector("table");
   const row = table?.querySelector("tbody tr[data-proto-hit]") || table?.tHead?.rows[0];
@@ -20517,14 +20534,25 @@ function protoBreakdownNavParts() {
   return { wrap, bar, sticky, heads: cells.slice(1) };
 }
 
-function protoBreakdownNavSync() {
-  const parts = protoBreakdownNavParts();
+function protoBreakdownWraps() {
+  return [...document.querySelectorAll("#astral-fs .astral-breakdown-scroll")];
+}
+
+function protoBreakdownNavSync(one) {
+  (one ? [one] : protoBreakdownWraps()).forEach(protoBreakdownNavSyncWrap);
+}
+
+function protoBreakdownNavSyncWrap(el) {
+  const parts = protoBreakdownNavParts(el);
   if (!parts) return;
   const { wrap, bar, sticky, heads } = parts;
   const max = wrap.scrollWidth - wrap.clientWidth;
   const wide = max > 1;
   bar.hidden = !wide;
-  protoBreakdownScrollMemo = { key: protoBreakdownScrollKey(wrap), left: wrap.scrollLeft };
+  protoBreakdownScrollMemo[wrap.getAttribute("aria-label") || ""] = {
+    key: protoBreakdownScrollKey(wrap),
+    left: wrap.scrollLeft,
+  };
   if (!wide) return;
   const from = wrap.scrollLeft + sticky - 1;
   const to = wrap.scrollLeft + wrap.clientWidth + 1;
@@ -20542,8 +20570,8 @@ function protoBreakdownNavSync() {
   if (next) next.disabled = wrap.scrollLeft >= max - 1;
 }
 
-function protoBreakdownPage(dir) {
-  const parts = protoBreakdownNavParts();
+function protoBreakdownPage(dir, btn) {
+  const parts = protoBreakdownNavParts(btn?.closest(".astral-breakdown-body")?.querySelector(".astral-breakdown-scroll"));
   if (!parts) return;
   const { wrap, sticky, heads } = parts;
   const view = wrap.clientWidth - sticky;
@@ -20569,14 +20597,19 @@ function protoBreakdownPage(dir) {
 }
 
 function protoBindBreakdownNav() {
-  const parts = protoBreakdownNavParts();
+  protoBreakdownWraps().forEach(protoBindBreakdownNavWrap);
+}
+
+function protoBindBreakdownNavWrap(el) {
+  const parts = protoBreakdownNavParts(el);
   if (!parts) return;
   const { wrap } = parts;
-  if (protoBreakdownScrollMemo.key && protoBreakdownScrollMemo.key === protoBreakdownScrollKey(wrap)) {
-    wrap.scrollLeft = protoBreakdownScrollMemo.left;
+  const memo = protoBreakdownScrollMemo[wrap.getAttribute("aria-label") || ""];
+  if (memo?.key && memo.key === protoBreakdownScrollKey(wrap)) {
+    wrap.scrollLeft = memo.left;
   }
-  protoBreakdownNavSync();
-  requestAnimationFrame(protoBreakdownNavSync);
+  protoBreakdownNavSync(wrap);
+  requestAnimationFrame(() => protoBreakdownNavSync(wrap));
   if (wrap.dataset.protoNavBound === "1") return;
   wrap.dataset.protoNavBound = "1";
   let queued = false;
@@ -20587,14 +20620,14 @@ function protoBindBreakdownNav() {
       queued = true;
       requestAnimationFrame(() => {
         queued = false;
-        protoBreakdownNavSync();
+        protoBreakdownNavSync(wrap);
       });
     },
     { passive: true }
   );
   if (!protoBindBreakdownNav.resize) {
     protoBindBreakdownNav.resize = true;
-    window.addEventListener("resize", () => requestAnimationFrame(protoBreakdownNavSync));
+    window.addEventListener("resize", () => requestAnimationFrame(() => protoBreakdownNavSync()));
   }
 }
 
@@ -20618,7 +20651,7 @@ function protoToggleBreakdown(btn) {
       panel.removeAttribute("inert");
       panel.setAttribute("aria-hidden", "false");
     }
-    if (kind === "toggle") {
+    if (fold.rows) {
       protoBindBreakdown();
       protoBindBreakdownNav();
     }
@@ -20638,12 +20671,13 @@ function protoToggleBreakdown(btn) {
   btn.focus();
 }
 
-function protoBreakdownPanel(inner) {
+function protoBreakdownPanel(inner, fold = "toggle", name = "Breakdown") {
+  const spec = PROTO_BREAKDOWN_FOLDS[fold] || PROTO_BREAKDOWN_FOLDS.toggle;
   return protoAccordion({
-    id: "astral-breakdown-panel",
-    open: protoBreakdownOpen(),
-    name: "Breakdown",
-    attr: 'data-proto-breakdown="toggle"',
+    id: spec.id,
+    open: Boolean(store[spec.field]),
+    name,
+    attr: `data-proto-breakdown="${fold}"`,
     modifier: "astral-breakdown",
     clipClass: "astral-breakdown-clip",
     inner,
@@ -20673,7 +20707,7 @@ function protoPaneListTable(headers, rows, name = "Breakdown") {
 
 function protoIntervalTable(points, dual) {
   const sliceCols = protoBreakdownSliceCols();
-  protoBreakdownCache = {
+  protoBreakdownCaches.toggle = {
     points: points || [],
     dual: Boolean(dual),
     chart: protoPaneChartLabel(Boolean(dual)),
@@ -20785,19 +20819,21 @@ function protoTotalBreakdownTracks(points, meters, dual) {
 }
 
 // The Breakdown follows the graph: Total gives its total (or In and Out), Individual gives a column per series.
-function protoPaneBreakdown({ tracks, points, meters, dual, by }) {
+function protoPaneBreakdown({ tracks, points, meters, dual, by, name }) {
   const list = meters || [];
   if (!list.length || protoConsumptionUnitsMixed(list)) return "";
   if (protoChartIsIndividual()) {
     return protoTrackBreakdownTable(protoScaleTracks(tracks, list), {
       chart: protoPaneChartLabel(false),
       by,
+      name,
       note: by === protoBelowSiteNoun(1) ? (track, unit) => unit : protoBreakdownCountNote,
     });
   }
   return protoTrackBreakdownTable(protoTotalBreakdownTracks(protoScalePoints(points, list), list, dual), {
     chart: protoPaneChartLabel(Boolean(dual)),
     by: "total",
+    name,
     note: protoBreakdownCountNote,
     totals: false,
   });
@@ -20848,7 +20884,8 @@ function protoTrackBreakdownTable(tracks, options = {}) {
     )}</th>${cells}${sums}</tr>`;
   };
   const cols = 1 + tracks.length + totals.length;
-  protoBreakdownCache = { points: rows, chart, cols, rowHtml };
+  const fold = options.fold || "toggle";
+  protoBreakdownCaches[fold] = { points: rows, chart, cols, rowHtml };
   const span = "";
   const meterHeads = tracks
     .map((track) => {
@@ -20899,7 +20936,7 @@ function protoTrackBreakdownTable(tracks, options = {}) {
             ${totalHeads}
           </tr>
         </thead>
-        <tbody data-proto-breakdown-rows></tbody>
+        <tbody data-proto-breakdown-rows="${fold}"></tbody>
         ${protoBreakdownStateFoot(
           tracks.map((track) => track.points || []),
           sliceCols,
@@ -20908,7 +20945,7 @@ function protoTrackBreakdownTable(tracks, options = {}) {
         )}
       </table>
     </div>
-  `);
+  `, fold, options.name || "Breakdown");
 }
 
 function protoMeterRatePence(meter) {
@@ -27226,7 +27263,7 @@ function onPrototype(event) {
   }
   const breakdownPage = event.target.closest("[data-proto-breakdown-page]");
   if (breakdownPage) {
-    if (!breakdownPage.disabled) protoBreakdownPage(breakdownPage.dataset.protoBreakdownPage);
+    if (!breakdownPage.disabled) protoBreakdownPage(breakdownPage.dataset.protoBreakdownPage, breakdownPage);
     return;
   }
   const breakdownBtn = event.target.closest("[data-proto-breakdown]");
