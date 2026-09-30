@@ -10686,10 +10686,48 @@ tr.is-off .astral-person-mark {
 
 .astral-report-file-preview {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   padding: 16px;
   border: 1px solid var(--color-border-default);
   border-radius: 12px;
+}
+
+.astral-report-file-now {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.astral-report-file-default {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border-default);
+}
+
+.astral-report-file-default:focus {
+  outline: none;
+}
+
+.astral-report-file-default .astral-actions {
+  gap: 16px;
+}
+
+.astral-report-file-is-default {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.astral-report-file-is-default svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
 }
 
 .astral-report-file-label {

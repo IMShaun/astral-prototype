@@ -8277,18 +8277,21 @@ function protoReportNewTab() {
 }
 
 const PROTO_REPORT_FILE_PREFIXES = [
-  { id: "none", name: "None" },
+  { id: "none", name: "Nothing" },
   { id: "name", name: "Report name" },
-  { id: "user", name: "Username" },
-  { id: "custom", name: "Custom", note: "Type your own" },
+  { id: "user", name: "Your username" },
+  { id: "custom", name: "Your own text" },
 ];
 
 const PROTO_REPORT_FILE_SUFFIXES = [
-  { id: "none", name: "None" },
-  { id: "run", name: "Date and time it sends" },
-  { id: "start", name: "Date and time the data starts" },
-  { id: "end", name: "Date and time the data ends" },
+  { id: "none", name: "Nothing" },
+  { id: "run", name: "When it sends" },
+  { id: "start", name: "When the data starts" },
+  { id: "end", name: "When the data ends" },
 ];
+
+// The naming every new report starts with until someone saves their own.
+const PROTO_REPORT_FILE_BASE = { filePrefix: "none", fileStart: "", fileSuffix: "none", fileDate: "iso", fileSep: "_" };
 
 const PROTO_REPORT_FILE_DATES = [
   { id: "iso", name: "2026-09-07", note: "Year, month, day. Sorts in order." },
@@ -9492,7 +9495,7 @@ function protoReportNewDraft(type, templateId = "") {
   const base = protoTemplateApply({ type, people: ["me"], template: templateId, sendDay: 1, sendDate: 1 }, tpl);
   if (templateId && tpl) base.step = protoTemplateStepOf(tpl);
   const def = protoReportNormalize(base);
-  const draft = { ...protoReportDraftFrom(def), name: "" };
+  const draft = { ...protoReportDraftFrom(def), ...protoReportFileDefault(), name: "" };
   if (type === "billing") draft.tenants = [protoReportBlankTenant()];
   return draft;
 }
@@ -11218,7 +11221,7 @@ function protoReportFilePreviewInner(draft) {
   const next = protoReportNextSend(def);
   const later = !protoReportOnce(def) && next ? protoReportStepDate(next, def.period) : null;
   return `
-    <span class="astral-report-file-label">Preview</span>
+    <span class="astral-report-file-label">Files are called</span>
     <p class="astral-report-file-name">${protoIconMark("report")}<span>${escapeHtml(protoReportFileName(raw))}</span></p>
     ${
       later
@@ -11242,28 +11245,81 @@ function protoReportFileFields(draft) {
   const suffixes = PROTO_REPORT_FILE_SUFFIXES.map((item) =>
     item.id === "none" ? item : { ...item, note: protoReportFileSuffixText({ ...def, fileSuffix: item.id }, when) }
   );
+  const core = protoReportFileSlug(protoReportType(def.type).short, def.fileSep);
   const rules = [
+    `The report type, ${core}, always sits in the middle.`,
     ...(def.fileSuffix === "none" ? [] : [`Times use the 24-hour clock in ${protoReportZone(def)}.`]),
     def.fileSep === " " ? "Other symbols drop out." : "Spaces become hyphens. Other symbols drop out.",
   ];
   return `
+    <div class="astral-report-file-preview">
+      <div class="astral-report-file-now" role="status" data-proto-report-file-preview>${protoReportFilePreviewInner(draft)}</div>
+      <div class="astral-report-file-default" tabindex="-1" data-proto-report-file-default>${protoReportFileDefaultInner(draft)}</div>
+    </div>
     <div class="astral-report-pair">
-      ${protoReportOptionSelect("report-file-prefix", "File prefix", prefixes, prefix)}
+      ${protoReportOptionSelect("report-file-prefix", "Start with", prefixes, prefix)}
       ${
         prefix === "custom"
-          ? protoReportInput("Custom prefix", "fileStart", draft.fileStart, `placeholder="${escapeHtml(note("name"))}" spellcheck="false" maxlength="60"`)
+          ? protoReportInput("Your text", "fileStart", draft.fileStart, `placeholder="${escapeHtml(note("name"))}" spellcheck="false" maxlength="60"`)
           : ""
       }
     </div>
     <div class="astral-report-pair">
-      ${protoReportOptionSelect("report-file-suffix", "File suffix", suffixes, def.fileSuffix)}
+      ${protoReportOptionSelect("report-file-suffix", "End with", suffixes, def.fileSuffix)}
       ${def.fileSuffix === "none" ? "" : protoReportOptionSelect("report-file-date", "Date format", PROTO_REPORT_FILE_DATES, def.fileDate)}
     </div>
     <div class="astral-report-pair">
-      ${protoReportOptionSelect("report-file-sep", "Separator", PROTO_REPORT_FILE_SEPS, def.fileSep)}
+      ${protoReportOptionSelect("report-file-sep", "Join parts with", PROTO_REPORT_FILE_SEPS, def.fileSep)}
     </div>
     <p class="astral-muted">${escapeHtml(rules.join(" "))}</p>
-    <div class="astral-report-file-preview" role="status" data-proto-report-file-preview>${protoReportFilePreviewInner(draft)}</div>
+  `;
+}
+
+function protoReportFileDefaultsKey() {
+  return `${protoReportDefsKey()}:${protoProfileEmail()}`;
+}
+
+function protoReportFileSaved() {
+  const all = store.prototypeReportFileDefaults;
+  const own = all && typeof all === "object" ? all[protoReportFileDefaultsKey()] : null;
+  return own && typeof own === "object" ? own : null;
+}
+
+// The naming each person saved, or the standard one.
+function protoReportFileDefault() {
+  return { ...PROTO_REPORT_FILE_BASE, ...(protoReportFileSaved() || {}) };
+}
+
+function protoReportFileOf(draft) {
+  const def = protoReportNormalize(protoReportDraftFileDef(draft));
+  return {
+    filePrefix: def.filePrefix,
+    fileStart: def.filePrefix === "custom" ? def.fileStart : "",
+    fileSuffix: def.fileSuffix,
+    fileDate: def.fileSuffix === "none" ? "iso" : def.fileDate,
+    fileSep: def.fileSep,
+  };
+}
+
+function protoReportFileIsDefault(draft) {
+  const now = protoReportFileOf(draft);
+  const base = protoReportFileDefault();
+  return Object.keys(PROTO_REPORT_FILE_BASE).every((key) => String(now[key]) === String(base[key]));
+}
+
+function protoReportFileDefaultInner(draft) {
+  const saved = Boolean(protoReportFileSaved());
+  if (protoReportFileIsDefault(draft)) {
+    return `<p class="astral-report-file-is-default">${protoIconMark("check")}<span>${
+      saved ? "This is your default naming. New reports start with it." : "This is the standard naming. New reports start with it."
+    }</span></p>`;
+  }
+  return `
+    <p class="astral-muted">New reports start with ${saved ? "your default naming" : "the standard naming"}.</p>
+    <div class="astral-actions">
+      ${protoTextBtn("Make this my default", 'data-proto-report-file-default="save"')}
+      ${protoTextBtn(saved ? "Use my default" : "Use the standard naming", 'data-proto-report-file-default="use"')}
+    </div>
   `;
 }
 
@@ -11614,6 +11670,10 @@ function protoReportRefreshForm() {
   }
   const fileHost = modal.querySelector("[data-proto-report-file-preview]");
   if (fileHost) fileHost.innerHTML = protoReportFilePreviewInner(draft);
+  const fileDefaultHost = modal.querySelector("[data-proto-report-file-default]");
+  if (fileDefaultHost && !fileDefaultHost.contains(document.activeElement)) {
+    fileDefaultHost.innerHTML = protoReportFileDefaultInner(draft);
+  }
   const consentHost = modal.querySelector("[data-proto-report-consent-host]");
   if (consentHost) {
     const html = protoReportConsentInner(draft);
@@ -27464,6 +27524,24 @@ function onPrototype(event) {
   }
   if (event.target.closest("[data-proto-report-rate-check]")) {
     protoReportSubmit(true);
+    return;
+  }
+  const fileDefaultBtn = event.target.closest("[data-proto-report-file-default] button");
+  if (fileDefaultBtn) {
+    const draft = protoReportDraft();
+    if (!draft) return;
+    if (fileDefaultBtn.dataset.protoReportFileDefault === "save") {
+      setProto({
+        prototypeReportFileDefaults: {
+          ...(store.prototypeReportFileDefaults || {}),
+          [protoReportFileDefaultsKey()]: protoReportFileOf(draft),
+        },
+      });
+      protoRestoreFocus("#astral-fs [data-proto-report-file-default]");
+    } else {
+      protoReportPatchDraft(protoReportFileDefault());
+      protoRestoreFocus('#astral-fs [data-proto-select="report-file-prefix"] .astral-select-btn');
+    }
     return;
   }
   const utilTab = event.target.closest("[data-proto-report-util-tab]");
