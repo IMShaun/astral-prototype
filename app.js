@@ -1193,6 +1193,9 @@ function normalize(data) {
     data.prototypeDownloadQuery = String(data.prototypeDownloadQuery || "").slice(0, 120);
     data.prototypeDownloadFilters = protoDownloadFilterIds(data.prototypeDownloadFilters);
     data.prototypeDownloadFilterOpen = Boolean(data.prototypeDownloadFilterOpen);
+    data.prototypeAlertQuery = String(data.prototypeAlertQuery || "").slice(0, 120);
+    data.prototypeAlertFilters = protoAlertFilterIds(data.prototypeAlertFilters);
+    data.prototypeAlertFilterOpen = Boolean(data.prototypeAlertFilterOpen);
     data.prototypeExportNotice = protoExportNoticeFrom(
       data.prototypeExportNotice,
       data.prototypeDownloads
@@ -3673,6 +3676,9 @@ const CHROME_FIELDS = [
   "prototypeDownloadQuery",
   "prototypeDownloadFilters",
   "prototypeDownloadFilterOpen",
+  "prototypeAlertQuery",
+  "prototypeAlertFilters",
+  "prototypeAlertFilterOpen",
   "prototypeExportNotice",
   "prototypeChartView",
   "prototypeChartStyle",
@@ -4023,6 +4029,9 @@ function applyChrome() {
   store.prototypeDownloadQuery = String(store.prototypeDownloadQuery || "").slice(0, 120);
   store.prototypeDownloadFilters = protoDownloadFilterIds(store.prototypeDownloadFilters);
   store.prototypeDownloadFilterOpen = Boolean(store.prototypeDownloadFilterOpen);
+  store.prototypeAlertQuery = String(store.prototypeAlertQuery || "").slice(0, 120);
+  store.prototypeAlertFilters = protoAlertFilterIds(store.prototypeAlertFilters);
+  store.prototypeAlertFilterOpen = Boolean(store.prototypeAlertFilterOpen);
   store.prototypeExportNotice = protoExportNoticeFrom(
     store.prototypeExportNotice,
     store.prototypeDownloads
