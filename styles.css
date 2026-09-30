@@ -9235,6 +9235,35 @@ button.astral-state {
   text-align: start;
 }
 
+.astral-email-fit,
+.astral-people .astral-person-copy .astral-muted.astral-email-fit {
+  display: flex;
+  overflow: visible;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.astral-email-fit-list {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.astral-email-fit .astral-zone-more {
+  cursor: default;
+}
+
+.astral-email-fit .astral-zone-more.is-empty {
+  display: none;
+}
+
+.astral-email-fit .astral-zone-more:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
+
 .astral-icon-tip.is-list > span {
   display: block;
 }

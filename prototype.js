@@ -10333,6 +10333,7 @@ function protoReportTenantRow(tenant, i) {
     consentKeys: emails.map((email) => `tenant:${email}`),
     name,
     email: emails.join(", ") || "Add their email in Details",
+    emails,
     role: "Tenant",
     initials: protoProfileInitials(name),
     fixed: true,
@@ -10446,6 +10447,46 @@ function protoReportPeopleSearch(pool) {
   `;
 }
 
+// Emails on one line. Those that do not fit go in a +N more pill, and hover lists them.
+function protoEmailFitHtml(emails) {
+  return `<span class="astral-muted astral-email-fit" data-proto-email-fit="${escapeHtml(JSON.stringify(emails))}"><span class="astral-email-fit-list">${escapeHtml(
+    emails.join(", ")
+  )}</span><span class="astral-zone-more astral-tip-host is-empty" tabindex="0"><span class="astral-email-fit-count"></span><span class="astral-icon-tip is-list" role="tooltip"></span></span></span>`;
+}
+
+function protoFitEmails() {
+  document.querySelectorAll("#astral-fs [data-proto-email-fit]").forEach((el) => {
+    let emails = [];
+    try {
+      emails = JSON.parse(el.dataset.protoEmailFit);
+    } catch {
+      return;
+    }
+    const list = el.querySelector(".astral-email-fit-list");
+    const pill = el.querySelector(".astral-zone-more");
+    const count = pill?.querySelector(".astral-email-fit-count");
+    const tip = pill?.querySelector(".astral-icon-tip") || pill?._protoTip;
+    if (!list || !pill || !count) return;
+    for (let n = emails.length; n >= 1; n -= 1) {
+      const rest = emails.slice(n);
+      list.textContent = emails.slice(0, n).join(", ");
+      pill.classList.toggle("is-empty", !rest.length);
+      count.textContent = `+${rest.length} more`;
+      pill.setAttribute("aria-label", rest.length ? `And ${rest.length} more: ${rest.join(", ")}` : "");
+      if (tip) tip.innerHTML = rest.map((email) => `<span>${escapeHtml(email)}</span>`).join("");
+      if (list.scrollWidth <= list.clientWidth + 1) break;
+    }
+  });
+}
+
+function protoFitEmailsSoon() {
+  requestAnimationFrame(protoFitEmails);
+  const fs = document.querySelector("#astral-fs");
+  if (!fs || fs.__emailFitWatch) return;
+  fs.__emailFitWatch = true;
+  new ResizeObserver(() => protoFitEmails()).observe(fs);
+}
+
 function protoReportRecipientList(draft) {
   const rows = protoReportRecipientRows(draft);
   const picked = new Set((draft.people || []).map(String));
@@ -10460,7 +10501,10 @@ function protoReportRecipientList(draft) {
           }>${protoPersonFace(
             row.initials,
             row.name,
-            row.email
+            row.email,
+            "",
+            "",
+            row.emails?.length > 1 ? protoEmailFitHtml(row.emails) : ""
           )}</span>`,
           row.fixed || !protoCanEditReports()
             ? escapeHtml(row.role)
@@ -11976,7 +12020,16 @@ function protoReportRefreshForm() {
         const email = tenantEl.querySelector(".astral-person-copy > .astral-muted");
         if (mark) mark.textContent = row.initials;
         if (name) name.textContent = row.name;
-        if (email) email.textContent = row.email;
+        const fits = email?.dataset.protoEmailFit !== undefined;
+        if (email && row.emails.length > 1) {
+          if (fits) email.dataset.protoEmailFit = JSON.stringify(row.emails);
+          else email.outerHTML = protoEmailFitHtml(row.emails);
+          protoFitEmails();
+        } else if (email && fits) {
+          email.outerHTML = `<span class="astral-muted">${escapeHtml(row.email)}</span>`;
+        } else if (email) {
+          email.textContent = row.email;
+        }
       }
     });
   }
@@ -22517,13 +22570,13 @@ function protoUserInitials(person) {
   return protoProfileInitials(person?.name || person?.email || "?");
 }
 
-function protoPersonFace(initials, name, helper, tag = "", dot = "") {
+function protoPersonFace(initials, name, helper, tag = "", dot = "", helperHtml = "") {
   const mark = `<span class="astral-person-mark" aria-hidden="true">${escapeHtml(initials)}</span>`;
   return `
     ${dot ? `<span class="astral-person-avatar">${mark}${dot}</span>` : mark}
     <span class="astral-person-copy">
       <strong><span class="astral-people-name">${escapeHtml(name)}</span>${tag ? ` ${tag}` : ""}</strong>
-      ${helper ? `<span class="astral-muted">${escapeHtml(helper)}</span>` : ""}
+      ${helperHtml || (helper ? `<span class="astral-muted">${escapeHtml(helper)}</span>` : "")}
     </span>
   `;
 }
@@ -25853,6 +25906,7 @@ function renderPrototype() {
   protoMeasurePillsSoon();
   protoSlideNavPillsSoon();
   protoFitNavSoon();
+  protoFitEmailsSoon();
   protoEqualReportCardsSoon();
   protoBindScrollRegions();
   requestAnimationFrame(protoBindScrollRegions);
