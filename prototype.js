@@ -26162,6 +26162,8 @@ function protoSkelPaint(app) {
 // request skips it, as the data is already here.
 const PROTO_LOAD_MIN_RECORDS = 5000;
 const PROTO_LOAD_DONE_MS = 420;
+// All pulls every site, so it runs long enough for two tips.
+const PROTO_LOAD_ALL_MS = 12000;
 // A tip stays up long enough to read twice at a relaxed pace, and never under 6 seconds.
 function protoLoadTipMs(tip) {
   const words = String(tip || "").split(/\s+/).filter(Boolean).length;
@@ -26223,7 +26225,8 @@ function protoLoadCheck() {
   protoLoaded.add(key);
   if (records < PROTO_LOAD_MIN_RECORDS) return;
   if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-  const ms = Math.round(Math.min(5200, Math.max(1800, 1500 + Math.sqrt(records) * 3.2)));
+  const all = store.prototypeScope === "group" && protoIsAllGroup(store.prototypeGroup);
+  const ms = all ? PROTO_LOAD_ALL_MS : Math.round(Math.min(5200, Math.max(1800, 1500 + Math.sqrt(records) * 3.2)));
   protoLoad = { key, records, start: performance.now(), ms, tip: Math.floor(Math.random() * PROTO_LOAD_TIPS.length) };
   protoLoadTipAt = protoLoad.start;
   requestAnimationFrame(protoLoadTick);
