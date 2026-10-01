@@ -4483,6 +4483,38 @@ function protoMeterKindOn(kind, meterPicks) {
   return ids.includes(kind);
 }
 
+const PROTO_PANE_KIND_IDS = ["electricity", "gas", "water"];
+
+function protoPaneKindMissing() {
+  const picked = protoPaneMeterKindIds() || [];
+  if (!picked.length || protoCompareOn()) return null;
+  const pool = protoPanePoolMeters() || [];
+  if (pool.some((meter) => picked.includes(protoMeterKind(meter)))) return null;
+  let name = "";
+  if (store.prototypeScope === "group") {
+    name = protoIsAllGroup(store.prototypeGroup)
+      ? "Your sites"
+      : protoGroup(store.prototypeGroup)?.name || "This group";
+  } else {
+    name = protoSiteByMeter(store.activePrototypeMeter)?.name || "This site";
+  }
+  const words = picked.map((id) => id.toLowerCase());
+  const list = words.length > 1 ? `${words.slice(0, -1).join(", ")} or ${words[words.length - 1]}` : words[0];
+  return { name, list };
+}
+
+function protoChartKindMissing(gap) {
+  return `
+    <div class="astral-chart-mix" role="status">
+      <h3>${escapeHtml(`${gap.name} has no ${gap.list} meters`)}</h3>
+      <p>Your utility filter stays on as you move between levels. Clear it to see every meter here.</p>
+      <div class="astral-actions">
+        ${protoGhost("Clear filter", 'data-proto-pane-filter="clear"')}
+      </div>
+    </div>
+  `;
+}
+
 function protoPaneMeterKindIds() {
   if (!Array.isArray(store.prototypePaneMeterKinds)) return null;
   return store.prototypePaneMeterKinds.filter(
@@ -4523,8 +4555,8 @@ function protoPanePoolMeters() {
 function protoTogglePaneMeterKind(kind) {
   if (kind !== "electricity" && kind !== "gas" && kind !== "water") return;
   const pool = protoPanePoolMeters();
-  if (!(pool || []).some((item) => protoMeterKind(item) === kind)) return;
   const cur = protoPaneMeterKindIds() || [];
+  if (!cur.includes(kind) && !(pool || []).some((item) => protoMeterKind(item) === kind)) return;
   let next = cur.includes(kind) ? cur.filter((id) => id !== kind) : [...cur, kind];
   if (protoPaneId() === "consumption") {
     if (!cur.includes(kind) && kind === "water") next = ["water"];
@@ -7192,6 +7224,8 @@ function protoLineChartBuild(tracks, label, options) {
 
 function protoChartEmpty(seedMeters) {
   const name = protoPaneChartLabel(false);
+  const gap = protoPaneKindMissing();
+  if (gap) return protoChartWrap(protoChartKindMissing(gap), name, false, true);
   if (protoConsumptionUnitsMixed(seedMeters)) {
     return protoChartWrap(protoChartMixChoice(), name, false, true);
   }
@@ -16298,6 +16332,13 @@ function protoPaneHasHourKind(id) {
 }
 
 function protoFilterItemAvailable(attr, item) {
+  if (
+    attr === "data-proto-pane-filter" &&
+    PROTO_PANE_KIND_IDS.includes(item?.id) &&
+    (protoPaneMeterKindIds() || []).includes(item.id)
+  ) {
+    return true;
+  }
   if (attr === "data-proto-pane-filter" && PROTO_HOURS_KIND[item?.id]) {
     return protoPaneHasHourKind(item.id);
   }
@@ -29200,7 +29241,7 @@ function onPrototype(event) {
           prototypeFullscreen: true,
           prototypeMeterOpen: "none",
           ...protoMeterSettingsReset(),
-          ...(sameGroup ? {} : { prototypeGroupSites: [], prototypePaneMeterKinds: null }),
+          ...(sameGroup ? {} : { prototypeGroupSites: [] }),
           ...protoComparePatch("group", "all"),
         }
       : {
@@ -29216,7 +29257,7 @@ function onPrototype(event) {
           prototypeFullscreen: true,
           prototypeMeterOpen: "none",
           ...protoMeterSettingsReset(),
-          ...(sameGroup ? {} : { prototypeGroupSites: [], prototypePaneMeterKinds: null }),
+          ...(sameGroup ? {} : { prototypeGroupSites: [] }),
           ...protoComparePatch("group", id),
         };
     if (fromTree) {
@@ -29239,7 +29280,6 @@ function onPrototype(event) {
       prototypeGroupClosed: parent ? protoClosedExcept(parent.id) : protoGroupClosed(),
       prototypeChannel: "all",
       ...protoSiteMeterPatch(sameSite ? protoSiteMeterIds(site) : [], site, { empty: sameSite }),
-      ...(sameSite ? {} : { prototypePaneMeterKinds: null }),
       prototypePane: sameSite || siteBtn.hasAttribute("data-proto-drill") ? protoPaneId() : "consumption",
       prototypeChartPoint: sameSite ? store.prototypeChartPoint : null,
       activePrototypeView: "portfolio",
