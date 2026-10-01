@@ -27136,6 +27136,27 @@ function protoEqualReportCards() {
   if (height && height > current + 1) {
     grid.style.setProperty("--report-card-min", `${height}px`);
   }
+  protoClampReportText(grid);
+}
+
+function protoClampReportText(grid) {
+  grid.querySelectorAll(":scope > .astral-card > p").forEach((p) => {
+    p.classList.remove("is-clamped");
+    p.style.removeProperty("--report-text-lines");
+    if (p.scrollHeight <= p.clientHeight + 1) {
+      if (p.dataset.clampTitle) {
+        p.removeAttribute("title");
+        delete p.dataset.clampTitle;
+      }
+      return;
+    }
+    const lineHeight = Number.parseFloat(getComputedStyle(p).lineHeight) || 24;
+    const lines = Math.max(1, Math.floor((p.clientHeight + 1) / lineHeight));
+    p.style.setProperty("--report-text-lines", String(lines));
+    p.classList.add("is-clamped");
+    p.title = p.textContent.trim();
+    p.dataset.clampTitle = "1";
+  });
 }
 
 function protoEqualReportCardsSoon() {

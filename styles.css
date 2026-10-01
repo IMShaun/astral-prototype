@@ -4665,6 +4665,14 @@ button.astral-avatar {
   line-clamp: none;
 }
 
+.astral-report-grid .astral-card > p.is-clamped {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--report-text-lines);
+  line-clamp: var(--report-text-lines);
+  overflow: hidden;
+}
+
 .astral-report-grid .astral-actions {
   flex: none;
   flex-wrap: nowrap;
