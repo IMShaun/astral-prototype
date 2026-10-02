@@ -9640,7 +9640,7 @@ function protoReportStatusHtml(def) {
     return `${protoTag("Sent")}<span class="astral-muted">${escapeHtml(protoReportSendLabel(sent, { noYear: true }))}</span>`;
   }
   return `${protoTag(protoReportRecurrence(def))}<span class="astral-muted">${escapeHtml(
-    `${protoReportStatusLine(def)}, ${def.sendAt}`
+    protoReportStatusLine(def)
   )}</span>`;
 }
 
