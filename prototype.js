@@ -9635,9 +9635,9 @@ function protoReportStatusHtml(def) {
     const hours = protoReportFlaggedHours(def);
     return hours === null ? line : `${protoTag(protoHoursAgo(hours))}${line}`;
   }
+  // A one-off with no date ahead only runs when someone asks for it.
   if (protoReportOnce(def) && !protoReportNextSend(def)) {
-    const sent = protoFromUkDate(def.start);
-    return `${protoTag("Sent")}<span class="astral-muted">${escapeHtml(protoReportSendLabel(sent, { noYear: true }))}</span>`;
+    return `${protoTag("One-off")}<span class="astral-muted">Not scheduled</span>`;
   }
   return `${protoTag(protoReportRecurrence(def))}<span class="astral-muted">${escapeHtml(
     protoReportStatusLine(def)
@@ -9660,6 +9660,8 @@ function protoReportStatusLine(def) {
     const n = protoReportMissingHits(def).length;
     return n ? `${n} ${n === 1 ? "site" : "sites"} flagged` : "No sites flagged";
   }
+  // Daily runs every day, so the hour says more than the date.
+  if (def.period === "day" && !protoReportOnce(def)) return def.sendAt;
   return protoReportSendLabel(protoReportNextSend(def), { noYear: true });
 }
 
@@ -22220,7 +22222,7 @@ const PROTO_REPORT_FILTERS = {
       name: "Status",
       items: [
         { id: "scheduled", name: "Scheduled" },
-        { id: "sent", name: "Sent" },
+        { id: "sent", name: "Not scheduled" },
         { id: "paused", name: "Paused" },
       ],
     },
