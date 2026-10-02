@@ -10814,7 +10814,7 @@ tr.is-off .astral-person-mark {
   display: grid;
   margin: 0;
   padding: 12px 16px;
-  border-radius: var(--radius-button);
+  border-radius: var(--radius-card);
   background: var(--color-background-subtle);
 }
 
