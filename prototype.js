@@ -5926,6 +5926,24 @@ function protoChartZoneField(set, field) {
   );
 }
 
+// Sits over the graph while an overlay is on, so it is plain whose hours the bands show.
+function protoChartZoneBar(set) {
+  const pick = set?.pick || set?.groups?.[0] || null;
+  if (!pick) return "";
+  const { showHours, showTou } = set.zones;
+  const what = showHours && showTou ? "hours and time of use" : showHours ? "hours" : "time of use";
+  const lead = "astral-chart-zone-lead";
+  const inline = (key, caption, control) => control(key === "zone" ? lead : "");
+  const utility = protoChartUtilityField(set, inline);
+  return `
+    <div class="astral-chart-zone-bar">
+      <span id="${lead}">Showing ${what} for</span>
+      ${protoChartZoneField(set, inline)}
+      ${utility ? `<span class="astral-chart-zone-dot" aria-hidden="true">\u00b7</span>${utility}` : ""}
+    </div>
+  `;
+}
+
 function protoChartUtilityField(set, field) {
   const have = set?.utilities || [];
   if (!have.length) return "";
@@ -5978,8 +5996,6 @@ function protoChartSettings(zoneSet) {
         field("view", "View", (labelledby) => protoChartViewSelect({ label: "View", labelledby })),
         field("style", "Chart type", (labelledby) => protoChartStyleSwitch(labelledby)),
         field("show", "Overlay", (labelledby) => protoChartShowSelect({ labelledby })),
-        protoChartUtilityField(zoneSet, field),
-        protoChartZoneField(zoneSet, field),
         `<div class="astral-chart-settings-foot">${protoTextBtn("Restore defaults", "data-proto-chart-reset", {
           disabled: protoChartSettingsDefault(),
         })}</div>`,
@@ -6134,6 +6150,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
             ? `<div class="astral-chart-heading">
           <p class="astral-chart-title">${escapeHtml(label)}</p>
           <p class="astral-chart-when">${escapeHtml(protoChartWhen())} ${escapeHtml(protoChartZone())}</p>
+          ${extras.zoneSet ? protoChartZoneBar(extras.zoneSet) : ""}
         </div>`
             : ""
         }

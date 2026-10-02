@@ -11024,6 +11024,26 @@ tr.is-off .astral-person-mark {
   white-space: normal;
 }
 
+.astral-chart-zone-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: var(--space-8);
+  color: var(--color-text-secondary);
+}
+
+.astral-chart-zone-bar .astral-select {
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.astral-chart-zone-bar .astral-select-btn {
+  width: auto;
+  max-width: 360px;
+}
+
 .astral-report-range-warn {
   display: flex;
   align-items: flex-start;
