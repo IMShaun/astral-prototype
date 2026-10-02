@@ -10007,6 +10007,10 @@ button.astral-state {
   display: block;
 }
 
+.astral-table tbody th .astral-muted {
+  font-weight: 500;
+}
+
 .astral-people .astral-person-copy strong .astral-tag {
   flex: none;
 }
