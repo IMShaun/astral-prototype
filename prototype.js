@@ -27013,9 +27013,33 @@ function protoLoadProgress(now) {
 
 // The ring is a radial bar chart: full-length grey tracks that the chart colour fills from the inside out as the load sweeps round.
 const PROTO_LOAD_BARS = 44;
-// Each bar keeps filling while the next dozen start, so the bars behind the front catch up in a long, soft tail.
+// A bar takes about a dozen steps of the sweep to fill, so the bars behind the front catch up in a long, soft tail.
 const PROTO_LOAD_WAVE = 12;
 const PROTO_LOAD_RING = { c: 72, inner: 45, max: 16 };
+const PROTO_LOAD_TRACK_MS = 420;
+
+// Each bar gets its own start, pace and a brief hesitation part way up, so the bars reach full unevenly.
+function protoLoadBarPlan() {
+  const r = (a, b) => a + Math.random() * (b - a);
+  const bars = Array.from({ length: PROTO_LOAD_BARS }, (_, i) => {
+    const at = Math.max(0, i + r(-3, 3));
+    const span = Math.min(PROTO_LOAD_WAVE * r(0.5, 1.6), PROTO_LOAD_BARS + PROTO_LOAD_WAVE - at);
+    const hold = Math.random() < 0.45 ? { at: r(0.3, 0.7), len: r(0.15, 0.35) } : null;
+    return { at, span, hold };
+  });
+  const end = Math.max(...bars.map((b) => b.at + b.span));
+  return { bars, end };
+}
+
+function protoLoadBarFill(bar, sweep) {
+  let x = Math.max(0, Math.min(1, (sweep - bar.at) / bar.span));
+  if (bar.hold) {
+    const { at, len } = bar.hold;
+    const run = 1 - len;
+    x = x < at * run ? x / run : x < at * run + len ? at : (x - len) / run;
+  }
+  return x * x * (3 - 2 * x);
+}
 
 // The count arrives in batches; the ring follows time, so it never stutters.
 function protoLoadSmooth(now) {
@@ -27029,7 +27053,7 @@ function protoLoadBarsHtml() {
   return Array.from({ length: PROTO_LOAD_BARS }, (_, i) => {
     const deg = ((i * 360) / PROTO_LOAD_BARS).toFixed(2);
     const at = `x1="${c}" y1="${c - inner}" x2="${c}" y2="${c - inner - max}" transform="rotate(${deg} ${c} ${c})"`;
-    return `<line class="astral-load-track" ${at} /><line class="astral-load-bar" ${at} />`;
+    return `<line class="astral-load-track" style="stroke-dasharray:0 200;opacity:0" ${at} /><line class="astral-load-bar" ${at} />`;
   }).join("");
 }
 
@@ -27090,10 +27114,20 @@ function protoLoadUpdate(now) {
   const p = protoLoadProgress(now);
   const pct = Math.round(p * 100);
   const { max } = PROTO_LOAD_RING;
-  const sweep = protoLoadSmooth(now) * (PROTO_LOAD_BARS + PROTO_LOAD_WAVE);
+  if (!protoLoad.bars) protoLoad.bars = protoLoadBarPlan();
+  // The grey tracks all grow outwards together as the ring opens, ahead of the colour.
+  const grow = Math.max(0, Math.min(1, (now - protoLoad.start) / PROTO_LOAD_TRACK_MS));
+  const track = ((1 - Math.pow(1 - grow, 3)) * max).toFixed(2);
+  el.querySelectorAll(".astral-load-track").forEach((line) => {
+    if (line.dataset.len === track) return;
+    line.dataset.len = track;
+    line.style.strokeDasharray = `${track} 200`;
+    line.style.opacity = track > 0.05 ? "1" : "0";
+  });
+  const plan = protoLoad.bars;
+  const sweep = protoLoadSmooth(now) * plan.end;
   el.querySelectorAll(".astral-load-bar").forEach((bar, i) => {
-    const raw = Math.max(0, Math.min(1, (sweep - i) / PROTO_LOAD_WAVE));
-    const fill = raw * raw * (3 - 2 * raw);
+    const fill = protoLoadBarFill(plan.bars[i], sweep);
     const len = (fill * max).toFixed(2);
     if (bar.dataset.len === len) return;
     bar.dataset.len = len;
