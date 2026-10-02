@@ -3431,9 +3431,44 @@ function protoHourIsPeak(meter, hour, at) {
 // Show puts Hours or Time of use over the graph. It is not a filter. Every reading stays.
 const PROTO_ZONE_TOU = ["tou-on", "tou-off"];
 
-function protoChartShow() {
+// What the user picked. The site count can hold some or all of it back, and it returns when they narrow the view.
+function protoChartPicked() {
   const raw = store.prototypeChartShow;
   const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  return list.filter((id, i) => (id === "hours" || id === "tou") && list.indexOf(id) === i);
+}
+
+// Up to 5 sites in view (after filters) take both overlays; up to 12 take one at a time; past that the graph is too busy for either.
+const PROTO_OVERLAY_BOTH_MAX = 5;
+const PROTO_OVERLAY_ONE_MAX = 12;
+let protoOverlaySitesCache = null;
+
+function protoChartOverlaySites() {
+  if (protoOverlaySitesCache == null) {
+    protoOverlaySitesCache = new Set((protoPaneGraphMeters() || []).map((meter) => meter?.site || "")).size;
+    queueMicrotask(() => {
+      protoOverlaySitesCache = null;
+    });
+  }
+  return protoOverlaySitesCache;
+}
+
+function protoChartOverlayTier() {
+  const sites = protoChartOverlaySites();
+  return sites <= PROTO_OVERLAY_BOTH_MAX ? "both" : sites <= PROTO_OVERLAY_ONE_MAX ? "one" : "none";
+}
+
+// An overlay was picked but there are too many sites to draw it.
+function protoChartOverlayHeld() {
+  return protoChartOverlayTier() === "none" && protoChartPicked().length > 0;
+}
+
+function protoChartShow() {
+  const list = protoChartPicked();
+  const tier = protoChartOverlayTier();
+  if (tier === "none") return [];
+  // One at a time keeps the latest pick.
+  if (tier === "one" && list.length > 1) return list.slice(-1);
   return ["hours", "tou"].filter((id) => list.includes(id));
 }
 
@@ -5715,6 +5750,22 @@ function protoChartViewSelect(more = {}) {
 }
 
 function protoChartShowSelect(more = {}) {
+  const tier = protoChartOverlayTier();
+  if (tier !== "both") {
+    const none = tier === "none";
+    return protoSelect({
+      id: "chart-show",
+      label: "Overlay",
+      value: protoChartShow()[0] || "none",
+      disabled: none,
+      options: [
+        { value: "none", label: "No overlay" },
+        { value: "hours", label: "Hours", note: "Operational, Non-operational, and Closed" },
+        { value: "tou", label: "Time of use", note: "Peak and Off-peak" },
+      ],
+      ...more,
+    });
+  }
   return protoSelect({
     id: "chart-show",
     label: "Overlay",
@@ -5962,9 +6013,20 @@ function protoChartUtilityField(set, field) {
   );
 }
 
+function protoChartOverlayNote() {
+  const tier = protoChartOverlayTier();
+  if (tier === "both") return "";
+  const sites = protoChartOverlaySites();
+  const text =
+    tier === "one"
+      ? `With ${sites} sites in view, the graph shows one overlay at a time.`
+      : `Too many sites to chart clearly. Choose ${PROTO_OVERLAY_ONE_MAX} sites or fewer to add an overlay.`;
+  return `<p class="astral-chart-setting-note">${escapeHtml(text)}</p>`;
+}
+
 // Defaults: Total consumption, Bar, and no overlay.
 function protoChartSettingsDefault() {
-  return protoChartView() === "total" && protoChartStyle() === "bar" && !protoChartShow().length;
+  return protoChartView() === "total" && protoChartStyle() === "bar" && !protoChartPicked().length;
 }
 
 function protoChartSettings(zoneSet) {
@@ -5977,7 +6039,7 @@ function protoChartSettings(zoneSet) {
     ? [
         field("view", "View", (labelledby) => protoChartViewSelect({ label: "View", labelledby })),
         field("style", "Chart type", (labelledby) => protoChartStyleSwitch(labelledby)),
-        field("show", "Overlay", (labelledby) => protoChartShowSelect({ labelledby })),
+        field("show", "Overlay", (labelledby) => protoChartShowSelect({ labelledby }) + protoChartOverlayNote()),
         protoChartUtilityField(zoneSet, field),
         protoChartZoneField(zoneSet, field),
         `<div class="astral-chart-settings-foot">${protoTextBtn("Restore defaults", "data-proto-chart-reset", {
@@ -6113,6 +6175,13 @@ function protoChartProfileKey() {
   return `<div class="astral-chart-key is-profile" role="list" aria-label="Operating state and tariff">${items}</div>`;
 }
 
+function protoChartLimitNote() {
+  return `<p class="astral-chart-limit">Too many sites to chart clearly. ${protoTextBtn(
+    "See the site breakdown below",
+    "data-proto-zone-table"
+  )}</p>`;
+}
+
 function protoChartWrap(svg, label, dual, empty, extras = {}) {
   const pan = protoChartCanPan(label);
   const heading = extras.heading || null;
@@ -6134,6 +6203,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
             ? `<div class="astral-chart-heading">
           <p class="astral-chart-title">${escapeHtml(label)}</p>
           <p class="astral-chart-when">${escapeHtml(protoChartWhen())} ${escapeHtml(protoChartZone())}</p>
+          ${protoChartOverlayHeld() ? protoChartLimitNote() : ""}
         </div>`
             : ""
         }
@@ -8011,6 +8081,17 @@ function protoPickSelect(id, value) {
     return;
   }
   if (id === "chart-show") {
+    if (protoChartOverlayTier() === "one") {
+      if (value !== "none" && value !== "hours" && value !== "tou") return;
+      setProto({
+        prototypeSelectOpen: "",
+        prototypeChartShow: value === "none" ? [] : [value],
+        prototypeChartSliceOff: [],
+        prototypeChartPoint: null,
+      });
+      protoRestoreFocus(`#astral-fs [data-proto-select="chart-show"] .astral-select-btn`);
+      return;
+    }
     if (value !== "hours" && value !== "tou") return;
     const cur = protoChartShow();
     setProto({
@@ -30211,6 +30292,18 @@ function onPrototype(event) {
       setProto({ prototypeChartStyle: style, prototypeChartPoint: null, prototypeChartSettingsOpen: true });
     }
     protoRestoreFocus(`#astral-fs [data-proto-chart-style="${style}"]`);
+    return;
+  }
+  if (event.target.closest("[data-proto-zone-table]")) {
+    const head = document.querySelector('#astral-fs [data-proto-breakdown="toggle"]');
+    if (!head) return;
+    const toTop = () => head.closest(".astral-breakdown")?.scrollIntoView({ block: "start", behavior: "smooth" });
+    if (head.getAttribute("aria-expanded") !== "true") {
+      protoToggleBreakdown(head);
+      // Wait for the fold to finish opening (its own reveal would cancel a smooth scroll), then lift the head to the top.
+      setTimeout(toTop, PROTO_FOLD_MS + 60);
+    } else toTop();
+    head.focus({ preventScroll: true });
     return;
   }
   if (event.target.closest("[data-proto-chart-reset]")) {

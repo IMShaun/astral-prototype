@@ -9342,6 +9342,30 @@ button.astral-state {
   font-size: 0.75rem;
 }
 
+.astral-chart-setting > .astral-chart-setting-note {
+  max-width: 32ch;
+  line-height: 1.4;
+}
+
+.astral-chart-limit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.astral-chart-limit .astral-text {
+  min-height: 0;
+  height: auto;
+  color: var(--color-text-primary);
+  font-size: inherit;
+  text-decoration-line: underline;
+  text-underline-offset: 2px;
+}
+
 .astral-chart-settings-foot {
   display: flex;
   justify-content: flex-start;
