@@ -9638,9 +9638,15 @@ function protoReportStatusHtml(def) {
     const sent = protoFromUkDate(def.start);
     return `${protoTag("Sent")}<span class="astral-muted">${escapeHtml(protoReportSendLabel(sent))}</span>`;
   }
-  return `${protoTag("Scheduled")}<span class="astral-muted">${escapeHtml(
-    `${protoReportStatusLine(def)}, ${def.sendAt}`
+  const once = protoReportOnce(def);
+  return `${protoTag(protoReportRecurrence(def))}<span class="astral-muted">${escapeHtml(
+    `${once ? "" : "next "}${protoReportStatusLine(def)}, ${def.sendAt}`
   )}</span>`;
+}
+
+function protoReportRecurrence(def) {
+  if (protoReportOnce(def)) return "One-off";
+  return { day: "Daily", week: "Weekly", month: "Monthly", quarter: "Quarterly" }[def.period] || "Scheduled";
 }
 
 function protoReportStatusLine(def) {
