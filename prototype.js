@@ -8924,8 +8924,8 @@ function protoReportScopeWords(draft) {
 
 // What each recipient can do with this report. It is separate from their role in Astral.
 const PROTO_REPORT_ACCESS = [
-  { id: "copy", name: "Gets a copy", note: "Gets each one" },
-  { id: "edit", name: "Can edit", note: "Gets each one and can change it" },
+  { id: "copy", name: "Gets a copy", note: "Email only" },
+  { id: "edit", name: "Can edit", note: "Appears in their Reports and they can change it" },
 ];
 
 function protoReportRoleDefault(key) {
@@ -8945,6 +8945,8 @@ function protoReportRoles(raw) {
 }
 
 function protoReportRoleOf(draft, key) {
+  // People outside the organisation can only get the file by email.
+  if (String(key).startsWith("email:")) return "copy";
   const role = draft?.roles?.[key];
   return PROTO_REPORT_ACCESS.some((item) => item.id === role) ? role : protoReportRoleDefault(key);
 }
@@ -10792,6 +10794,7 @@ function protoReportRecipientRows(draft) {
       role: protoReportRoleName(protoReportRoleOf(draft, `email:${email}`)),
       roleId: protoReportRoleOf(draft, `email:${email}`),
       initials: protoProfileInitials(email),
+      external: true,
     });
   });
   return rows;
@@ -10933,7 +10936,9 @@ function protoReportRecipientList(draft) {
             "",
             row.emails?.length > 1 ? protoEmailFitHtml(row.emails) : ""
           )}</span>`,
-          row.fixed || !protoCanEditReports()
+          row.external
+            ? protoTag("External \u00b7 gets a copy", "People outside your organisation can only receive the file by email.")
+            : row.fixed || !protoCanEditReports()
             ? escapeHtml(row.role)
             : protoSelect({
                 id: `report-role:${row.key}`,
@@ -10959,9 +10964,9 @@ function protoReportRecipientList(draft) {
   return `
     <div class="astral-people-tools">${protoReportPeopleSearch(pool)}</div>
     <div class="astral-people astral-report-recipients">${table}</div>
-    <p class="astral-people-count">${rows.length} ${rows.length === 1 ? "recipient" : "recipients"}. Each email has an opt-out link. People who can edit can change this ${
-      protoReportTabOf(draft.type) === "alerts" ? "alert" : "report"
-    } and who gets it.</p>
+    <p class="astral-people-count">${rows.length} ${rows.length === 1 ? "recipient" : "recipients"}. Each email has an opt-out link. Can edit \u2013 appears in their ${
+      protoReportTabOf(draft.type) === "alerts" ? "Alerts" : "Reports"
+    } and they can change it. Gets a copy \u2013 email only.</p>
   `;
 }
 

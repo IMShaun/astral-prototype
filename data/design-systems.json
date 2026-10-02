@@ -6856,7 +6856,7 @@
             "status": "working",
             "say": "Gets a copy, Can edit",
             "avoid": "Subscriber, Owner, Viewer. Viewer is an Astral role, not a report role.",
-            "note": "What someone can do with one report. It is separate from their role in Astral. Everyone gets a copy. Can edit also changes the report and who gets it. The person who adds a report can edit it. Tenants show Tenant and cannot change.",
+            "note": "What someone can do with one report. It is separate from their role in Astral. Everyone gets a copy. Can edit appears in their Reports and they can change it; Gets a copy is email only, and the line under the table says so. Email addresses outside the organisation show a fixed External · gets a copy tag, with the tooltip People outside your organisation can only receive the file by email. The person who adds a report can edit it. Tenants show Tenant and cannot change.",
             "from": "Shaun on Recipients, 28 Sep"
           },
           {
