@@ -679,6 +679,7 @@ function protoPageFilterReset() {
     prototypeReportDraftTo: "",
     prototypeReportPeopleQuery: "",
     prototypeReportSiteQuery: "",
+    prototypeReportScopeOpen: "",
     prototypeReportFrom: "",
     prototypeReportCalOpen: false,
     prototypeReportCal: "",
@@ -7585,11 +7586,17 @@ function protoSelect(config) {
   const value = config.value ?? "";
   const query = String(config.search?.value || "").trim().toLowerCase();
   const allOptions = config.options || [];
-  const visible = allOptions.filter((item) => {
-    if (!query) return true;
-    const hay = `${item.label || ""} ${item.search || ""}`.toLowerCase();
-    return hay.includes(query);
-  });
+  // A heading shows only when an option under it does. A search-only option waits for a query.
+  const visible = allOptions
+    .filter((item) => {
+      if (item.heading) return true;
+      if (item.searchOnly && !query) return false;
+      if (!query) return true;
+      const hay = `${item.label || ""} ${item.note || ""} ${item.search || ""}`.toLowerCase();
+      return hay.includes(query);
+    })
+    .filter((item, i, list) => !item.heading || (list[i + 1] && !list[i + 1].heading));
+  const choices = visible.filter((item) => !item.heading);
   const picked = allOptions.find((item) =>
     multi ? values.includes(String(item.value)) : item.value === value
   );
@@ -7610,6 +7617,7 @@ function protoSelect(config) {
   } else if (picked?.label) {
     text = picked.label;
   }
+  if (config.text) text = config.text;
   const labelled = config.label && config.label !== text && !config.caption && !config.labelledby;
   const disabled = Boolean(config.disabled);
   const extra = [
@@ -7624,6 +7632,9 @@ function protoSelect(config) {
     .join(" ");
   const options = visible
     .map((item) => {
+      if (item.heading) {
+        return `<p class="astral-select-heading" role="presentation">${escapeHtml(item.heading)}</p>`;
+      }
       const on = multi ? values.includes(String(item.value)) : item.value === value;
       const inner =
         item.html ||
@@ -7660,10 +7671,10 @@ function protoSelect(config) {
       `;
     })
     .join("");
-  const allOn = visible.length > 0 && visible.every((item) => values.includes(String(item.value)));
-  const allMix = !allOn && visible.some((item) => values.includes(String(item.value)));
+  const allOn = choices.length > 0 && choices.every((item) => values.includes(String(item.value)));
+  const allMix = !allOn && choices.some((item) => values.includes(String(item.value)));
   const allHtml =
-    multi && config.selectAll && visible.length > 1
+    multi && config.selectAll && choices.length > 1
       ? `
         <button
           type="button"
@@ -8106,11 +8117,21 @@ function protoPickSelect(id, value) {
     );
     return;
   }
-  if (id === "report-sites" || id === "report-delivery" || id === "report-notify") {
+  if (id === "report-sites") {
     const draft = protoReportDraft();
     if (!draft) return;
-    const key =
-      id === "report-sites" ? "sites" : id === "report-notify" ? "notify" : "delivery";
+    const [kind, ...rest] = String(value).split(":");
+    const key = kind === "group" ? "groups" : kind === "meter" ? "meters" : "sites";
+    protoReportPatchDraft({ [key]: protoReportToggleIn(draft[key] || [], rest.join(":")) }, id);
+    protoRestoreFocus(
+      `#astral-fs [data-proto-select-option="${id}"][data-proto-select-value="${CSS.escape(value)}"]`
+    );
+    return;
+  }
+  if (id === "report-delivery" || id === "report-notify") {
+    const draft = protoReportDraft();
+    if (!draft) return;
+    const key = id === "report-notify" ? "notify" : "delivery";
     protoReportPatchDraft({ [key]: protoReportToggleIn(draft[key], value) }, id);
     protoRestoreFocus(
       `#astral-fs [data-proto-select-option="${id}"][data-proto-select-value="${CSS.escape(value)}"]`
@@ -8790,6 +8811,67 @@ function protoReportSiteById(id) {
   return protoEstateSites().find((site) => protoSiteId(site) === id) || null;
 }
 
+// Groups a report can follow: All sites, each company for TPI and Supplier, then each Portfolio group.
+// A report keeps the group, not a copy of its sites, so it follows sites added to or taken off the group.
+function protoReportGroupList() {
+  const groups = protoGroups()
+    .map((group) => ({ id: group.id, name: group.name, sites: group.sites.filter((site) => !protoIsDummySite(site)) }))
+    .filter((group) => group.sites.length);
+  const all = { id: "all", name: "All sites", sites: groups.flatMap((group) => group.sites) };
+  const companies = protoCompaniesFrom(groups).map((item) => ({ id: item.id, name: item.name, sites: item.sites }));
+  return [all, ...companies, ...groups];
+}
+
+function protoReportGroupById(id) {
+  return protoReportGroupList().find((group) => group.id === id) || null;
+}
+
+function protoReportMpans() {
+  return protoEstateSites().flatMap((site) =>
+    (site.meters || []).filter((meter) => meter.mpan).map((meter) => ({ site, meter }))
+  );
+}
+
+function protoReportMpanById(id) {
+  return protoReportMpans().find((item) => item.meter.id === id) || null;
+}
+
+function protoReportPicksAny(def) {
+  return Boolean(def?.sites?.length || def?.groups?.length || def?.meters?.length);
+}
+
+// Whole sites, picked one by one or through a group. A site reached only by an MPAN keeps just that meter.
+function protoReportWholeSiteIds(def) {
+  const ids = new Set((def.sites || []).map(String));
+  (def.groups || []).forEach((id) =>
+    (protoReportGroupById(id)?.sites || []).forEach((site) => ids.add(String(protoSiteId(site))))
+  );
+  return ids;
+}
+
+function protoReportPickedSiteIds(def) {
+  const ids = protoReportWholeSiteIds(def);
+  (def.meters || []).forEach((id) => {
+    const hit = protoReportMpanById(id);
+    if (hit) ids.add(String(protoSiteId(hit.site)));
+  });
+  return ids;
+}
+
+function protoReportScopeWords(draft) {
+  const groups = (draft.groups || []).map(protoReportGroupById).filter(Boolean);
+  const sites = draft.sites || [];
+  const meters = draft.meters || [];
+  const picks = groups.length + sites.length + meters.length;
+  if (!picks) return "";
+  const n = protoReportPickedSiteIds(draft).size;
+  const siteWords = `${n} ${n === 1 ? "site" : "sites"}`;
+  if (picks === 1 && groups.length) return `${groups[0].name} (${siteWords})`;
+  if (picks === 1 && sites.length) return protoReportSiteById(sites[0])?.name || siteWords;
+  if (!groups.length && !sites.length) return meters.length === 1 ? `MPAN ${protoReportMpanById(meters[0])?.meter.mpan || ""}` : `${meters.length} MPANs`;
+  return siteWords;
+}
+
 // What each recipient can do with this report. It is separate from their role in Astral.
 const PROTO_REPORT_ACCESS = [
   { id: "copy", name: "Gets a copy", note: "Gets each one" },
@@ -8974,6 +9056,10 @@ function protoReportNormalize(raw) {
   const sites = [...new Set((Array.isArray(raw.sites) ? raw.sites : []).map(String))].filter((id) =>
     known.has(id)
   );
+  const groupIds = new Set(protoReportGroupList().map((group) => group.id));
+  const groups = [...new Set((Array.isArray(raw.groups) ? raw.groups : []).map(String))].filter((id) => groupIds.has(id));
+  const meterIds = new Set(protoReportMpans().map((item) => item.meter.id));
+  const meters = [...new Set((Array.isArray(raw.meters) ? raw.meters : []).map(String))].filter((id) => meterIds.has(id));
   const start = protoMaskUkDate(raw.start || "");
   const range = protoReportDefaultRange();
   const from = protoMaskUkDate(raw.from || "");
@@ -8993,6 +9079,8 @@ function protoReportNormalize(raw) {
     emails: protoReportEmails(raw.emails),
     roles: protoReportRoles(raw.roles),
     sites,
+    groups,
+    meters,
     period: protoReportPeriod(type, raw.period).id,
     ...protoReportRangeOf(raw, protoReportPeriod(type, raw.period).id),
     ...protoReportSendDayOf(raw, start),
@@ -9089,7 +9177,7 @@ function protoReportSeed() {
       id: "seed-once",
       type: "extract",
       name: "Two years of interval data",
-      sites: ids,
+      groups: ["all"],
       period: "once",
       from: protoFormatUkDate(new Date(protoToday().getFullYear() - 2, protoToday().getMonth(), 1)),
       to: protoFormatUkDate(protoAddDays(protoToday(), -1)),
@@ -9249,8 +9337,8 @@ function protoReportAlertTotal(def) {
 
 function protoReportScopeSites(def) {
   const all = protoEstateSites();
-  if (!def.sites.length) return protoReportSends(def.type) ? [] : all;
-  const picked = new Set(def.sites);
+  if (!protoReportPicksAny(def)) return protoReportSends(def.type) ? [] : all;
+  const picked = protoReportPickedSiteIds(def);
   return all.filter((site) => picked.has(protoSiteId(site)));
 }
 
@@ -9575,7 +9663,7 @@ function protoReportSummary(def) {
   }
   if (def.type === "alert") {
     const totals = protoReportAlertTotals(def);
-    const scope = def.sites.length
+    const scope = protoReportPicksAny(def)
       ? protoReportJoin(protoReportScopeSites(def).map((site) => site.name))
       : totals
         ? "all sites"
@@ -9939,7 +10027,7 @@ function protoReportDraftIssueBase(draft) {
   const people =
     (Array.isArray(draft.people) ? draft.people.length : 0) + protoReportEmails(draft.emails).length;
   if (protoReportSends(draft.type)) {
-    if (!draft.sites?.length) return "Pick at least one site.";
+    if (!protoReportPicksAny(draft)) return "Pick at least one group, site or MPAN.";
     if (!draft.delivery?.length) return "Pick how to send it.";
     if (draft.delivery.includes("email") && !people) return "Add at least one person or email.";
     const server = (draft.delivery || []).filter((way) => way === "sftp" || way === "ftp");
@@ -10121,41 +10209,122 @@ function protoReportUnitInput(label, field, value, unit, placeholder = "") {
   `;
 }
 
+// One search for groups, sites and MPANs. MPANs only show once something is typed, as there are hundreds.
 function protoReportSitesSelect(draft) {
   const sites = protoEstateSites();
   const alert = draft.type === "alert";
-  return protoReportField(
-    "Sites",
-    protoSelect({
-      id: "report-sites",
-      label: "Sites",
-      multi: true,
-      wide: true,
-      values: draft.sites || [],
-      placeholder: alert ? "All sites" : "Pick sites",
-      countLabel: "sites",
-      allLabel: "All sites",
-      selectAll: true,
-      empty: sites.length ? "No sites match." : "No sites in this company.",
-      search: sites.length
-        ? {
-            name: "proto-report-site-query",
-            value: String(store.prototypeReportSiteQuery || ""),
-            placeholder: "Search sites",
-            label: "Search sites",
-          }
-        : null,
-      options: sites.map((site) => {
+  const values = [
+    ...(draft.groups || []).map((id) => `group:${id}`),
+    ...(draft.sites || []).map((id) => `site:${id}`),
+    ...(draft.meters || []).map((id) => `meter:${id}`),
+  ];
+  const words = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const select = protoSelect({
+    id: "report-sites",
+    label: "Sites",
+    multi: true,
+    wide: true,
+    values,
+    text: protoReportScopeWords(draft),
+    placeholder: alert ? "All sites" : "Pick groups, sites or MPANs",
+    empty: sites.length ? "Nothing matches." : "No sites in this company.",
+    search: sites.length
+      ? {
+          name: "proto-report-site-query",
+          value: String(store.prototypeReportSiteQuery || ""),
+          placeholder: "Search groups, sites or MPANs",
+          label: "Search groups, sites or MPANs",
+        }
+      : null,
+    options: [
+      { heading: "Groups" },
+      ...protoReportGroupList().map((group) => ({
+        value: `group:${group.id}`,
+        label: group.name,
+        count: group.sites.length,
+        countLabel: words(group.sites.length, "site", "sites"),
+      })),
+      { heading: "Sites" },
+      ...sites.map((site) => {
         const n = (site.meters || []).length;
         return {
-          value: protoSiteId(site),
+          value: `site:${protoSiteId(site)}`,
           label: site.name,
           count: n,
-          countLabel: `${n} ${n === 1 ? "meter" : "meters"}`,
+          countLabel: words(n, "meter", "meters"),
         };
       }),
-    })
-  );
+      { heading: "MPANs" },
+      ...protoReportMpans().map(({ site, meter }) => ({
+        value: `meter:${meter.id}`,
+        label: meter.mpan,
+        note: `${site.name} · ${meter.name}`,
+        searchOnly: true,
+      })),
+    ],
+  });
+  return protoReportField("Sites", `${select}${protoReportScopeChips(draft)}`);
+}
+
+// What the report covers, as chips. A group chip opens to list its sites today.
+function protoReportScopeChips(draft) {
+  const open = String(store.prototypeReportScopeOpen || "");
+  const groups = (draft.groups || []).map(protoReportGroupById).filter(Boolean);
+  const sites = (draft.sites || []).map(protoReportSiteById).filter(Boolean);
+  const mpans = (draft.meters || []).map(protoReportMpanById).filter(Boolean);
+  if (!groups.length && !sites.length && !mpans.length) return "";
+  const chip = (key, name, body) => `
+    <li class="astral-report-scope-chip">
+      ${body}
+      ${protoIconBtn("close", `Remove ${name}`, `data-proto-report-scope-remove="${escapeHtml(key)}"`, {
+        className: "is-plain",
+        tipLabel: "Remove",
+      })}
+    </li>
+  `;
+  const shown = groups.find((group) => group.id === open);
+  return `
+    <ul class="astral-report-scope" aria-label="Picked for this report">
+      ${groups
+        .map((group) => {
+          const n = group.sites.length;
+          return chip(
+            `group:${group.id}`,
+            group.name,
+            `<button
+              type="button"
+              class="astral-report-scope-open"
+              aria-expanded="${group.id === open ? "true" : "false"}"
+              ${group.id === open ? 'aria-controls="astral-report-scope-sites"' : ""}
+              data-proto-report-scope-open="${escapeHtml(group.id)}"
+            ><span>${escapeHtml(`${group.name} (${n} ${n === 1 ? "site" : "sites"})`)}</span>${protoChevronMark()}</button>`
+          );
+        })
+        .join("")}
+      ${sites
+        .map((site) =>
+          chip(`site:${protoSiteId(site)}`, site.name, `<span class="astral-report-scope-name">${escapeHtml(site.name)}</span>`)
+        )
+        .join("")}
+      ${mpans
+        .map(({ site, meter }) =>
+          chip(
+            `meter:${meter.id}`,
+            `MPAN ${meter.mpan}`,
+            `<span class="astral-report-scope-name" title="${escapeHtml(`${site.name} · ${meter.name}`)}">MPAN ${escapeHtml(meter.mpan)}</span>`
+          )
+        )
+        .join("")}
+    </ul>
+    ${
+      shown
+        ? `<div class="astral-report-scope-sites" id="astral-report-scope-sites">
+            <p class="astral-muted">The report follows ${escapeHtml(shown.name)}. Sites added to the group or taken off it change what it sends.</p>
+            <ul>${shown.sites.map((site) => `<li>${escapeHtml(site.name)}</li>`).join("")}</ul>
+          </div>`
+        : ""
+    }
+  `;
 }
 
 function protoReportPeriodSelect(draft, label) {
@@ -10403,13 +10572,11 @@ function protoReportBySiteField(draft) {
       on: true,
       name: "Each meter separately",
       note: "One column per meter, labelled with its site.",
-      example: "Crewe depot – Elec 1 (kWh)",
     },
     {
       on: false,
       name: "Total per utility",
       note: "All selected sites added together, one column per utility.",
-      example: "Electricity total (kWh)",
     },
   ];
   const bySite = draft.bySite !== false;
@@ -10431,7 +10598,6 @@ function protoReportBySiteField(draft) {
               >
                 <span class="astral-report-type-head">${protoRadio(on)}<span>${item.name}</span></span>
                 <span class="astral-muted">${escapeHtml(item.note)}</span>
-                ${on ? `<span class="astral-report-type-eg">For example <code>${escapeHtml(item.example)}</code></span>` : ""}
               </button>
             `;
           })
@@ -10716,7 +10882,13 @@ function protoReportServerKey(draft) {
 
 // What the data covers. A change here asks for consent again.
 function protoReportDataKey(draft) {
-  const sites = [...(draft.sites || [])].map(String).sort().join(",");
+  const sites = [
+    ...(draft.sites || []).map(String),
+    ...(draft.groups || []).map((id) => `group:${id}`),
+    ...(draft.meters || []).map((id) => `meter:${id}`),
+  ]
+    .sort()
+    .join(",");
   const bits =
     draft.type === "extract"
       ? [sites, draft.content, protoReportUtilityIds(draft.utility).join(","), draft.channel, protoReportAsksBySite(draft) && draft.bySite === false ? "totals" : "sites"]
@@ -12186,6 +12358,7 @@ function protoReportOpenEdit(id, pickId = "") {
     prototypeReportDraftTo: def ? def.to : "",
     prototypeReportPeopleQuery: "",
     prototypeReportSiteQuery: "",
+    prototypeReportScopeOpen: "",
     prototypeReportNotice: null,
     prototypeReportSample: null,
     prototypeReportCal: "",
@@ -12234,6 +12407,7 @@ function protoReportEditClear() {
     prototypeReportDraftTo: "",
     prototypeReportPeopleQuery: "",
     prototypeReportSiteQuery: "",
+    prototypeReportScopeOpen: "",
     prototypeReportCalOpen: false,
     prototypeReportCal: "",
     prototypeReportGroup: "details",
@@ -12259,7 +12433,10 @@ function protoReportToggleIn(list, value) {
 }
 
 function protoReportMeters(def, site) {
+  const only =
+    def.meters?.length && !protoReportWholeSiteIds(def).has(String(protoSiteId(site))) ? new Set(def.meters) : null;
   return (site.meters || []).filter((meter) => {
+    if (only && !only.has(meter.id)) return false;
     if (!protoReportUtilityIds(def.utility).includes(protoMeterKind(meter))) return false;
     const out = meter.direction === "Export";
     if (def.channel === "import" && out) return false;
@@ -28589,6 +28766,25 @@ function onPrototype(event) {
   }
   if (event.target.closest('[data-proto-report-notice="hide"]')) {
     setProto({ prototypeReportNotice: null });
+    return;
+  }
+  const scopeOpenBtn = event.target.closest("[data-proto-report-scope-open]");
+  if (scopeOpenBtn) {
+    const id = scopeOpenBtn.dataset.protoReportScopeOpen;
+    setProto({ prototypeReportScopeOpen: store.prototypeReportScopeOpen === id ? "" : id });
+    protoRestoreFocus(`#astral-fs [data-proto-report-scope-open="${CSS.escape(id)}"]`);
+    return;
+  }
+  const scopeRemoveBtn = event.target.closest("[data-proto-report-scope-remove]");
+  if (scopeRemoveBtn) {
+    const draft = protoReportDraft();
+    if (!draft || !protoCanEditReports()) return;
+    const [kind, ...rest] = scopeRemoveBtn.dataset.protoReportScopeRemove.split(":");
+    const raw = rest.join(":");
+    const key = kind === "group" ? "groups" : kind === "meter" ? "meters" : "sites";
+    if (kind === "group" && store.prototypeReportScopeOpen === raw) store.prototypeReportScopeOpen = "";
+    protoReportPatchDraft({ [key]: (draft[key] || []).filter((item) => String(item) !== raw) });
+    protoRestoreFocus('#astral-fs [data-proto-select-toggle="report-sites"]');
     return;
   }
   const reportRemoveBtn = event.target.closest("[data-proto-report-remove]");
