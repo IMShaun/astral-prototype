@@ -8445,10 +8445,15 @@ const PROTO_REPORT_FILE_SUFFIXES = [
 const PROTO_REPORT_FILE_BASE = { filePrefix: "none", fileStart: "", fileSuffix: "none", fileDate: "iso", fileSep: "_" };
 
 const PROTO_REPORT_FILE_DATES = [
-  { id: "iso", name: "2026-09-07", note: "Year, month, day. Sorts in order." },
-  { id: "compact", name: "20260907", note: "Year, month, day, with no gaps" },
-  { id: "uk", name: "07-09-2026", note: "Day, month, year" },
+  { id: "iso", parts: ["YYYY", "MM", "DD"], note: "Year, month, day. Sorts in order." },
+  { id: "compact", parts: ["YYYY", "MM", "DD"], tight: true, note: "Year, month, day, with no gaps" },
+  { id: "uk", parts: ["DD", "MM", "YYYY"], note: "Day, month, year" },
 ];
+
+// Date formats read as patterns and join with the same separator as the rest of the name.
+function protoReportFileDateOptions(sep) {
+  return PROTO_REPORT_FILE_DATES.map((item) => ({ ...item, name: item.parts.join(item.tight ? "" : sep) }));
+}
 
 const PROTO_REPORT_FILE_SEPS = [
   { id: "_", name: "Underscore  _" },
@@ -11789,17 +11794,15 @@ const PROTO_REPORT_GROUP_NAMES = {
   range: "Date range",
 };
 
-// Spaces as the separator keep words and capitals as typed. Otherwise words join with hyphens.
+// The separator also replaces the spaces inside each part. Words keep their capitals.
 function protoReportFileSlug(text, sep) {
-  const clean = String(text || "").replace(/[^A-Za-z0-9]+/g, " ").trim();
-  return sep === " " ? clean : clean.toLowerCase().replace(/ /g, "-");
+  return String(text || "").replace(/[^A-Za-z0-9]+/g, " ").trim().replace(/ /g, sep);
 }
 
-function protoReportFileDate(date, style) {
-  const iso = protoIso(date);
-  if (style === "compact") return iso.replaceAll("-", "");
-  if (style === "uk") return iso.split("-").reverse().join("-");
-  return iso;
+function protoReportFileDate(date, style, sep = "-") {
+  const [y, m, d] = protoIso(date).split("-");
+  if (style === "compact") return `${y}${m}${d}`;
+  return (style === "uk" ? [d, m, y] : [y, m, d]).join(sep);
 }
 
 function protoReportDraftFileDef(draft) {
@@ -11815,7 +11818,7 @@ function protoReportFilePrefixText(def, raw) {
 
 function protoReportFileSuffixText(def, when) {
   if (def.fileSuffix === "none") return "";
-  const stamp = (date, time) => `${protoReportFileDate(date, def.fileDate)}${def.fileSep}${time}`;
+  const stamp = (date, time) => `${protoReportFileDate(date, def.fileDate, def.fileSep)}${def.fileSep}${time}`;
   if (def.fileSuffix === "run") return stamp(when, protoReportSendClock(def).replace(":", ""));
   const range = protoReportDataRange(def, when);
   if (!range) return stamp(when, protoReportSendClock(def).replace(":", ""));
@@ -11866,7 +11869,7 @@ function protoReportFileFields(draft) {
   const rules = [
     `The report type, ${core}, always sits in the middle.`,
     ...(def.fileSuffix === "none" ? [] : [`Times use the 24-hour clock in ${protoReportZone(def)}.`]),
-    def.fileSep === " " ? "Other symbols drop out." : "Spaces become hyphens. Other symbols drop out.",
+    def.fileSep === " " ? "Other symbols drop out." : `Spaces become ${def.fileSep === "_" ? "underscores" : "hyphens"}. Other symbols drop out.`,
   ];
   return `
     <div class="astral-report-file-preview" role="status" data-proto-report-file-preview>${protoReportFilePreviewInner(draft)}</div>
@@ -11880,7 +11883,7 @@ function protoReportFileFields(draft) {
     </div>
     <div class="astral-report-pair">
       ${protoReportOptionSelect("report-file-suffix", "End with", suffixes, def.fileSuffix)}
-      ${def.fileSuffix === "none" ? "" : protoReportOptionSelect("report-file-date", "Date format", PROTO_REPORT_FILE_DATES, def.fileDate)}
+      ${def.fileSuffix === "none" ? "" : protoReportOptionSelect("report-file-date", "Date format", protoReportFileDateOptions(def.fileSep), def.fileDate)}
     </div>
     <div class="astral-report-pair">
       ${protoReportOptionSelect("report-file-sep", "Join parts with", PROTO_REPORT_FILE_SEPS, def.fileSep)}
