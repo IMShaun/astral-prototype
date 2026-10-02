@@ -3348,7 +3348,7 @@
           "file": "src/components/Pagination.tsx",
           "family": "navigation",
           "summary": "Graph window arrows, not page pills. Previous and Next are icon buttons. They move the date window. The filter becomes Custom. Back at the original window it is the preset again.",
-          "usage": "Use IconButton prev and next on the graph. Page number pills wait for a huge list. The pane scrolls the Breakdown rows. When Breakdown is wider than the pane, Previous columns and Next columns IconButtons sit above it with Columns 1–5 of 26. Each step lands on a whole column beside the sticky Time column. Previous is off at the start and Next at the end. Filters keep the columns in view. A new place in the tree starts at the first column.",
+          "usage": "Use IconButton prev and next on the graph. Page number pills wait for a huge list. The Breakdown table scrolls in its own box, up to 34rem or 70% of the screen high. Its column heads stay on top and the Time column stays on the left, like frozen panes in Excel, so each column keeps its site name. At either end the scroll passes back to the pane. When Breakdown is wider than the pane, Previous columns and Next columns IconButtons sit above it with Columns 1–5 of 26. Each step lands on a whole column beside the sticky Time column. Previous is off at the start and Next at the end. Filters keep the columns in view. A new place in the tree starts at the first column.",
           "variants": [
             "window"
           ],

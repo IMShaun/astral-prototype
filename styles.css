@@ -9534,6 +9534,24 @@ button.astral-state {
   overflow-anchor: none;
 }
 
+/* Frozen panes, as in Excel: the table scrolls in its own box so the column heads stay on top
+   and the Time column stays on the left. */
+.astral-breakdown-scroll {
+  max-height: min(34rem, 70vh);
+  overflow: auto;
+}
+
+.astral-breakdown-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #fff;
+}
+
+.astral-breakdown-scroll .astral-breakdown-cols.is-meters thead tr:first-child > th:first-child {
+  z-index: 3;
+}
+
 .astral-breakdown-bar {
   display: flex;
   align-items: center;

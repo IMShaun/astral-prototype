@@ -21254,14 +21254,13 @@ function protoIntervalRowHtml(point, dual, chart, sliceCols) {
 function protoBreakdownClip(tbody) {
   const pane = tbody?.closest(".astral-pane-body");
   const stage = tbody?.closest(".astral-stage");
-  const a = pane?.getBoundingClientRect();
-  const b = stage?.getBoundingClientRect();
-  if (a && b) {
-    const top = Math.max(a.top, b.top);
-    const bottom = Math.min(a.bottom, b.bottom);
-    return { top, height: Math.max(0, bottom - top) };
-  }
-  return a || b || null;
+  // The table scrolls inside its own box (so its heads stay put); only the part of that box in view counts.
+  const wrap = tbody?.closest(".astral-breakdown-scroll");
+  const boxes = [pane, stage, wrap].filter(Boolean).map((el) => el.getBoundingClientRect());
+  if (!boxes.length) return null;
+  const top = Math.max(...boxes.map((box) => box.top));
+  const bottom = Math.min(...boxes.map((box) => box.bottom));
+  return { top, height: Math.max(0, bottom - top) };
 }
 
 function protoPaintBreakdown() {
@@ -21328,7 +21327,11 @@ function protoBindBreakdown() {
   if (!tbody) return;
   protoPaintBreakdown();
   requestAnimationFrame(() => protoPaintBreakdown());
-  const scrollers = [tbody.closest(".astral-pane-body"), tbody.closest(".astral-stage")].filter(
+  const scrollers = [
+    tbody.closest(".astral-pane-body"),
+    tbody.closest(".astral-stage"),
+    ...document.querySelectorAll("#astral-fs .astral-breakdown-scroll"),
+  ].filter(
     (el) => el && el.dataset.protoBreakdownBound !== "1"
   );
   if (!scrollers.length) return;
