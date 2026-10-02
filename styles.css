@@ -10990,6 +10990,39 @@ tr.is-off .astral-person-mark {
 .is-skip .astral-report-test-step {
   color: var(--color-text-secondary);
 }
+
+.astral-report-team-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: max-content;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.astral-report-team-toggle:hover {
+  color: var(--color-text-primary, inherit);
+  text-decoration: underline;
+}
+
+.astral-report-team-toggle svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 150ms ease;
+}
+
+.astral-report-team-toggle.is-open svg {
+  transform: rotate(180deg);
+}
+
+.astral-report-team-members {
+  display: block;
+  white-space: normal;
+}
 
 .astral-report-range-warn {
   display: flex;

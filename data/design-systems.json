@@ -6846,7 +6846,7 @@
             "status": "firm",
             "say": "Recipients",
             "avoid": "Distribution list, Subscribers, Mailing list.",
-            "note": "The people who get a report by email. The pane meta is 3 people get this by email. Search finds people in the company. Type a full email to add someone outside it. Enter adds the email. Their line says Outside your company. Empty is No one gets this yet. Search for people or type an email to add them. Remove takes one person off.",
+            "note": "The people who get a report by email. The pane meta is 3 people get this by email. Search finds people in the company. Type a full email to add someone outside it. Enter adds the email. Their line says Outside your company. The search returns People, Groups, and Email addresses under headings. A group joins as one row, such as Data (3 people), with a Group · show members toggle that lists them; the count above counts each person once. Empty is No one gets this yet. Search for people or type an email to add them. Remove takes one person off.",
             "from": "Shaun on Edit report, 24 Sep"
           },
           {
