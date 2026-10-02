@@ -6246,7 +6246,7 @@
             "status": "working",
             "say": "CSV",
             "avoid": "",
-            "note": "One way to take the interval view. This walk stays UTC. Outgoing stays positive. Pick queues processing. Download sits on Downloads. Local time waits as an extract setting.",
+            "note": "One way to take the interval view. This walk stays UTC. Outgoing stays positive. The CSV has a row per meter per reading: site, MPAN or MPRN, incoming or outgoing, time, value, unit, actual or estimated, operational status, and time of use. Operational status is Operational, Non-operational, or Closed. Time of use is Peak or Off-peak. A reading for a whole day or month says Mixed. These follow the site hours and tariff, whether or not Overlay is on. The PDF keeps the totals. Pick queues processing. Download sits on Downloads. Local time waits as an extract setting.",
             "from": "Energy manager journey and Shaun on export, 5 Sep"
           },
           {

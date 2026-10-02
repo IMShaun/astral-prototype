@@ -27258,6 +27258,94 @@ function protoIntervalPack(id) {
   };
 }
 
+// Hours and Time of use for one meter at one reading, in the words the graph uses.
+// A reading that covers a whole day or month spans both sides, so it says Mixed.
+function protoCsvHoursName(meter, point) {
+  const at = protoPointDate(point);
+  const hour = protoPointHour(point);
+  const day = protoHoursDay(meter, at);
+  if (hour == null) {
+    if (day?.status === "closed") return "Closed";
+    if (day?.status === "off") return "Non-operational";
+    return "Mixed";
+  }
+  const kind = protoHourKind(meter, hour, day);
+  return kind === "on" ? "Operational" : kind === "closed" ? "Closed" : "Non-operational";
+}
+
+function protoCsvTouName(meter, point) {
+  const hour = protoPointHour(point);
+  if (hour == null) return "Mixed";
+  return protoHourIsPeak(meter, hour, protoPointDate(point)) ? "Peak" : "Off-peak";
+}
+
+// The CSV is long: a row per meter per reading, so Hours and Time of use make sense when many sites go out together.
+function protoIntervalCsvMeters(id) {
+  const byChannel = (meters) => {
+    const flow = protoMetersFlow(meters);
+    if (flow.channel === "out") return flow.outgoing;
+    if (flow.channel === "in") return flow.incoming.length ? flow.incoming : flow.outgoing;
+    return [...flow.incoming, ...flow.outgoing];
+  };
+  if (id === "compare") return byChannel(protoCompareBundle().meters || []);
+  if (String(id || "").startsWith("group:")) {
+    const group = protoGroup(String(id).slice(6));
+    return group ? byChannel(protoGroupViewMeters(group)) : null;
+  }
+  if (id === "all") {
+    if (store.prototypeScope === "group") {
+      const group = protoGroup(store.prototypeGroup);
+      return group ? protoGroupViewMeters(group) : null;
+    }
+    return protoSiteByMeter(store.activePrototypeMeter)?.meters || null;
+  }
+  const meter = protoMeter(id);
+  return meter ? [meter] : null;
+}
+
+function protoIntervalCsvPack(id) {
+  const pack = protoIntervalPack(id);
+  const meters = protoIntervalCsvMeters(id);
+  if (!pack || !meters) return pack;
+  const note = protoIntervalNote();
+  const sorted = [...meters].sort(
+    (a, b) =>
+      String(a.site || "").localeCompare(String(b.site || "")) ||
+      String(protoMeterRef(a)).localeCompare(String(protoMeterRef(b)))
+  );
+  return {
+    file: pack.file,
+    headers: [
+      "site",
+      "mpan_mprn",
+      "direction",
+      "time",
+      "value",
+      "unit",
+      "quality",
+      "operational_status",
+      "time_of_use",
+      "note",
+    ],
+    rows: sorted.flatMap((meter) => {
+      const unit = protoCsvEnergyUnit([meter]);
+      const direction = meter.direction === "Export" ? "outgoing" : "incoming";
+      return protoSiteSeries(meter).map((p) => [
+        meter.site || meter.name || "",
+        protoMeterRef(meter),
+        direction,
+        p.label,
+        p.value == null ? "" : protoFormatAmount(p.value),
+        unit,
+        protoCsvQuality(p.quality, p.value),
+        protoCsvHoursName(meter, p),
+        protoCsvTouName(meter, p),
+        note,
+      ]);
+    }),
+  };
+}
+
 function protoReportSlug(report) {
   return protoReportFileName(report, protoToday()).replace(/\.[a-z]+$/, "");
 }
@@ -27308,9 +27396,10 @@ function protoCsv(id) {
     protoCsvDownload(protoReportCsv(report), `${protoReportSlug(report)}.csv`);
     return;
   }
-  const pack = protoIntervalPack(id);
+  const pack = protoIntervalCsvPack(id);
   if (!pack) return;
-  const lines = [pack.headers.join(","), ...pack.rows.map((row) => row.join(","))];
+  const cell = (text) => (/[",\n]/.test(String(text)) ? `"${String(text).replace(/"/g, '""')}"` : String(text));
+  const lines = [pack.headers.map(cell).join(","), ...pack.rows.map((row) => row.map(cell).join(","))];
   protoCsvDownload(lines, `${pack.file}.csv`);
 }
 
