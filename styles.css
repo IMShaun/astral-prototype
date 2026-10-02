@@ -10800,6 +10800,43 @@ tr.is-off .astral-person-mark {
   font-weight: 600;
 }
 
+.astral-report-tax-host {
+  display: grid;
+  gap: 8px;
+}
+
+.astral-report-tax-host p {
+  margin: 0;
+}
+
+/* Net, tax, and total for the projected period. Total is the bold last row. */
+.astral-report-tax-sum {
+  display: grid;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: var(--radius-button);
+  background: var(--color-background-subtle);
+}
+
+.astral-report-tax-sum > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0;
+}
+
+.astral-report-tax-sum dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.astral-report-tax-sum > .is-total {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border-subtle);
+  font-weight: 600;
+}
+
 .astral-report-consent-host {
   display: grid;
   gap: 12px;

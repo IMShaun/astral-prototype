@@ -9156,6 +9156,7 @@ function protoReportNormalizeTenants(raw, known) {
 }
 
 // Each tenant has one tax, a name and a rate. A tenant saved with only a VAT rate opens as VAT.
+// incl says the site rates already include the tax, so it is taken out of them rather than added.
 function protoReportNormalizeTaxes(item, fallback) {
   const list = Array.isArray(item.taxes)
     ? item.taxes
@@ -9167,6 +9168,7 @@ function protoReportNormalizeTaxes(item, fallback) {
       id: String(tax.id || `tax-${i + 1}`),
       name: String(tax.name ?? "").replace(/\s+/g, " ").trim().slice(0, 40),
       rate: protoReportNumber(tax.rate, 0, 0, 100),
+      incl: tax.incl === true,
     }));
 }
 
@@ -9653,13 +9655,17 @@ function protoReportBill(def, tenant) {
       })
     : [];
   const cost = lines.reduce((n, line) => n + line.usage + line.standing, 0);
-  const net = lines.reduce((n, line) => n + line.due, 0);
-  const taxes = (tenant?.taxes || []).filter((tax) => Number(tax.rate) > 0).map((tax) => {
+  const live = (tenant?.taxes || []).filter((tax) => Number(tax.rate) > 0);
+  const incl = live.some((tax) => tax.incl === true);
+  // With tax in the rates, the shares come to the gross; the net is what is left once it is taken out.
+  const exTax = incl ? 1 / (1 + live.reduce((n, tax) => n + Number(tax.rate), 0) / 100) : 1;
+  const net = lines.reduce((n, line) => n + line.due, 0) * exTax;
+  const taxes = live.map((tax) => {
     const rate = Number(tax.rate) || 0;
     return { name: String(tax.name || "").trim() || "Tax", rate, amount: (net * rate) / 100 };
   });
   const tax = taxes.reduce((n, item) => n + item.amount, 0);
-  return { tenant, site, period, lines, cost, net, taxes, tax, due: net + tax };
+  return { tenant, site, period, lines, cost, net, taxes, tax, due: net + tax, incl, exTax };
 }
 
 // Every tenant's bill. A site counts once in the cost, even with two tenants on it.
@@ -9680,12 +9686,13 @@ function protoReportBills(def) {
 function protoReportTenantBillLine(def, tenant) {
   const bill = protoReportBill(def, tenant);
   if (!bill.site) return "Pick a site to project this bill.";
+  const split = protoBillSplit(bill);
   return `Projected ${protoReportBillCostWords(bill.period)} ${protoSpendMoney(bill.cost)}. ${
-    tenant.name || "The tenant"
-  } pays ${protoSpendMoney(bill.net)}${
     bill.taxes.length
-      ? ` plus ${protoSpendMoney(bill.tax)} ${protoReportTaxWord(bill)}, ${protoSpendMoney(bill.due)} in all`
-      : ", with no tax"
+      ? `${tenant.name || "The tenant"}: net ${protoBillMoney(split.net)}, ${protoReportTaxWord(bill)} ${protoBillMoney(
+          split.tax
+        )}, total ${protoBillMoney(split.total)}`
+      : `${tenant.name || "The tenant"} pays ${protoBillMoney(split.net)}, with no tax`
   }.`;
 }
 
@@ -11914,7 +11921,7 @@ function protoReportTenantCharges(draft) {
   return `
     ${utils.map((util) => protoReportUtilSplit(tenant, util, who)).join("")}
     ${missing.length ? `<p class="astral-muted">${escapeHtml(`${site.name} has no ${protoReportOrList(missing)} meters.`)}</p>` : ""}
-    ${protoReportTenantTaxes(tenant)}
+    ${protoReportTenantTaxes(tenant, draft)}
   `;
 }
 
@@ -12017,9 +12024,18 @@ function protoReportUtilSplit(tenant, util, who) {
   `;
 }
 
-function protoReportTenantTaxes(tenant) {
+function protoReportTenantTaxes(tenant, draft) {
   const tax = (tenant.taxes || [])[0] || { id: "tax-1", name: "", rate: "" };
   const field = (key) => `tenant:${tenant.id}:tax:${tax.id}:${key}`;
+  const incl = tax.incl === true;
+  const choice = (yes) => {
+    const on = yes === incl;
+    return `<button type="button" role="radio" class="astral-meter-src-item${on ? " is-on" : ""}" aria-checked="${
+      on ? "true" : "false"
+    }" tabindex="${on ? "0" : "-1"}" data-proto-report-tax-incl="${escapeHtml(`${tenant.id}:${tax.id}:${yes ? 1 : 0}`)}">${protoRadio(
+      on
+    )}<span>${yes ? "Rates include tax" : "Rates exclude tax"}</span></button>`;
+  };
   return `
     <section class="astral-report-charge" aria-labelledby="astral-report-charge-tax">
       <h3 class="astral-report-charge-title" id="astral-report-charge-tax">Tax</h3>
@@ -12027,8 +12043,54 @@ function protoReportTenantTaxes(tenant) {
         ${protoReportInput("Tax name", field("name"), tax.name, 'maxlength="40" placeholder="VAT"')}
         ${protoReportUnitInput("Tax rate", field("rate"), tax.rate, "%", "20")}
       </div>
-      <p class="astral-muted">Added on top of what they pay. Use 0% if they pay no tax.</p>
+      <fieldset class="astral-report-split">
+        <legend>Do the rates above include tax?</legend>
+        <div class="astral-meter-src" role="radiogroup" aria-label="Rates and tax">
+          ${choice(false)}${choice(true)}
+        </div>
+      </fieldset>
+      <div class="astral-report-tax-host" data-proto-report-tax-host aria-live="polite">${protoReportTaxInner(draft)}</div>
     </section>
+  `;
+}
+
+// Says how the tax is applied, then the projected Net, Tax, and Total.
+function protoReportTaxInner(draft) {
+  const def = protoReportDraftDef(draft);
+  const tenant = protoReportTenantOf(def);
+  if (!tenant) return "";
+  const typed = (protoReportTenantOf(draft)?.taxes || [])[0] || {};
+  const name = String(typed.name || "").trim() || "Tax";
+  const rate = Number(String(typed.rate ?? "").trim());
+  const note = !(rate > 0)
+    ? "No tax is added. Use 0% if they pay no tax."
+    : typed.incl === true
+      ? `Rates include ${name} at ${rate}%. It is taken out to show the net.`
+      : `Rates exclude ${name}. ${name} is added at ${rate}%.`;
+  const bill = protoReportBill(def, tenant);
+  const split = protoBillSplit(bill);
+  const rows = [
+    ["Net", split.net],
+    [rate > 0 ? name : "Tax", split.tax],
+    ["Total", split.total],
+  ];
+  return `
+    <p class="astral-muted">${escapeHtml(note)}</p>
+    ${
+      bill.site
+        ? `<dl class="astral-report-tax-sum" aria-label="${escapeHtml(`Projected for ${protoReportSpanWords(bill.period)}`)}">
+        ${rows
+          .map(
+            ([label, value], i) =>
+              `<div${i === rows.length - 1 ? ' class="is-total"' : ""}><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(
+                protoBillMoney(value)
+              )}</dd></div>`
+          )
+          .join("")}
+      </dl>
+      <p class="astral-muted">${escapeHtml(`Projected for ${protoReportSpanWords(bill.period)}.`)}</p>`
+        : ""
+    }
   `;
 }
 
@@ -12620,6 +12682,8 @@ function protoReportRefreshForm() {
   }
   const fileHost = modal.querySelector("[data-proto-report-file-preview]");
   if (fileHost) fileHost.innerHTML = protoReportFilePreviewInner(draft);
+  const taxHost = modal.querySelector("[data-proto-report-tax-host]");
+  if (taxHost) taxHost.innerHTML = protoReportTaxInner(draft);
   const rangeLine = modal.querySelector("[data-proto-report-range-line]");
   if (rangeLine) rangeLine.textContent = protoReportRangeLine(draft);
   const rangeWarn = modal.querySelector("[data-proto-report-range-warn]");
@@ -12818,6 +12882,7 @@ function protoReportRows(def) {
         "projected cost (GBP)",
         "tenant pays before tax (GBP)",
         "taxes",
+        "rates",
         "tax (GBP)",
         "amount payable (GBP)",
       ],
@@ -12828,10 +12893,11 @@ function protoReportRows(def) {
         protoFormatUkDate(from),
         protoFormatUkDate(to),
         bill.cost.toFixed(2),
-        bill.net.toFixed(2),
+        protoBillSplit(bill).net.toFixed(2),
         protoReportTaxRates(bill),
-        bill.tax.toFixed(2),
-        bill.due.toFixed(2),
+        bill.taxes.length ? (bill.incl ? "include tax" : "exclude tax") : "",
+        protoBillSplit(bill).tax.toFixed(2),
+        protoBillSplit(bill).total.toFixed(2),
       ]),
       [],
       ["tenant", "utility", "charge", "cost (GBP)", "tenant share (%)", "tenant pays before tax (GBP)"],
@@ -12843,7 +12909,7 @@ function protoReportRows(def) {
             item.name,
             item.cost.toFixed(2),
             item.share,
-            ((item.cost * item.share) / 100).toFixed(2),
+            ((item.cost * item.share * bill.exTax) / 100).toFixed(2),
           ])
         )
       ),
@@ -12863,7 +12929,7 @@ function protoReportRows(def) {
                   item.name,
                   cost.toFixed(2),
                   item.share,
-                  ((cost * item.share) / 100).toFixed(2),
+                  ((cost * item.share * bill.exTax) / 100).toFixed(2),
                 ];
               })
           )
@@ -21878,6 +21944,18 @@ function protoSpendMoney(gbp) {
   }).format(Math.round(gbp));
 }
 
+// Bills show pence, so net and tax add up to the total on screen.
+function protoBillMoney(gbp) {
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(Math.round(gbp * 100) / 100);
+}
+
+// Net and tax rounded to pence first, so the total is their sum.
+function protoBillSplit(bill) {
+  const net = Math.round(bill.net * 100) / 100;
+  const tax = Math.round(bill.tax * 100) / 100;
+  return { net, tax, total: Math.round((net + tax) * 100) / 100 };
+}
+
 function protoSpendSites() {
   return [...protoEstateSites()].sort((a, b) => protoSiteSpendGbp(b) - protoSiteSpendGbp(a));
 }
@@ -29608,6 +29686,17 @@ function onPrototype(event) {
     protoRestoreFocus(`#astral-fs [data-proto-report-tenant-pays="${tenantId}:${utilId}:${yes}"]`);
     return;
   }
+  const taxInclBtn = event.target.closest("[data-proto-report-tax-incl]");
+  if (taxInclBtn) {
+    const [tenantId, taxId, yes] = taxInclBtn.dataset.protoReportTaxIncl.split(":");
+    const tenant = protoReportTenantsOf(protoReportDraft()).find((item) => item.id === tenantId);
+    if (tenant) {
+      const list = tenant.taxes?.length ? tenant.taxes : [{ id: taxId, name: "", rate: "" }];
+      protoReportPatchTenant(tenantId, { taxes: list.map((tax) => (tax.id === taxId ? { ...tax, incl: yes === "1" } : tax)) });
+    }
+    protoRestoreFocus(`#astral-fs [data-proto-report-tax-incl="${tenantId}:${taxId}:${yes}"]`);
+    return;
+  }
   const consentTick = event.target.closest("[data-proto-report-consent]");
   if (consentTick) {
     protoReportToggleConsent(consentTick.dataset.protoReportConsent);
@@ -32160,7 +32249,7 @@ function onPrototypeKey(event) {
     return;
   }
   const typeRadio = event.target.closest(
-    ".astral-report-types [role='radio'], .astral-chart-style-switch [role='radio'], [role='radio'][data-proto-report-tenant-pays]"
+    ".astral-report-types [role='radio'], .astral-chart-style-switch [role='radio'], [role='radio'][data-proto-report-tenant-pays], [role='radio'][data-proto-report-tax-incl]"
   );
   if (typeRadio && ["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) {
     event.preventDefault();
