@@ -8223,6 +8223,9 @@ function protoPickSelect(id, value) {
     "report-sftp-auth": "sftpAuth",
     "report-send-day": "sendDay",
     "report-send-date": "sendDate",
+    "report-month-by": "monthBy",
+    "report-send-nth": "sendNth",
+    "report-period-edge": "periodEdge",
     "report-file-date": "fileDate",
     "report-file-sep": "fileSep",
   "report-file-prefix": "filePrefix",
@@ -8504,6 +8507,7 @@ const PROTO_REPORT_PERIODS = [
   { id: "week", name: "Weekly", every: "Weekly", word: "weekly", note: "Once a week" },
   { id: "month", name: "Monthly", every: "Monthly", word: "monthly", note: "Once a month" },
   { id: "quarter", name: "Quarterly", every: "Quarterly", word: "quarterly", note: "Every three months" },
+  { id: "half", name: "Half-yearly", every: "Half-yearly", word: "half-yearly", note: "Every six months" },
 ];
 
 // The dates a report's data covers. Separate from when it sends.
@@ -8680,8 +8684,8 @@ function protoReportType(raw) {
   return PROTO_REPORT_TYPES.find((item) => item.id === id);
 }
 
-function protoReportPeriods(type) {
-  return type === "billing" ? PROTO_REPORT_PERIODS : PROTO_REPORT_PERIODS.filter((item) => item.id !== "quarter");
+function protoReportPeriods() {
+  return PROTO_REPORT_PERIODS;
 }
 
 function protoReportOnce(def) {
@@ -8717,6 +8721,7 @@ function protoReportRangeFor(period) {
   if (period === "day") return { ...base, rangePreset: "yesterday" };
   if (period === "week") return { ...base, rangePreset: "last-week" };
   if (period === "quarter") return { ...base, rangeMode: "rolling" };
+  if (period === "half") return { ...base, rangeMode: "rolling", rangeCount: 6 };
   return base;
 }
 
@@ -9573,6 +9578,7 @@ function protoReportStepDate(date, period) {
   if (period === "day") return protoAddDays(date, 1);
   if (period === "week") return protoAddDays(date, 7);
   if (period === "quarter") return protoAddMonths(date, 3);
+  if (period === "half") return protoAddMonths(date, 6);
   return protoAddMonths(date, 1);
 }
 
@@ -9590,42 +9596,84 @@ function protoReportSendDayOf(raw, start) {
   const first = protoFromUkDate(start) || protoToday();
   const day = Number(raw.sendDay);
   const date = raw.sendDate === "last" ? "last" : Number(raw.sendDate);
+  const nth = String(raw.sendNth ?? "");
   return {
     sendDay: Number.isInteger(day) && day >= 0 && day <= 6 ? day : first.getDay(),
-    sendDate:
-      date === "last" || (Number.isInteger(date) && date >= 1 && date <= 28)
-        ? date
-        : first.getDate() > 28
-          ? "last"
-          : first.getDate(),
+    sendDate: date === "last" || (Number.isInteger(date) && date >= 1 && date <= 31) ? date : first.getDate(),
+    monthBy: raw.monthBy === "weekday" ? "weekday" : "date",
+    sendNth: PROTO_REPORT_NTH.some((item) => item.id === nth) ? nth : String(Math.min(4, Math.ceil(first.getDate() / 7))),
+    periodEdge: raw.periodEdge === "end" ? "end" : "start",
   };
+}
+
+const PROTO_REPORT_NTH = [
+  { id: "1", name: "1st" },
+  { id: "2", name: "2nd" },
+  { id: "3", name: "3rd" },
+  { id: "4", name: "4th" },
+  { id: "last", name: "Last" },
+];
+
+// Quarters and halves follow the calendar: Jan, Apr, Jul, Oct and Jan, Jul.
+function protoReportPeriodMonths(period) {
+  return period === "half" ? 6 : 3;
+}
+
+// The nth weekday of a month, such as the 2nd Thursday, or the last one.
+function protoReportNthWeekday(year, month, nth, weekday) {
+  if (nth === "last") {
+    const end = new Date(year, month + 1, 0);
+    return protoAddDays(end, -((end.getDay() - weekday + 7) % 7));
+  }
+  const first = new Date(year, month, 1);
+  return protoAddDays(first, ((weekday - first.getDay() + 7) % 7) + 7 * (Number(nth) - 1));
 }
 
 function protoReportDayWords(def) {
   if (def.period === "week") return ` on ${PROTO_REPORT_WEEKDAYS[def.sendDay]}s`;
-  if (def.period === "month" || def.period === "quarter") {
-    return def.sendDate === "last" ? " on the last day" : ` on the ${protoReportOrdinal(def.sendDate)}`;
+  if (def.period === "month") {
+    if (def.monthBy === "weekday") {
+      const nth = def.sendNth === "last" ? "last" : protoReportOrdinal(Number(def.sendNth));
+      return ` on the ${nth} ${PROTO_REPORT_WEEKDAYS[def.sendDay]}`;
+    }
+    return def.sendDate === "last" ? " on the last day of the month" : ` on the ${protoReportOrdinal(def.sendDate)}`;
+  }
+  if (def.period === "quarter" || def.period === "half") {
+    return ` on the ${def.periodEdge === "end" ? "last" : "first"} day of each ${def.period === "half" ? "half-year" : "quarter"}`;
   }
   return "";
 }
 
-function protoReportNextSend(def) {
+// The first send after a day, today unless given.
+function protoReportNextSend(def, after) {
   const start = protoFromUkDate(def.start);
-  const today = protoToday();
+  const today = after || protoToday();
   const todayStamp = protoDayStamp(today);
   // A one-off set to Now went when it was saved.
-  if (protoReportOnce(def)) return start && def.sendAt !== "now" && protoDayStamp(start) >= todayStamp ? start : null;
+  if (protoReportOnce(def)) return !after && start && def.sendAt !== "now" && protoDayStamp(start) >= todayStamp ? start : null;
   const next = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
   if (def.period === "day") return next;
   if (def.period === "week") {
     while (next.getDay() !== def.sendDay) next.setDate(next.getDate() + 1);
     return next;
   }
-  for (let i = 0; i < 16; i += 1) {
+  for (let i = 0; i < 26; i += 1) {
     const month = today.getMonth() + i;
-    if (def.period === "quarter" && ((month % 12) + 12) % 3 !== 0) continue;
-    const last = new Date(today.getFullYear(), month + 1, 0).getDate();
-    const on = new Date(today.getFullYear(), month, def.sendDate === "last" ? last : def.sendDate);
+    const year = today.getFullYear();
+    const inYear = ((month % 12) + 12) % 12;
+    let on;
+    if (def.period === "quarter" || def.period === "half") {
+      const span = protoReportPeriodMonths(def.period);
+      const end = def.periodEdge === "end";
+      if ((end ? inYear + 1 : inYear) % span !== 0) continue;
+      on = end ? new Date(year, month + 1, 0) : new Date(year, month, 1);
+    } else if (def.monthBy === "weekday") {
+      on = protoReportNthWeekday(year, month, def.sendNth, def.sendDay);
+    } else {
+      // A month without the picked date sends on its last day.
+      const last = new Date(year, month + 1, 0).getDate();
+      on = new Date(year, month, def.sendDate === "last" ? last : Math.min(def.sendDate, last));
+    }
     if (protoDayStamp(on) > todayStamp) return on;
   }
   return null;
@@ -9779,7 +9827,7 @@ function protoReportStatusHtml(def) {
 
 function protoReportRecurrence(def) {
   if (protoReportOnce(def)) return "One-off";
-  return { day: "Daily", week: "Weekly", month: "Monthly", quarter: "Quarterly" }[def.period] || "Scheduled";
+  return { day: "Daily", week: "Weekly", month: "Monthly", quarter: "Quarterly", half: "Half-yearly" }[def.period] || "Scheduled";
 }
 
 function protoReportStatusLine(def) {
@@ -10388,40 +10436,68 @@ function protoReportPeriodSelect(draft, label) {
   );
 }
 
-function protoReportSendDaySelect(draft) {
+function protoReportSchedSelect(id, label, value, options) {
+  return protoReportField(label, protoSelect({ id, label, wide: true, value: String(value), options }));
+}
+
+// The fields after How often. The first sits beside it; any others go on rows below.
+function protoReportSendDayRows(draft) {
   const period = protoReportPeriod(draft.type, draft.period).id;
   const days = protoReportSendDayOf(draft, protoReportDraftStart());
+  const weekdays = [1, 2, 3, 4, 5, 6, 0].map((day) => ({ value: String(day), label: PROTO_REPORT_WEEKDAYS[day] }));
   if (period === "week") {
-    return protoReportField(
-      "Day of the week",
-      protoSelect({
-        id: "report-send-day",
-        label: "Day of the week",
-        wide: true,
-        value: String(days.sendDay),
-        options: [1, 2, 3, 4, 5, 6, 0].map((day) => ({ value: String(day), label: PROTO_REPORT_WEEKDAYS[day] })),
-      })
-    );
+    return {
+      first: protoReportSchedSelect("report-send-day", "Day of the week", days.sendDay, weekdays),
+      rest: `<p class="astral-muted">Need this on more than one day? Create a report for each day.</p>`,
+    };
   }
-  if (period === "month" || period === "quarter") {
-    const dates = Array.from({ length: 28 }, (_, i) => ({ value: String(i + 1), label: protoReportOrdinal(i + 1) }));
-    return protoReportField(
-      "Day of the month",
-      protoSelect({
-        id: "report-send-date",
-        label: "Day of the month",
-        wide: true,
-        value: String(days.sendDate),
-        options: [...dates, { value: "last", label: "Last day" }],
-      })
-    );
+  if (period === "month") {
+    const byDay = days.monthBy === "weekday";
+    const repeat = protoReportSchedSelect("report-month-by", "Repeat on", days.monthBy, [
+      { value: "date", label: "Date", note: "Such as the 15th" },
+      { value: "weekday", label: "Day of the week", note: "Such as the 2nd Thursday" },
+    ]);
+    if (byDay) {
+      return {
+        first: repeat,
+        rest: `<div class="astral-report-pair">
+          ${protoReportSchedSelect("report-send-nth", "Which", days.sendNth, PROTO_REPORT_NTH.map((item) => ({ value: item.id, label: item.name })))}
+          ${protoReportSchedSelect("report-send-day", "Day", days.sendDay, weekdays)}
+        </div>`,
+      };
+    }
+    const dates = Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1), label: protoReportOrdinal(i + 1) }));
+    const short = typeof days.sendDate === "number" && days.sendDate > 28;
+    return {
+      first: repeat,
+      rest: `<div class="astral-report-pair">
+          ${protoReportSchedSelect("report-send-date", "Date", days.sendDate, [...dates, { value: "last", label: "Last day of month" }])}
+        </div>
+        ${
+          short
+            ? `<p class="astral-muted">Some months don't have the ${protoReportOrdinal(days.sendDate)}. In those months we'll send on the last day of the month.</p>`
+            : ""
+        }`,
+    };
   }
-  return "";
+  if (period === "quarter" || period === "half") {
+    const word = period === "half" ? "half-year" : "quarter";
+    const quarter = period === "quarter";
+    return {
+      first: protoReportSchedSelect("report-period-edge", `When in the ${word}`, days.periodEdge, [
+        { value: "start", label: `Start of the ${word}`, note: quarter ? "1 Jan, 1 Apr, 1 Jul and 1 Oct" : "1 Jan and 1 Jul" },
+        { value: "end", label: `End of the ${word}`, note: quarter ? "31 Mar, 30 Jun, 30 Sep and 31 Dec" : "30 Jun and 31 Dec" },
+      ]),
+      rest: "",
+    };
+  }
+  return { first: "", rest: "" };
 }
 
 // A report is a one-off or repeats. Repeating picks how often.
 function protoReportWhenFields(draft) {
   const once = draft.period === "once";
+  const rows = once ? null : protoReportSendDayRows(draft);
   const every = protoReportOrList(
     protoReportPeriods(draft.type)
       .filter((item) => item.id !== "once")
@@ -10456,8 +10532,9 @@ function protoReportWhenFields(draft) {
     </div>
     <div class="astral-report-pair">
       ${once ? protoReportDayCalHtml(protoReportDraftStart(), "Send on") : protoReportPeriodSelect(draft, "How often")}
-      ${once ? "" : protoReportSendDaySelect(draft)}
+      ${once ? "" : rows.first}
     </div>
+    ${once ? "" : rows.rest}
   `;
 }
 
@@ -11889,7 +11966,7 @@ function protoReportFilePreviewInner(draft) {
   const raw = protoReportDraftFileDef(draft);
   const def = protoReportNormalize(raw);
   const next = protoReportNextSend(def);
-  const later = !protoReportOnce(def) && next ? protoReportStepDate(next, def.period) : null;
+  const later = !protoReportOnce(def) && next ? protoReportNextSend(def, next) : null;
   return `
     <span class="astral-report-file-label">Files are called</span>
     <p class="astral-report-file-name">${protoIconMark("report")}<span>${escapeHtml(protoReportFileName(raw))}</span></p>
