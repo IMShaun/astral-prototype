@@ -13106,11 +13106,6 @@ html.is-classic-scroll #astral-fs .is-scroll-near {
   stroke-width: 4;
   stroke-linecap: round;
   stroke-dasharray: 4 200;
-  transition: stroke 320ms ease;
-}
-
-.astral-load-bar.is-on {
-  stroke: var(--load-ink, var(--color-action-primary));
 }
 
 .astral-load-pct {

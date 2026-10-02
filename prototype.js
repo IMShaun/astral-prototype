@@ -26814,8 +26814,8 @@ function protoLoadProgress(now) {
 
 // The ring is a radial bar chart: grey stubs that turn the chart colour and grow to one length as the load sweeps round.
 const PROTO_LOAD_BARS = 44;
-// Each bar grows over the sweep of a few neighbours, so the front is a soft wave rather than a tick.
-const PROTO_LOAD_WAVE = 4;
+// Each bar keeps growing while the next dozen start, so the bars behind the front catch up in a long, soft tail.
+const PROTO_LOAD_WAVE = 12;
 const PROTO_LOAD_RING = { c: 72, inner: 45, min: 4, max: 16 };
 
 // The count arrives in batches; the ring follows time, so it never stutters.
@@ -26898,7 +26898,9 @@ function protoLoadUpdate(now) {
     if (bar.dataset.len === len) return;
     bar.dataset.len = len;
     bar.style.strokeDasharray = `${len} 200`;
-    bar.classList.toggle("is-on", raw > 0);
+    // The colour fades in faster than the length, so a bar reads as loaded before it is full.
+    const ink = Math.round(Math.min(1, fill * 2.5) * 100);
+    bar.style.stroke = ink ? `color-mix(in srgb, var(--load-ink, var(--color-action-primary)) ${ink}%, var(--color-border-default))` : "";
   });
   const ring = el.querySelector(".astral-load-ring");
   if (ring && ring.getAttribute("aria-valuenow") !== String(pct)) ring.setAttribute("aria-valuenow", String(pct));
