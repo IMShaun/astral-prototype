@@ -1526,7 +1526,7 @@
           "value": "16px",
           "alias": "primitive.space.16",
           "status": "brand",
-          "note": "16px. Stack of fields or list rows.",
+          "note": "16px. The one gap between blocks. Page head to tabs to stat cards to the main area. Blocks inside a card or accordion. Accordion head to its content and its content to the next rule. Stack of fields or list rows. Use 8px for related items inside a block. Use 24px only for page or modal edge inset and side by side option groups. Never 28px.",
           "cssVar": "--space-stack-default",
           "theme": "theme.space.stack.default"
         },
@@ -3989,7 +3989,7 @@
                 "id": "space",
                 "name": "Space",
                 "status": "brand",
-                "note": "Four pixel grid is named. 8, 12, 16, 24, 32, 36, 48, 56. Page inset is 36. Control inset is 16. Stacked fields are 88 tall. Base also has a Spacers board of those units."
+                "note": "Four pixel grid is named. 8, 12, 16, 24, 32, 36, 48, 56. Page inset is 36. Control inset is 16. Stacked fields are 88 tall. Base also has a Spacers board of those units. Spacing rule. 16px between blocks on a page and inside a card or accordion, including head to content and content to the next rule. 8px between related items in a block. 24px only for page or modal edge inset and side by side option groups. 32px only above the page head."
               },
               {
                 "id": "layout",
@@ -5246,7 +5246,7 @@
             "status": "working",
             "say": "All",
             "avoid": "Adding incoming and outgoing into one use number.",
-            "note": "Do not put All on the site head or the group head. Both meter pills on shows Incoming and Outgoing together. On a group they sit together when both exist. They stay separate series. The graph title is Incoming and outgoing. A visual key sits under the graph. In and Out sit in pills. An import mark on In. An export mark on Out. In is cyan. Out is black. A 24px gap sits under the key before Breakdown. Click In or Out to take that series off. Click it again to put it back. Off pills strike through the name. They can take the last one off. The graph sits empty. A black circle sits above the tallest bar in that time when it has a query or a comment. A black star sits above the tallest bar in that time when it has an alert. Incoming and Outgoing at one time are one hit. Query and alert on the same section stack. The circle sits closer to the bar. The star sits above. On Individual consumption the mark sits on the point, same as hover. Colour matches the line. A star replaces a circle if that point has an alert. A query raised on a site still marks that site on the group graph. Hourly queries and alerts sit on today when the window is days or months. Do not put Query or Alert in the key.",
+            "note": "Do not put All on the site head or the group head. Both meter pills on shows Incoming and Outgoing together. On a group they sit together when both exist. They stay separate series. The graph title is Incoming and outgoing. A visual key sits under the graph. In and Out sit in pills. An import mark on In. An export mark on Out. In is cyan. Out is black. A 16px gap sits under the key before Breakdown. Inside Breakdown 16px sits under the head, between the key row and the table, and under the table. Click In or Out to take that series off. Click it again to put it back. Off pills strike through the name. They can take the last one off. The graph sits empty. A black circle sits above the tallest bar in that time when it has a query or a comment. A black star sits above the tallest bar in that time when it has an alert. Incoming and Outgoing at one time are one hit. Query and alert on the same section stack. The circle sits closer to the bar. The star sits above. On Individual consumption the mark sits on the point, same as hover. Colour matches the line. A star replaces a circle if that point has an alert. A query raised on a site still marks that site on the group graph. Hourly queries and alerts sit on today when the window is days or months. Do not put Query or Alert in the key.",
             "from": "Shaun on meter pills, 6 Sep"
           },
           {

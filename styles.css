@@ -4251,7 +4251,7 @@ button.astral-avatar {
   padding: 32px 24px 96px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--space-stack-default);
   flex: 1 1 auto;
   min-height: 0;
   overflow-x: hidden;
@@ -4271,7 +4271,7 @@ button.astral-avatar {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--space-stack-default);
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -5779,7 +5779,7 @@ button.astral-catch {
 .astral-page-top {
   flex: none;
   display: grid;
-  gap: var(--space-24);
+  gap: var(--space-stack-default);
   min-width: 0;
 }
 
@@ -6543,9 +6543,9 @@ button.astral-state {
   display: grid;
   gap: 8px;
   /* Same 16px lead as .astral-chart-wrap, so every tab starts at one height. */
-  padding: 16px 0 24px;
+  padding: 16px 0;
   border-bottom: 1px solid var(--color-border-strong);
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .astral-meter-summary {
@@ -6621,7 +6621,7 @@ button.astral-state {
   display: grid;
   gap: 16px;
   min-width: 0;
-  padding: 16px 8px 24px;
+  padding: 16px 8px;
 }
 
 .astral-meter-overview {
@@ -6728,7 +6728,7 @@ button.astral-state {
   display: grid;
   gap: 16px;
   min-width: 0;
-  padding: 0 0 16px;
+  padding: 16px 0;
 }
 
 .astral-meter-fold .astral-table .astral-field {
@@ -8051,6 +8051,10 @@ button.astral-state {
   min-height: var(--astral-chart-height);
   max-height: var(--astral-chart-height);
   padding-block: var(--space-16);
+}
+
+.astral-pane-body > .astral-chart-wrap {
+  padding-block-end: var(--space-8);
 }
 
 .astral-pane-body .astral-chart-wrap > *,
@@ -9485,6 +9489,8 @@ button.astral-state {
 .astral-breakdown-body {
   display: flex;
   flex-direction: column;
+  gap: var(--space-stack-default);
+  padding: var(--space-stack-default) 0;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -9729,7 +9735,7 @@ button.astral-state {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-8, 8px) var(--space-16, 16px);
-  margin: 0 0 var(--space-8, 8px);
+  margin: 0;
   font-size: 0.8125rem;
 }
 
@@ -10158,12 +10164,12 @@ button.astral-state {
 }
 
 .astral-people-fold .astral-people {
-  padding: 8px 16px 16px;
+  padding: 16px;
   min-width: 0;
 }
 
 .astral-people-fold-body > .astral-muted {
-  padding: 8px 16px 16px;
+  padding: 16px;
 }
 
 .astral-people .astral-table-wrap {
@@ -11259,7 +11265,7 @@ tr.is-off .astral-person-mark {
 }
 
 .astral-template-steps {
-  gap: 28px;
+  gap: 16px;
 }
 
 .astral-template-step {
@@ -11718,8 +11724,8 @@ tr.is-off .astral-person-mark {
   width: 100%;
   justify-self: stretch;
   justify-items: stretch;
-  gap: 28px;
-  padding: 32px 28px 28px;
+  gap: 16px;
+  padding: 24px;
 }
 
 .astral-auth-copy {
@@ -12304,7 +12310,7 @@ tr.is-off .astral-person-mark {
 
 .astral-alert-body {
   display: grid;
-  gap: var(--space-24);
+  gap: var(--space-stack-default);
   min-width: 0;
 }
 
@@ -12788,7 +12794,7 @@ button.astral-state:focus-visible,
 /* Usage Growth reuses the Consumption bar chart, a little shorter so the table shows. */
 .astral-usage .astral-pane-body > .astral-chart-wrap {
   --astral-chart-height: 400px;
-  margin-bottom: var(--space-24);
+  margin-bottom: var(--space-stack-default);
 }
 
 .astral-usage-lead {
@@ -13018,7 +13024,7 @@ button.astral-state:focus-visible,
   display: grid;
   gap: 12px;
   margin: 0;
-  padding: 0 8px 8px 44px;
+  padding: 16px 8px 16px 44px;
   list-style: none;
 }
 
