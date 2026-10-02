@@ -9537,7 +9537,7 @@ function protoReportSendAtSelect(draft) {
 function protoReportFileLine(def) {
   const bits = [protoReportOptionName(PROTO_REPORT_FORMAT, def.format)];
   if (!protoReportUtilityAll(def.utility)) bits.push(protoReportUtilityNames(def.utility));
-  if (protoReportAsksBySite(def) && def.bySite === false) bits.push("totals across the sites");
+  if (protoReportAsksBySite(def) && def.bySite === false) bits.push("total per utility");
   if (def.channel !== "all") bits.push(`${protoReportOptionName(PROTO_REPORT_CHANNEL, def.channel).toLowerCase()} only`);
   if (protoReportHasQuality(def) && def.quality !== "all") bits.push(`${def.quality} readings only`);
   if (def.time === "uk") bits.push("UK time");
@@ -10395,25 +10395,25 @@ function protoReportAsksBySite(draft) {
 
 function protoReportBySiteField(draft) {
   if (!protoReportAsksBySite(draft)) return "";
-  const alert = draft.type === "alert";
+  // Still saves bySite true or false, so reports moved over from Data Vision keep working.
   const items = [
     {
       on: true,
-      name: "Yes",
-      note: alert ? "Checks each site against the threshold." : "One column for each meter, with its site.",
+      name: "Each meter separately",
+      note: "One column per meter, labelled with its site.",
+      example: "Crewe depot – Elec 1 (kWh)",
     },
     {
       on: false,
-      name: "No",
-      note: alert
-        ? "Checks the sites you pick added together."
-        : "One total for each utility across the sites you pick.",
+      name: "Total per utility",
+      note: "All selected sites added together, one column per utility.",
+      example: "Electricity total (kWh)",
     },
   ];
   const bySite = draft.bySite !== false;
   return `
     <div class="astral-report-type-field">
-      <span class="astral-report-type-label" id="astral-report-bysite-label">Use site-level data?</span>
+      <span class="astral-report-type-label" id="astral-report-bysite-label">Show data as</span>
       <div class="astral-report-types is-pair" role="radiogroup" aria-labelledby="astral-report-bysite-label">
         ${items
           .map((item) => {
@@ -10429,6 +10429,7 @@ function protoReportBySiteField(draft) {
               >
                 <span class="astral-report-type-head">${protoRadio(on)}<span>${item.name}</span></span>
                 <span class="astral-muted">${escapeHtml(item.note)}</span>
+                ${on ? `<span class="astral-report-type-eg">For example <code>${escapeHtml(item.example)}</code></span>` : ""}
               </button>
             `;
           })

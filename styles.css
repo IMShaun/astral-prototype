@@ -10481,6 +10481,20 @@ tr.is-off .astral-person-mark {
   font-size: 0.875rem;
 }
 
+.astral-report-type-eg {
+  padding-left: 24px;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.astral-report-type-eg code {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--color-background-subtle);
+  color: var(--color-text-primary);
+  font-size: 0.8125rem;
+}
+
 .astral-report-type:hover {
   background: var(--color-background-hover);
 }
