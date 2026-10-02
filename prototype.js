@@ -6203,12 +6203,24 @@ function protoChartLimitNote() {
   )}</p>`;
 }
 
+// Says whose hours the overlay shows, for an exported image that has no Chart settings.
+function protoChartBoundsWords(set) {
+  const group = set?.pick || set?.groups?.[0];
+  if (!group || !set.zones?.on) return "";
+  const { showHours, showTou } = set.zones;
+  const lead = showHours && showTou ? "Hours and time of use" : showHours ? "Hours" : "Time of use";
+  return `${lead} for ${[group.label, set.utility].filter(Boolean).join(" \u00b7 ")}`;
+}
+
 function protoChartWrap(svg, label, dual, empty, extras = {}) {
   const pan = protoChartCanPan(label);
   const heading = extras.heading || null;
   const titled = protoChartIsGraph(label);
+  const bounds = protoChartBoundsWords(extras.zoneSet);
   return `
-    <div class="astral-chart-wrap" data-proto-chart="${escapeHtml(label)}"${extras.still ? " data-proto-chart-still" : ""}>
+    <div class="astral-chart-wrap" data-proto-chart="${escapeHtml(label)}"${extras.still ? " data-proto-chart-still" : ""}${
+      bounds ? ` data-proto-bounds="${escapeHtml(bounds)}"` : ""
+    }>
       ${
         heading
           ? `<div class="astral-chart-head">
@@ -7146,7 +7158,7 @@ function protoBarChart(points, label, options = {}) {
                 yBottom = y;
                 return `<path class="${cls} is-stack${
                   slice.quality === "estimated" ? " is-est" : ""
-                }${slice.dim ? " is-dim" : ""}" style="--stack-fill:${protoSliceFill(slice, outgoing)}" data-m="${i}|${side}|${escapeHtml(
+                }${slice.dim ? " is-dim" : ""}" style="--stack-fill:${protoSliceFill(slice, outgoing)}" data-k="${escapeHtml(slice.name || "")}" data-m="${i}|${side}|${escapeHtml(
                   slice.id || `s${si}`
                 )}" data-g="${protoMorphGeoAttr(bx, y, bw, bh, top)}" d="${d}" />`;
               })
@@ -7260,7 +7272,9 @@ function protoLinePath(track, scale) {
       const dashStyle = dash
         ? `;stroke-dasharray:${escapeHtml(dash)}`
         : ";stroke-dasharray:none";
-      return `<polyline class="astral-chart-line${run.est ? " is-est" : ""}" data-m="${escapeHtml(
+      return `<polyline class="astral-chart-line${run.est ? " is-est" : ""}" data-k="${escapeHtml(
+        track.ref || track.name || ""
+      )}" data-m="${escapeHtml(
         `${track.id || ""}|run|${k}`
       )}" fill="none" style="stroke:${escapeHtml(
         track.color
@@ -17566,7 +17580,7 @@ function protoSiteButton(site, on) {
   `;
 }
 
-function protoExportControl(fileId) {
+function protoExportControl(fileId, { image = false } = {}) {
   if (!protoCanAct()) return "";
   const open = Boolean(store.prototypeExportOpen);
   return `
@@ -17592,6 +17606,7 @@ function protoExportControl(fileId) {
         <button type="button" role="menuitem" data-proto-export="pdf" data-proto-file="${escapeHtml(
           fileId
         )}">PDF</button>
+        ${image ? '<button type="button" role="menuitem" data-proto-export="png">PNG</button>' : ""}
       </div>
     </div>
   `;
@@ -20311,7 +20326,7 @@ function protoDetailTools(csvId) {
       ${protoDateControl()}
       ${protoCompareControl()}
       ${protoPaneFilterControl()}
-      ${protoExportControl(csvId)}
+      ${protoExportControl(csvId, { image: true })}
     </div>
   `;
 }
@@ -27522,6 +27537,370 @@ function protoPdf(id) {
   protoPdfDownload(pack);
 }
 
+// A graph image leaves the app, so it carries its own title, dates, units, whose hours the overlay shows, and a legend.
+const PROTO_IMG_PROPS = [
+  "fill",
+  "fill-opacity",
+  "stroke",
+  "stroke-width",
+  "stroke-opacity",
+  "stroke-dasharray",
+  "stroke-linecap",
+  "stroke-linejoin",
+  "opacity",
+  "display",
+  "visibility",
+  "font-family",
+  "font-size",
+  "font-weight",
+  "text-anchor",
+  "dominant-baseline",
+  "vector-effect",
+  "clip-path",
+];
+const PROTO_IMG_FONT = 'Roobert, Aptos, "Segoe UI", sans-serif';
+const PROTO_IMG_SERIES_MAX = 30;
+let protoImgFontCss = null;
+let protoImgMeasure = null;
+
+function protoImgTextWidth(text, size, weight = 400) {
+  if (!protoImgMeasure) protoImgMeasure = document.createElement("canvas").getContext("2d");
+  protoImgMeasure.font = `${weight} ${size}px ${PROTO_IMG_FONT}`;
+  return protoImgMeasure.measureText(String(text || "")).width;
+}
+
+function protoImgWrap(text, size, weight, max) {
+  const lines = [];
+  let line = "";
+  String(text || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .forEach((word) => {
+      const next = line ? `${line} ${word}` : word;
+      if (line && protoImgTextWidth(next, size, weight) > max) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = next;
+      }
+    });
+  if (line) lines.push(line);
+  return lines;
+}
+
+function protoImgPaint(el, prop) {
+  return el ? getComputedStyle(el).getPropertyValue(prop).trim() : "";
+}
+
+function protoImgToken(name, fallback) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
+
+// The page's own fonts, inlined, because an image cannot reach the page's font files.
+async function protoImgFonts() {
+  if (protoImgFontCss != null) return protoImgFontCss;
+  const rules = [];
+  [...document.styleSheets].forEach((sheet) => {
+    let list = [];
+    try {
+      list = [...sheet.cssRules];
+    } catch {
+      return;
+    }
+    list.forEach((rule) => {
+      if (rule instanceof CSSFontFaceRule) rules.push({ rule, base: sheet.href || document.baseURI });
+    });
+  });
+  const parts = await Promise.all(
+    rules.map(async ({ rule, base }) => {
+      const src = /url\(["']?([^"')]+)["']?\)/.exec(rule.style.getPropertyValue("src"));
+      if (!src) return "";
+      try {
+        const res = await fetch(new URL(src[1], base));
+        if (!res.ok) return "";
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        let bin = "";
+        for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+        const weight = rule.style.getPropertyValue("font-weight") || "400";
+        return `@font-face{font-family:${rule.style.getPropertyValue("font-family")};src:url(data:font/otf;base64,${btoa(
+          bin
+        )}) format("opentype");font-weight:${weight};font-style:normal}`;
+      } catch {
+        return "";
+      }
+    })
+  );
+  protoImgFontCss = parts.join("");
+  return protoImgFontCss;
+}
+
+// Legend rows: what each colour is, then Hours and Time of use when they are drawn.
+function protoImgLegend(wrap, svg, label) {
+  const lines = Boolean(svg.querySelector(".astral-chart-line"));
+  const series = [];
+  const seen = new Set();
+  const add = (name, paint) => {
+    const key = String(name || "").trim();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    series.push({ name: key, paint, shape: lines ? "line" : "bar" });
+  };
+  const pills = [...wrap.querySelectorAll(".astral-chart-key .astral-meter-pill.is-on")];
+  pills.forEach((pill) => add(pill.getAttribute("aria-label") || pill.textContent, protoImgPaint(pill, "--slice")));
+  if (!pills.length) {
+    svg.querySelectorAll("[data-k]").forEach((el) => add(el.dataset.k, protoImgPaint(el, lines ? "stroke" : "fill")));
+  }
+  if (!series.length) {
+    const bar =
+      svg.querySelector(".astral-bar:not(.is-est), .astral-bar-out:not(.is-est)") ||
+      svg.querySelector(".astral-bar, .astral-bar-out");
+    if (bar) add(label, protoImgPaint(bar, "fill"));
+  }
+  const grey = protoImgToken("--color-text-secondary", "#737373");
+  const first = series.slice(0, PROTO_IMG_SERIES_MAX);
+  const more = series.length - first.length;
+  if (more > 0) first.push({ name: `and ${more} more`, shape: "none" });
+  if (svg.querySelector(".is-est")) first.push({ name: "Estimated", shape: lines ? "est-line" : "est-bar", paint: grey });
+  const rows = first.length ? [{ caption: "", items: first }] : [];
+  if (svg.querySelector(".astral-zone")) {
+    const items = [{ name: "Operational", shape: "swatch", paint: "#ffffff", edge: grey }];
+    const non = svg.querySelector(".astral-zone-band.is-non");
+    if (non) items.push({ name: "Non-operational", shape: "swatch", paint: protoImgPaint(non, "fill"), edge: grey });
+    if (svg.querySelector(".astral-zone-band.is-closed")) items.push({ name: "Closed", shape: "hatch", edge: grey });
+    const edge = svg.querySelector(".astral-zone-edge");
+    if (edge) items.push({ name: "Hours change", shape: "edge", paint: protoImgPaint(edge, "stroke") || grey });
+    rows.push({ caption: "Hours", items });
+  }
+  const peak = svg.querySelector(".astral-tou.is-peak");
+  const off = svg.querySelector(".astral-tou.is-off");
+  if (peak || off) {
+    rows.push({
+      caption: "Time of use",
+      items: [
+        { name: "Peak", shape: "swatch", paint: protoImgPaint(peak, "fill") || protoImgToken("--color-nav", "#00020b") },
+        {
+          name: "Off-peak",
+          shape: "swatch",
+          paint: protoImgPaint(off, "fill") || "#dfdfdf",
+          edge: protoImgPaint(off, "stroke") || grey,
+        },
+      ],
+    });
+  }
+  return rows;
+}
+
+function protoImgSwatchW(item) {
+  if (item.shape === "none") return 0;
+  return item.shape === "line" || item.shape === "est-line" ? 18 : 12;
+}
+
+function protoImgSwatch(item, x, cy) {
+  const paint = escapeHtml(item.paint || "#737373");
+  const edge = escapeHtml(item.edge || "none");
+  const box = (fill, extra = "") =>
+    `<rect x="${x + 0.5}" y="${cy - 5.5}" width="11" height="11" rx="2" fill="${fill}" stroke="${edge}" ${extra}/>`;
+  if (item.shape === "line") {
+    return `<line x1="${x}" y1="${cy}" x2="${x + 18}" y2="${cy}" stroke="${paint}" stroke-width="2.5" stroke-linecap="round"/>`;
+  }
+  if (item.shape === "est-line") {
+    return `<line x1="${x + 1}" y1="${cy}" x2="${x + 17}" y2="${cy}" stroke="${paint}" stroke-width="2" stroke-dasharray="2 3.5" stroke-linecap="round"/>`;
+  }
+  if (item.shape === "est-bar") {
+    return `<rect x="${x + 1}" y="${cy - 5}" width="10" height="10" rx="2" fill="${paint}" fill-opacity="0.28" stroke="${paint}" stroke-opacity="0.6" stroke-width="1.5"/>`;
+  }
+  if (item.shape === "edge") {
+    return `<line x1="${x + 6}" y1="${cy - 7}" x2="${x + 6}" y2="${cy + 7}" stroke="${paint}" stroke-width="1" stroke-dasharray="3 3"/>`;
+  }
+  if (item.shape === "hatch") return box("url(#astral-img-hatch)");
+  if (item.shape === "swatch") return box(paint);
+  if (item.shape === "bar") return `<rect x="${x}" y="${cy - 6}" width="12" height="12" rx="2" fill="${paint}"/>`;
+  return "";
+}
+
+function protoChartImageWhen() {
+  const span = protoDateSpan();
+  const words = protoRangeWords(span.from, span.to);
+  const preset = protoDatePreset();
+  const name = preset === "custom" ? "" : PROTO_DATE_PRESETS.find((item) => item.id === preset)?.name || "";
+  return { text: name ? `${name}: ${words}` : words, to: protoIso(span.to) };
+}
+
+function protoImgSlug(text) {
+  return protoFileSlug(text)
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+// Copies the graph as drawn, with every style written onto it, since the image has no stylesheet.
+function protoChartImageShot(scope) {
+  const wrap = (scope || document).querySelector(".astral-chart-wrap");
+  const svg = wrap?.querySelector("svg.astral-chart");
+  if (!svg) return null;
+  hideProtoTips();
+  const [, , w, h] = String(svg.getAttribute("viewBox") || "")
+    .split(/\s+/)
+    .map(Number);
+  if (!w || !h) return null;
+  // Jump any entry or morph animation to its end so a mid-draw export isn't empty.
+  svg.getAnimations({ subtree: true }).forEach((anim) => {
+    try {
+      anim.finish();
+    } catch {}
+  });
+  const clone = svg.cloneNode(true);
+  const from = [svg, ...svg.querySelectorAll("*")];
+  const to = [clone, ...clone.querySelectorAll("*")];
+  from.forEach((el, i) => {
+    const cs = getComputedStyle(el);
+    to[i].setAttribute(
+      "style",
+      PROTO_IMG_PROPS.map((prop) => {
+        const value = cs.getPropertyValue(prop);
+        return value ? `${prop}:${value}` : "";
+      })
+        .filter(Boolean)
+        .join(";")
+    );
+  });
+  clone.querySelectorAll(".astral-hit, .astral-morph-ghosts").forEach((el) => el.remove());
+  [clone, ...clone.querySelectorAll("*")].forEach((el) => {
+    [...el.attributes].forEach((attr) => {
+      if (/^(data-|aria-|tabindex$|role$|class$)/.test(attr.name)) el.removeAttribute(attr.name);
+    });
+  });
+  const detail = scope || wrap.closest(".astral-detail");
+  const label = wrap.dataset.protoChart || "Graph";
+  const overlay = Boolean(svg.querySelector(".astral-zone, .astral-tou"));
+  return {
+    clone,
+    w,
+    h,
+    label,
+    place: detail?.querySelector(".astral-pane-head h3")?.textContent.trim() || "",
+    kicker: detail?.querySelector(".astral-pane-head .astral-kicker")?.textContent.trim() || "",
+    unit: svg.querySelector(".astral-axis-unit")?.textContent.trim() || "",
+    bounds: overlay ? wrap.dataset.protoBounds || "" : "",
+    held: Boolean(wrap.querySelector(".astral-chart-limit")),
+    legend: protoImgLegend(wrap, svg, label),
+    when: protoChartImageWhen(),
+  };
+}
+
+function protoChartImageSvg(shot, fonts) {
+  const pad = 32;
+  const W = Math.round(Math.max(shot.w + pad * 2, 640));
+  const inner = W - pad * 2;
+  const ink = protoImgToken("--color-text-primary", "#000000");
+  const grey = protoImgToken("--color-text-secondary", "#737373");
+  const out = [];
+  let y = pad;
+  const say = (text, size, weight, fill, gap = 6) => {
+    protoImgWrap(text, size, weight, inner).forEach((line) => {
+      y += size;
+      out.push(
+        `<text x="${pad}" y="${y}" font-size="${size}" font-weight="${weight}" fill="${escapeHtml(fill)}">${escapeHtml(
+          line
+        )}</text>`
+      );
+      y += gap;
+    });
+  };
+  if (shot.kicker) say(shot.kicker, 12, 500, grey, 8);
+  say(shot.place ? `${shot.place} \u00b7 ${shot.label}` : shot.label, 18, 600, ink, 8);
+  say([shot.when.text, protoChartZone(), shot.unit ? `Units: ${shot.unit}` : ""].filter(Boolean).join(" \u00b7 "), 13, 400, grey);
+  if (shot.bounds) say(shot.bounds, 13, 500, ink);
+  if (shot.held) {
+    say("Too many sites to chart clearly, so this graph leaves out hours and time of use. The site breakdown has them for every site.", 13, 400, grey);
+  }
+  y += 6;
+  shot.clone.setAttribute("x", String(pad));
+  shot.clone.setAttribute("y", String(y));
+  shot.clone.setAttribute("width", String(shot.w));
+  shot.clone.setAttribute("height", String(shot.h));
+  out.push(new XMLSerializer().serializeToString(shot.clone));
+  y += shot.h + 8;
+  const rowH = 22;
+  shot.legend.forEach((row) => {
+    let x = pad;
+    let cy = y + rowH / 2;
+    if (row.caption) {
+      out.push(
+        `<text x="${x}" y="${cy + 4}" font-size="12" font-weight="600" fill="${escapeHtml(ink)}">${escapeHtml(
+          row.caption
+        )}</text>`
+      );
+      x += protoImgTextWidth(row.caption, 12, 600) + 12;
+    }
+    const start = x;
+    row.items.forEach((item) => {
+      const sw = protoImgSwatchW(item);
+      const lead = sw ? sw + 6 : 0;
+      const width = lead + protoImgTextWidth(item.name, 12, 400);
+      if (x > start && x + width > pad + inner) {
+        y += rowH;
+        cy = y + rowH / 2;
+        x = start;
+      }
+      out.push(protoImgSwatch(item, x, cy));
+      out.push(
+        `<text x="${x + lead}" y="${cy + 4}" font-size="12" fill="${escapeHtml(item.shape === "none" ? grey : ink)}">${escapeHtml(
+          item.name
+        )}</text>`
+      );
+      x += width + 18;
+    });
+    y += rowH;
+  });
+  y += 10;
+  const today = protoToday();
+  out.push(
+    `<text x="${pad}" y="${y + 11}" font-size="11" fill="${escapeHtml(grey)}">${escapeHtml(
+      `Exported ${protoRangeWords(today, today)}`
+    )}</text>`
+  );
+  y += 11;
+  const H = Math.round(y + pad);
+  return {
+    W,
+    H,
+    text: `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><defs><style>${fonts}</style><pattern id="astral-img-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#efefef"/><line x1="0" y1="0" x2="0" y2="6" stroke="#dfdfdf" stroke-width="3"/></pattern></defs><rect width="${W}" height="${H}" fill="#ffffff"/><g font-family='${PROTO_IMG_FONT}'>${out.join(
+      ""
+    )}</g></svg>`,
+  };
+}
+
+async function protoChartImageBlob(shot) {
+  const fonts = await protoImgFonts();
+  const { W, H, text } = protoChartImageSvg(shot, fonts);
+  const url = URL.createObjectURL(new Blob([text], { type: "image/svg+xml" }));
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    // Give the inlined fonts a beat to settle before the picture is taken.
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    const scale = 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = W * scale;
+    canvas.height = H * scale;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, 0, 0, W, H);
+    return await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function protoChartImageSave(shot) {
+  const blob = await protoChartImageBlob(shot);
+  if (!blob) return;
+  const name = [protoImgSlug(shot.place), protoImgSlug(shot.label), shot.when.to].filter(Boolean).join("-");
+  protoFileDownload(blob, `${name || "graph"}.png`, "image/png");
+}
+
 function hideProtoTips() {
   protoClearIconTipPlace();
   document.querySelectorAll(".astral-chart-wrap > .astral-tip").forEach((tip) => {
@@ -30467,6 +30846,13 @@ function onPrototype(event) {
     const fileId = exportBtn.dataset.protoFile;
     if (act === "csv" || act === "pdf") {
       protoQueueExport(act, fileId);
+      return;
+    }
+    if (act === "png") {
+      // Take the picture before the menu closes and the page paints again.
+      const shot = protoChartImageShot(exportBtn.closest(".astral-detail"));
+      setProto({ prototypeExportOpen: false });
+      if (shot) protoChartImageSave(shot);
       return;
     }
     setProto({ prototypeExportOpen: false });

@@ -7111,6 +7111,11 @@ button.astral-state {
   min-width: 8rem;
 }
 
+/* PNG is a picture of the graph, so it only shows when the pane has one. */
+.astral-detail:not(:has(.astral-chart-wrap svg.astral-chart)) .astral-export-menu [data-proto-export="png"] {
+  display: none;
+}
+
 .astral-filter-menu {
   min-width: 14rem;
   max-height: min(28rem, 50vh);

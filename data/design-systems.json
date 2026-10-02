@@ -6260,6 +6260,16 @@
             "from": "Energy manager journey and Shaun on export, 5 Sep"
           },
           {
+            "id": "png",
+            "kind": "labels",
+            "name": "PNG",
+            "status": "working",
+            "say": "PNG",
+            "avoid": "Image. Screenshot.",
+            "note": "A picture of the graph for decks, Teams, and chat. Only graph panes list it. It downloads at once and skips Downloads. The image has to make sense outside Astral, without hover or the site picker. It carries the title, the date range, UTC, the units, whose hours and time of use the bands show, and a legend for every series, Estimated, Hours, and Time of use. Over 30 series the legend ends with and N more. When there are too many sites for an overlay, the graph goes without one and the image says so and points to the site breakdown. Colours stay the neutral palette. Fonts are built in. A graph caught mid-animation is saved finished.",
+            "from": "Emily and Maxim on chart downloads, demo feedback 22"
+          },
+          {
             "id": "processing",
             "kind": "labels",
             "name": "Processing",
