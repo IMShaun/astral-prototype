@@ -7913,6 +7913,64 @@ button.astral-state {
   text-align: center;
 }
 
+.astral-cal-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: #000;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.astral-cal-title:hover {
+  background: var(--color-background-hover);
+}
+
+.astral-cal-title svg {
+  width: 14px;
+  height: 14px;
+}
+
+.astral-cal.is-months {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.astral-cal-month {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #000;
+  font: inherit;
+  cursor: pointer;
+}
+
+.astral-cal-month:hover:not(:disabled):not(.is-end) {
+  background: var(--color-background-hover);
+}
+
+.astral-cal-month.is-end {
+  background: var(--color-brand-primary);
+  color: var(--color-action-on-primary);
+}
+
+.astral-cal-month.is-today:not(.is-end) {
+  box-shadow: inset 0 0 0 2px #000;
+}
+
+.astral-cal-month:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .astral-cal > span {
   color: #737373;
   font-size: 0.75rem;

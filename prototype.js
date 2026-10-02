@@ -683,6 +683,7 @@ function protoPageFilterReset() {
     prototypeReportFrom: "",
     prototypeReportCalOpen: false,
     prototypeReportCal: "",
+    prototypeReportCalView: "",
     prototypeColourOpen: "",
     prototypeDateOpen: false,
     prototypeDateCustomOpen: false,
@@ -3140,6 +3141,45 @@ function protoReadCalMonth(raw, fallback) {
 function protoShiftCal(year, month, delta) {
   const next = new Date(year, month + delta, 1);
   return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
+}
+
+// The calendar head. Its title opens a month grid; the month grid's arrows step a year.
+function protoCalHeadHtml({ year, month, view, attr, short = false }) {
+  if (view === "months") {
+    return `
+      <div class="astral-cal-head">
+        ${protoIconBtn("prev", "Previous year", `${attr}="prev-year"`)}
+        <p>${year}</p>
+        ${protoIconBtn("next", "Next year", `${attr}="next-year"`)}
+      </div>
+    `;
+  }
+  const title = `${(short ? PROTO_MONTHS : PROTO_MONTHS_LONG)[month]} ${year}`;
+  return `
+    <div class="astral-cal-head">
+      ${protoIconBtn("prev", "Previous month", `${attr}="prev"`)}
+      <button type="button" class="astral-cal-title" ${attr}="months" aria-label="${escapeHtml(`${PROTO_MONTHS_LONG[month]} ${year}. Pick a month`)}">
+        <span>${escapeHtml(title)}</span>${protoChevronMark("down")}
+      </button>
+      ${protoIconBtn("next", "Next month", `${attr}="next"`)}
+    </div>
+  `;
+}
+
+function protoCalMonthCells({ year, month, allowFuture, minIso, pickAttr }) {
+  const today = protoToday();
+  const nowKey = protoIso(today).slice(0, 7);
+  const minKey = minIso ? String(minIso).slice(0, 7) : "";
+  return PROTO_MONTHS.map((name, i) => {
+    const key = `${year}-${String(i + 1).padStart(2, "0")}`;
+    const shown = i === month;
+    const cls = ["astral-cal-month", shown ? "is-end" : "", key === nowKey ? "is-today" : ""].filter(Boolean).join(" ");
+    const label = `${PROTO_MONTHS_LONG[i]} ${year}`;
+    const off = (!allowFuture && key > nowKey) || (minKey && key < minKey);
+    return `<button type="button" class="${cls}" ${off ? "disabled" : `${pickAttr}="${key}"`} aria-label="${label}" aria-pressed="${shown}"${
+      key === nowKey ? ' aria-current="date"' : ""
+    }>${name}</button>`;
+  }).join("");
 }
 
 function protoCalWeekdays() {
@@ -8344,15 +8384,12 @@ function protoDateModal() {
           "date"
         )}
         <div class="astral-modal-body">
-          <div class="astral-cal-head">
-            ${protoIconBtn("prev", "Previous month", 'data-proto-date="prev"')}
-            <p>${escapeHtml(`${PROTO_MONTHS[month]} ${year}`)}</p>
-            ${protoIconBtn("next", "Next month", 'data-proto-date="next"')}
-          </div>
-          <div class="astral-cal">
-            ${protoCalWeekdays()}
-            ${days}
-          </div>
+          ${protoCalHeadHtml({ year, month, view: store.prototypeDateCalView, attr: "data-proto-date", short: true })}
+          ${
+            store.prototypeDateCalView === "months"
+              ? `<div class="astral-cal is-months">${protoCalMonthCells({ year, month, allowFuture: false, pickAttr: "data-proto-date-month" })}</div>`
+              : `<div class="astral-cal">${protoCalWeekdays()}${days}</div>`
+          }
         </div>
         <div class="astral-modal-foot">
           <div class="astral-actions">
@@ -9864,6 +9901,7 @@ function protoOpenReportCal(field = "start") {
   setProto({
     prototypeReportCalOpen: field,
     prototypeReportCal: protoIso(picked).slice(0, 7),
+    prototypeReportCalView: "",
     prototypeSelectOpen: "",
   });
   protoRestoreFocus(`#astral-fs input[name="${PROTO_REPORT_DATES[field].name}"]`);
@@ -9875,6 +9913,7 @@ function protoReportDayCalHtml(start, label = "First send on", field = "start") 
   const picked = protoFromUkDate(start);
   const selectedIso = picked ? protoIso(picked) : "";
   const menuId = field === "start" ? "astral-day-cal-menu" : `astral-day-cal-menu-${field}`;
+  const monthsView = open && store.prototypeReportCalView === "months";
   const days = protoCalDayCells({
     year,
     month,
@@ -9910,15 +9949,12 @@ function protoReportDayCalHtml(start, label = "First send on", field = "start") 
         aria-label="${escapeHtml(label)}"
         ${open ? "" : "hidden"}
       >
-        <div class="astral-cal-head">
-          ${protoIconBtn("prev", "Previous month", 'data-proto-day-cal="prev"')}
-          <p>${escapeHtml(`${PROTO_MONTHS_LONG[month]} ${year}`)}</p>
-          ${protoIconBtn("next", "Next month", 'data-proto-day-cal="next"')}
-        </div>
-        <div class="astral-cal">
-          ${protoCalWeekdays()}
-          ${days}
-        </div>
+        ${protoCalHeadHtml({ year, month, view: monthsView ? "months" : "", attr: "data-proto-day-cal" })}
+        ${
+          monthsView
+            ? `<div class="astral-cal is-months">${protoCalMonthCells({ year, month, allowFuture: field === "start", minIso: field === "start" ? protoIso(protoReportFirstDay(protoReportDraft())) : "", pickAttr: "data-proto-day-cal-month" })}</div>`
+            : `<div class="astral-cal">${protoCalWeekdays()}${days}</div>`
+        }
       </div>
     </div>
   `;
@@ -27881,6 +27917,7 @@ function protoOpenCustomDate() {
     prototypeDateDraftFrom: from,
     prototypeDateDraftTo: to,
     prototypeDateCal: String(from).slice(0, 7),
+    prototypeDateCalView: "",
   });
 }
 
@@ -28233,14 +28270,36 @@ function onPrototype(event) {
   if (dayCalBtn) {
     const act = dayCalBtn.dataset.protoDayCal;
     const { year, month } = protoReportCalMonth();
-    if (act === "prev" || act === "next") {
+    if (act === "prev" || act === "next" || act === "prev-year" || act === "next-year") {
+      const step = act.endsWith("year") ? 12 : 1;
       setProto({
         prototypeReportCalOpen: protoReportCalField() || "start",
-        prototypeReportCal: protoShiftCal(year, month, act === "next" ? 1 : -1),
+        prototypeReportCal: protoShiftCal(year, month, act.startsWith("next") ? step : -step),
         prototypeSelectOpen: "",
       });
-      protoRestoreFocus(`#astral-fs [data-proto-day-cal="${act}"]`);
+      protoRestoreFocus(`#astral-fs .astral-day-cal-menu:not([hidden]) [data-proto-day-cal="${act}"]`);
     }
+    if (act === "months") {
+      setProto({ prototypeReportCalOpen: protoReportCalField() || "start", prototypeReportCalView: "months", prototypeSelectOpen: "" });
+      protoRestoreFocus("#astral-fs .astral-cal.is-months .is-end");
+    }
+    return;
+  }
+  const dayCalMonth = event.target.closest("[data-proto-day-cal-month]");
+  if (dayCalMonth) {
+    setProto({
+      prototypeReportCalOpen: protoReportCalField() || "start",
+      prototypeReportCal: dayCalMonth.dataset.protoDayCalMonth,
+      prototypeReportCalView: "",
+      prototypeSelectOpen: "",
+    });
+    protoRestoreFocus('#astral-fs .astral-day-cal-menu:not([hidden]) [data-proto-day-cal="months"]');
+    return;
+  }
+  const dateMonth = event.target.closest("[data-proto-date-month]");
+  if (dateMonth) {
+    setProto({ prototypeDateCustomOpen: true, prototypeDateCal: dateMonth.dataset.protoDateMonth, prototypeDateCalView: "" });
+    protoRestoreFocus('#astral-fs [data-proto-date="months"]');
     return;
   }
   const dayCalPick = event.target.closest("[data-proto-day-cal-pick]");
@@ -28317,12 +28376,19 @@ function onPrototype(event) {
       });
       return;
     }
-    if (act === "prev" || act === "next") {
+    if (act === "prev" || act === "next" || act === "prev-year" || act === "next-year") {
       const { year, month } = protoCalMonth();
+      const step = act.endsWith("year") ? 12 : 1;
       setProto({
         prototypeDateCustomOpen: true,
-        prototypeDateCal: protoShiftCal(year, month, act === "next" ? 1 : -1),
+        prototypeDateCal: protoShiftCal(year, month, act.startsWith("next") ? step : -step),
       });
+      protoRestoreFocus(`#astral-fs [data-proto-date="${act}"]`);
+      return;
+    }
+    if (act === "months") {
+      setProto({ prototypeDateCustomOpen: true, prototypeDateCalView: "months" });
+      protoRestoreFocus("#astral-fs .astral-cal.is-months .is-end");
       return;
     }
   }

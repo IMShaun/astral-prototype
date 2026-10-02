@@ -2612,8 +2612,8 @@
           "react": "DatePicker",
           "file": "src/components/DatePicker.tsx",
           "family": "forms",
-          "summary": "A Select of Last 24 hours, Last 7 days, Last month, Last 12 months, and Custom. Last month is this day last month to today. Custom opens a calendar for from and to. Arrows move the window and the filter becomes Custom.",
-          "usage": "The parent holds the window. A preset uses its name. Last month is this day last month to today. The number of days follows the calendar. Last 12 months is months. Do not draw 365 daily bars. That waits on a test. Custom uses the from and to. A single day is Sun 7 Dec 2025. Short weekday, then the date. The graph heading uses the same words. Custom opens a calendar. Graph arrows also set Custom. Back at the original window it is the preset again. Do not use a native dropdown. The chevron sits on the right. The face is white. Quiet outline is 1px Infra Grey B. Do not leave the fill empty on canvas. Future days are on. Renew access does not use this calendar. Start and End are dd/mm/yyyy. They type from the left.",
+          "summary": "A Select of Last 24 hours, Last 7 days, Last month, Last 12 months, and Custom. Last month is this day last month to today. Custom opens a calendar for from and to. Click the month and year at the top of the calendar for a grid of 12 months, with arrows for the previous and next year. Picking a month goes back to its days. There is no years view. Arrows move the window and the filter becomes Custom.",
+          "usage": "The parent holds the window. A preset uses its name. Last month is this day last month to today. The number of days follows the calendar. Last 12 months is months. Do not draw 365 daily bars. That waits on a test. Custom uses the from and to. A single day is Sun 7 Dec 2025. Short weekday, then the date. The graph heading uses the same words. Custom opens a calendar. Click the month and year at the top of the calendar for a grid of 12 months, with arrows for the previous and next year. Picking a month goes back to its days. There is no years view. Graph arrows also set Custom. Back at the original window it is the preset again. Do not use a native dropdown. The chevron sits on the right. The face is white. Quiet outline is 1px Infra Grey B. Do not leave the fill empty on canvas. Future days are on. Renew access does not use this calendar. Start and End are dd/mm/yyyy. They type from the left.",
           "variants": [
             "preset",
             "custom"
@@ -4353,7 +4353,7 @@
                 "id": "date-picker",
                 "name": "Date picker",
                 "status": "brand",
-                "note": "Last 24 hours, Last 7 days, Last month, Last 12 months, and Custom. Last month is this day last month to today. Last 12 months is months. Do not draw 365 daily bars. Custom opens a calendar. Graph arrows also set Custom."
+                "note": "Last 24 hours, Last 7 days, Last month, Last 12 months, and Custom. Last month is this day last month to today. Last 12 months is months. Do not draw 365 daily bars. Custom opens a calendar. Click the month and year at the top of the calendar for a grid of 12 months, with arrows for the previous and next year. Picking a month goes back to its days. There is no years view. Graph arrows also set Custom."
               },
               {
                 "id": "time-picker",
