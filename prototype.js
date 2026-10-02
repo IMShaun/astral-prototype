@@ -10134,8 +10134,7 @@ function protoReportDraftIssueBase(draft) {
       if (!key && !String(draft.sftpPassword || "")) return "Add the password for the server.";
       if (draft.delivery.includes("sftp")) {
         const print = String(draft.sftpFingerprint || "").trim();
-        if (!print) return "Add the server's SSH fingerprint.";
-        if (!protoReportFingerprintOk(print)) return "Check the SSH fingerprint. It starts with SHA256.";
+        if (print && !protoReportFingerprintOk(print)) return "Check the SSH fingerprint. It starts with SHA256.";
       }
     }
     return protoReportOnceIssue(draft, "file");
@@ -11409,13 +11408,14 @@ function protoReportTestSteps(draft) {
   const user = String(draft.sftpUser || "").trim();
   const folder = String(draft.sftpPath || "").trim();
   const key = draft.sftpAuth === "key";
+  const print = String(draft.sftpFingerprint || "").trim();
   return [
     {
       label: "Reach the server",
       detail: `${host}:${port}`,
       fail: "The server turned the connection away. Ask your IT team to let IMSERV through.",
     },
-    {
+    print && {
       label: "Check the SSH fingerprint",
       detail: "Matches the one you added",
       fail: "The server's fingerprint does not match the one you added. Check it with your IT team.",
@@ -11432,7 +11432,19 @@ function protoReportTestSteps(draft) {
       detail: `To ${folder || "the top folder"}`,
       fail: `Signed in, but could not save a file to ${folder || "the top folder"}. Check the user can write there.`,
     },
-  ];
+  ].filter(Boolean);
+}
+
+// What the test still needs before it can run, or "" when the required fields are in.
+function protoReportTestNeeds(draft) {
+  const need = [];
+  if (!String(draft.sftpHost || "").trim()) need.push("server");
+  const port = Number(draft.sftpPort || 22);
+  if (!(Number.isInteger(port) && port > 0 && port < 65536)) need.push("port");
+  if (!String(draft.sftpUser || "").trim()) need.push("username");
+  if (draft.sftpAuth !== "key" && !String(draft.sftpPassword || "")) need.push("password");
+  const list = need.length > 1 ? `${need.slice(0, -1).join(", ")} and ${need[need.length - 1]}` : need[0];
+  return need.length ? `Add the ${list} to test the connection.` : "";
 }
 
 // The prototype takes turns: a pass, then a fail at the next step along, so both results can be seen.
@@ -11443,7 +11455,7 @@ function protoReportTestResult(draft) {
   const time = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
   if (runs % 2) return { state: "ok", failAt: -1, at: time, text: "IMSERV can send files to this server." };
   const failAt = (runs / 2 - 1) % steps.length;
-  return { state: "fail", failAt, at: time, text: steps[failAt].fail };
+  return { state: "fail", failAt, at: time, text: `${steps[failAt].fail} Check the details above are correct.`, step: steps[failAt].label };
 }
 
 function protoReportFingerprintOk(print) {
@@ -11454,8 +11466,11 @@ function protoReportTestLineHtml(draft) {
   const test = protoReportTest(draft);
   if (test.state === "testing") return "Testing the connection.";
   if (test.state === "ok") return `<strong>Connected</strong><span>Tested at ${escapeHtml(test.at)}</span>`;
-  if (test.state === "fail") return `<strong>Could not connect</strong><span>Tested at ${escapeHtml(test.at)}</span>`;
-  if (!String(draft.sftpHost || "").trim()) return "Add the server to test the connection.";
+  if (test.state === "fail") {
+    return `<strong>Could not connect</strong><span>Failed at ${escapeHtml(test.step || "")} \u00b7 Tested at ${escapeHtml(test.at)}</span>`;
+  }
+  const needs = protoReportTestNeeds(draft);
+  if (needs) return escapeHtml(needs);
   return "Sends a small test file and checks the server lets IMSERV in.";
 }
 
@@ -11504,7 +11519,7 @@ function protoReportTestStepsHtml(draft, test) {
 
 function protoReportTestInner(draft) {
   const test = protoReportTest(draft);
-  const noHost = !String(draft.sftpHost || "").trim();
+  const noHost = Boolean(protoReportTestNeeds(draft));
   return `
     <div class="astral-report-test">
       ${protoGhost(
@@ -11526,10 +11541,10 @@ function protoReportTestHtml(draft) {
 
 function protoRunReportTest() {
   const draft = protoReportDraft();
-  if (!draft || !protoCanEditReports() || !String(draft.sftpHost || "").trim()) return;
+  if (!draft || !protoCanEditReports() || protoReportTestNeeds(draft)) return;
   const sig = protoReportTestSig(draft);
   const result = protoReportTestResult(draft);
-  const last = result.state === "ok" ? 3 : result.failAt;
+  const last = result.state === "ok" ? protoReportTestSteps(draft).length - 1 : result.failAt;
   const step = (n) => {
     const now = protoReportDraft();
     if (!now || protoReportTestSig(now) !== sig) return;
@@ -11565,22 +11580,16 @@ function protoReportServerFields(draft, serverName) {
       ${protoReportInput("Port", "sftpPort", port, 'inputmode="numeric" maxlength="5"')}
     </div>
     <div class="astral-report-pair">
-      ${protoReportInput("Folder", "sftpPath", draft.sftpPath, 'placeholder="astral/interval" spellcheck="false"')}
       ${protoReportInput("Username", "sftpUser", draft.sftpUser, 'placeholder="imserv-astral" spellcheck="false"')}
+      ${sftp ? protoReportOptionSelect("report-sftp-auth", "Sign-in method", PROTO_REPORT_AUTH, draft.sftpAuth) : secret}
     </div>
-    ${
-      sftp
-        ? `<div class="astral-report-pair">
-            ${protoReportOptionSelect("report-sftp-auth", "Sign in with", PROTO_REPORT_AUTH, draft.sftpAuth)}
-            ${secret}
-          </div>`
-        : secret
-    }
+    ${sftp ? secret : ""}
     ${key ? '<p class="astral-muted">Add this key to the user on your server. IMSERV keeps the private half.</p>' : ""}
+    ${protoReportInput("Folder (optional)", "sftpPath", draft.sftpPath, 'placeholder="astral/interval" spellcheck="false"')}
     ${
       sftp
-        ? `${protoReportInput("SSH fingerprint", "sftpFingerprint", draft.sftpFingerprint, 'placeholder="SHA256:" spellcheck="false"')}
-          <p class="astral-muted">Ask your IT team for it. Astral checks it before every send, so the file only goes to your server.</p>`
+        ? `${protoReportInput("SSH fingerprint (optional)", "sftpFingerprint", draft.sftpFingerprint, 'placeholder="SHA256:" spellcheck="false"')}
+          <p class="astral-muted">A code that confirms you're connecting to the right server. Your IT team can give you this.</p>`
         : ""
     }
     ${protoReportTestHtml(draft)}
