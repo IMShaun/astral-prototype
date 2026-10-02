@@ -26829,17 +26829,33 @@ function protoLoadProgress(now) {
   return Math.min(protoLoad.records, got) / protoLoad.records;
 }
 
+// The ring is a radial bar chart: grey stubs that turn the chart colour and grow as the load sweeps round.
+const PROTO_LOAD_BARS = 44;
+const PROTO_LOAD_RING = { c: 72, inner: 45, min: 5, max: 22 };
+
+function protoLoadBarLength(i) {
+  const wave = 0.5 + 0.3 * Math.sin(i * 1.9) + 0.2 * Math.cos(i * 0.7);
+  const { min, max } = PROTO_LOAD_RING;
+  return Math.min(max, Math.max(min + 6, max * (0.55 + 0.45 * wave)));
+}
+
+function protoLoadBarsHtml() {
+  const { c, inner, max } = PROTO_LOAD_RING;
+  return Array.from({ length: PROTO_LOAD_BARS }, (_, i) => {
+    const deg = ((i * 360) / PROTO_LOAD_BARS).toFixed(2);
+    return `<line class="astral-load-bar" x1="${c}" y1="${c - inner}" x2="${c}" y2="${c - inner - max}" transform="rotate(${deg} ${c} ${c})" />`;
+  }).join("");
+}
+
 function protoLoadHtml(load, now) {
   const n = load.records.toLocaleString("en-GB");
   const fresh = now - load.start < 120;
   return `
     <div class="astral-load${fresh ? " is-in" : ""}" data-proto-load>
       <div class="astral-load-ring" role="progressbar" aria-label="Loading interval records" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-        <svg viewBox="0 0 120 120" aria-hidden="true" focusable="false">
-          <circle class="astral-load-track" cx="60" cy="60" r="50" />
-          <circle class="astral-load-arc" cx="60" cy="60" r="50" pathLength="100" stroke-dasharray="0 100" />
-          <g class="astral-load-orbit"><circle cx="60" cy="4" r="3" /></g>
-          <path class="astral-load-tick" d="M44 61 55 72 77 49" pathLength="1" />
+        <svg viewBox="0 0 144 144" aria-hidden="true" focusable="false" style="--load-ink:${escapeHtml(protoIncomingInk())}">
+          ${protoLoadBarsHtml()}
+          <path class="astral-load-tick" d="M56 73 67 84 89 61" pathLength="1" />
         </svg>
         <span class="astral-load-pct" aria-hidden="true">0%</span>
       </div>
@@ -26887,7 +26903,15 @@ function protoLoadUpdate(now) {
   if (!el || !protoLoad) return;
   const p = protoLoadProgress(now);
   const pct = Math.round(p * 100);
-  el.querySelector(".astral-load-arc")?.setAttribute("stroke-dasharray", `${(p * 100).toFixed(2)} 100`);
+  const { min } = PROTO_LOAD_RING;
+  el.querySelectorAll(".astral-load-bar").forEach((bar, i) => {
+    const fill = Math.max(0, Math.min(1, p * PROTO_LOAD_BARS - i));
+    const len = (min + fill * (protoLoadBarLength(i) - min)).toFixed(1);
+    if (bar.dataset.len === len) return;
+    bar.dataset.len = len;
+    bar.style.strokeDasharray = `${len} 200`;
+    bar.classList.toggle("is-on", fill > 0);
+  });
   const ring = el.querySelector(".astral-load-ring");
   if (ring && ring.getAttribute("aria-valuenow") !== String(pct)) ring.setAttribute("aria-valuenow", String(pct));
   const pctEl = el.querySelector(".astral-load-pct");
