@@ -2555,7 +2555,7 @@
           "react": "Control",
           "file": "src/components/Control.tsx",
           "family": "forms",
-          "summary": "Checkbox, radio, and switch. The checkbox is 16px, radius 2. On nests Icon/Tick Size 16 Inverse. 8px gap to the label. A switch at rest is a 1px Infra Grey B edge and a black circle. On is the cyan fill and a white circle. No black rim. The circle slides. The fill follows. The radio is a 16px circle with the same edge. On is black with a white dot.",
+          "summary": "Checkbox, radio, and switch. The checkbox is 16px, radius 2. On nests Icon/Tick Size 16 Inverse. 8px gap to the label. A switch at rest is a 1px Infra Grey B edge and a black circle. On is the cyan fill and a white circle. No black rim. The circle slides. The fill follows. The radio is a 16px white circle with the same edge. On keeps the white and adds an 8px black dot. Disabled fills it grey.",
           "usage": "Pass checked and onChange. The page owns the value. Filter overlays and multi Select use this checkbox. Reports uses the switch to turn a report on or off. The switch sits on the right, under a line. Off reports stay in the same list.",
           "variants": [
             "checkbox",
@@ -6236,7 +6236,7 @@
             "status": "draft",
             "say": "",
             "avoid": "",
-            "note": "The tag on a report card. It sits top right. A long name wraps. The tag stays. Hover for the meaning. It waits 0.7 seconds. The tip sits outside the control. Live is People are sent this report. Waiting is This report is not in yet. You cannot run it. Custom is A name only. You cannot run it yet. A live report shows a Scheduled Tag and the date of the next send, as Wed 1 Oct. Off shows a Paused Tag. Settings is the cog. It sits on the report card, and next to Download on a Report in Downloads. Clockwork email is People, Occurrence, and Starts on. The switch sits on the right, under a line. It waits until Live. Off is the 1px Infra Grey B edge and a black circle. Disabled is grey, not a faded colour. The bar turns the switch when it is Live. Hover shows a pointer. On is the cyan fill and a white circle. No black rim. The circle slides. The fill follows. The radio is a 16px circle with the same edge. On is black with a white dot.",
+            "note": "The tag on a report card. It sits top right. A long name wraps. The tag stays. Hover for the meaning. It waits 0.7 seconds. The tip sits outside the control. Live is People are sent this report. Waiting is This report is not in yet. You cannot run it. Custom is A name only. You cannot run it yet. A live report shows a Scheduled Tag and the date of the next send, as Wed 1 Oct. Off shows a Paused Tag. Settings is the cog. It sits on the report card, and next to Download on a Report in Downloads. Clockwork email is People, Occurrence, and Starts on. The switch sits on the right, under a line. It waits until Live. Off is the 1px Infra Grey B edge and a black circle. Disabled is grey, not a faded colour. The bar turns the switch when it is Live. Hover shows a pointer. On is the cyan fill and a white circle. No black rim. The circle slides. The fill follows. The radio is a 16px white circle with the same edge. On keeps the white and adds an 8px black dot. Disabled fills it grey.",
             "from": "Shaun on report cards, 6 Sep"
           },
           {

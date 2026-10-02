@@ -12989,17 +12989,21 @@ button.astral-state:focus-visible,
   transition: background-color var(--motion-control) ease, border-color var(--motion-control) ease;
 }
 
-.astral-radio.is-on {
-  border-color: #000;
+.astral-radio.is-on::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   background: #000;
 }
 
-.astral-radio.is-on::after {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #fff;
+.astral-radio.is-disabled,
+:disabled > .astral-radio {
+  background: var(--color-background-subtle);
+}
+
+:disabled > .astral-radio.is-on::after {
+  background: var(--color-text-muted);
 }
 
 .astral-report-soon {
