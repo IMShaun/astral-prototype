@@ -9498,13 +9498,14 @@ function protoReportNextSend(def) {
   return null;
 }
 
-function protoReportSendLabel(next) {
+function protoReportSendLabel(next, options = {}) {
   if (!next) return "";
   const day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][next.getDay()];
   const month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][
     next.getMonth()
   ];
-  const year = next.getFullYear() !== protoToday().getFullYear() ? ` ${next.getFullYear()}` : "";
+  const year =
+    !options.noYear && next.getFullYear() !== protoToday().getFullYear() ? ` ${next.getFullYear()}` : "";
   return `${day} ${next.getDate()} ${month}${year}`;
 }
 
@@ -9636,11 +9637,10 @@ function protoReportStatusHtml(def) {
   }
   if (protoReportOnce(def) && !protoReportNextSend(def)) {
     const sent = protoFromUkDate(def.start);
-    return `${protoTag("Sent")}<span class="astral-muted">${escapeHtml(protoReportSendLabel(sent))}</span>`;
+    return `${protoTag("Sent")}<span class="astral-muted">${escapeHtml(protoReportSendLabel(sent, { noYear: true }))}</span>`;
   }
-  const once = protoReportOnce(def);
   return `${protoTag(protoReportRecurrence(def))}<span class="astral-muted">${escapeHtml(
-    `${once ? "" : "next "}${protoReportStatusLine(def)}, ${def.sendAt}`
+    `${protoReportStatusLine(def)}, ${def.sendAt}`
   )}</span>`;
 }
 
@@ -9660,7 +9660,7 @@ function protoReportStatusLine(def) {
     const n = protoReportMissingHits(def).length;
     return n ? `${n} ${n === 1 ? "site" : "sites"} flagged` : "No sites flagged";
   }
-  return protoReportSendLabel(protoReportNextSend(def));
+  return protoReportSendLabel(protoReportNextSend(def), { noYear: true });
 }
 
 function protoReportDateOf(name) {
