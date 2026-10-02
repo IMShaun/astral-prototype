@@ -13205,12 +13205,21 @@ html.is-classic-scroll #astral-fs .is-scroll-near {
   overflow: visible;
 }
 
+.astral-load-track,
 .astral-load-bar {
   fill: none;
-  stroke: var(--color-border-default);
   stroke-width: 4;
   stroke-linecap: round;
-  stroke-dasharray: 4 200;
+}
+
+.astral-load-track {
+  stroke: var(--color-border-default);
+}
+
+.astral-load-bar {
+  stroke: var(--load-ink, var(--color-action-primary));
+  stroke-dasharray: 0 200;
+  opacity: 0;
 }
 
 .astral-load-pct {

@@ -27011,11 +27011,11 @@ function protoLoadProgress(now) {
   return Math.min(protoLoad.records, got) / protoLoad.records;
 }
 
-// The ring is a radial bar chart: grey stubs that turn the chart colour and grow to one length as the load sweeps round.
+// The ring is a radial bar chart: full-length grey tracks that the chart colour fills from the inside out as the load sweeps round.
 const PROTO_LOAD_BARS = 44;
-// Each bar keeps growing while the next dozen start, so the bars behind the front catch up in a long, soft tail.
+// Each bar keeps filling while the next dozen start, so the bars behind the front catch up in a long, soft tail.
 const PROTO_LOAD_WAVE = 12;
-const PROTO_LOAD_RING = { c: 72, inner: 45, min: 4, max: 16 };
+const PROTO_LOAD_RING = { c: 72, inner: 45, max: 16 };
 
 // The count arrives in batches; the ring follows time, so it never stutters.
 function protoLoadSmooth(now) {
@@ -27028,7 +27028,8 @@ function protoLoadBarsHtml() {
   const { c, inner, max } = PROTO_LOAD_RING;
   return Array.from({ length: PROTO_LOAD_BARS }, (_, i) => {
     const deg = ((i * 360) / PROTO_LOAD_BARS).toFixed(2);
-    return `<line class="astral-load-bar" x1="${c}" y1="${c - inner}" x2="${c}" y2="${c - inner - max}" transform="rotate(${deg} ${c} ${c})" />`;
+    const at = `x1="${c}" y1="${c - inner}" x2="${c}" y2="${c - inner - max}" transform="rotate(${deg} ${c} ${c})"`;
+    return `<line class="astral-load-track" ${at} /><line class="astral-load-bar" ${at} />`;
   }).join("");
 }
 
@@ -27088,18 +27089,17 @@ function protoLoadUpdate(now) {
   if (!el || !protoLoad) return;
   const p = protoLoadProgress(now);
   const pct = Math.round(p * 100);
-  const { min, max } = PROTO_LOAD_RING;
+  const { max } = PROTO_LOAD_RING;
   const sweep = protoLoadSmooth(now) * (PROTO_LOAD_BARS + PROTO_LOAD_WAVE);
   el.querySelectorAll(".astral-load-bar").forEach((bar, i) => {
     const raw = Math.max(0, Math.min(1, (sweep - i) / PROTO_LOAD_WAVE));
     const fill = raw * raw * (3 - 2 * raw);
-    const len = (min + fill * (max - min)).toFixed(2);
+    const len = (fill * max).toFixed(2);
     if (bar.dataset.len === len) return;
     bar.dataset.len = len;
     bar.style.strokeDasharray = `${len} 200`;
-    // The colour fades in faster than the length, so a bar reads as loaded before it is full.
-    const ink = Math.round(Math.min(1, fill * 2.5) * 100);
-    bar.style.stroke = ink ? `color-mix(in srgb, var(--load-ink, var(--color-action-primary)) ${ink}%, var(--color-border-default))` : "";
+    // The round cap would show a dot at zero, so an empty bar hides its fill.
+    bar.style.opacity = fill > 0.005 ? "1" : "0";
   });
   const ring = el.querySelector(".astral-load-ring");
   if (ring && ring.getAttribute("aria-valuenow") !== String(pct)) ring.setAttribute("aria-valuenow", String(pct));
