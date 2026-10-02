@@ -10526,7 +10526,18 @@ function protoReportRangeFields(draft) {
     </div>
     ${body}
     <p class="astral-muted" data-proto-report-range-line>${escapeHtml(protoReportRangeLine(draft))}</p>
+    <div data-proto-report-range-warn>${protoReportOldStartWarn(draft)}</div>
   `;
+}
+
+// A gentle note, not a block, when Exact dates or Custom range reach back more than 2 years.
+function protoReportOldStartWarn(draft) {
+  if (draft.rangeMode !== "dates" && draft.rangeMode !== "rolling") return "";
+  const range = protoReportDataRange(protoReportDraftDef(draft));
+  const today = protoToday();
+  const limit = new Date(today.getFullYear() - 2, today.getMonth(), today.getDate());
+  if (!range?.from || range.from >= limit) return "";
+  return `<p class="astral-report-range-warn" role="status">${protoIconMark("warning")}<span>Data older than 2 years may not be available. Large date ranges can take longer to generate.</span></p>`;
 }
 
 // What the next send holds, in dates.
@@ -12333,6 +12344,14 @@ function protoReportRefreshForm() {
   if (fileHost) fileHost.innerHTML = protoReportFilePreviewInner(draft);
   const rangeLine = modal.querySelector("[data-proto-report-range-line]");
   if (rangeLine) rangeLine.textContent = protoReportRangeLine(draft);
+  const rangeWarn = modal.querySelector("[data-proto-report-range-warn]");
+  if (rangeWarn) {
+    const html = protoReportOldStartWarn(draft);
+    if (rangeWarn.protoHtml !== html) {
+      rangeWarn.innerHTML = html;
+      rangeWarn.protoHtml = html;
+    }
+  }
   const fileDefaultHost = modal.querySelector("[data-proto-report-file-default]");
   if (fileDefaultHost && !fileDefaultHost.contains(document.activeElement)) {
     fileDefaultHost.innerHTML = protoReportFileDefaultInner(draft);

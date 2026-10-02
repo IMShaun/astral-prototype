@@ -10991,6 +10991,25 @@ tr.is-off .astral-person-mark {
   color: var(--color-text-secondary);
 }
 
+.astral-report-range-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--color-status-warning-subtle);
+  font-size: 0.875rem;
+}
+
+.astral-report-range-warn svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--color-status-warning);
+}
+
 .astral-report-test-reason {
   display: flex;
   align-items: flex-start;
