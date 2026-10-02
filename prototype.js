@@ -26829,14 +26829,17 @@ function protoLoadProgress(now) {
   return Math.min(protoLoad.records, got) / protoLoad.records;
 }
 
-// The ring is a radial bar chart: grey stubs that turn the chart colour and grow as the load sweeps round.
+// The ring is a radial bar chart: grey stubs that turn the chart colour and grow to one length as the load sweeps round.
 const PROTO_LOAD_BARS = 44;
-const PROTO_LOAD_RING = { c: 72, inner: 45, min: 5, max: 22 };
+// Each bar grows over the sweep of a few neighbours, so the front is a soft wave rather than a tick.
+const PROTO_LOAD_WAVE = 4;
+const PROTO_LOAD_RING = { c: 72, inner: 45, min: 4, max: 16 };
 
-function protoLoadBarLength(i) {
-  const wave = 0.5 + 0.3 * Math.sin(i * 1.9) + 0.2 * Math.cos(i * 0.7);
-  const { min, max } = PROTO_LOAD_RING;
-  return Math.min(max, Math.max(min + 6, max * (0.55 + 0.45 * wave)));
+// The count arrives in batches; the ring follows time, so it never stutters.
+function protoLoadSmooth(now) {
+  if (!protoLoad) return 1;
+  const t = Math.min(1, (now - protoLoad.start) / Math.max(1, protoLoad.ms - PROTO_LOAD_DONE_MS));
+  return 1 - Math.pow(1 - t, 2.4);
 }
 
 function protoLoadBarsHtml() {
@@ -26903,14 +26906,16 @@ function protoLoadUpdate(now) {
   if (!el || !protoLoad) return;
   const p = protoLoadProgress(now);
   const pct = Math.round(p * 100);
-  const { min } = PROTO_LOAD_RING;
+  const { min, max } = PROTO_LOAD_RING;
+  const sweep = protoLoadSmooth(now) * (PROTO_LOAD_BARS + PROTO_LOAD_WAVE);
   el.querySelectorAll(".astral-load-bar").forEach((bar, i) => {
-    const fill = Math.max(0, Math.min(1, p * PROTO_LOAD_BARS - i));
-    const len = (min + fill * (protoLoadBarLength(i) - min)).toFixed(1);
+    const raw = Math.max(0, Math.min(1, (sweep - i) / PROTO_LOAD_WAVE));
+    const fill = raw * raw * (3 - 2 * raw);
+    const len = (min + fill * (max - min)).toFixed(2);
     if (bar.dataset.len === len) return;
     bar.dataset.len = len;
     bar.style.strokeDasharray = `${len} 200`;
-    bar.classList.toggle("is-on", fill > 0);
+    bar.classList.toggle("is-on", raw > 0);
   });
   const ring = el.querySelector(".astral-load-ring");
   if (ring && ring.getAttribute("aria-valuenow") !== String(pct)) ring.setAttribute("aria-valuenow", String(pct));
