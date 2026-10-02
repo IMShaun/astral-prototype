@@ -734,6 +734,7 @@ function protoPortfolioHomePatch() {
     prototypeScope: "group",
     prototypeGroup: "all",
     prototypeGroupClosed: [],
+    prototypeCompanyOpen: null,
     prototypeChannel: "all",
     prototypePane: "consumption",
     prototypeChartPoint: null,
@@ -1915,6 +1916,68 @@ function protoVisibleGroups() {
     .filter((group) => group.sites.length);
 }
 
+// TPI and Supplier look after several customers, so the tree adds a company level above groups.
+const PROTO_TREE_COMPANIES = [
+  {
+    id: "co-network-rail",
+    name: "Network Rail",
+    groups: ["london-north-western", "eastern", "western", "southern"],
+  },
+  { id: "co-scottish-water", name: "Scottish Water", groups: ["scotland"] },
+  { id: "co-tesco", name: "Tesco", groups: ["tenanted-retail"] },
+];
+
+function protoCompaniesOn() {
+  const id = protoCompanyId();
+  return id === "broker" || id === "portfolio-customer";
+}
+
+function protoIsCompanyGroup(id) {
+  return protoCompaniesOn() && PROTO_TREE_COMPANIES.some((item) => item.id === id);
+}
+
+function protoCompanyIdForGroup(groupId) {
+  if (!protoCompaniesOn() || !groupId) return "";
+  const hit = PROTO_TREE_COMPANIES.find((item) => item.groups.includes(groupId));
+  return (hit || PROTO_TREE_COMPANIES[0]).id;
+}
+
+function protoCompaniesFrom(groups) {
+  if (!protoCompaniesOn()) return [];
+  return PROTO_TREE_COMPANIES.map((company) => {
+    const own = groups.filter((group) => protoCompanyIdForGroup(group.id) === company.id);
+    return {
+      id: company.id,
+      name: company.name,
+      groups: own,
+      sites: own.flatMap((group) => group.sites),
+    };
+  }).filter((company) => company.groups.length);
+}
+
+function protoTreeCompanies() {
+  return protoCompaniesFrom(protoGroups());
+}
+
+function protoCompanyForSelection() {
+  if (!protoCompaniesOn()) return "";
+  if (store.prototypeScope === "group") {
+    const id = store.prototypeGroup;
+    if (protoIsCompanyGroup(id)) return id;
+    if (protoIsAllGroup(id)) return "";
+    return protoCompanyIdForGroup(id);
+  }
+  return protoCompanyIdForGroup(protoGroupForSite(protoSiteByMeter(store.activePrototypeMeter))?.id);
+}
+
+// One company open at a time. A string is the user's pick ("" shuts them all); anything else follows the selection.
+function protoCompanyOpenId() {
+  if (!protoCompaniesOn()) return "";
+  const raw = store.prototypeCompanyOpen;
+  if (typeof raw === "string") return PROTO_TREE_COMPANIES.some((item) => item.id === raw) ? raw : "";
+  return protoCompanyForSelection();
+}
+
 function protoAllGroup() {
   return {
     id: "all",
@@ -1925,11 +1988,19 @@ function protoAllGroup() {
 
 function protoGroup(id) {
   if (protoIsAllGroup(id)) return protoAllGroup();
+  if (protoIsCompanyGroup(id)) {
+    const company = protoCompaniesFrom(protoVisibleGroups()).find((item) => item.id === id);
+    return company ? { id, name: company.name, sites: company.sites, company: true } : null;
+  }
+  if (PROTO_TREE_COMPANIES.some((item) => item.id === id)) return protoAllGroup();
   return protoGroups().find((group) => group.id === id) || null;
 }
 
 function protoGroupQueryIds(group) {
   if (protoIsAllGroup(group?.id)) return ["all", ...protoAllGroupIds()];
+  if (protoIsCompanyGroup(group?.id)) {
+    return [group.id, ...protoGroups().filter((item) => protoCompanyIdForGroup(item.id) === group.id).map((item) => item.id)];
+  }
   return group?.id || "";
 }
 
@@ -1943,6 +2014,9 @@ function protoSignedCompanyName() {
 }
 
 function protoPaneAbove(kind, item) {
+  if (kind === "group" && protoCompaniesOn() && !item?.company) {
+    return PROTO_TREE_COMPANIES.find((row) => row.id === protoCompanyIdForGroup(item?.id))?.name || protoSignedCompanyName();
+  }
   if (kind === "group" || kind === "all") return protoSignedCompanyName();
   if (kind === "site") return protoGroupForSite(item)?.name || protoSignedCompanyName();
   if (kind === "meter") return protoSiteByMeter(item?.id)?.name || protoSignedCompanyName();
@@ -4927,6 +5001,7 @@ const PROTO_DRILL_BACK_KEYS = [
   "prototypeGroup",
   "activePrototypeMeter",
   "prototypeGroupClosed",
+  "prototypeCompanyOpen",
   "prototypeChannel",
   "prototypeSiteMeters",
   "prototypeSiteMeter",
@@ -5557,6 +5632,7 @@ function protoChartViewWhere() {
   if (protoCompareOn()) return "this comparison";
   if (store.prototypeScope === "site") return "this site";
   if (protoIsAllGroup(store.prototypeGroup)) return "the portfolio";
+  if (protoIsCompanyGroup(store.prototypeGroup)) return "this company";
   return "this group";
 }
 
@@ -5815,7 +5891,9 @@ function protoChartUtilityField(set, field) {
   const where =
     store.prototypeScope === "site" && !protoCompareOn()
       ? "at this site"
-      : store.prototypeScope === "group" && !protoCompareOn() && !protoIsAllGroup(store.prototypeGroup)
+      : store.prototypeScope === "group" && !protoCompareOn() && protoIsCompanyGroup(store.prototypeGroup)
+        ? "in this company"
+        : store.prototypeScope === "group" && !protoCompareOn() && !protoIsAllGroup(store.prototypeGroup)
         ? "in this group"
         : "in this view";
   return field("utility", "Utility", (labelledby) =>
@@ -13538,6 +13616,7 @@ function protoFindOpen(key) {
       prototypeScope: "site",
       prototypeGroup: parent?.id || "",
       prototypeGroupClosed: parent ? protoClosedExcept(parent.id) : protoGroupClosed(),
+      prototypeCompanyOpen: null,
       prototypeChannel: "all",
       ...protoSiteMeterPatch([], site),
       prototypePaneMeterKinds: null,
@@ -19529,6 +19608,7 @@ function protoCompareLevel() {
 
 function protoCompareNoun(plural) {
   const level = protoCompareLevel();
+  if (level === "group" && protoIsCompanyGroup(store.prototypeGroup)) return plural ? "companies" : "company";
   if (level === "group") return plural ? "groups" : "group";
   if (level === "meter") return protoBelowSiteNoun(plural ? 2 : 1);
   return plural ? "sites" : "site";
@@ -19659,7 +19739,7 @@ function protoComparePeers() {
   const level = protoCompareLevel();
   if (level === "group") {
     const currentId = store.prototypeGroup;
-    const rows = protoGroups()
+    const rows = (protoIsCompanyGroup(currentId) ? protoTreeCompanies() : protoGroups())
       .filter((group) => group.id !== currentId)
       .filter((group) => protoGroupPassesFilter(group, filters))
       .filter((group) => !q || group.name.toLowerCase().includes(q));
@@ -20115,7 +20195,9 @@ function protoSyncTreeSelection() {
     const on = Boolean(currentGroup && id === currentGroup.id);
     btn.classList.toggle("is-on", on);
     if (protoIsAllGroup(id)) return;
-    const shut = !forceOpen && closed.includes(id);
+    const shut =
+      !forceOpen &&
+      (btn.hasAttribute("data-proto-company") ? protoCompanyOpenId() !== id : closed.includes(id));
     btn.classList.toggle("is-shut", shut);
     btn.setAttribute("aria-expanded", shut ? "false" : "true");
     const li = btn.closest(".astral-tree-group");
@@ -20315,10 +20397,10 @@ function protoPortfolio() {
     state.scope === "group" ? protoGroup(state.group) || protoGroupForSite(currentSite) : null;
   const closed = protoGroupClosed();
   const groups = protoVisibleGroups();
-  const groupRows = groups
-    .map((group) => {
+  const forceOpen = Boolean(q) || protoTreeFilterOn();
+  const groupRow = (group) => {
       const on = Boolean(currentGroup && group.id === currentGroup.id);
-      const shut = !q && !protoTreeFilterOn() && closed.includes(group.id);
+      const shut = !forceOpen && closed.includes(group.id);
       const count = `${group.sites.length} ${group.sites.length === 1 ? "site" : "sites"}`;
       const kids = group.sites
         .map((site) => {
@@ -20350,17 +20432,54 @@ function protoPortfolio() {
           </div>
         </li>
       `;
-    })
-    .join("");
+  };
+  const companies = protoCompaniesFrom(groups);
+  const openCompany = protoCompanyOpenId();
+  const groupRows = companies.length
+    ? companies
+        .map((company) => {
+          const on = Boolean(currentGroup && company.id === currentGroup.id);
+          const shut = !forceOpen && openCompany !== company.id;
+          const n = company.groups.length;
+          return `
+        <li class="astral-tree-group astral-tree-company${shut ? "" : " is-open"}">
+          <button
+            type="button"
+            class="astral-group astral-company${on ? " is-on" : ""}${shut ? " is-shut" : ""}"
+            data-proto-group="${escapeHtml(company.id)}"
+            data-proto-company
+            title="${escapeHtml(company.name)}"
+            aria-expanded="${shut ? "false" : "true"}"
+            aria-controls="astral-tree-groups-${escapeHtml(company.id)}"
+          >
+            <span class="astral-group-toggle" aria-hidden="true">${protoChevronMark("down")}</span>
+            <span class="astral-group-name">${escapeHtml(company.name)}</span>
+            <span class="astral-muted">${n} ${n === 1 ? "group" : "groups"}</span>
+          </button>
+          <div
+            class="astral-tree-clip"
+            id="astral-tree-groups-${escapeHtml(company.id)}"
+            aria-hidden="${shut ? "true" : "false"}"
+            ${shut ? "inert" : ""}
+          >
+            <ul class="astral-tree-sites astral-tree-groups">${company.groups.map(groupRow).join("")}</ul>
+          </div>
+        </li>
+      `;
+        })
+        .join("")
+    : groups.map(groupRow).join("");
   const empty = groups.length ? "" : `<li class="astral-muted">No sites match.</li>`;
   const list = `${protoAllTreeRow(currentGroup)}${groupRows}${empty}`;
 
   return astralShell(`
     ${astralPageHead(
       "Portfolio",
-      `${protoSites().length} sites in ${protoGroups().length} ${
-        protoGroups().length === 1 ? "group" : "groups"
-      }. Select All, a group, or a site.`
+      protoCompaniesOn()
+        ? `${protoSites().length} sites in ${protoGroups().length} groups across ${protoTreeCompanies().length} companies. Select All, a company, a group, or a site.`
+        : `${protoSites().length} sites in ${protoGroups().length} ${
+            protoGroups().length === 1 ? "group" : "groups"
+          }. Select All, a group, or a site.`
     )}
     <div class="astral-split">
       <aside class="astral-list">
@@ -21817,6 +21936,7 @@ function protoGoToQuery(row) {
       prototypeScope: store.prototypeScope,
       prototypeGroup: parent?.id || store.prototypeGroup || "",
       prototypeGroupClosed: parent ? protoClosedExcept(parent.id) : protoGroupClosed(),
+      prototypeCompanyOpen: null,
       activePrototypeMeter: store.activePrototypeMeter,
       ...protoSiteMeterPatch(
         Array.isArray(store.prototypeSiteMeters) ? store.prototypeSiteMeters : [],
@@ -21857,6 +21977,7 @@ function protoGoToQuery(row) {
       prototypeScope: "group",
       prototypeGroup: group.id,
       prototypeGroupClosed: protoClosedExcept(group.id),
+      prototypeCompanyOpen: null,
       prototypeChannel: channel,
       prototypeDatePreset: preset,
       prototypeDateOpen: false,
@@ -21896,6 +22017,7 @@ function protoGoToQuery(row) {
     prototypeScope: "site",
     prototypeGroup: parent?.id || "",
     prototypeGroupClosed: parent ? protoClosedExcept(parent.id) : protoGroupClosed(),
+      prototypeCompanyOpen: null,
     prototypeChannel: channel,
     ...protoSiteMeterPatch((site.meters || []).map((item) => item.id), site),
     prototypeDatePreset: preset,
@@ -21959,6 +22081,7 @@ function protoGoToAlert(item) {
     prototypeScope: "site",
     prototypeGroup: parent?.id || "",
     prototypeGroupClosed: parent ? protoClosedExcept(parent.id) : protoGroupClosed(),
+      prototypeCompanyOpen: null,
     prototypeChannel: channel,
     ...protoSiteMeterPatch((site.meters || []).map((row) => row.id), site),
     prototypeDatePreset: preset,
@@ -29234,6 +29357,7 @@ function onPrototype(event) {
           prototypeScope: "group",
           prototypeGroup: "all",
           prototypeGroupClosed: protoClosedAll(),
+          prototypeCompanyOpen: "",
           prototypeChannel: "all",
           prototypePane: sameGroup ? protoPaneId() : "consumption",
           prototypeChartPoint: sameGroup ? store.prototypeChartPoint : null,
@@ -29247,9 +29371,9 @@ function onPrototype(event) {
       : {
           prototypeScope: "group",
           prototypeGroup: id,
-          prototypeGroupClosed: protoGroupClosed().includes(id)
-            ? protoClosedExcept(id)
-            : protoClosedAll(),
+          prototypeGroupClosed:
+            protoIsCompanyGroup(id) || !protoGroupClosed().includes(id) ? protoClosedAll() : protoClosedExcept(id),
+          prototypeCompanyOpen: protoIsCompanyGroup(id) ? (protoCompanyOpenId() === id ? "" : id) : null,
           prototypeChannel: "all",
           prototypePane: sameGroup ? protoPaneId() : "consumption",
           prototypeChartPoint: sameGroup ? store.prototypeChartPoint : null,
@@ -29278,6 +29402,7 @@ function onPrototype(event) {
       prototypeScope: "site",
       prototypeGroup: parent?.id || "",
       prototypeGroupClosed: parent ? protoClosedExcept(parent.id) : protoGroupClosed(),
+      prototypeCompanyOpen: null,
       prototypeChannel: "all",
       ...protoSiteMeterPatch(sameSite ? protoSiteMeterIds(site) : [], site, { empty: sameSite }),
       prototypePane: sameSite || siteBtn.hasAttribute("data-proto-drill") ? protoPaneId() : "consumption",

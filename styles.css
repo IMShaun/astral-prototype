@@ -5121,7 +5121,7 @@ button.astral-catch {
   transition: grid-template-rows var(--motion-panel) ease;
 }
 
-.astral-tree-group.is-open .astral-tree-clip {
+.astral-tree-group.is-open > .astral-tree-clip {
   grid-template-rows: 1fr;
 }
 
@@ -5197,6 +5197,11 @@ button.astral-catch {
 
 .astral-tree-sites .astral-site {
   font-weight: 500;
+}
+
+/* TPI and Supplier: groups sit one step in under their company. */
+.astral-list .astral-tree-groups {
+  padding-left: 16px;
 }
 
 .astral-site {

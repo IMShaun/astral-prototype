@@ -3641,6 +3641,7 @@ const CHROME_FIELDS = [
   "prototypeScope",
   "prototypeGroup",
   "prototypeGroupClosed",
+  "prototypeCompanyOpen",
   "prototypePane",
   "prototypeMeterOpen",
   "prototypeMeterProfiles",
