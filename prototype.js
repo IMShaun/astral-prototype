@@ -8509,7 +8509,7 @@ const PROTO_REPORT_PERIODS = [
 // The dates a report's data covers. Separate from when it sends.
 const PROTO_REPORT_RANGE_MODES = [
   { id: "dates", name: "Exact dates", note: "Pick a start and end date" },
-  { id: "preset", name: "Common range", note: "Such as last month or this year" },
+  { id: "preset", name: "Common range", note: "Such as last month or year to date" },
   { id: "rolling", name: "Custom range", note: "Such as the last 3 months" },
 ];
 
@@ -8517,11 +8517,12 @@ const PROTO_REPORT_RANGE_PRESETS = [
   { id: "yesterday", name: "Yesterday" },
   { id: "this-week", name: "This week" },
   { id: "this-month", name: "This month" },
-  { id: "this-year", name: "This year" },
+  { id: "this-year", name: "Year to date" },
   { id: "last-week", name: "Last week" },
   { id: "last-month", name: "Last month" },
   { id: "last-year", name: "Last year" },
   { id: "last-31", name: "Last 31 days" },
+  { id: "last-12m", name: "Last 12 months" },
 ];
 
 const PROTO_REPORT_RANGE_UNITS = [
@@ -8751,6 +8752,8 @@ function protoReportRangeAt(def, ref) {
       return { from: new Date(year - 1, 0, 1), to: new Date(year - 1, 11, 31) };
     case "last-31":
       return { from: protoAddDays(day, -31), to: before(day) };
+    case "last-12m":
+      return { from: new Date(year - 1, day.getMonth(), day.getDate()), to: before(day) };
     default:
       return { from: month(1), to: before(month(0)) };
   }
