@@ -1566,6 +1566,11 @@ function protoSyncBrandUi(kind, hex) {
   root.querySelectorAll(`[data-proto-brand-row="${kind}"] .astral-brand-swatch`).forEach((el) => {
     el.style.background = hex;
   });
+  root.querySelectorAll(`[data-proto-brand-warn="${kind}"]`).forEach((el) => {
+    const text = protoBrandWarnText(hex);
+    el.textContent = text;
+    el.hidden = !text;
+  });
   const picker = root.querySelector(`[data-proto-picker="${kind}"]`);
   if (picker) protoPaintPicker(picker, hex);
 }
@@ -1594,6 +1599,22 @@ function protoLuminance(hex) {
     return n <= 0.03928 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
   };
   return 0.2126 * chan(1) + 0.7152 * chan(3) + 0.0722 * chan(5);
+}
+
+// WCAG non-text contrast: bars, lines, and marks need 3:1 against the white graph.
+function protoContrastOnWhite(hex) {
+  return 1.05 / (protoLuminance(hex) + 0.05);
+}
+
+function protoBrandWarnText(hex) {
+  const ratio = protoContrastOnWhite(hex);
+  if (!protoHex(hex) || ratio >= 3) return "";
+  return `Hard to see on the white graph: ${(Math.floor(ratio * 10) / 10).toFixed(1)}:1. Bars and lines need at least 3:1.`;
+}
+
+function protoBrandWarnHtml(kind, hex) {
+  const text = protoBrandWarnText(hex);
+  return `<p class="astral-brand-warn" data-proto-brand-warn="${kind}" role="status"${text ? "" : " hidden"}>${escapeHtml(text)}</p>`;
 }
 
 function protoOnColour(hex) {
@@ -4002,7 +4023,7 @@ const PROTO_SLICE_FILL = {
   "hours-on|tou-on": "#0F62FE",
   "hours-on|tou-off": "#EE538B",
   "hours-non|tou-on": "#6929C4",
-  "hours-non|tou-off": "#D4BBFF",
+  "hours-non|tou-off": "#A56EFF",
   "hours-off|tou-on": "#8A3800",
   "hours-off|tou-off": "#737373",
   "hours-on": "#0F62FE",
@@ -23254,6 +23275,7 @@ function protoBrandSwatch(kind, value, canAct = true) {
           : `<span class="astral-brand-swatch" style="background:${escapeHtml(value)}" aria-hidden="true"></span>`
       }
     </div>
+    ${protoBrandWarnHtml(kind, value)}
   `;
 }
 
