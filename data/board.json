@@ -3428,9 +3428,44 @@
               "The consent preamble is a neutral draft. It needs legal review before issue.",
               "Never put real or invented participant names in the plan. Use P01, P02."
             ]
+          },
+          {
+            "id": "presentation-templates",
+            "title": "Presentation templates",
+            "kind": "Template",
+            "template": true,
+            "source": "team",
+            "pages": 39,
+            "format": "16:9 PDF",
+            "file": "/docs/research/plans/presentation-templates.pdf",
+            "summary": "A record of the IMSERV presentation deck: every Titles, Dividers, Graphics, Imagery & Tables, Imagery & Text, Tables and Text Heavy page, with what each is for, when to use it and when not to.",
+            "card": "Every IMSERV presentation page, with what it is for and where to use it.",
+            "notes": [
+              "Rebuilt as HTML in assets/brand/deck. Change layouts.js, then run build.js to print a new PDF.",
+              "Pick the page by the job it does, not the look. Each page in the record says when to use it and when not to.",
+              "Keep to one idea a slide. Split a slide before you shrink the text."
+            ]
           }
         ],
         "reports": [
+          {
+            "id": "usability-report-example",
+            "title": "Usability testing report",
+            "kind": "Usability report",
+            "example": true,
+            "source": "team",
+            "pages": 20,
+            "format": "16:9 PDF",
+            "file": "/docs/research/reports/usability-report-example.pdf",
+            "summary": "Example usability testing report built from the presentation templates. Adding a Scheduled Report in Astral, six participants, twelve graded findings, a top 5 to fix and next steps.",
+            "card": "Example report deck: why, how, graded findings on screenshots, a top 5 and next steps.",
+            "notes": [
+              "The findings and quotes are an example. Swap in your own before you share it.",
+              "Grade every finding Positive, Low, Medium, High or Critical, and show one to three findings a slide.",
+              "Mark each finding on its screenshot with its numbered badge.",
+              "Edit report.js in assets/brand/deck, then run build.js to print the PDF."
+            ]
+          },
           {
             "id": "astral-product-model",
             "title": "Astral product model",

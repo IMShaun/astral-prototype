@@ -3518,11 +3518,15 @@ function researchStudyRow(item) {
   });
 }
 
+function researchExampleTag(item) {
+  return item?.example ? deskTag("Example", "scaffold") : "";
+}
+
 function researchReportCard(item) {
   return deskCard({
     open: { "data-action": "research-open", "data-id": `report:${item.id}` },
     title: item.title || "",
-    tags: `<span class="desk-card-tags">${researchKindTag(item)}</span>`,
+    tags: `<span class="desk-card-tags">${researchExampleTag(item)}${researchKindTag(item)}</span>`,
     body: escapeHtml(cardLine(item, item.summary)),
     foot: item.date ? `<span class="astral-muted">${escapeHtml(researchDate(item.date))}</span>` : "",
   });
@@ -3543,7 +3547,7 @@ function researchReportRow(item) {
 
 function researchFile(item) {
   const file = String(item.file || "");
-  if (!file) return "";
+  if (!/\.pdf$/i.test(file)) return "";
   const name = file.split("/").pop() || "plan.pdf";
   return deskSection(
     "File",
@@ -3686,7 +3690,10 @@ function researchReportText(file) {
 
 function researchReportPage(item) {
   const study = (researchBoard().plans || []).find((entry) => entry.id === item.study);
-  const text = researchReportText(item.file);
+  const pdf = /\.pdf$/i.test(String(item.file || ""));
+  const text = pdf ? "" : researchReportText(item.file);
+  const notes = (item.notes || []).map((line) => `<li>${escapeHtml(line)}</li>`).join("");
+  const format = [item.pages ? `${item.pages} pages` : "", item.format || ""].filter(Boolean).join(" · ");
   let body = `<p class="astral-muted">Loading the report.</p>`;
   if (text === false) body = emptyCard("Could not load this report.");
   if (text) body = `<div class="desk-prose">${researchMarkdown(text)}</div>`;
@@ -3694,7 +3701,7 @@ function researchReportPage(item) {
     ${deskDetailHead({
       back: "research-back",
       where: "Reporting",
-      kicker: `<span class="desk-card-tags">${researchKindTag(item)}</span>`,
+      kicker: `<span class="desk-card-tags">${researchExampleTag(item)}${researchKindTag(item)}</span>`,
       title: item.title || "",
       lead: item.summary || "",
     })}
@@ -3703,7 +3710,10 @@ function researchReportPage(item) {
       `<dl class="fact-grid">
         ${factRow("Written", researchDate(item.date))}
         ${factRow("From", study?.title)}
+        ${factRow("Format", format)}
+        ${factRow("Source", insightSource(item)?.long)}
       </dl>
+      ${notes ? `<ul class="notes">${notes}</ul>` : ""}
       ${
         study
           ? `<div class="astral-actions"><button type="button" class="astral-btn" data-action="research-open" data-id="plan:${escapeHtml(
@@ -3713,7 +3723,7 @@ function researchReportPage(item) {
       }
       ${item.file ? `<p class="token-path">${escapeHtml(item.file.replace(/^\//, ""))}</p>` : ""}`
     )}
-    ${deskSection("Report", body)}
+    ${pdf ? researchFile(item) : deskSection("Report", body)}
   `;
 }
 
