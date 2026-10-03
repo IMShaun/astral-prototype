@@ -14100,6 +14100,7 @@ body:not(.is-share) .desk-shell {
 
 /* Research Planning and Reporting hosts stack their blocks like the page does. */
 #research-planning:not([hidden]),
+#research-strategy:not([hidden]),
 #research-reporting:not([hidden]) {
   display: grid;
   gap: var(--space-stack-default);
@@ -14433,4 +14434,21 @@ body.is-share .desk-bar {
 
 .desk-table td:not(:last-child) {
   white-space: nowrap;
+}
+
+/* Research Strategy: the next move, written as one sentence. */
+.desk-move-hero {
+  display: grid;
+  gap: var(--space-stack-default);
+}
+
+.desk-move-sentence {
+  margin: 0;
+  max-width: 48rem;
+  font-size: 1.25rem;
+  line-height: 1.45;
+}
+
+.desk-move-sentence strong {
+  font-weight: 600;
 }

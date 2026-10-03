@@ -3431,6 +3431,132 @@
             "file": "/docs/research/reports/2026-09-12-imserv-customer-base.md",
             "summary": "Public-page customer map, folded into User groups. Not a study."
           }
+        ],
+        "moves": [
+          {
+            "id": "stale-data-sit-in",
+            "title": "See how wrong data reaches a customer",
+            "activity": "discovery",
+            "kind": "Sit-in",
+            "know": "DataVision can show estimated data even when actual readings exist, and only a specialist reset fixes it",
+            "run": "a discovery sit-in",
+            "with": "V while she works a stale data ticket",
+            "learn": "how often a customer sees worse data than we hold, and how staff find out",
+            "insights": [
+              "estimated-over-actual",
+              "stale-data-specialist-reset",
+              "mpan-missing-without-reason",
+              "cannot-diagnose-breaks"
+            ]
+          },
+          {
+            "id": "access-model-map",
+            "title": "Map how access stacks",
+            "activity": "architecture",
+            "kind": "Mapping",
+            "know": "entitlement, role, and scope get mixed into one permissions idea, and access dates are hard to read",
+            "run": "an architecture mapping session",
+            "with": "Anthony",
+            "learn": "how entitlement, role, and groups stack, and when access should stop",
+            "insights": [
+              "mixed-access-layers",
+              "access-date-rules",
+              "termination-unclear-access",
+              "documents-only-shell"
+            ]
+          },
+          {
+            "id": "third-party-walk",
+            "title": "Ask third parties what they really need",
+            "activity": "discovery",
+            "kind": "Walk",
+            "know": "IMSERV manages third-party users and LOAs for people who may only need the data",
+            "run": "a discovery walkthrough",
+            "with": "a broker or TPI who receives customer reports",
+            "learn": "whether a third party needs an account at all, or just a scheduled report",
+            "group": "broker",
+            "insights": [
+              "third-party-wrong-problem",
+              "loa-access-risk",
+              "access-date-rules"
+            ]
+          },
+          {
+            "id": "teams-groups-workshop",
+            "title": "Settle Teams versus Groups",
+            "activity": "workshopping",
+            "kind": "Workshop",
+            "know": "Teams and Groups get treated as the same thing",
+            "run": "a workshopping session",
+            "with": "Max and Emily",
+            "learn": "where Team ends and Group begins, before Portfolio is signed off",
+            "insights": [
+              "teams-not-groups",
+              "mixed-access-layers"
+            ]
+          },
+          {
+            "id": "portfolio-usability",
+            "title": "Test finding one site in a huge portfolio",
+            "activity": "usability",
+            "kind": "Usability test",
+            "know": "huge portfolios cannot be treated as a long list",
+            "run": "a usability test of Portfolio",
+            "with": "an energy supplier user with thousands of MPANs",
+            "learn": "how people narrow from the whole estate to one site",
+            "group": "portfolio-customer",
+            "guide": "usability-test-plan",
+            "insights": [
+              "huge-portfolio-load"
+            ]
+          },
+          {
+            "id": "estimated-alert-usability",
+            "title": "Test estimated versus alert on the graphs",
+            "activity": "usability",
+            "kind": "Usability test",
+            "know": "estimated readings and Alerts share one pattern today",
+            "run": "a usability test of the graphs and Site profile",
+            "with": "customers who read the graphs now",
+            "learn": "whether people can tell a guessed reading from a problem",
+            "guide": "usability-test-plan",
+            "insights": [
+              "estimated-versus-alert"
+            ]
+          },
+          {
+            "id": "file-words-card-sort",
+            "title": "Find the words people use for files",
+            "activity": "architecture",
+            "kind": "Card sort",
+            "know": "reports, documents, and exports get the same word",
+            "run": "an architecture card sort",
+            "with": "customers and the service team",
+            "learn": "which words people already use for their files, and where they expect each one",
+            "insights": [
+              "four-file-words",
+              "documents-only-shell"
+            ]
+          },
+          {
+            "id": "setup-blueprint",
+            "title": "Blueprint client setup end to end",
+            "activity": "workshopping",
+            "kind": "Blueprint",
+            "know": "client setup and onboarding run across too many systems and hand-offs",
+            "run": "a workshopping session to draw the service blueprint",
+            "with": "V and Katie",
+            "learn": "where one setup record could live and who owns each step",
+            "insights": [
+              "manual-client-setup",
+              "no-setup-tracking",
+              "onboarding-too-many-systems",
+              "onboarding-handoffs",
+              "specialist-knowledge",
+              "fragmented-contracts",
+              "duplicate-date-entry"
+            ]
+          }
         ]
       },
       "access": [

@@ -15,7 +15,6 @@ const SECTIONS = [
   "groups",
   "journeys",
   "research",
-  "strategy",
   "analytics",
   "access",
   "library",
@@ -56,13 +55,8 @@ const els = {
   researchTabs: document.getElementById("research-tabs"),
   researchLead: document.getElementById("research-lead"),
   researchPlanning: document.getElementById("research-planning"),
+  researchStrategy: document.getElementById("research-strategy"),
   researchReporting: document.getElementById("research-reporting"),
-  strategyCount: document.getElementById("strategy-count"),
-  strategyNext: document.getElementById("strategy-next"),
-  strategyKnow: document.getElementById("strategy-know"),
-  strategyLimits: document.getElementById("strategy-limits"),
-  strategyInsights: document.getElementById("strategy-insights"),
-  strategyOpen: document.getElementById("strategy-open"),
   analyticsCount: document.getElementById("analytics-count"),
   analyticsKeis: document.getElementById("analytics-keis"),
   analyticsChart: document.getElementById("analytics-chart"),
@@ -100,7 +94,6 @@ const els = {
   navGroupsCount: document.getElementById("nav-groups-count"),
   navJourneysCount: document.getElementById("nav-journeys-count"),
   navResearchCount: document.getElementById("nav-research-count"),
-  navStrategyCount: document.getElementById("nav-strategy-count"),
   navAnalyticsCount: document.getElementById("nav-analytics-count"),
   navAccessCount: document.getElementById("nav-access-count"),
   navLibraryCount: document.getElementById("nav-library-count"),
@@ -209,6 +202,11 @@ const RESEARCH_TABS = [
     id: "reporting",
     name: "Reporting",
     lead: "Reports written up from the research. Open one to read it here.",
+  },
+  {
+    id: "strategy",
+    name: "Strategy",
+    lead: "Your next move from the research. Each move starts from what a study found, names the activity to run, and says what it should answer. The strongest finding goes first. Pick an activity type to filter, pick it again for everything.",
   },
 ];
 
@@ -432,7 +430,7 @@ function emptyBoard() {
     know: [
       {
         title: "Teams",
-        body: "Pick the team in the side menu. Today, User groups, Journeys, Research, Strategy, Analytics, Access, UI library, and Branding stay with that team.",
+        body: "Pick the team in the side menu. Today, User groups, Journeys, Research, Analytics, Access, UI library, and Branding stay with that team.",
       },
       {
         title: "Access",
@@ -456,7 +454,7 @@ function emptyAccess() {
 }
 
 function emptyResearch() {
-  return { insights: [], plans: [], reports: [] };
+  return { insights: [], plans: [], reports: [], moves: [] };
 }
 
 function researchBoard() {
@@ -466,6 +464,7 @@ function researchBoard() {
   if (!Array.isArray(current.research.insights)) current.research.insights = [];
   if (!Array.isArray(current.research.plans)) current.research.plans = [];
   if (!Array.isArray(current.research.reports)) current.research.reports = [];
+  if (!Array.isArray(current.research.moves)) current.research.moves = [];
   return current.research;
 }
 
@@ -538,38 +537,6 @@ function sortedInsights() {
     });
 }
 
-function strategyPriorityInsights() {
-  return (researchBoard().insights || [])
-    .filter((item) => {
-      const severity = insightSeverity(item);
-      return severity === "critical" || severity === "high";
-    })
-    .slice()
-    .sort((a, b) => {
-      const sev =
-        (RESEARCH_SEVERITY_RANK[insightSeverity(a)] ?? 9) -
-        (RESEARCH_SEVERITY_RANK[insightSeverity(b)] ?? 9);
-      if (sev) return sev;
-      const score = insightScore(b) - insightScore(a);
-      if (score) return score;
-      return String(a.title || "").localeCompare(String(b.title || ""));
-    });
-}
-
-function strategyOpenGroups() {
-  return (board().groups || []).filter((group) =>
-    String(group.open || "").trim()
-  );
-}
-
-function strategyMoveCount(current) {
-  return (
-    (current.next || []).length +
-    strategyOpenGroups().length +
-    strategyPriorityInsights().length
-  );
-}
-
 function knowCard(card, index, withBody) {
   return `
     <button
@@ -584,25 +551,6 @@ function knowCard(card, index, withBody) {
       ${withBody && card.body ? `<span class="astral-muted desk-know-body">${escapeHtml(card.body)}</span>` : ""}
     </button>
   `;
-}
-
-function strategyStepCard(text, index) {
-  return `
-    <article class="astral-card desk-step">
-      <span class="desk-step-index" aria-hidden="true">${index + 1}</span>
-      <p class="desk-step-title">${escapeHtml(text)}</p>
-    </article>
-  `;
-}
-
-function strategyOpenCard(group) {
-  const status = group.status || "draft";
-  return deskCard({
-    open: { "data-open": "group", "data-id": group.id },
-    title: group.name || "",
-    tags: deskTag(STATUS_LABEL[status] || "Draft", status),
-    body: escapeHtml(group.open || ""),
-  });
 }
 
 function keiListOr(list, fallback) {
@@ -3499,6 +3447,10 @@ function researchOpenItem() {
     const item = (pack.reports || []).find((entry) => entry.id === id);
     return item ? { kind, item } : null;
   }
+  if (kind === "move") {
+    const item = (pack.moves || []).find((entry) => entry.id === id);
+    return item ? { kind, item } : null;
+  }
   return null;
 }
 
@@ -3744,6 +3696,246 @@ function researchReportPage(item) {
 }
 
 // Only rewrite a host when its markup changes, so an open PDF keeps its place.
+const RESEARCH_SEVERITY_ORDER = (item) => RESEARCH_SEVERITY_RANK[insightSeverity(item)] ?? 9;
+
+function researchMoves() {
+  return researchBoard().moves || [];
+}
+
+function moveInsights(move) {
+  const all = researchBoard().insights || [];
+  return (move?.insights || [])
+    .map((id) => all.find((item) => item.id === id))
+    .filter(Boolean)
+    .sort((a, b) => RESEARCH_SEVERITY_ORDER(a) - RESEARCH_SEVERITY_ORDER(b) || insightScore(b) - insightScore(a));
+}
+
+function moveProject(move) {
+  return (researchBoard().plans || []).find((item) => item.id === move.project || item.move === move.id) || null;
+}
+
+// open: nothing started yet. Otherwise the project's own state.
+function moveState(move) {
+  const project = moveProject(move);
+  return project ? researchStudyState(project) : "open";
+}
+
+const RESEARCH_MOVE_RANK = { open: 0, planned: 1, doing: 1, done: 3 };
+
+// Strongest finding first: severity, then score, then how much evidence sits behind it.
+function sortedMoves() {
+  return researchMoves()
+    .map((move, index) => ({ move, index, top: moveInsights(move)[0] }))
+    .sort((a, b) => {
+      const state = RESEARCH_MOVE_RANK[moveState(a.move)] - RESEARCH_MOVE_RANK[moveState(b.move)];
+      if (state) return state;
+      const sev = (a.top ? RESEARCH_SEVERITY_ORDER(a.top) : 9) - (b.top ? RESEARCH_SEVERITY_ORDER(b.top) : 9);
+      if (sev) return sev;
+      const score = (b.top ? insightScore(b.top) : 0) - (a.top ? insightScore(a.top) : 0);
+      if (score) return score;
+      return (b.move.insights || []).length - (a.move.insights || []).length || a.index - b.index;
+    })
+    .map((entry) => entry.move);
+}
+
+function activeMoveActivity() {
+  const id = store?.researchMoveActivity;
+  return researchMoves().some((item) => researchActivity(item) === id) ? id : "all";
+}
+
+function moveSentence(move, plain) {
+  const strong = (text) => (plain ? text : `<strong>${escapeHtml(text)}</strong>`);
+  const text = (value) => (plain ? value : escapeHtml(value));
+  return `${text("Since you know ")}${strong(move.know || "")}${text(", I would suggest ")}${strong(
+    move.run || ""
+  )}${move.with ? text(` with ${move.with}`) : ""}${text(" so we can better understand ")}${strong(move.learn || "")}${text(".")}`;
+}
+
+function moveStudies(move) {
+  const plans = researchBoard().plans || [];
+  const ids = [...new Set(moveInsights(move).map((item) => item.study).filter(Boolean))];
+  return ids.map((id) => plans.find((plan) => plan.id === id)?.title).filter(Boolean);
+}
+
+function moveMeta(move) {
+  const count = moveInsights(move).length;
+  return [count === 1 ? "1 insight" : `${count} insights`, ...moveStudies(move)].join(" \u00b7 ");
+}
+
+function moveTags(move) {
+  const state = moveState(move);
+  return `<span class="desk-card-tags">${deskTag(researchActivityName(move))}${
+    state === "open" ? "" : deskTag(researchStudyName(state), RESEARCH_STUDY_STATUS[state])
+  }</span>`;
+}
+
+function moveActions(move, withOpen) {
+  const project = moveProject(move);
+  const template = move.guide ? (researchBoard().plans || []).find((item) => item.id === move.guide) : null;
+  const buttons = [
+    project
+      ? `<button type="button" class="astral-btn" data-action="research-open" data-id="plan:${escapeHtml(project.id)}">Open the project</button>`
+      : `<button type="button" class="astral-btn" data-action="research-move-plan" data-id="${escapeHtml(move.id)}">Add to Projects</button>`,
+    withOpen
+      ? `<button type="button" class="astral-btn is-secondary" data-action="research-open" data-id="move:${escapeHtml(move.id)}">See the evidence</button>`
+      : "",
+    template
+      ? `<button type="button" class="astral-btn is-secondary" data-action="research-open" data-id="plan:${escapeHtml(template.id)}">Open the ${escapeHtml(
+          String(template.title || "template").toLowerCase()
+        )}</button>`
+      : "",
+  ];
+  return `<div class="astral-actions">${buttons.join("")}</div>`;
+}
+
+function moveHero(move) {
+  return `
+    <article class="astral-card desk-move-hero">
+      <div class="astral-card-head">
+        <h3>${escapeHtml(move.title || "")}</h3>
+        ${moveTags(move)}
+      </div>
+      <p class="desk-move-sentence">${moveSentence(move)}</p>
+      <p class="astral-muted">${escapeHtml(moveMeta(move))}</p>
+      ${moveActions(move, true)}
+    </article>
+  `;
+}
+
+function moveCard(move) {
+  return deskCard({
+    open: { "data-action": "research-open", "data-id": `move:${move.id}` },
+    title: move.title || "",
+    tags: moveTags(move),
+    body: moveSentence(move),
+    foot: `<span class="astral-muted">${escapeHtml(moveMeta(move))}</span>`,
+  });
+}
+
+function moveEvidenceRow(item) {
+  const severity = insightSeverity(item);
+  const study = (researchBoard().plans || []).find((plan) => plan.id === item.study);
+  return deskRow({
+    open: { "data-open": "insight", "data-id": item.id },
+    title: item.title || "",
+    cells: [
+      deskTag(researchSeverityName(severity), researchSeverityStatus(severity)),
+      escapeHtml(study?.title || ""),
+      escapeHtml(String(insightScore(item))),
+    ],
+  });
+}
+
+function researchMovePage(move) {
+  const insights = moveInsights(move);
+  const group = (board().groups || []).find((item) => item.id === move.group);
+  const project = moveProject(move);
+  return `
+    ${deskDetailHead({
+      back: "research-back",
+      where: "Strategy",
+      kicker: moveTags(move),
+      title: move.title || "",
+    })}
+    <p class="desk-move-sentence">${moveSentence(move)}</p>
+    ${moveActions(move, false)}
+    ${deskSection(
+      "The move",
+      `<dl class="fact-grid">
+        ${factRow("Activity", researchActivityName(move))}
+        ${factRow("Run", move.kind)}
+        ${factRow("With", move.with)}
+        ${factRow("Answers", move.learn)}
+        ${factRow("Answers for", group?.name)}
+        ${factRow("Project", project?.title)}
+      </dl>`
+    )}
+    ${deskSection(
+      `What you know (${insights.length})`,
+      deskTable(["Insight", "Severity", "From", "Score"], insights.map(moveEvidenceRow)),
+      "The insights behind this move. Open one for the rest."
+    )}
+  `;
+}
+
+// Activity types no project has covered yet, and user group questions nothing answers.
+function researchGaps(moves) {
+  const plans = (researchBoard().plans || []).filter((item) => !item.template);
+  return RESEARCH_ACTIVITIES.filter((item) => item.id !== "template")
+    .filter((item) => !plans.some((plan) => researchActivity(plan) === item.id))
+    .map((item) => {
+      const count = moves.filter((move) => researchActivity(move) === item.id).length;
+      return `<li>No ${escapeHtml(item.name.toLowerCase())} research has run yet.${
+        count ? ` ${count === 1 ? "One move here suggests" : `${count} moves here suggest`} it.` : ""
+      }</li>`;
+    });
+}
+
+function openGroupCard(group) {
+  const status = group.status || "draft";
+  return deskCard({
+    open: { "data-open": "group", "data-id": group.id },
+    title: group.name || "",
+    tags: deskTag(STATUS_LABEL[status] || "Draft", status),
+    body: escapeHtml(group.open || ""),
+  });
+}
+
+function researchStrategyList() {
+  const activity = activeMoveActivity();
+  const all = sortedMoves();
+  const moves = all.filter((move) => activity === "all" || researchActivity(move) === activity);
+  if (!all.length) return emptyCard("No moves yet. Add research and the next move shows here.");
+  const live = moves.filter((move) => moveState(move) !== "done");
+  const hero = live.find((move) => moveState(move) === "open") || live[0] || null;
+  const rest = moves.filter((move) => move !== hero);
+  const gaps = researchGaps(all);
+  const covered = new Set(all.map((move) => move.group).filter(Boolean));
+  const opens = (board().groups || []).filter((group) => String(group.open || "").trim() && !covered.has(group.id));
+  const section = (id, title, help, inner) => `
+    <section class="astral-home-section" aria-labelledby="${id}">
+      <div class="desk-section-head">
+        <h3 id="${id}" class="astral-home-section-title">${escapeHtml(title)}</h3>
+        <p class="astral-muted">${escapeHtml(help)}</p>
+      </div>
+      ${inner}
+    </section>`;
+  return [
+    hero
+      ? section(
+          "strategy-move-heading",
+          "Your next move",
+          "The strongest finding nothing has started on yet.",
+          moveHero(hero)
+        )
+      : "",
+    rest.length
+      ? section(
+          "strategy-then-heading",
+          "Then",
+          "In order of the strongest finding behind each. Open one for the evidence.",
+          `<div class="astral-report-grid desk-grid">${rest.map(moveCard).join("")}</div>`
+        )
+      : "",
+    gaps.length
+      ? section(
+          "strategy-gaps-heading",
+          "Gaps in the research",
+          "Activity types no project has covered yet.",
+          `<article class="astral-card desk-brief-card"><ul class="desk-bullets">${gaps.join("")}</ul></article>`
+        )
+      : "",
+    opens.length
+      ? section(
+          "strategy-open-heading",
+          "Still unanswered",
+          "Questions on user groups that no move answers yet. A talk named them.",
+          `<div class="astral-report-grid desk-grid">${opens.map(openGroupCard).join("")}</div>`
+        )
+      : "",
+  ].join("");
+}
+
 function setResearchHost(host, html) {
   if (!host) return;
   if (host.deskHtml !== html) {
@@ -3761,7 +3953,11 @@ function renderResearch() {
   const filter = activeResearchSeverity();
   const tab = activeResearchTab();
   const open = researchOpenItem();
-  const detail = Boolean(open) && ((open.kind === "plan" && tab === "planning") || (open.kind === "report" && tab === "reporting"));
+  const detail =
+    Boolean(open) &&
+    ((open.kind === "plan" && tab === "planning") ||
+      (open.kind === "report" && tab === "reporting") ||
+      (open.kind === "move" && tab === "strategy"));
   if (!detail) store.researchOpen = "";
   setPanelDetail("research", detail);
 
@@ -3770,7 +3966,12 @@ function renderResearch() {
       insights.length === 1 ? "1 insight" : `${insights.length} insights`;
   }
   if (els.researchTabs) {
-    const counts = { insights: insights.length, planning: plans.length, reporting: reports.length };
+    const counts = {
+      insights: insights.length,
+      planning: plans.length,
+      reporting: reports.length,
+      strategy: researchMoves().filter((move) => moveState(move) !== "done").length,
+    };
     els.researchTabs.innerHTML = protoTabs(
       RESEARCH_TABS.map((item) => ({ id: item.id, name: `${item.name} (${counts[item.id]})` })),
       tab,
@@ -3805,6 +4006,17 @@ function renderResearch() {
         activeResearchActivity(),
         "data-research-activity",
         "Research activity"
+      );
+    } else if (tab === "strategy") {
+      const moves = researchMoves();
+      els.researchFilters.innerHTML = deskStats(
+        RESEARCH_ACTIVITIES.filter((item) => item.id !== "template").map((item) => {
+          const count = moves.filter((entry) => researchActivity(entry) === item.id).length;
+          return { id: item.id, name: item.name, count, disabled: !count };
+        }),
+        activeMoveActivity(),
+        "data-research-move-activity",
+        "Move activity"
       );
     } else {
       els.researchFilters.innerHTML = "";
@@ -3884,6 +4096,14 @@ function renderResearch() {
     setResearchHost(els.researchReporting, html);
   }
 
+  if (els.researchStrategy) {
+    els.researchStrategy.hidden = tab !== "strategy";
+    let html = "";
+    if (tab === "strategy" && detail) html = researchMovePage(open.item);
+    else if (tab === "strategy") html = researchStrategyList();
+    setResearchHost(els.researchStrategy, html);
+  }
+
   setNavCount(els.navResearchCount, insights.length);
 }
 
@@ -3896,6 +4116,32 @@ function onResearchTab(event) {
   persistChrome();
 }
 
+// A move becomes a planned project, linked back so the move shows it is in hand.
+function planResearchMove(id) {
+  const pack = researchBoard();
+  const move = (pack.moves || []).find((item) => item.id === id);
+  if (!move || moveProject(move)) return;
+  const project = {
+    id: `move-${move.id}`,
+    title: move.title || "",
+    kind: move.kind || "",
+    activity: researchActivity(move),
+    status: "planned",
+    date: todayIso(),
+    who: move.with || "",
+    summary: moveSentence(move, true),
+    source: "team",
+    move: move.id,
+  };
+  pack.plans.push(project);
+  move.project = project.id;
+  store.researchTab = "planning";
+  store.researchOpen = `plan:${project.id}`;
+  render();
+  persist();
+  window.scrollTo({ top: 0 });
+}
+
 function onResearchPage(event) {
   const back = event.target.closest("[data-action='research-back']");
   if (back) {
@@ -3905,73 +4151,19 @@ function onResearchPage(event) {
     document.querySelector(".stage")?.scrollTo?.({ top: 0 });
     return;
   }
+  const add = event.target.closest("[data-action='research-move-plan']");
+  if (add) {
+    planResearchMove(add.dataset.id);
+    return;
+  }
   const opener = event.target.closest("[data-action='research-open']");
   if (!opener) return;
   const id = String(opener.dataset.id || "");
-  store.researchTab = id.startsWith("report:") ? "reporting" : "planning";
+  store.researchTab = id.startsWith("report:") ? "reporting" : id.startsWith("move:") ? "strategy" : "planning";
   store.researchOpen = id;
   render();
   persistChrome();
   window.scrollTo({ top: 0 });
-}
-
-function renderStrategy() {
-  const current = board();
-  const next = current.next || [];
-  const know = current.know || [];
-  const cannot = current.cannot || [];
-  const problems = strategyPriorityInsights();
-  const opens = strategyOpenGroups();
-  const moves = strategyMoveCount(current);
-
-  if (els.strategyCount) {
-    els.strategyCount.innerHTML = deskJumpStats(
-      [
-        { name: "Do next", count: next.length, target: "strategy-next-heading" },
-        { name: "Known", count: know.length, target: "strategy-know-heading" },
-        { name: "Named problems", count: problems.length, target: "strategy-problems-heading" },
-        { name: "Unanswered", count: opens.length, target: "strategy-open-heading" },
-      ],
-      "Strategy sections"
-    );
-  }
-
-  if (els.strategyNext) {
-    els.strategyNext.innerHTML = next.length
-      ? next.map(strategyStepCard).join("")
-      : emptyCard("No next steps on the briefing yet.");
-  }
-
-  if (els.strategyKnow) {
-    els.strategyKnow.innerHTML = know.length
-      ? know.map((card, index) => knowCard(card, index, true)).join("")
-      : emptyCard("No know cards on the briefing yet.");
-  }
-
-  if (els.strategyLimits) {
-    els.strategyLimits.innerHTML = cannot.length
-      ? `<article class="astral-card desk-brief-card is-cannot">
-          <h4>You cannot</h4>
-          <ul class="desk-bullets">${cannot
-            .map((item) => `<li>${escapeHtml(item)}</li>`)
-            .join("")}</ul>
-        </article>`
-      : emptyCard("No hard limits named yet.");
-  }
-
-  if (els.strategyInsights) {
-    els.strategyInsights.innerHTML = problems.length
-      ? problems.map(insightCard).join("")
-      : emptyCard("No Critical or High insights for this team yet.");
-  }
-
-  if (els.strategyOpen) {
-    els.strategyOpen.innerHTML = opens.length
-      ? opens.map(strategyOpenCard).join("")
-      : emptyCard("No open questions on user groups yet.");
-  }
-
-  setNavCount(els.navStrategyCount, moves);
 }
 
 function renderAnalytics() {
@@ -4299,7 +4491,6 @@ function render() {
 
   applyAccessFolds();
   renderResearch();
-  renderStrategy();
   renderAnalytics();
   renderLibrary();
   renderLanguage();
@@ -4336,6 +4527,7 @@ const CHROME_FIELDS = [
   "researchTab",
   "researchOpen",
   "researchActivity",
+  "researchMoveActivity",
   "deskViews",
   "deskQueries",
   "patternStatus",
@@ -4578,6 +4770,10 @@ function clampSection() {
     store.prototypeFullscreen = true;
     return;
   }
+  if (store.activeSection === "strategy") {
+    store.activeSection = "research";
+    store.researchTab = "strategy";
+  }
   if (!sectionAllowed(store.activeSection)) store.activeSection = "prototype";
 }
 
@@ -4651,6 +4847,7 @@ function applyChrome() {
     : "all";
   store.researchTab = activeResearchTab();
   store.researchActivity = activeResearchActivity();
+  store.researchMoveActivity = activeMoveActivity();
   store.researchOpen = String(store.researchOpen || "");
   store.activePrototypeView = protoViewId(store.activePrototypeView);
   // A refresh keeps the place. Opening Portfolio from the rail still lands on All.
@@ -5270,6 +5467,14 @@ function onResearchClick(event) {
     persistChrome();
     return;
   }
+  const moveActivity = event.target.closest("[data-research-move-activity]");
+  if (moveActivity) {
+    const id = moveActivity.dataset.researchMoveActivity;
+    store.researchMoveActivity = id !== activeMoveActivity() ? id : "all";
+    render();
+    persistChrome();
+    return;
+  }
   const activity = event.target.closest("[data-research-activity]");
   if (activity) {
     const id = activity.dataset.researchActivity;
@@ -5664,6 +5869,7 @@ if (els.researchView) els.researchView.addEventListener("click", onResearchClick
 if (els.researchFilters) els.researchFilters.addEventListener("click", onResearchClick);
 if (els.researchTabs) els.researchTabs.addEventListener("click", onResearchTab);
 if (els.researchPlanning) els.researchPlanning.addEventListener("click", onResearchPage);
+if (els.researchStrategy) els.researchStrategy.addEventListener("click", onResearchPage);
 if (els.researchReporting) els.researchReporting.addEventListener("click", onResearchPage);
 if (els.analyticsKeis) els.analyticsKeis.addEventListener("click", onAnalyticsClick);
 if (els.patternsList) els.patternsList.addEventListener("click", onPatternNav);
