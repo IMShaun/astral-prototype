@@ -2494,7 +2494,7 @@ function patternPage(item) {
   `;
 }
 
-const SKILL_FOLDS = ["desk", "yours", "cursor"];
+const SKILL_FOLDS = ["desk", "yours"];
 
 function skillItems() {
   return (skillsCatalog.groups || []).flatMap((group) =>
