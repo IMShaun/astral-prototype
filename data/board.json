@@ -3294,7 +3294,7 @@
         "plans": [
           {
             "id": "v-client-setup",
-            "activity": "usability",
+            "activity": "discovery",
             "title": "V's client setup walk",
             "kind": "Walk",
             "task": "research-insights-board",
@@ -3307,7 +3307,7 @@
           },
           {
             "id": "katie-onboarding",
-            "activity": "usability",
+            "activity": "discovery",
             "title": "Katie's onboarding walk",
             "kind": "Walk",
             "task": "katie-onboarding-research",
@@ -3345,7 +3345,7 @@
           },
           {
             "id": "uat-look-around",
-            "activity": "architecture",
+            "activity": "discovery",
             "title": "Look around UAT",
             "kind": "Look around",
             "task": "product-logins",
@@ -3358,7 +3358,7 @@
           },
           {
             "id": "tma-look-around",
-            "activity": "architecture",
+            "activity": "discovery",
             "title": "Look around TMA and Meterpower",
             "kind": "Look around",
             "task": "tma-access",
@@ -3371,7 +3371,7 @@
           },
           {
             "id": "admin-as-user-walk",
-            "activity": "usability",
+            "activity": "discovery",
             "title": "Admin as user walk",
             "kind": "Walk",
             "task": "walk-admin-as-user",
@@ -3383,7 +3383,7 @@
           },
           {
             "id": "veronique-sit-in",
-            "activity": "usability",
+            "activity": "discovery",
             "title": "Sit with Veronique and customer service",
             "kind": "Sit-in",
             "task": "sit-veronique",

@@ -197,8 +197,8 @@ const RESEARCH_SEVERITY_RANK = {
 const RESEARCH_TABS = [
   {
     id: "planning",
-    name: "Planning",
-    lead: "Research we are doing, have planned, or have done, and the templates to run the next one. Open a card for the detail and the insights it named.",
+    name: "Projects",
+    lead: "Research we are doing, have planned, or have done, and the templates to run the next one. Pick an activity type to filter, pick it again for everything. Open a card for the detail and the insights it named.",
   },
   {
     id: "insights",
@@ -228,7 +228,7 @@ const RESEARCH_STUDY_STATUS = {
 };
 
 const RESEARCH_ACTIVITIES = [
-  { id: "all", name: "All" },
+  { id: "discovery", name: "Discovery" },
   { id: "usability", name: "Usability" },
   { id: "architecture", name: "Architecture" },
   { id: "workshopping", name: "Workshopping" },
@@ -3455,7 +3455,7 @@ function researchStudyTag(item) {
 function researchActivity(item) {
   if (item?.template) return "template";
   const id = String(item?.activity || "");
-  return RESEARCH_ACTIVITIES.some((entry) => entry.id === id && id !== "all") ? id : "usability";
+  return RESEARCH_ACTIVITIES.some((entry) => entry.id === id) ? id : "discovery";
 }
 
 function researchActivityName(item) {
@@ -3464,7 +3464,8 @@ function researchActivityName(item) {
 
 function activeResearchActivity() {
   const id = store?.researchActivity;
-  return RESEARCH_ACTIVITIES.some((item) => item.id === id) ? id : "all";
+  const plans = researchBoard().plans || [];
+  return plans.some((item) => researchActivity(item) === id) ? id : "all";
 }
 
 function studyInsights(item) {
@@ -3590,7 +3591,7 @@ function researchStudyPage(item) {
   return `
     ${deskDetailHead({
       back: "research-back",
-      where: "Planning",
+      where: "Projects",
       kicker: `<span class="desk-card-tags">${researchStudyTag(item)}${researchKindTag(item)}</span>`,
       title: item.title || "",
       lead: item.summary || "",
@@ -3798,10 +3799,7 @@ function renderResearch() {
     } else if (tab === "planning") {
       els.researchFilters.innerHTML = deskStats(
         RESEARCH_ACTIVITIES.map((item) => {
-          const count =
-            item.id === "all"
-              ? plans.length
-              : plans.filter((entry) => researchActivity(entry) === item.id).length;
+          const count = plans.filter((entry) => researchActivity(entry) === item.id).length;
           return { id: item.id, name: item.name, count, disabled: !count };
         }),
         activeResearchActivity(),
@@ -5275,7 +5273,8 @@ function onResearchClick(event) {
   const activity = event.target.closest("[data-research-activity]");
   if (activity) {
     const id = activity.dataset.researchActivity;
-    store.researchActivity = RESEARCH_ACTIVITIES.some((item) => item.id === id) ? id : "all";
+    const known = RESEARCH_ACTIVITIES.some((item) => item.id === id);
+    store.researchActivity = known && id !== activeResearchActivity() ? id : "all";
     render();
     persistChrome();
     return;
