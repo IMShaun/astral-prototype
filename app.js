@@ -53,6 +53,9 @@ const els = {
   researchView: document.getElementById("research-view"),
   researchFilters: document.getElementById("research-filters"),
   researchInsights: document.getElementById("research-insights"),
+  researchTabs: document.getElementById("research-tabs"),
+  researchLead: document.getElementById("research-lead"),
+  researchPlanning: document.getElementById("research-planning"),
   strategyCount: document.getElementById("strategy-count"),
   strategyNext: document.getElementById("strategy-next"),
   strategyKnow: document.getElementById("strategy-know"),
@@ -188,6 +191,24 @@ const RESEARCH_SEVERITY_RANK = {
   high: 1,
   "medium-high": 2,
   medium: 3,
+};
+
+const RESEARCH_TABS = [
+  {
+    id: "insights",
+    name: "Insights",
+    lead: "Findings from walks. Open an insight for the rest. Pick a severity card to filter. Score ranks within a severity from what the walk named.",
+  },
+  {
+    id: "planning",
+    name: "Planning",
+    lead: "Plans and templates for running a study. Read one here or download the PDF.",
+  },
+];
+
+// Where an insight came from. Add a source here before you tag an insight with it.
+const RESEARCH_SOURCES = {
+  team: { name: "Team", long: "The team" },
 };
 
 const RESEARCH_SEVERITY_STATUS = {
@@ -402,7 +423,7 @@ function emptyAccess() {
 }
 
 function emptyResearch() {
-  return { insights: [] };
+  return { insights: [], plans: [] };
 }
 
 function researchBoard() {
@@ -410,6 +431,7 @@ function researchBoard() {
   if (!current.research) current.research = emptyResearch();
   delete current.research.todos;
   if (!Array.isArray(current.research.insights)) current.research.insights = [];
+  if (!Array.isArray(current.research.plans)) current.research.plans = [];
   return current.research;
 }
 
@@ -440,6 +462,21 @@ function insightSeverity(item) {
 
 function activeResearchView() {
   return store?.researchView === "list" ? "list" : "cards";
+}
+
+function activeResearchTab() {
+  return RESEARCH_TABS.some((item) => item.id === store?.researchTab) ? store.researchTab : "insights";
+}
+
+function insightSource(item) {
+  const id = String(item?.source || "").trim();
+  if (!id) return null;
+  return RESEARCH_SOURCES[id] || { name: id, long: id };
+}
+
+function insightSourceTag(item) {
+  const source = insightSource(item);
+  return source ? deskTag(source.name, "draft") : "";
 }
 
 function activeResearchSeverity() {
@@ -779,7 +816,10 @@ function insightCard(item) {
   return deskCard({
     open: { "data-open": "insight", "data-id": item.id },
     title: item.title || "",
-    tags: deskTag(researchSeverityName(severity), researchSeverityStatus(severity)),
+    tags: `<span class="desk-card-tags">${deskTag(
+      researchSeverityName(severity),
+      researchSeverityStatus(severity)
+    )}${insightSourceTag(item)}</span>`,
     body: escapeHtml(item.problem || ""),
     foot: scoreField(item),
   });
@@ -792,6 +832,7 @@ function insightRow(item) {
     title: item.title || "",
     cells: [
       deskTag(researchSeverityName(severity), researchSeverityStatus(severity)),
+      insightSourceTag(item) || `<span class="astral-muted">Not named</span>`,
       escapeHtml(String(insightScore(item))),
       `<span class="desk-cell-line">${escapeHtml(item.problem || "")}</span>`,
     ],
@@ -2924,6 +2965,7 @@ function fillDetail() {
         ${factRow("Why it was raised", item.why)}
         ${factRow("Example", item.example)}
         ${factRow("What follows", item.note)}
+        ${factRow("Source", insightSource(item)?.long)}
       </dl>
     `;
     return true;
@@ -3368,8 +3410,40 @@ function renderResearch() {
       "Severity"
     );
   }
+  const tab = activeResearchTab();
+  const plans = pack.plans || [];
+  if (els.researchTabs) {
+    els.researchTabs.innerHTML = protoTabs(
+      RESEARCH_TABS.map((item) => ({
+        id: item.id,
+        name: item.id === "planning" ? `${item.name} (${plans.length})` : `${item.name} (${insights.length})`,
+      })),
+      tab,
+      "data-research-tab",
+      "Research pages"
+    );
+  }
+  if (els.researchLead) {
+    els.researchLead.textContent = RESEARCH_TABS.find((item) => item.id === tab)?.lead || "";
+  }
+  const onPlanning = tab === "planning";
+  if (els.researchFilters) els.researchFilters.hidden = onPlanning;
+  if (els.researchInsights) els.researchInsights.hidden = onPlanning;
+  if (els.researchPlanning) {
+    els.researchPlanning.hidden = !onPlanning;
+    const html = onPlanning
+      ? plans.length
+        ? plans.map(researchPlan).join("")
+        : emptyCard("No plans yet. Build one with /ux-research once the evidence review says Build plan.")
+      : "";
+    // Keep the open PDF where the reader left it when something else re-renders.
+    if (els.researchPlanning.deskHtml !== html) {
+      els.researchPlanning.innerHTML = html;
+      els.researchPlanning.deskHtml = html;
+    }
+  }
   const matched = shown.filter((item) =>
-    deskMatch("research", item.title, item.problem, item.where, item.why)
+    deskMatch("research", item.title, item.problem, item.where, item.why, insightSource(item)?.name)
   );
   if (els.researchView) {
     els.researchView.innerHTML = "";
@@ -3382,7 +3456,7 @@ function renderResearch() {
           placeholder: "Search insights",
           label: "Search insights",
           cards: matched.map(insightCard),
-          cols: ["Insight", "Severity", "Score", "Problem"],
+          cols: ["Insight", "Severity", "Source", "Score", "Problem"],
           rows: matched.map(insightRow),
           empty: "Nothing in this severity.",
         })
@@ -3390,6 +3464,45 @@ function renderResearch() {
   }
 
   setNavCount(els.navResearchCount, insights.length);
+}
+
+function researchPlan(item) {
+  const file = String(item.file || "");
+  const name = file.split("/").pop() || "plan.pdf";
+  const facts = [item.pages ? `${item.pages} pages` : "", item.format || ""].filter(Boolean).join(" ? ");
+  const notes = (item.notes || []).map((line) => `<li>${escapeHtml(line)}</li>`).join("");
+  return `
+    <section class="astral-card desk-block desk-plan">
+      <div class="desk-block-head desk-plan-head">
+        <div>
+          <h3>${escapeHtml(item.title || "Plan")}</h3>
+          ${facts ? `<p class="astral-muted">${escapeHtml(facts)}</p>` : ""}
+        </div>
+        <span class="desk-card-tags">${item.kind ? deskTag(item.kind, "scaffold") : ""}${insightSourceTag(item)}</span>
+      </div>
+      ${item.summary ? `<p>${escapeHtml(item.summary)}</p>` : ""}
+      ${notes ? `<ul class="notes">${notes}</ul>` : ""}
+      ${
+        file
+          ? `<div class="astral-actions desk-plan-actions">
+              <a class="astral-btn" href="${escapeHtml(file)}" target="_blank" rel="noreferrer">Open PDF</a>
+              <a class="brand-download" href="${escapeHtml(file)}" download="${escapeHtml(name)}">Download</a>
+            </div>
+            <iframe class="desk-plan-frame" src="${escapeHtml(file)}#view=FitH" title="${escapeHtml(
+              item.title || "Plan"
+            )} PDF" loading="lazy"></iframe>`
+          : ""
+      }
+    </section>
+  `;
+}
+
+function onResearchTab(event) {
+  const tab = event.target.closest("[data-research-tab]");
+  if (!tab) return;
+  store.researchTab = tab.dataset.researchTab;
+  render();
+  persistChrome();
 }
 
 function renderStrategy() {
@@ -3810,6 +3923,7 @@ const CHROME_FIELDS = [
   "activeBrandSection",
   "researchView",
   "researchSeverity",
+  "researchTab",
   "deskViews",
   "deskQueries",
   "patternStatus",
@@ -4123,6 +4237,7 @@ function applyChrome() {
   store.researchSeverity = RESEARCH_SEVERITIES.some((item) => item.id === store.researchSeverity)
     ? store.researchSeverity
     : "all";
+  store.researchTab = activeResearchTab();
   store.activePrototypeView = protoViewId(store.activePrototypeView);
   // A refresh keeps the place. Opening Portfolio from the rail still lands on All.
   store.prototypeScope = store.prototypeScope === "site" ? "site" : "group";
@@ -5124,6 +5239,7 @@ if (els.languageTabs) els.languageTabs.addEventListener("click", onLanguageTab);
 if (els.brandingTabs) els.brandingTabs.addEventListener("click", onBrandTab);
 if (els.researchView) els.researchView.addEventListener("click", onResearchClick);
 if (els.researchFilters) els.researchFilters.addEventListener("click", onResearchClick);
+if (els.researchTabs) els.researchTabs.addEventListener("click", onResearchTab);
 if (els.analyticsKeis) els.analyticsKeis.addEventListener("click", onAnalyticsClick);
 if (els.patternsList) els.patternsList.addEventListener("click", onPatternNav);
 if (els.skillsList) els.skillsList.addEventListener("click", onSkillNav);

@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-23",
+  "updated": "2026-10-03",
   "activeTeam": "imserv",
   "activeSection": "today",
   "teams": [
@@ -281,14 +281,6 @@
       ],
       "today": [
         {
-          "id": "ds-finish-library",
-          "title": "Finish the shared library so every developer builds from the same pieces",
-          "note": "The live Astral library is the walk. Figma extract, Storybook, and remaining components still wait. Do not auto-delete a duplicate.",
-          "project": "Astral",
-          "kind": "ui",
-          "added": "2026-09-22"
-        },
-        {
           "id": "ds-figma-flows",
           "title": "Convert prototype flows into Figma, screen by screen",
           "note": "Developers need a linear reference. Keep the prototype as the source until those frames exist.",
@@ -297,25 +289,9 @@
           "added": "2026-09-22"
         },
         {
-          "id": "pf-hierarchy",
-          "title": "Confirm company, site, MPAN, then meter, and who gets meter level",
-          "note": "The walk tree is group then site. MPAN sits on hover. Serial for water. Company, then Portfolio, then Group, then Site, then MPAN, then Meter, then channel. Scotland stays its own case. Do not invent a SPID.",
-          "project": "Astral",
-          "kind": "ux",
-          "added": "2026-09-22"
-        },
-        {
           "id": "pg-custom-groups",
           "title": "Let customers make custom groups and switch them off the regional default",
           "note": "An MPAN can sit in more than one group. Do not show it twice in the tree. Creating a group stays separate from viewing it.",
-          "project": "Astral",
-          "kind": "ux",
-          "added": "2026-09-22"
-        },
-        {
-          "id": "pg-manage-mpans",
-          "title": "Define how MPANs are added or removed from a group",
-          "note": "Viewing regional groups is in. The management flow still waits so development can start on the tree.",
           "project": "Astral",
           "kind": "ux",
           "added": "2026-09-22"
@@ -505,14 +481,6 @@
           "kind": "research"
         },
         {
-          "id": "james-figma",
-          "title": "Put the UAT components into Figma",
-          "note": "Clive's screens are not the source. Match James to UAT, then own one library. Live UAT uses PrimeNG.",
-          "project": "Astral",
-          "added": "2026-09-04",
-          "kind": "ui"
-        },
-        {
           "id": "time-based",
           "title": "Sketch time-based attributes before you ask Clive",
           "note": "Static values sit in Angular today. They are moving to Synapse. Alexi, Mikhail, and Arman. Do not give this to a new dev.",
@@ -649,14 +617,6 @@
           "kind": "ux"
         },
         {
-          "id": "keegan-storybook",
-          "title": "Ask Keegan for a Storybook you can point Figma MCP at",
-          "note": "After you are back from leave. The library comes first.",
-          "project": "Astral",
-          "added": "2026-09-04",
-          "kind": "ui"
-        },
-        {
           "id": "say-no-data",
           "title": "When a graph has no interval data for the date, say so on the screen",
           "note": "Missing coloured lines are not enough. Max had to infer that most ticked meters had nothing in range.",
@@ -674,6 +634,51 @@
         }
       ],
       "done": [
+        {
+          "id": "pg-manage-mpans",
+          "title": "Define how MPANs are added or removed from a group",
+          "note": "Viewing regional groups is in. The management flow still waits so development can start on the tree.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22",
+          "doneOn": "2026-10-03"
+        },
+        {
+          "id": "pf-hierarchy",
+          "title": "Confirm company, site, MPAN, then meter, and who gets meter level",
+          "note": "The walk tree is group then site. MPAN sits on hover. Serial for water. Company, then Portfolio, then Group, then Site, then MPAN, then Meter, then channel. Scotland stays its own case. Do not invent a SPID.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-09-22",
+          "doneOn": "2026-10-03"
+        },
+        {
+          "id": "keegan-storybook",
+          "title": "Ask Keegan for a Storybook you can point Figma MCP at",
+          "note": "After you are back from leave. The library comes first.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ui",
+          "doneOn": "2026-10-03"
+        },
+        {
+          "id": "james-figma",
+          "title": "Put the UAT components into Figma",
+          "note": "Clive's screens are not the source. Match James to UAT, then own one library. Live UAT uses PrimeNG.",
+          "project": "Astral",
+          "added": "2026-09-04",
+          "kind": "ui",
+          "doneOn": "2026-10-03"
+        },
+        {
+          "id": "ds-finish-library",
+          "title": "Finish the shared library so every developer builds from the same pieces",
+          "note": "The live Astral library is the walk. Figma extract, Storybook, and remaining components still wait. Do not auto-delete a duplicate.",
+          "project": "Astral",
+          "kind": "ui",
+          "added": "2026-09-22",
+          "doneOn": "2026-10-03"
+        },
         {
           "id": "pane-filter-pills-off",
           "title": "Take filter pills off the pane head",
@@ -2968,7 +2973,8 @@
             "why": "Teams did not all use the same system, so work still arrives in emails and she handles it by hand. She said the current walk works, and that much of it is still manual.",
             "note": "The process depends on one person remembering where everything is and what stage each client has reached.",
             "severity": "high",
-            "score": 50
+            "score": 50,
+            "source": "team"
           },
           {
             "id": "no-setup-tracking",
@@ -2978,7 +2984,8 @@
             "why": "She records client IDs, company details, dates, and users herself so she can search previous work and see what she has finished. She said this exists because there was no process or tracking in the product.",
             "note": "This is a shadow system outside the product, and the walk depends on V's personal process.",
             "severity": "high",
-            "score": 46
+            "score": 46,
+            "source": "team"
           },
           {
             "id": "duplicate-date-entry",
@@ -2988,7 +2995,8 @@
             "why": "On the renewal walk, V updated the contract end date and then the user's active-to date. She said this duplication happens a lot.",
             "note": "Extra effort, and a risk that one date moves while the other stays.",
             "severity": "medium-high",
-            "score": 50
+            "score": 50,
+            "source": "team"
           },
           {
             "id": "access-date-rules",
@@ -2998,7 +3006,8 @@
             "why": "A customer employee normally inherits access from the company contract. A third-party user's access depends on a separate LOA expiry. V said understanding those dates took time because the model is complicated.",
             "note": "This affects data access. Get it wrong and you get security and GDPR trouble.",
             "severity": "high",
-            "score": 86
+            "score": 86,
+            "source": "team"
           },
           {
             "id": "fragmented-contracts",
@@ -3008,7 +3017,8 @@
             "why": "V said contracts should be stored centrally, but historical contracts have sometimes been hard to find. She needs written evidence before she changes access dates, so she keeps her own copies as a fallback.",
             "note": "The walk works largely because V fills the gaps.",
             "severity": "medium-high",
-            "score": 70
+            "score": 70,
+            "source": "team"
           },
           {
             "id": "third-party-wrong-problem",
@@ -3018,7 +3028,8 @@
             "why": "V said the intended walk was often for the customer to schedule reports straight to third parties. That would avoid IMSERV creating accounts and managing LOAs for people it has no direct relationship with.",
             "note": "Bigger than a UI issue. Part of the current walk may not need to exist.",
             "severity": "high",
-            "score": 82
+            "score": 82,
+            "source": "team"
           },
           {
             "id": "loa-access-risk",
@@ -3028,7 +3039,8 @@
             "why": "V said scheduled reports controlled by the customer would remove much of the need for IMSERV to manage these relationships. The current walk creates risk if access or reporting continues after things change.",
             "note": "This is governance and possibly GDPR. Treat it as a design constraint, not just an inconvenience.",
             "severity": "high",
-            "score": 90
+            "score": 90,
+            "source": "team"
           },
           {
             "id": "weak-company-match",
@@ -3039,7 +3051,8 @@
             "why": "V searches DataVision when she recognises a name, because something presented as new can be an existing client or a renewal.",
             "note": "The safety net is V's experience and memory, not the system.",
             "severity": "medium",
-            "score": 50
+            "score": 50,
+            "source": "team"
           },
           {
             "id": "specialist-knowledge",
@@ -3049,7 +3062,8 @@
             "why": "The wider team described V as one of the remaining people who understands DataVision under the bonnet, and the person people go to when clients need setting up or when day to day problems arise.",
             "note": "Part of the system logic lives in a person. That is a major migration risk.",
             "severity": "high",
-            "score": 54
+            "score": 54,
+            "source": "team"
           },
           {
             "id": "onboarding-too-many-systems",
@@ -3059,7 +3073,8 @@
             "why": "Katie repeatedly moved between tools to validate contracts, create services, create identifiers, check jobs, configure data access, and finally get information visible to the customer. Much of this has to be coordinated by hand.",
             "note": "The walk is fragmented, hard to learn, and creates many chances for information to fall between systems.",
             "severity": "high",
-            "score": 42
+            "score": 42,
+            "source": "team"
           },
           {
             "id": "job-validation-manual",
@@ -3069,7 +3084,8 @@
             "why": "Suppliers can send spreadsheets with tens to thousands of MPANs. Staff have to check whether IMSERV is appointed, whether a job already exists, whether a previous job failed, and whether the same contact details caused a previous failure. Katie gave the example of a withdrawn job being sent again with exactly the same contact information.",
             "note": "At large volumes, checking individual MPANs by hand is unrealistic and raises avoidable work.",
             "severity": "high",
-            "score": 58
+            "score": 58,
+            "source": "team"
           },
           {
             "id": "previous-failures-not-useful",
@@ -3079,7 +3095,8 @@
             "why": "Katie wanted to see that a previous job had been withdrawn because of incorrect contact details, compare that with the new details, and stop the same job being raised again. That still means inspecting historic records by hand.",
             "note": "The information exists, but it is not turned into a useful decision. A future system could warn that a previous job was withdrawn for incorrect contact details, and that the new submission has the same contact information.",
             "severity": "medium-high",
-            "score": 60
+            "score": 60,
+            "source": "team"
           },
           {
             "id": "supplier-batches-unscalable",
@@ -3089,7 +3106,8 @@
             "why": "Katie contrasted a small Octopus batch with a British Gas batch of thousands of MPANs. The team does not have the people to inspect every historic job one by one.",
             "note": "This is not just an inconvenience. The current walk struggles as portfolio size grows.",
             "severity": "high",
-            "score": 62
+            "score": 62,
+            "source": "team"
           },
           {
             "id": "duplicate-panorama-star",
@@ -3099,7 +3117,8 @@
             "why": "Katie described creating the customer and service in Panorama, then setting them up again in Star, including participant IDs, service configuration, and other records. She said these stages are entirely manual.",
             "note": "This adds setup time and creates the chance that two systems no longer agree about the same customer.",
             "severity": "high",
-            "score": 34
+            "score": 34,
+            "source": "team"
           },
           {
             "id": "manual-technical-ids",
@@ -3109,7 +3128,8 @@
             "why": "Katie described searching for an unused participant ID, creating it, linking it to a customer, and configuring the associated services.",
             "note": "This is technical system administration pushed onto an operational user. The platform should generate or manage these identifiers behind the scenes.",
             "severity": "medium-high",
-            "score": 40
+            "score": 40,
+            "source": "team"
           },
           {
             "id": "estimated-over-actual",
@@ -3119,7 +3139,8 @@
             "why": "Katie said DataVision effectively checks whether it already has data, rather than whether newer, more accurate data exists. Actual readings in Star therefore do not automatically replace estimated readings in DataVision.",
             "note": "This directly affects the accuracy of what customers see. The platform can knowingly display worse data than the business already has.",
             "severity": "critical",
-            "score": 90
+            "score": 90,
+            "source": "team"
           },
           {
             "id": "stale-data-specialist-reset",
@@ -3129,7 +3150,8 @@
             "why": "If estimated data needs replacing, V may need to raise a ticket with Schneider, have existing DataVision data wiped, run an export from Star by hand, and repopulate DataVision.",
             "note": "A basic data refresh depends on several people and systems. The new system should treat actual as better than estimated, and replace lower-quality data when authoritative data arrives.",
             "severity": "high",
-            "score": 78
+            "score": 78,
+            "source": "team"
           },
           {
             "id": "mpan-missing-without-reason",
@@ -3139,7 +3161,8 @@
             "why": "Katie described setups that look correct, but the MPAN does not appear in DataVision. The workaround can be deleting part of the configuration, recreating it, and rerunning an extract in the hope that it reloads.",
             "note": "The user has no clear diagnosis or recovery path. This is a candidate for a future sync status, not a delete-and-recreate ritual.",
             "severity": "high",
-            "score": 74
+            "score": 74,
+            "source": "team"
           },
           {
             "id": "termination-unclear-access",
@@ -3149,7 +3172,8 @@
             "why": "Katie showed an MPAN that had been terminated and later reopened. On paper the new access dates looked valid, but DataVision still had an issue and nobody could immediately explain why.",
             "note": "The system does not clearly model terminated, re-contracted, currently active, and historic access periods. That matters when deciding which historic data a customer should see.",
             "severity": "high",
-            "score": 70
+            "score": 70,
+            "source": "team"
           },
           {
             "id": "cannot-diagnose-breaks",
@@ -3159,7 +3183,8 @@
             "why": "Several times Katie could see that something was wrong but could not tell why from the available information. Troubleshooting depended on V, Schneider, or further manual investigation.",
             "note": "The future platform should expose states such as waiting for source data, MPAN not appointed, contract expired, awaiting sync, actual data available, data import failed, and user access expired, rather than only showing that something is missing.",
             "severity": "high",
-            "score": 66
+            "score": 66,
+            "source": "team"
           },
           {
             "id": "onboarding-handoffs",
@@ -3169,7 +3194,8 @@
             "why": "Katie creates information and identifiers that are then passed to V, who does another set of manual setup steps to make the customer visible in DataVision.",
             "note": "This introduces delays and makes the process depend on individual availability. It connects to V's walk, so both sides of the same hand-off are now named.",
             "severity": "high",
-            "score": 38
+            "score": 38,
+            "source": "team"
           },
           {
             "id": "mixed-access-layers",
@@ -3179,7 +3205,8 @@
             "why": "The handoff named three separate layers. Product entitlement is documents only or full Astral. Role is Admin, Manager, Contributor, or Viewer. Group membership can decide which sites, MPANs, reports, and documents they see.",
             "note": "Ask Anthony before you design a single permissions page. The exact role matrix is still open.",
             "severity": "high",
-            "score": 88
+            "score": 88,
+            "source": "team"
           },
           {
             "id": "huge-portfolio-load",
@@ -3189,7 +3216,8 @@
             "why": "The handoff named about 8,000 MPANs on a customer and about 45,000 on internal access. Max wants people to start with what is happening, then narrow to a place.",
             "note": "Progressive disclosure already sits on the walk. All, then group, then site, then MPAN. Do not dump the whole estate.",
             "severity": "high",
-            "score": 84
+            "score": 84,
+            "source": "team"
           },
           {
             "id": "teams-not-groups",
@@ -3199,7 +3227,8 @@
             "why": "The handoff said teams are mostly for workflow. Group membership can decide which MPANs, reports, and documents someone sees. An MPAN can sit in more than one group.",
             "note": "Team is who I work with. Group is what I can access. They might later link. The final model is still open. Ask Max and Anthony. Permission user groups stay in admin.",
             "severity": "high",
-            "score": 80
+            "score": 80,
+            "source": "team"
           },
           {
             "id": "documents-only-shell",
@@ -3209,7 +3238,8 @@
             "why": "Version one has two bought experiences. Documents only and full Astral. The entitlement is determined from sold services, not a customer pick.",
             "note": "Hide Portfolio from a documents-only login. Self-serve upgrades wait. Do not design a huge entitlement UI that Super admin ticks by hand if the contract will do that work.",
             "severity": "high",
-            "score": 76
+            "score": 76,
+            "source": "team"
           },
           {
             "id": "estimated-versus-alert",
@@ -3219,7 +3249,8 @@
             "why": "The handoff named Estimated as we do not have an actual reading. Alert is unusually high, unusually low, or outside expected range. Version one alerts stay simple, such as high and low from the system.",
             "note": "Estimated is confidence. Alert is attention. Odd use, Missing data, and Not sending stay on Alerts. Do not invent a statistical threshold builder for version one.",
             "severity": "high",
-            "score": 72
+            "score": 72,
+            "source": "team"
           },
           {
             "id": "four-file-words",
@@ -3229,7 +3260,26 @@
             "why": "The handoff named four kinds. Scheduled report is clockwork from Astral. My Documents is a file IMSERV placed for the customer. Export is CSV or PDF from the current view. Data provision is the service behind those outputs.",
             "note": "Keep scheduled reports off the documents pile. Keep My Documents off Downloads. Do not invent Excel.",
             "severity": "medium-high",
-            "score": 68
+            "score": 68,
+            "source": "team"
+          }
+        ],
+        "plans": [
+          {
+            "id": "usability-test-plan",
+            "title": "Usability test plan",
+            "kind": "Template",
+            "source": "team",
+            "pages": 22,
+            "format": "A4 PDF",
+            "file": "/docs/research/plans/usability-test-plan.pdf",
+            "summary": "IMSERV usability test plan built from the /ux-research plan template and laid out in the Brand Book PDF Template families.",
+            "notes": [
+              "Run the /ux-research evidence review first. Only build a plan once it says Build plan.",
+              "Replace every [bracketed placeholder]. Delete the guidance boxes and the shaded example row.",
+              "The consent preamble is a neutral draft. It needs legal review before issue.",
+              "Never put real or invented participant names in the plan. Use P01, P02."
+            ]
           }
         ]
       },
@@ -3601,17 +3651,342 @@
     }
   },
   "activeKind": "ux",
-  "activeLibraryTab": "setup",
+  "activeLibraryTab": "components",
   "activeComponent": "",
   "activeLanguageKind": "empty",
-  "activePattern": "card-stack",
-  "revision": 8,
+  "activePattern": "",
+  "revision": 13,
   "researchView": "list",
   "researchSeverity": "all",
-  "activeBrandSection": "graphics",
+  "activeBrandSection": "layouts",
   "activeSkill": "",
   "skillFold": "desk",
   "accessFold": "",
   "libraryFold": "",
-  "activeKei": ""
+  "activeKei": "",
+  "activePrototypeView": "home",
+  "activePrototypeMeter": "nr-man-in",
+  "activePrototypeQuery": "",
+  "prototypeTreeFilters": [],
+  "prototypePaneFilters": [],
+  "activePrototypeFacet": "all",
+  "prototypePaneAlertFacet": "unread",
+  "prototypeRange": "day",
+  "prototypeChannel": "all",
+  "prototypeChartFlows": null,
+  "prototypeChartSliceOff": [],
+  "prototypePaneMeterKinds": null,
+  "prototypeSiteMeter": "all",
+  "prototypeSiteMeters": [],
+  "prototypeCompareMeters": [],
+  "prototypeCompareSites": [],
+  "prototypeGroupSites": [],
+  "prototypeScope": "group",
+  "prototypeGroup": "all",
+  "prototypeGroupClosed": [],
+  "prototypePane": "consumption",
+  "prototypeBreakdownOpen": false,
+  "prototypeListOpen": false,
+  "prototypeCompareOpen": false,
+  "prototypeCompareQuery": "",
+  "prototypeCompareFilters": [],
+  "prototypeCompareSort": "name",
+  "prototypeCompareIds": [],
+  "prototypeCompareLevel": "site",
+  "prototypeDatePreset": "24h",
+  "prototypeDateFrom": "",
+  "prototypeDateTo": "",
+  "prototypeDateDraftFrom": "",
+  "prototypeDateDraftTo": "",
+  "prototypeDateCal": "",
+  "prototypeDateOpen": false,
+  "prototypeDateCustomOpen": false,
+  "prototypeReportCalOpen": false,
+  "prototypeReportCal": "",
+  "prototypeDateHome": "",
+  "prototypeDateHomeFrom": "",
+  "prototypeDateHomeTo": "",
+  "prototypeExportOpen": false,
+  "prototypeDownloads": [],
+  "prototypeDownloadQuery": "",
+  "prototypeDownloadFilters": [],
+  "prototypeDownloadFilterOpen": false,
+  "prototypeAlertQuery": "",
+  "prototypeAlertFilters": [],
+  "prototypeAlertFilterOpen": false,
+  "prototypeExportNotice": null,
+  "prototypeChartView": "total",
+  "prototypeChartStyle": "bar",
+  "prototypeTreeOpen": true,
+  "prototypeFullscreen": false,
+  "prototypePreviewHidden": false,
+  "prototypeLibraryOn": false,
+  "prototypeFlow": "product",
+  "prototypeAskOpen": false,
+  "prototypeWalkOpen": false,
+  "prototypeAccountOpen": false,
+  "prototypeNoticeOpen": false,
+  "prototypeRailOpen": false,
+  "prototypeSeeAsCompany": "",
+  "prototypeSeeAsUser": "",
+  "prototypeCompanyQuery": "",
+  "prototypeSignedOut": false,
+  "prototypeAuthEmail": "",
+  "prototypeAuthName": "",
+  "prototypeAuthCompany": "",
+  "prototypeAuthSent": false,
+  "prototypeAuthResent": false,
+  "prototypeSignUpStep": "",
+  "prototypeRecoveryStep": "",
+  "prototypeInviteStep": "",
+  "prototypeInviteResume": false,
+  "prototypeInviteAsked": false,
+  "prototypeInviteFirst": "",
+  "prototypeInviteLast": "",
+  "prototypeReportForm": false,
+  "prototypeReportOff": [],
+  "prototypeCustomReports": [],
+  "prototypeQueryForm": false,
+  "prototypeQuerySite": "",
+  "prototypeOpenQuery": "",
+  "prototypeRaisedQueries": [],
+  "prototypeChartPoint": null,
+  "prototypePointTags": {},
+  "prototypePointTagPool": [],
+  "prototypePointTagOpen": false,
+  "prototypePointTagQuery": "",
+  "prototypeAlertAck": [],
+  "prototypeAlertUndo": [],
+  "prototypeQueryResolve": {},
+  "prototypeAckOpen": "",
+  "prototypeReportRun": "",
+  "prototypeProfileName": "",
+  "prototypeProfileDiscipline": "",
+  "prototypeProfileJobTitle": "",
+  "prototypeBrandPrimary": "",
+  "prototypeBrandSecondary": "",
+  "prototypeOrgName": "",
+  "prototypeOrgCountry": "",
+  "prototypeSettingsSection": "organisation",
+  "prototypeUserForm": false,
+  "prototypeTeamDraftPeople": [],
+  "prototypePersonSites": {},
+  "prototypeRenewForm": false,
+  "prototypeRenewPerson": "",
+  "prototypeRenewFrom": "",
+  "prototypeRenewTo": "",
+  "prototypeRenewFileName": "",
+  "prototypeRenewCal": "",
+  "prototypeMeExpiresFrom": "",
+  "prototypeMeExpiresOn": "",
+  "prototypeMeContractName": "",
+  "prototypeTableSort": {},
+  "prototypeUserQuery": "",
+  "prototypeTeamPeopleQuery": "",
+  "prototypeUserInviteRole": "contributor",
+  "prototypeMeRole": "manager",
+  "prototypeUserGroup": "end-customer",
+  "prototypeAccess": "",
+  "prototypeTenure": "permanent",
+  "prototypeSee": "",
+  "prototypeUserRoleFilter": [],
+  "prototypeUserRoleFilterOpen": false,
+  "prototypeUserMenu": "",
+  "prototypeUserOpen": "",
+  "prototypeSelectOpen": "",
+  "prototypeAddedCompanies": [],
+  "prototypeCompanyForm": false,
+  "prototypeCompanyDraftName": "",
+  "prototypeCompanyDraftType": "customer",
+  "prototypeCompanyNameError": false,
+  "deskViews": {
+    "groups": "list"
+  },
+  "deskQueries": {},
+  "patternStatus": "all",
+  "componentFamily": "all",
+  "prototypeChartShow": [],
+  "prototypeChartSettingsOpen": false,
+  "prototypeZoneFor": "",
+  "prototypeZoneUtility": "",
+  "prototypePillsOpen": false,
+  "prototypeReportPeople": {},
+  "prototypeReportSchedule": {},
+  "prototypeReportDefs": {},
+  "prototypeQueryCommentOpen": false,
+  "prototypeQueryComments": {},
+  "prototypeWalkUsers": "companies-6",
+  "prototypeTeams": [
+    {
+      "id": "team-energy",
+      "name": "Energy management",
+      "company": "Network Rail",
+      "department": "",
+      "people": [
+        "me",
+        "u-alex",
+        "u-amira",
+        "u-ruth"
+      ]
+    },
+    {
+      "id": "team-finance",
+      "name": "Finance",
+      "company": "Network Rail",
+      "department": "",
+      "people": [
+        "u-helen",
+        "u-claire"
+      ]
+    },
+    {
+      "id": "team-property",
+      "name": "Property",
+      "company": "Network Rail",
+      "department": "",
+      "people": [
+        "u-sarah",
+        "u-marcus"
+      ]
+    },
+    {
+      "id": "team-operations",
+      "name": "Operations",
+      "company": "Network Rail",
+      "department": "",
+      "people": [
+        "u-james",
+        "u-ben",
+        "u-owen"
+      ]
+    },
+    {
+      "id": "team-sustainability",
+      "name": "Sustainability",
+      "company": "Network Rail",
+      "department": "",
+      "people": [
+        "u-luca",
+        "me",
+        "u-dylan"
+      ]
+    },
+    {
+      "id": "team-lnw",
+      "name": "London North Western",
+      "company": "Network Rail",
+      "department": "",
+      "people": [
+        "me",
+        "u-priya",
+        "u-ben",
+        "u-joanna"
+      ]
+    },
+    {
+      "id": "team-scotland",
+      "name": "Scotland",
+      "company": "Network Rail",
+      "department": "",
+      "people": [
+        "u-tom",
+        "u-amira"
+      ]
+    },
+    {
+      "id": "team-tesco-energy",
+      "name": "Energy management",
+      "company": "Tesco",
+      "department": "",
+      "people": [
+        "u-tesco-maya",
+        "u-tesco-jon",
+        "u-tesco-rita"
+      ]
+    },
+    {
+      "id": "team-tesco-operations",
+      "name": "Operations",
+      "company": "Tesco",
+      "department": "",
+      "people": [
+        "u-tesco-paul",
+        "u-tesco-ellie"
+      ]
+    },
+    {
+      "id": "team-tesco-finance",
+      "name": "Finance",
+      "company": "Tesco",
+      "department": "",
+      "people": [
+        "u-tesco-greg",
+        "u-tesco-fay"
+      ]
+    },
+    {
+      "id": "team-sw-energy",
+      "name": "Energy management",
+      "company": "Scottish Water",
+      "department": "",
+      "people": [
+        "u-sw-ian",
+        "u-sw-kate",
+        "u-sw-ross"
+      ]
+    },
+    {
+      "id": "team-sw-operations",
+      "name": "Operations",
+      "company": "Scottish Water",
+      "department": "",
+      "people": [
+        "u-sw-aoife",
+        "u-sw-neal",
+        "u-sw-lisa"
+      ]
+    },
+    {
+      "id": "team-edf-portfolio",
+      "name": "Portfolio",
+      "company": "EDF",
+      "department": "",
+      "people": [
+        "u-edf-sam",
+        "u-edf-lea",
+        "u-edf-chris"
+      ]
+    },
+    {
+      "id": "team-edf-data",
+      "name": "Data",
+      "company": "EDF",
+      "department": "",
+      "people": [
+        "u-edf-yara",
+        "u-edf-pete",
+        "u-edf-sam"
+      ]
+    }
+  ],
+  "prototypeTeam": "",
+  "prototypeMeterSettings": "",
+  "prototypeMeterOwn": "",
+  "prototypeMeterFold": "",
+  "prototypeReportEdit": "",
+  "prototypeReportFrom": "",
+  "prototypeReportDraft": null,
+  "prototypeReportDraftStart": "",
+  "prototypeReportDraftFrom": "",
+  "prototypeReportDraftTo": "",
+  "prototypeReportGroup": "details",
+  "prototypeReportQuery": "",
+  "prototypeReportFilters": [],
+  "prototypeReportLayout": "cards",
+  "prototypeReportFilterOpen": false,
+  "prototypeCompareFilterOpen": false,
+  "prototypeTreeFilterOpen": false,
+  "prototypePaneFilterOpen": false,
+  "prototypeTreeFilterHost": "tree",
+  "prototypeChartFilterOpen": false
 }

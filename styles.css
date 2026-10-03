@@ -14098,6 +14098,43 @@ body:not(.is-share) .desk-shell {
   margin: 0;
 }
 
+/* Research Planning: one card per plan, with the PDF read in place. */
+.desk-plan-head {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-12);
+}
+
+.desk-plan-head h3 {
+  margin: 0;
+}
+
+.desk-plan > p,
+.desk-plan .notes {
+  max-width: 48rem;
+  margin: 0;
+}
+
+.desk-plan-actions {
+  align-items: center;
+  gap: var(--space-16);
+}
+
+.desk-plan-actions .astral-btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.desk-plan-frame {
+  display: block;
+  width: 100%;
+  height: min(80vh, 960px);
+  border: 1px solid var(--color-border-subtle, #e0e0e0);
+  border-radius: var(--radius-card);
+  background: var(--color-background-surface);
+}
+
 .desk-sub-head {
   margin: 8px 0 0;
   font-size: 0.875rem;

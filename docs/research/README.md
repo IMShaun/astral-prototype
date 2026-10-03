@@ -10,6 +10,7 @@ The method lives in `.cursor/skills/ux-research/`. Invoke `/ux-research` to revi
 | --- | --- |
 | `inventory.yml` | Index of studies. Empty until a real study exists. |
 | `studies/` | Plans, sessions, transcripts, notes |
+| `plans/` | Plan templates as PDF. Shown on the Work Desk under Research, Planning |
 | `insights/` | Insights with provenance, updated across rounds |
 | `archetypes/` | Behavioural archetypes |
 | `journeys/` | Journey evidence |
@@ -18,6 +19,6 @@ The method lives in `.cursor/skills/ux-research/`. Invoke `/ux-research` to revi
 
 Do not invent studies, quotes, personas, or scores to fill these folders.
 
-Walk findings on the Work Desk stay in `data/board.json` Research. They are named problems from talks. They are not copied here unless a study backs them.
+Walk findings on the Work Desk stay in `data/board.json` Research. Each insight names its `source` (today all are `team`), which shows as a tag. Plans sit in `research.plans` and point at a PDF in `plans/`. They are named problems from talks. They are not copied here unless a study backs them.
 
 Pattern decisions stay in `docs/ux/`.
