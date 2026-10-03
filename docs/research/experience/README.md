@@ -2,7 +2,7 @@
 
 KEIs and Experience Scores with maturity. Empty until measured. A small qualitative round is directional only.
 
-The Work Desk Analytics page reads `keis.json`.
+The Analytics tab under Research on the Work Desk reads `keis.json`.
 
 - `how` is the measurement taxonomy (families, kinds, leading or lagging). It can sit while `keis` is empty.
 - `structure` is product-wide vs area, and primary vs diagnostic.

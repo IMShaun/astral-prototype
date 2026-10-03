@@ -14098,12 +14098,18 @@ body:not(.is-share) .desk-shell {
   margin: 0;
 }
 
-/* Research Planning and Reporting hosts stack their blocks like the page does. */
+/* Research tab hosts stack their blocks like the page does. */
 #research-planning:not([hidden]),
 #research-strategy:not([hidden]),
 #research-reporting:not([hidden]) {
   display: grid;
   gap: var(--space-stack-default);
+}
+
+/* Research Analytics keeps the page gap between its sections. */
+#research-analytics:not([hidden]) {
+  display: grid;
+  gap: 24px;
 }
 
 /* Research Planning: a template's PDF read in place. */

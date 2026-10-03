@@ -45,10 +45,6 @@
             <span class="desk-rail-label">Research</span>
             <span id="nav-research-count" class="nav-count"></span>
           </button>
-          <button type="button" class="side-link astral-rail-link" data-section="analytics" data-icon="chart-bar">
-            <span class="desk-rail-label">Analytics</span>
-            <span id="nav-analytics-count" class="nav-count"></span>
-          </button>
           <button type="button" class="side-link astral-rail-link" data-section="access" data-icon="profile">
             <span class="desk-rail-label">Access</span>
             <span id="nav-access-count" class="nav-count"></span>
@@ -252,87 +248,76 @@
             <div id="research-filters" class="desk-stats-host"></div>
             <div id="research-view" class="desk-tools-host" hidden></div>
             <div id="research-insights"></div>
+            <div id="research-analytics" hidden>
+              <p id="analytics-count" class="sr-only"></p>
+
+              <section class="astral-home-section" aria-labelledby="analytics-time-heading">
+                <div class="desk-section-head">
+                  <h3 id="analytics-time-heading" class="astral-home-section-title">Over time</h3>
+                  <p class="astral-muted">
+                    One measure on the chart. Pick another when more than one is
+                    named. Report the sample with the score. A small qualitative
+                    round is directional only.
+                  </p>
+                </div>
+                <section class="astral-card desk-chart-card" aria-labelledby="analytics-time-heading">
+                  <div id="analytics-keis" class="astral-card-tabs"></div>
+                  <div id="analytics-chart" class="analytics-chart"></div>
+                </section>
+              </section>
+
+              <section class="astral-home-section" aria-labelledby="analytics-measures-heading">
+                <div class="desk-section-head">
+                  <h3 id="analytics-measures-heading" class="astral-home-section-title">Named measures</h3>
+                  <p class="astral-muted">
+                    Primary is the headline. Diagnostics explain it. Open a card
+                    for rounds, sample, and method.
+                  </p>
+                </div>
+                <div id="analytics-list" class="astral-report-grid desk-grid"></div>
+              </section>
+
+              <section class="astral-home-section" aria-labelledby="analytics-structure-heading">
+                <div class="desk-section-head">
+                  <h3 id="analytics-structure-heading" class="astral-home-section-title">How we structure</h3>
+                  <p class="astral-muted">
+                    A small set for the whole product, then one primary KEI per
+                    area and two to four diagnostics. In play means a study has
+                    named one. Waiting means none yet.
+                  </p>
+                </div>
+                <div id="analytics-structure" class="astral-report-grid desk-grid"></div>
+              </section>
+
+              <section class="astral-home-section" aria-labelledby="analytics-cuts-heading">
+                <div class="desk-section-head">
+                  <h3 id="analytics-cuts-heading" class="astral-home-section-title">How we cut</h3>
+                  <p class="astral-muted">
+                    A later slice by area, task, test type, named role, and time.
+                    Lab, live, survey, and support stay separate scores. Do not
+                    invent a filter a talk has not named.
+                  </p>
+                </div>
+                <div id="analytics-cuts" class="astral-report-grid desk-grid"></div>
+              </section>
+
+              <section class="astral-home-section" aria-labelledby="analytics-how-heading">
+                <div class="desk-section-head">
+                  <h3 id="analytics-how-heading" class="astral-home-section-title">How we measure</h3>
+                  <p class="astral-muted">
+                    Kinds of experience a KEI can name. Facility, engagement, and
+                    satisfaction sit here, with operational and accessibility as
+                    constraints. Leading signals show trouble early. Lagging ones
+                    show what already happened. In play means a study has named
+                    one. Waiting means none yet.
+                  </p>
+                </div>
+                <div id="analytics-how" class="astral-report-grid desk-grid"></div>
+              </section>
+            </div>
             <div id="research-planning" hidden></div>
             <div id="research-reporting" hidden></div>
             <div id="research-strategy" hidden></div>
-          </section>
-
-          <section id="panel-analytics" class="panel" data-panel="analytics" hidden>
-            <header class="page-head astral-page-head astral-page-tools">
-              <div><h2>Analytics</h2></div>
-            </header>
-            <p class="astral-muted astral-home-lead desk-lead">
-              How Key Experience Indicators are measured, and whether they
-              improve or get worse over time. A KEI is a score of something
-              specific, important, and actionable. A number waits until a study
-              names it. A trend waits until two comparable rounds sit on the
-              same measure.
-            </p>
-            <p id="analytics-count" class="sr-only"></p>
-
-            <section class="astral-home-section" aria-labelledby="analytics-time-heading">
-              <div class="desk-section-head">
-                <h3 id="analytics-time-heading" class="astral-home-section-title">Over time</h3>
-                <p class="astral-muted">
-                  One measure on the chart. Pick another when more than one is
-                  named. Report the sample with the score. A small qualitative
-                  round is directional only.
-                </p>
-              </div>
-              <section class="astral-card desk-chart-card" aria-labelledby="analytics-time-heading">
-                <div id="analytics-keis" class="astral-card-tabs"></div>
-                <div id="analytics-chart" class="analytics-chart"></div>
-              </section>
-            </section>
-
-            <section class="astral-home-section" aria-labelledby="analytics-measures-heading">
-              <div class="desk-section-head">
-                <h3 id="analytics-measures-heading" class="astral-home-section-title">Named measures</h3>
-                <p class="astral-muted">
-                  Primary is the headline. Diagnostics explain it. Open a card
-                  for rounds, sample, and method.
-                </p>
-              </div>
-              <div id="analytics-list" class="astral-report-grid desk-grid"></div>
-            </section>
-
-            <section class="astral-home-section" aria-labelledby="analytics-structure-heading">
-              <div class="desk-section-head">
-                <h3 id="analytics-structure-heading" class="astral-home-section-title">How we structure</h3>
-                <p class="astral-muted">
-                  A small set for the whole product, then one primary KEI per
-                  area and two to four diagnostics. In play means a study has
-                  named one. Waiting means none yet.
-                </p>
-              </div>
-              <div id="analytics-structure" class="astral-report-grid desk-grid"></div>
-            </section>
-
-            <section class="astral-home-section" aria-labelledby="analytics-cuts-heading">
-              <div class="desk-section-head">
-                <h3 id="analytics-cuts-heading" class="astral-home-section-title">How we cut</h3>
-                <p class="astral-muted">
-                  A later slice by area, task, test type, named role, and time.
-                  Lab, live, survey, and support stay separate scores. Do not
-                  invent a filter a talk has not named.
-                </p>
-              </div>
-              <div id="analytics-cuts" class="astral-report-grid desk-grid"></div>
-            </section>
-
-            <section class="astral-home-section" aria-labelledby="analytics-how-heading">
-              <div class="desk-section-head">
-                <h3 id="analytics-how-heading" class="astral-home-section-title">How we measure</h3>
-                <p class="astral-muted">
-                  Kinds of experience a KEI can name. Facility, engagement, and
-                  satisfaction sit here, with operational and accessibility as
-                  constraints. Leading signals show trouble early. Lagging ones
-                  show what already happened. In play means a study has named
-                  one. Waiting means none yet.
-                </p>
-              </div>
-              <div id="analytics-how" class="astral-report-grid desk-grid"></div>
-            </section>
           </section>
 
           <section id="panel-access" class="panel" data-panel="access" hidden>

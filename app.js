@@ -15,7 +15,6 @@ const SECTIONS = [
   "groups",
   "journeys",
   "research",
-  "analytics",
   "access",
   "library",
   "language",
@@ -56,6 +55,7 @@ const els = {
   researchLead: document.getElementById("research-lead"),
   researchPlanning: document.getElementById("research-planning"),
   researchStrategy: document.getElementById("research-strategy"),
+  researchAnalytics: document.getElementById("research-analytics"),
   researchReporting: document.getElementById("research-reporting"),
   analyticsCount: document.getElementById("analytics-count"),
   analyticsKeis: document.getElementById("analytics-keis"),
@@ -94,7 +94,6 @@ const els = {
   navGroupsCount: document.getElementById("nav-groups-count"),
   navJourneysCount: document.getElementById("nav-journeys-count"),
   navResearchCount: document.getElementById("nav-research-count"),
-  navAnalyticsCount: document.getElementById("nav-analytics-count"),
   navAccessCount: document.getElementById("nav-access-count"),
   navLibraryCount: document.getElementById("nav-library-count"),
   navLanguageCount: document.getElementById("nav-language-count"),
@@ -189,6 +188,11 @@ const RESEARCH_SEVERITY_RANK = {
 
 const RESEARCH_TABS = [
   {
+    id: "strategy",
+    name: "Strategy",
+    lead: "Your next move from the research. Each move starts from what a study found, names the activity to run, and says what it should answer. The strongest finding goes first. Pick an activity type to filter, pick it again for everything.",
+  },
+  {
     id: "planning",
     name: "Projects",
     lead: "Research we are doing, have planned, or have done, and the templates to run the next one. Pick an activity type to filter, pick it again for everything. Open a card for the detail and the insights it named.",
@@ -199,14 +203,14 @@ const RESEARCH_TABS = [
     lead: "Findings from walks. Open an insight for the rest. Pick a severity card to filter. Score ranks within a severity from what the walk named.",
   },
   {
+    id: "analytics",
+    name: "Analytics",
+    lead: "How Key Experience Indicators are measured, and whether they improve or get worse over time. A KEI is a score of something specific, important, and actionable. A number waits until a study names it. A trend waits until two comparable rounds sit on the same measure.",
+  },
+  {
     id: "reporting",
     name: "Reporting",
     lead: "Reports written up from the research. Open one to read it here.",
-  },
-  {
-    id: "strategy",
-    name: "Strategy",
-    lead: "Your next move from the research. Each move starts from what a study found, names the activity to run, and says what it should answer. The strongest finding goes first. Pick an activity type to filter, pick it again for everything.",
   },
 ];
 
@@ -430,7 +434,7 @@ function emptyBoard() {
     know: [
       {
         title: "Teams",
-        body: "Pick the team in the side menu. Today, User groups, Journeys, Research, Analytics, Access, UI library, and Branding stay with that team.",
+        body: "Pick the team in the side menu. Today, User groups, Journeys, Research, Access, UI library, and Branding stay with that team.",
       },
       {
         title: "Access",
@@ -498,7 +502,7 @@ function activeResearchView() {
 }
 
 function activeResearchTab() {
-  return RESEARCH_TABS.some((item) => item.id === store?.researchTab) ? store.researchTab : "planning";
+  return RESEARCH_TABS.some((item) => item.id === store?.researchTab) ? store.researchTab : "strategy";
 }
 
 function insightSource(item) {
@@ -3971,6 +3975,7 @@ function renderResearch() {
       planning: plans.length,
       reporting: reports.length,
       strategy: researchMoves().filter((move) => moveState(move) !== "done").length,
+      analytics: teamKeis().length,
     };
     els.researchTabs.innerHTML = protoTabs(
       RESEARCH_TABS.map((item) => ({ id: item.id, name: `${item.name} (${counts[item.id]})` })),
@@ -3983,7 +3988,7 @@ function renderResearch() {
     els.researchLead.textContent = RESEARCH_TABS.find((item) => item.id === tab)?.lead || "";
   }
   if (els.researchFilters) {
-    els.researchFilters.hidden = tab === "reporting";
+    els.researchFilters.hidden = tab === "reporting" || tab === "analytics";
     if (tab === "insights") {
       els.researchFilters.innerHTML = deskStats(
         RESEARCH_SEVERITIES.map((item) => {
@@ -4095,6 +4100,8 @@ function renderResearch() {
     }
     setResearchHost(els.researchReporting, html);
   }
+
+  if (els.researchAnalytics) els.researchAnalytics.hidden = tab !== "analytics";
 
   if (els.researchStrategy) {
     els.researchStrategy.hidden = tab !== "strategy";
@@ -4251,7 +4258,6 @@ function renderAnalytics() {
       .join("");
   }
 
-  setNavCount(els.navAnalyticsCount, list.length);
 }
 
 function renderPatterns() {
@@ -4770,9 +4776,9 @@ function clampSection() {
     store.prototypeFullscreen = true;
     return;
   }
-  if (store.activeSection === "strategy") {
+  if (store.activeSection === "strategy" || store.activeSection === "analytics") {
+    store.researchTab = store.activeSection;
     store.activeSection = "research";
-    store.researchTab = "strategy";
   }
   if (!sectionAllowed(store.activeSection)) store.activeSection = "prototype";
 }
