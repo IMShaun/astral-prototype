@@ -352,6 +352,7 @@ const KEI_STRUCTURE = [
     id: "area",
     name: "Area",
     body: "Each product surface gets its own KEIs. Portfolio, Alerts, Queries, Reports, Users, and Finance. Do not invent an area the product does not have.",
+    card: "Portfolio, Alerts, Queries, Reports, Users, and Finance each get their own KEIs. No other areas.",
   },
   {
     id: "primary",
@@ -595,7 +596,7 @@ function keiTaxonomyCard(item, named, method) {
     title: item.name,
     tags: deskTag(label, status),
     body: `${meta ? `<span class="desk-card-meta">${escapeHtml(meta)}</span>` : ""}${escapeHtml(
-      item.body
+      cardLine(item, item.body)
     )}`,
   });
 }
@@ -806,7 +807,7 @@ function insightCard(item) {
       researchSeverityName(severity),
       researchSeverityStatus(severity)
     )}${insightSourceTag(item)}</span>`,
-    body: escapeHtml(item.problem || ""),
+    body: escapeHtml(cardLine(item, item.problem)),
     foot: scoreField(item),
   });
 }
@@ -820,7 +821,7 @@ function insightRow(item) {
       deskTag(researchSeverityName(severity), researchSeverityStatus(severity)),
       insightSourceTag(item) || `<span class="astral-muted">Not named</span>`,
       escapeHtml(String(insightScore(item))),
-      `<span class="desk-cell-line">${escapeHtml(item.problem || "")}</span>`,
+      `<span class="desk-cell-line">${escapeHtml(cardLine(item, item.problem))}</span>`,
     ],
   });
 }
@@ -1516,6 +1517,20 @@ function deskOpenAttrs(open) {
     .join(" ");
 }
 
+// Card line rule (ux-writing style guide): one sentence, 120 characters or fewer, the one fact
+// that helps someone pick this card. A long field keeps its detail page; "card" holds the short line.
+const CARD_LINE_MAX = 120;
+const cardLineWarned = new Set();
+
+function cardLine(item, text) {
+  const line = String(item?.card || text || "").trim();
+  if (line.length > CARD_LINE_MAX && !cardLineWarned.has(line)) {
+    cardLineWarned.add(line);
+    console.warn(`Card line over ${CARD_LINE_MAX} characters. Add a short "card" line.`, item?.id || item?.name || "", line);
+  }
+  return line;
+}
+
 // A report-grid card. The title button stretches over the whole card.
 function deskCard({ open, title, tags, body, foot, lead, className }) {
   const dialog = open && open["data-open"] ? ' aria-haspopup="dialog"' : "";
@@ -1661,7 +1676,7 @@ function groupItem(group) {
     lead: deskAvatar(group.name),
     title: group.name,
     tags: deskTag(STATUS_LABEL[status] || "Draft", status),
-    body: escapeHtml(group.who || "Open for the rest."),
+    body: escapeHtml(cardLine(group, group.who) || "Open for the rest."),
   });
 }
 
@@ -1681,7 +1696,7 @@ function groupRow(group, kind) {
       deskTag(STATUS_LABEL[status] || "Draft", status),
       kind === "journey"
         ? escapeHtml(stages === 1 ? "1 stage" : `${stages} stages`)
-        : `<span class="desk-cell-line">${escapeHtml(group.who || "")}</span>`,
+        : `<span class="desk-cell-line">${escapeHtml(cardLine(group, group.who))}</span>`,
     ],
   });
 }
@@ -1789,7 +1804,7 @@ function journeyItem(group) {
     lead: deskAvatar(group.name),
     title: group.name,
     tags: deskTag(STATUS_LABEL[status] || "Draft", status),
-    body: escapeHtml(group.who || "Open for the map."),
+    body: escapeHtml(cardLine(group, group.who) || "Open for the map."),
     foot: `<span class="astral-muted">${escapeHtml(
       stages === 1 ? "1 stage" : `${stages} stages`
     )}</span>`,
@@ -1801,7 +1816,7 @@ function accessItem(item, scope) {
     open: { "data-open": "tool", "data-id": item.id, "data-scope": scope },
     lead: deskAvatar(item.name),
     title: item.name,
-    body: escapeHtml(item.have || (scope === "team" ? "This team" : "Company")),
+    body: escapeHtml(cardLine(item, item.have) || (scope === "team" ? "This team" : "Company")),
   });
 }
 
@@ -1931,7 +1946,7 @@ function componentItem(item) {
   return deskCard({
     open: { "data-library-component": item.id },
     title: item.react || item.name,
-    body: escapeHtml(item.summary || "Waits until tokens are firm."),
+    body: escapeHtml(cardLine(item, item.summary) || "Waits until tokens are firm."),
     foot: `<span class="token-path">${escapeHtml(componentPath(item))}</span>`,
   });
 }
@@ -1943,7 +1958,7 @@ function componentRow(item) {
     title: item.react || item.name,
     cells: [
       escapeHtml(family ? family.name : "Other"),
-      `<span class="desk-cell-line">${escapeHtml(item.summary || "")}</span>`,
+      `<span class="desk-cell-line">${escapeHtml(cardLine(item, item.summary))}</span>`,
     ],
   });
 }
@@ -2418,12 +2433,15 @@ function brandSourceItem(item) {
     open: { "data-open": "brand-source", "data-id": item.id },
     lead: deskAvatar(item.name),
     title: item.name,
-    body: escapeHtml(item.have || "Source"),
+    body: escapeHtml(cardLine(item, item.have) || "Source"),
   });
 }
 
+// The card line is what to say, or the first sentence of the note. The full note stays in the dialog.
 function languageLine(item) {
-  return item.say && item.say !== item.name ? item.say : item.note || "Waiting";
+  if (item.say && item.say !== item.name) return item.say;
+  const note = String(item.note || "").trim();
+  return note.match(/^.*?[.!?](?=\s|$)/)?.[0] || note || "Waiting";
 }
 
 function languageItem(item) {
@@ -2432,7 +2450,7 @@ function languageItem(item) {
     open: { "data-open": "language", "data-id": item.id },
     title: item.name,
     tags: deskTag(STATUS_LABEL[status] || "Waiting", status),
-    body: escapeHtml(languageLine(item)),
+    body: escapeHtml(cardLine(item, languageLine(item))),
   });
 }
 
@@ -2443,7 +2461,7 @@ function languageRow(item) {
     title: item.name,
     cells: [
       deskTag(STATUS_LABEL[status] || "Waiting", status),
-      `<span class="desk-cell-line">${escapeHtml(languageLine(item))}</span>`,
+      `<span class="desk-cell-line">${escapeHtml(cardLine(item, languageLine(item)))}</span>`,
     ],
   });
 }
@@ -2455,7 +2473,7 @@ function patternItem(item) {
     open: { "data-pattern": item.id },
     title: item.name,
     tags: deskTag(STATUS_LABEL[status] || "Waiting", status),
-    body: escapeHtml(item.summary || ""),
+    body: escapeHtml(cardLine(item, item.summary)),
     foot: `<span class="astral-muted">${escapeHtml(
       uses === 1 ? "Uses 1 piece" : `Uses ${uses} pieces`
     )}</span>`,
@@ -2469,7 +2487,7 @@ function patternRow(item) {
     title: item.name,
     cells: [
       deskTag(STATUS_LABEL[status] || "Waiting", status),
-      `<span class="desk-cell-line">${escapeHtml(item.summary || "")}</span>`,
+      `<span class="desk-cell-line">${escapeHtml(cardLine(item, item.summary))}</span>`,
     ],
   });
 }
@@ -2560,7 +2578,7 @@ function skillItem(item) {
     open: { "data-skill": item.id },
     title: item.name,
     tags: deskTag(STATUS_LABEL[status] || "Waiting", status),
-    body: escapeHtml(item.summary || ""),
+    body: escapeHtml(cardLine(item, item.summary)),
     foot: `<span class="astral-muted">${escapeHtml(item.groupName || "")}${
       how ? ` · ${how} ${how === 1 ? "step" : "steps"}` : ""
     }</span>`,
@@ -2575,7 +2593,7 @@ function skillRow(item) {
     cells: [
       escapeHtml(item.groupName || ""),
       deskTag(STATUS_LABEL[status] || "Waiting", status),
-      `<span class="desk-cell-line">${escapeHtml(item.summary || "")}</span>`,
+      `<span class="desk-cell-line">${escapeHtml(cardLine(item, item.summary))}</span>`,
     ],
   });
 }
@@ -3480,7 +3498,7 @@ function researchStudyCard(item) {
     open: { "data-action": "research-open", "data-id": `plan:${item.id}` },
     title: item.title || "",
     tags: `<span class="desk-card-tags">${researchStudyTag(item)}${researchKindTag(item)}</span>`,
-    body: escapeHtml(item.summary || ""),
+    body: escapeHtml(cardLine(item, item.summary)),
     foot: meta ? `<span class="astral-muted">${escapeHtml(meta)}</span>` : "",
   });
 }
@@ -3505,7 +3523,7 @@ function researchReportCard(item) {
     open: { "data-action": "research-open", "data-id": `report:${item.id}` },
     title: item.title || "",
     tags: `<span class="desk-card-tags">${researchKindTag(item)}</span>`,
-    body: escapeHtml(item.summary || ""),
+    body: escapeHtml(cardLine(item, item.summary)),
     foot: item.date ? `<span class="astral-muted">${escapeHtml(researchDate(item.date))}</span>` : "",
   });
 }
@@ -3806,12 +3824,18 @@ function moveHero(move) {
   `;
 }
 
+// The card keeps one line: what the move should answer. The hero and page keep the full sentence.
+function moveFindOut(move) {
+  const learn = String(move.learn || "").trim().replace(/\.$/, "");
+  return learn ? `Find out ${learn}.` : "";
+}
+
 function moveCard(move) {
   return deskCard({
     open: { "data-action": "research-open", "data-id": `move:${move.id}` },
     title: move.title || "",
     tags: moveTags(move),
-    body: moveSentence(move),
+    body: escapeHtml(cardLine(move, moveFindOut(move))),
     foot: `<span class="astral-muted">${escapeHtml(moveMeta(move))}</span>`,
   });
 }
@@ -4137,6 +4161,7 @@ function planResearchMove(id) {
     date: todayIso(),
     who: move.with || "",
     summary: moveSentence(move, true),
+    card: moveFindOut(move),
     source: "team",
     move: move.id,
   };

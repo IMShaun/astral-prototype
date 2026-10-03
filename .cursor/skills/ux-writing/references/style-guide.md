@@ -87,12 +87,28 @@ Warn. Do not silently cut.
 | Success or toast | ≤100 characters | Confirm the outcome. Omit redundant praise |
 | Inline error | ≤160 characters | Problem and recovery |
 | Home card subtext | 1 sentence, ≤80 characters | First letter capital. Sentence case, not title case |
+| Card line | 1 sentence, ≤120 characters | The one fact that helps someone pick the card. See Card lines |
 | Empty-state title | ≤40 characters | Describe the state |
 | Empty-state body | ≤140 characters | Explain the next meaningful action |
 | Onboarding title | ≤48 characters | One goal |
 | Onboarding body | ≤160 characters | One idea or action |
 
 Translation can grow. Design for wrap. Recommend pseudolocalization rather than truncating source.
+
+## Card lines
+
+The card line is the text under a card title. It goes on every card that stands for something you can open, such as a component, user group, tool, insight, project, report, move, or term.
+
+- Say the one fact that helps someone pick this card: what it is for, who it is, or what they find inside.
+- Write one sentence of 120 characters or fewer. Aim for 40 or more. A shorter line is fine if it is specific. Home card subtext keeps its 80.
+- Do not repeat the title.
+- Leave specs (px, colours, tokens, states), steps, history, and who said it for the detail page.
+- Name something specific. Do not write various, things, information about, manage, allows you to, helps you, and more, or etc.
+- Use sentence case and end with a full stop.
+- If the source text is longer, add a short `card` field. The detail page keeps the full text. A Language term uses what to say, or else the first sentence of its note.
+- The Work Desk warns in the console when a card line is over 120 characters. It does not cut the text.
+
+Blocks that are the page content, such as a guide panel or the React handover, are not card lines. Use the help text budget there.
 
 ## Library and work-facing copy
 

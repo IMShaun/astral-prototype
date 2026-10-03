@@ -7,3 +7,4 @@ Templates live in `.cursor/skills/ux-patterns/references/documentation-templates
 - [2026-09-18 Native overflow](2026-09-18-native-overflow.md)
 - [2026-09-18 Card stack](2026-09-18-card-stack.md)
 - [2026-09-18 Library check](2026-09-18-library-check.md)
+- [2026-10-03 Card line](2026-10-03-card-line.md)

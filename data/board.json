@@ -71,6 +71,7 @@
         "id": "slack",
         "name": "Slack",
         "have": "Pipeline alerts still land here. Peter is adding people so they can see them. Clive still wants it shut as a place to talk. Look, do not chat.",
+        "card": "Pipeline alerts land here, so read it but do not use it to talk.",
         "ask": "Peter. Ben or Ira if you need the alert channel.",
         "lost": "Ask Ben or Ira. Do not store a password here."
       }
@@ -2221,6 +2222,7 @@
           "name": "An energy manager",
           "status": "draft",
           "who": "A job hat on a Customer. They came to understand use, spikes, and which sites waste energy. Public pages name Energy Engineering and Innovation Manager at John Lewis Partnership, and Sustainable Development Manager at the Maritime and Coastguard Agency.",
+          "card": "Customers who use the data to understand use, find spikes, and spot sites that waste energy.",
           "need": "View graphs, compare sites and periods, find high consuming meters, and export the file.",
           "heard": "This sounds closer to the user type you were initially imagining when looking at spikes.",
           "from": "User group write-up, 7 Sep",
@@ -2355,6 +2357,7 @@
           "name": "An asset manager",
           "status": "draft",
           "who": "A job hat on a Customer. They care whether something has a fault and whether that fault has been repaired. Public pages name Metering Co-ordinator at Southern Water. Technicians are a stakeholder, not a login.",
+          "card": "Customers who need to know whether a meter has a fault and whether it has been repaired.",
           "need": "See what is broken, how bad it is, who is fixing it, and whether it is done.",
           "heard": "The asset manager primarily cares whether something has a fault and whether that fault has been repaired.",
           "from": "User group write-up, 7 Sep",
@@ -2410,6 +2413,7 @@
           "name": "A data user",
           "status": "draft",
           "who": "A job hat on a Customer, also common for brokers and suppliers. Get reliable information out of the platform and into another process.",
+          "card": "Customers, brokers, and suppliers who pull reliable data out of the platform into another process.",
           "need": "Download half-hourly data, schedule reports, watch failed exports, and feed other systems.",
           "heard": "The transcript repeatedly points towards data retrieval being a major real-world job.",
           "from": "User group write-up, 7 Sep",
@@ -2469,6 +2473,7 @@
           "name": "A broker / TPI",
           "status": "working",
           "who": "A broker or third-party intermediary that acts on behalf of one or more customers. They may need more than one customer, selected portfolios, reports, invoices, energy data, and a set access period.",
+          "card": "Acts for one or more customers and may need their portfolios, reports, invoices, and data for a set time.",
           "need": "Move between customers on a live letter of authority. Download invoices and data. Never see outside the authorised period.",
           "heard": "What builds that link is the letter of authority.",
           "from": "Max DataVision, 4 Sep",
@@ -2657,6 +2662,7 @@
           "name": "A platform admin",
           "status": "working",
           "who": "Internal platform staff at IMSERV. Veronique runs DataVision day to day. An owner was a draft type for the same organisation. It folds in here.",
+          "card": "IMSERV staff who run the platform day to day, led by Veronique on DataVision.",
           "need": "Keep the platform running. Configure companies, users, and access. Diagnose when a customer cannot.",
           "heard": "If stuff is burst into flames and we need to save the customers from themselves.",
           "from": "Max DataVision usability, 4 Sep",
@@ -2863,6 +2869,7 @@
           "name": "An unmetered customer",
           "status": "draft",
           "who": "Councils and motorways. PDA collects unmetered data. IMSERV bought them about two years ago. Public pages name Asset Manager at Lancashire County Council.",
+          "card": "Councils and motorways whose unmetered data PDA collects for IMSERV.",
           "need": "Get the monthly file without waiting on email.",
           "heard": "Each month they send a spreadsheet.",
           "from": "Clive, 4 Sep",
@@ -2909,6 +2916,7 @@
           "name": "Someone on the old Astrotech portal",
           "status": "draft",
           "who": "Staff at BP, Shell, or Flow Gas on a single-tenant instance Helen still looks after. True Power was in the original five.",
+          "card": "Staff at BP, Shell, and Flow Gas on single-tenant Astrotech instances Helen still looks after.",
           "need": "Keep their live instance working. Raise a ticket if it breaks. Not be forgotten while the new portal is built.",
           "heard": "She would be the face to Shell and to BP.",
           "from": "Anna briefing, 4 Sep",
@@ -2981,6 +2989,7 @@
             "id": "no-setup-tracking",
             "title": "There is no built-in way to track client setup progress",
             "problem": "DataVision does not show what is set up, what is waiting for data, and what still needs action, so V made her own spreadsheet.",
+            "card": "DataVision does not show what is set up or waiting, so V tracks setup in her own spreadsheet.",
             "where": "Client onboarding and administration.",
             "why": "She records client IDs, company details, dates, and users herself so she can search previous work and see what she has finished. She said this exists because there was no process or tracking in the product.",
             "note": "This is a shadow system outside the product, and the walk depends on V's personal process.",
@@ -3029,6 +3038,7 @@
             "id": "third-party-wrong-problem",
             "title": "Third-party user management may be solving the wrong problem",
             "problem": "IMSERV sometimes creates third-party users and manages their LOAs even when those people only need to receive customer data.",
+            "card": "IMSERV makes accounts and LOAs for third parties who may only need customer data sent to them.",
             "where": "Third-party access and LOA management.",
             "why": "V said the intended walk was often for the customer to schedule reports straight to third parties. That would avoid IMSERV creating accounts and managing LOAs for people it has no direct relationship with.",
             "note": "Bigger than a UI issue. Part of the current walk may not need to exist.",
@@ -3186,6 +3196,7 @@
             "id": "termination-unclear-access",
             "title": "Contract termination and reactivation can leave unclear data-access states",
             "problem": "An MPAN can be terminated and later reopened, but historic end dates may interfere with current access or data visibility.",
+            "card": "Old end dates on a terminated, then reopened MPAN can block current access or data.",
             "where": "Contract and MPAN access lifecycle.",
             "why": "Katie showed an MPAN that had been terminated and later reopened. On paper the new access dates looked valid, but DataVision still had an issue and nobody could immediately explain why.",
             "note": "The system does not clearly model terminated, re-contracted, currently active, and historic access periods. That matters when deciding which historic data a customer should see.",
@@ -3222,6 +3233,7 @@
             "id": "mixed-access-layers",
             "title": "Entitlement, role, and scope get mixed into one permissions idea",
             "problem": "A person's experience is controlled by what the company bought, what that person can do, and which data they can see. Designing those as one blob makes user management hard to reason about.",
+            "card": "What a company bought, what a person can do, and what data they see are designed as one blob.",
             "where": "User management, Users, and Access.",
             "why": "The handoff named three separate layers. Product entitlement is documents only or full Astral. Role is Admin, Manager, Contributor, or Viewer. Group membership can decide which sites, MPANs, reports, and documents they see.",
             "note": "Ask Anthony before you design a single permissions page. The exact role matrix is still open.",
@@ -3234,6 +3246,7 @@
             "id": "huge-portfolio-load",
             "title": "Huge portfolios cannot be treated as a long list",
             "problem": "A customer can sit on thousands of MPANs. Loading them all, drawing thousands of series, or showing thousands of ticks will fail.",
+            "card": "A customer can hold thousands of MPANs, so loading, drawing, or ticking them all will fail.",
             "where": "Portfolio, Compare, and Filter.",
             "why": "The handoff named about 8,000 MPANs on a customer and about 45,000 on internal access. Max wants people to start with what is happening, then narrow to a place.",
             "note": "Progressive disclosure already sits on the walk. All, then group, then site, then MPAN. Do not dump the whole estate.",
@@ -3303,7 +3316,8 @@
             "who": "V",
             "source": "team",
             "where": "Client setup, renewals, and user and third-party access across CRM, email, her tracking spreadsheet, and DataVision.",
-            "summary": "V walked client setup end to end. It named manual setup, duplicate date entry, access-date rules, LOAs, and weak company matching."
+            "summary": "V walked client setup end to end. It named manual setup, duplicate date entry, access-date rules, LOAs, and weak company matching.",
+            "card": "V walked client setup end to end and found manual setup, duplicate dates, and weak company matching."
           },
           {
             "id": "katie-onboarding",
@@ -3316,7 +3330,8 @@
             "who": "Katie",
             "source": "team",
             "where": "Supplier and customer onboarding across Panorama, Star, Fuse, MOP Views, and DataVision.",
-            "summary": "Katie walked supplier and customer onboarding. It named the one Critical finding: estimated data shown over actual readings."
+            "summary": "Katie walked supplier and customer onboarding. It named the one Critical finding: estimated data shown over actual readings.",
+            "card": "Katie walked supplier and customer onboarding and found estimated data shown over actual readings."
           },
           {
             "id": "product-handoff",
@@ -3354,7 +3369,8 @@
             "who": "Max handed the logins",
             "source": "team",
             "where": "UAT admin. Companies, brokers, and users.",
-            "summary": "Admin is in. The live side map of companies, brokers, and users is the next Super admin research. No consumption data until the pipeline runs."
+            "summary": "Admin is in. The live side map of companies, brokers, and users is the next Super admin research. No consumption data until the pipeline runs.",
+            "card": "A look around UAT admin, which sets up the live map of companies, brokers, and users."
           },
           {
             "id": "tma-look-around",
@@ -3392,7 +3408,8 @@
             "who": "Veronique and her team",
             "source": "team",
             "where": "DataVision, where she and her team work.",
-            "summary": "Book a session with Veronique, then sit in customer service. The next Super admin screen comes from this, not generic admin advice."
+            "summary": "Book a session with Veronique, then sit in customer service. The next Super admin screen comes from this, not generic admin advice.",
+            "card": "Sit in customer service with Veronique to find what the next Super admin screen must do."
           },
           {
             "id": "usability-test-plan",
@@ -3404,6 +3421,7 @@
             "format": "A4 PDF",
             "file": "/docs/research/plans/usability-test-plan.pdf",
             "summary": "IMSERV usability test plan built from the /ux-research plan template and laid out in the Brand Book PDF Template families.",
+            "card": "The IMSERV usability test plan, laid out as a Brand Book PDF.",
             "notes": [
               "Run the /ux-research evidence review first. Only build a plan once it says Build plan.",
               "Replace every [bracketed placeholder]. Delete the guidance boxes and the shaded example row.",
@@ -3420,7 +3438,8 @@
             "date": "2026-09-22",
             "study": "product-handoff",
             "file": "/docs/research/reports/2026-09-22-astral-product-model.md",
-            "summary": "Named product skeleton from the handoff transcript. Access layers, Team versus Group, documents only versus full Astral, file kinds, and hierarchy. Not a study."
+            "summary": "Named product skeleton from the handoff transcript. Access layers, Team versus Group, documents only versus full Astral, file kinds, and hierarchy. Not a study.",
+            "card": "The named product skeleton from the handoff: access layers, Team versus Group, file kinds, and hierarchy."
           },
           {
             "id": "imserv-customer-base",
@@ -3585,6 +3604,7 @@
           "id": "astrotech-site",
           "name": "Astrotech site",
           "have": "Public pages still on astraltech.energy, including CX, BX, and EDM. The homepage failed when checked. Inner pages still loaded in search.",
+          "card": "Old public pages on astraltech.energy, where the homepage fails but inner pages still load.",
           "ask": "No login. It is a public site.",
           "lost": "If it is gone, imserv.com still describes the modules."
         },
@@ -3592,6 +3612,7 @@
           "id": "admin-portal",
           "name": "UAT admin portal",
           "have": "Max walked live admin. Companies, brokers, users. Log in as user sits under Actions. Log out switches account. Do not expect consumption data yet.",
+          "card": "Live admin for companies, brokers, and users, with Log in as user under Actions.",
           "ask": "Ben K or Ira",
           "lost": "Ask Ben K or Ira. Do not store a password here."
         },
@@ -3606,6 +3627,7 @@
           "id": "uat-customer",
           "name": "Customer portal",
           "have": "Max handed you the details. Look around and put components in Figma. The tree on the left is PrimeNG. Do not store the login here.",
+          "card": "The UAT customer portal to look around and copy components into Figma.",
           "ask": "Max if the details die. Ben K or Ira if you need LastPass as well.",
           "lost": "Ask Max. Do not store a password here."
         },
@@ -3613,6 +3635,7 @@
           "id": "imserv-wordpress",
           "name": "IMSERV website",
           "have": "WordPress, built by Pony as a magazine site. Claire found headers, banners, and graphics hard coded. An old agency repo still overwrites live edits.",
+          "card": "Pony's WordPress magazine site, where hard-coded graphics and an old repo overwrite edits.",
           "ask": "Claire once the repo is back. Camilla until then.",
           "lost": "Ask Claire or Camilla. Do not store a password here."
         },
@@ -3648,6 +3671,7 @@
           "id": "wiki",
           "name": "DevOps wiki",
           "have": "Has a thin page on access. Charanjit is expanding it with the end to end flow once Alexi has reviewed his notes. He is back Wednesday.",
+          "card": "A thin access page that Charanjit is expanding with the end-to-end flow.",
           "ask": "Charanjit, or Alexi if he is still out",
           "lost": "Ask Peter or Charanjit. Do not store a password here."
         },
@@ -3655,6 +3679,7 @@
           "id": "sales-loa",
           "name": "Sales letters of authority",
           "have": "The live letters sit in sales, not in DataVision. Astral will check that system itself. You do not need a login to design the warning.",
+          "card": "Live letters of authority sit in sales, and you can design the warning without a login.",
           "ask": "Max if you need to see what a letter looks like",
           "lost": "Ask Max. Do not store a password here."
         },
@@ -3662,6 +3687,7 @@
           "id": "mailtrap",
           "name": "Mailtrap",
           "have": "You are in the shared Astrotech inbox. Skip sandbox. Ben's reset link worked after a user login error. That error is a known bug.",
+          "card": "The shared Astrotech inbox, for reset links and other test emails.",
           "ask": "Ben K or Eray H. Dev for the login error.",
           "lost": "Ask Eray H or Ben K. Do not store a password here."
         },
@@ -3683,6 +3709,7 @@
           "id": "astral-portal",
           "name": "Astral portal",
           "have": "You are in. Admin has companies, brokers, and users on the side. Look and feel has already shifted. Do not store the login here.",
+          "card": "The Astral portal admin for companies, brokers, and users, in the newer look and feel.",
           "ask": "Ann H. Ben K if Mailtrap dies again.",
           "lost": "Ask Ann H. Do not store a password here."
         },
@@ -3704,6 +3731,7 @@
           "id": "synapse-adf",
           "name": "Synapse and Data Factory",
           "have": "Tables exist. Pipelines are mostly disabled. Files are not copying. No consumption data is coming out. UAT SFTP has reports, not uploads.",
+          "card": "Tables exist but pipelines are mostly off, so no consumption data comes out yet.",
           "ask": "Stephen or Simon. Do not wait for Desislav.",
           "lost": "Ask Stephen. Do not store a password here."
         }

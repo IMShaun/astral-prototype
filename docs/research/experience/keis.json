@@ -84,7 +84,8 @@
     {
       "id": "area",
       "name": "Area",
-      "body": "Each product surface gets its own KEIs. Portfolio, Alerts, Queries, Reports, Users, and Finance. Do not invent an area the product does not have."
+      "body": "Each product surface gets its own KEIs. Portfolio, Alerts, Queries, Reports, Users, and Finance. Do not invent an area the product does not have.",
+      "card": "Portfolio, Alerts, Queries, Reports, Users, and Finance each get their own KEIs. No other areas."
     },
     {
       "id": "primary",
