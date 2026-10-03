@@ -196,14 +196,14 @@ const RESEARCH_SEVERITY_RANK = {
 
 const RESEARCH_TABS = [
   {
-    id: "insights",
-    name: "Insights",
-    lead: "Findings from walks. Open an insight for the rest. Pick a severity card to filter. Score ranks within a severity from what the walk named.",
-  },
-  {
     id: "planning",
     name: "Planning",
     lead: "Research we are doing, have planned, or have done, and the templates to run the next one. Open a card for the detail and the insights it named.",
+  },
+  {
+    id: "insights",
+    name: "Insights",
+    lead: "Findings from walks. Open an insight for the rest. Pick a severity card to filter. Score ranks within a severity from what the walk named.",
   },
   {
     id: "reporting",
@@ -499,7 +499,7 @@ function activeResearchView() {
 }
 
 function activeResearchTab() {
-  return RESEARCH_TABS.some((item) => item.id === store?.researchTab) ? store.researchTab : "insights";
+  return RESEARCH_TABS.some((item) => item.id === store?.researchTab) ? store.researchTab : "planning";
 }
 
 function insightSource(item) {
