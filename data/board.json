@@ -2974,7 +2974,8 @@
             "note": "The process depends on one person remembering where everything is and what stage each client has reached.",
             "severity": "high",
             "score": 50,
-            "source": "team"
+            "source": "team",
+            "study": "v-client-setup"
           },
           {
             "id": "no-setup-tracking",
@@ -2985,7 +2986,8 @@
             "note": "This is a shadow system outside the product, and the walk depends on V's personal process.",
             "severity": "high",
             "score": 46,
-            "source": "team"
+            "source": "team",
+            "study": "v-client-setup"
           },
           {
             "id": "duplicate-date-entry",
@@ -2996,7 +2998,8 @@
             "note": "Extra effort, and a risk that one date moves while the other stays.",
             "severity": "medium-high",
             "score": 50,
-            "source": "team"
+            "source": "team",
+            "study": "v-client-setup"
           },
           {
             "id": "access-date-rules",
@@ -3007,7 +3010,8 @@
             "note": "This affects data access. Get it wrong and you get security and GDPR trouble.",
             "severity": "high",
             "score": 86,
-            "source": "team"
+            "source": "team",
+            "study": "v-client-setup"
           },
           {
             "id": "fragmented-contracts",
@@ -3018,7 +3022,8 @@
             "note": "The walk works largely because V fills the gaps.",
             "severity": "medium-high",
             "score": 70,
-            "source": "team"
+            "source": "team",
+            "study": "v-client-setup"
           },
           {
             "id": "third-party-wrong-problem",
@@ -3029,7 +3034,8 @@
             "note": "Bigger than a UI issue. Part of the current walk may not need to exist.",
             "severity": "high",
             "score": 82,
-            "source": "team"
+            "source": "team",
+            "study": "v-client-setup"
           },
           {
             "id": "loa-access-risk",
@@ -3040,7 +3046,8 @@
             "note": "This is governance and possibly GDPR. Treat it as a design constraint, not just an inconvenience.",
             "severity": "high",
             "score": 90,
-            "source": "team"
+            "source": "team",
+            "study": "v-client-setup"
           },
           {
             "id": "weak-company-match",
@@ -3052,7 +3059,8 @@
             "note": "The safety net is V's experience and memory, not the system.",
             "severity": "medium",
             "score": 50,
-            "source": "team"
+            "source": "team",
+            "study": "v-client-setup"
           },
           {
             "id": "specialist-knowledge",
@@ -3063,7 +3071,8 @@
             "note": "Part of the system logic lives in a person. That is a major migration risk.",
             "severity": "high",
             "score": 54,
-            "source": "team"
+            "source": "team",
+            "study": "v-client-setup"
           },
           {
             "id": "onboarding-too-many-systems",
@@ -3074,7 +3083,8 @@
             "note": "The walk is fragmented, hard to learn, and creates many chances for information to fall between systems.",
             "severity": "high",
             "score": 42,
-            "source": "team"
+            "source": "team",
+            "study": "katie-onboarding"
           },
           {
             "id": "job-validation-manual",
@@ -3085,7 +3095,8 @@
             "note": "At large volumes, checking individual MPANs by hand is unrealistic and raises avoidable work.",
             "severity": "high",
             "score": 58,
-            "source": "team"
+            "source": "team",
+            "study": "katie-onboarding"
           },
           {
             "id": "previous-failures-not-useful",
@@ -3096,7 +3107,8 @@
             "note": "The information exists, but it is not turned into a useful decision. A future system could warn that a previous job was withdrawn for incorrect contact details, and that the new submission has the same contact information.",
             "severity": "medium-high",
             "score": 60,
-            "source": "team"
+            "source": "team",
+            "study": "katie-onboarding"
           },
           {
             "id": "supplier-batches-unscalable",
@@ -3107,7 +3119,8 @@
             "note": "This is not just an inconvenience. The current walk struggles as portfolio size grows.",
             "severity": "high",
             "score": 62,
-            "source": "team"
+            "source": "team",
+            "study": "katie-onboarding"
           },
           {
             "id": "duplicate-panorama-star",
@@ -3118,7 +3131,8 @@
             "note": "This adds setup time and creates the chance that two systems no longer agree about the same customer.",
             "severity": "high",
             "score": 34,
-            "source": "team"
+            "source": "team",
+            "study": "katie-onboarding"
           },
           {
             "id": "manual-technical-ids",
@@ -3129,7 +3143,8 @@
             "note": "This is technical system administration pushed onto an operational user. The platform should generate or manage these identifiers behind the scenes.",
             "severity": "medium-high",
             "score": 40,
-            "source": "team"
+            "source": "team",
+            "study": "katie-onboarding"
           },
           {
             "id": "estimated-over-actual",
@@ -3140,7 +3155,8 @@
             "note": "This directly affects the accuracy of what customers see. The platform can knowingly display worse data than the business already has.",
             "severity": "critical",
             "score": 90,
-            "source": "team"
+            "source": "team",
+            "study": "katie-onboarding"
           },
           {
             "id": "stale-data-specialist-reset",
@@ -3151,7 +3167,8 @@
             "note": "A basic data refresh depends on several people and systems. The new system should treat actual as better than estimated, and replace lower-quality data when authoritative data arrives.",
             "severity": "high",
             "score": 78,
-            "source": "team"
+            "source": "team",
+            "study": "katie-onboarding"
           },
           {
             "id": "mpan-missing-without-reason",
@@ -3162,7 +3179,8 @@
             "note": "The user has no clear diagnosis or recovery path. This is a candidate for a future sync status, not a delete-and-recreate ritual.",
             "severity": "high",
             "score": 74,
-            "source": "team"
+            "source": "team",
+            "study": "katie-onboarding"
           },
           {
             "id": "termination-unclear-access",
@@ -3173,7 +3191,8 @@
             "note": "The system does not clearly model terminated, re-contracted, currently active, and historic access periods. That matters when deciding which historic data a customer should see.",
             "severity": "high",
             "score": 70,
-            "source": "team"
+            "source": "team",
+            "study": "katie-onboarding"
           },
           {
             "id": "cannot-diagnose-breaks",
@@ -3184,7 +3203,8 @@
             "note": "The future platform should expose states such as waiting for source data, MPAN not appointed, contract expired, awaiting sync, actual data available, data import failed, and user access expired, rather than only showing that something is missing.",
             "severity": "high",
             "score": 66,
-            "source": "team"
+            "source": "team",
+            "study": "katie-onboarding"
           },
           {
             "id": "onboarding-handoffs",
@@ -3195,7 +3215,8 @@
             "note": "This introduces delays and makes the process depend on individual availability. It connects to V's walk, so both sides of the same hand-off are now named.",
             "severity": "high",
             "score": 38,
-            "source": "team"
+            "source": "team",
+            "study": "katie-onboarding"
           },
           {
             "id": "mixed-access-layers",
@@ -3206,7 +3227,8 @@
             "note": "Ask Anthony before you design a single permissions page. The exact role matrix is still open.",
             "severity": "high",
             "score": 88,
-            "source": "team"
+            "source": "team",
+            "study": "product-handoff"
           },
           {
             "id": "huge-portfolio-load",
@@ -3217,7 +3239,8 @@
             "note": "Progressive disclosure already sits on the walk. All, then group, then site, then MPAN. Do not dump the whole estate.",
             "severity": "high",
             "score": 84,
-            "source": "team"
+            "source": "team",
+            "study": "product-handoff"
           },
           {
             "id": "teams-not-groups",
@@ -3228,7 +3251,8 @@
             "note": "Team is who I work with. Group is what I can access. They might later link. The final model is still open. Ask Max and Anthony. Permission user groups stay in admin.",
             "severity": "high",
             "score": 80,
-            "source": "team"
+            "source": "team",
+            "study": "product-handoff"
           },
           {
             "id": "documents-only-shell",
@@ -3239,7 +3263,8 @@
             "note": "Hide Portfolio from a documents-only login. Self-serve upgrades wait. Do not design a huge entitlement UI that Super admin ticks by hand if the contract will do that work.",
             "severity": "high",
             "score": 76,
-            "source": "team"
+            "source": "team",
+            "study": "product-handoff"
           },
           {
             "id": "estimated-versus-alert",
@@ -3250,7 +3275,8 @@
             "note": "Estimated is confidence. Alert is attention. Odd use, Missing data, and Not sending stay on Alerts. Do not invent a statistical threshold builder for version one.",
             "severity": "high",
             "score": 72,
-            "source": "team"
+            "source": "team",
+            "study": "product-handoff"
           },
           {
             "id": "four-file-words",
@@ -3261,14 +3287,110 @@
             "note": "Keep scheduled reports off the documents pile. Keep My Documents off Downloads. Do not invent Excel.",
             "severity": "medium-high",
             "score": 68,
-            "source": "team"
+            "source": "team",
+            "study": "product-handoff"
           }
         ],
         "plans": [
           {
+            "id": "v-client-setup",
+            "title": "V's client setup walk",
+            "kind": "Walk",
+            "task": "research-insights-board",
+            "status": "done",
+            "date": "2026-09-08",
+            "who": "V",
+            "source": "team",
+            "where": "Client setup, renewals, and user and third-party access across CRM, email, her tracking spreadsheet, and DataVision.",
+            "summary": "V walked client setup end to end. It named manual setup, duplicate date entry, access-date rules, LOAs, and weak company matching."
+          },
+          {
+            "id": "katie-onboarding",
+            "title": "Katie's onboarding walk",
+            "kind": "Walk",
+            "task": "katie-onboarding-research",
+            "status": "done",
+            "date": "2026-09-08",
+            "who": "Katie",
+            "source": "team",
+            "where": "Supplier and customer onboarding across Panorama, Star, Fuse, MOP Views, and DataVision.",
+            "summary": "Katie walked supplier and customer onboarding. It named the one Critical finding: estimated data shown over actual readings."
+          },
+          {
+            "id": "product-handoff",
+            "title": "Astral product handoff",
+            "kind": "Handoff",
+            "status": "done",
+            "date": "2026-09-22",
+            "source": "team",
+            "report": "astral-product-model",
+            "where": "Handoff transcript.",
+            "summary": "The handoff named access layers, Team versus Group, documents only versus full Astral, file kinds, and portfolio scale."
+          },
+          {
+            "id": "customer-base-map",
+            "title": "IMSERV customer base map",
+            "kind": "Desk research",
+            "task": "groups-customer-map",
+            "status": "done",
+            "date": "2026-09-12",
+            "source": "team",
+            "report": "imserv-customer-base",
+            "where": "IMSERV public pages and named case studies.",
+            "summary": "Public-page map of who IMSERV serves, folded into User groups. Secondary. Not a study and not walk evidence."
+          },
+          {
+            "id": "uat-look-around",
+            "title": "Look around UAT",
+            "kind": "Look around",
+            "task": "product-logins",
+            "status": "doing",
+            "date": "2026-09-04",
+            "who": "Max handed the logins",
+            "source": "team",
+            "where": "UAT admin. Companies, brokers, and users.",
+            "summary": "Admin is in. The live side map of companies, brokers, and users is the next Super admin research. No consumption data until the pipeline runs."
+          },
+          {
+            "id": "tma-look-around",
+            "title": "Look around TMA and Meterpower",
+            "kind": "Look around",
+            "task": "tma-access",
+            "status": "doing",
+            "date": "2026-09-04",
+            "who": "Bevis Rotherham",
+            "source": "team",
+            "where": "TMA and Meterpower, at channel level.",
+            "summary": "Get into TMA to see channel-level data. Bevis Rotherham knows Meterpower better than Max."
+          },
+          {
+            "id": "admin-as-user-walk",
+            "title": "Admin as user walk",
+            "kind": "Walk",
+            "task": "walk-admin-as-user",
+            "status": "doing",
+            "date": "2026-09-04",
+            "source": "team",
+            "where": "Live DataVision, not the prototype.",
+            "summary": "Open a company in admin, log in as a user, then find the way back. Caprino's Pizza was the demo."
+          },
+          {
+            "id": "veronique-sit-in",
+            "title": "Sit with Veronique and customer service",
+            "kind": "Sit-in",
+            "task": "sit-veronique",
+            "status": "planned",
+            "date": "2026-09-04",
+            "who": "Veronique and her team",
+            "source": "team",
+            "where": "DataVision, where she and her team work.",
+            "summary": "Book a session with Veronique, then sit in customer service. The next Super admin screen comes from this, not generic admin advice."
+          },
+          {
             "id": "usability-test-plan",
             "title": "Usability test plan",
             "kind": "Template",
+            "template": true,
             "source": "team",
             "pages": 22,
             "format": "A4 PDF",
@@ -3280,6 +3402,26 @@
               "The consent preamble is a neutral draft. It needs legal review before issue.",
               "Never put real or invented participant names in the plan. Use P01, P02."
             ]
+          }
+        ],
+        "reports": [
+          {
+            "id": "astral-product-model",
+            "title": "Astral product model",
+            "kind": "Desk fold",
+            "date": "2026-09-22",
+            "study": "product-handoff",
+            "file": "/docs/research/reports/2026-09-22-astral-product-model.md",
+            "summary": "Named product skeleton from the handoff transcript. Access layers, Team versus Group, documents only versus full Astral, file kinds, and hierarchy. Not a study."
+          },
+          {
+            "id": "imserv-customer-base",
+            "title": "IMSERV customer base",
+            "kind": "Desk fold",
+            "date": "2026-09-12",
+            "study": "customer-base-map",
+            "file": "/docs/research/reports/2026-09-12-imserv-customer-base.md",
+            "summary": "Public-page customer map, folded into User groups. Not a study."
           }
         ]
       },

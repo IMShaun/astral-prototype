@@ -14098,23 +14098,14 @@ body:not(.is-share) .desk-shell {
   margin: 0;
 }
 
-/* Research Planning: one card per plan, with the PDF read in place. */
-.desk-plan-head {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: var(--space-12);
+/* Research Planning and Reporting hosts stack their blocks like the page does. */
+#research-planning:not([hidden]),
+#research-reporting:not([hidden]) {
+  display: grid;
+  gap: var(--space-stack-default);
 }
 
-.desk-plan-head h3 {
-  margin: 0;
-}
-
-.desk-plan > p,
-.desk-plan .notes {
-  max-width: 48rem;
-  margin: 0;
-}
-
+/* Research Planning: a template's PDF read in place. */
 .desk-plan-actions {
   align-items: center;
   gap: var(--space-16);
@@ -14133,6 +14124,27 @@ body:not(.is-share) .desk-shell {
   border: 1px solid var(--color-border-subtle, #e0e0e0);
   border-radius: var(--radius-card);
   background: var(--color-background-surface);
+}
+
+/* Research Reporting: a markdown report read in place. */
+.desk-prose {
+  display: grid;
+  gap: var(--space-12);
+  max-width: 48rem;
+}
+
+.desk-prose > * {
+  margin: 0;
+}
+
+.desk-prose h4 {
+  margin-top: var(--space-8);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.desk-prose .desk-table {
+  max-width: none;
 }
 
 .desk-sub-head {

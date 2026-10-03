@@ -56,6 +56,7 @@ const els = {
   researchTabs: document.getElementById("research-tabs"),
   researchLead: document.getElementById("research-lead"),
   researchPlanning: document.getElementById("research-planning"),
+  researchReporting: document.getElementById("research-reporting"),
   strategyCount: document.getElementById("strategy-count"),
   strategyNext: document.getElementById("strategy-next"),
   strategyKnow: document.getElementById("strategy-know"),
@@ -202,9 +203,33 @@ const RESEARCH_TABS = [
   {
     id: "planning",
     name: "Planning",
-    lead: "Plans and templates for running a study. Read one here or download the PDF.",
+    lead: "Research we are doing, have planned, or have done, and the templates to run the next one. Open a card for the detail and the insights it named.",
+  },
+  {
+    id: "reporting",
+    name: "Reporting",
+    lead: "Reports written up from the research. Open one to read it here.",
   },
 ];
+
+const RESEARCH_STUDY_STATES = [
+  { id: "all", name: "All" },
+  { id: "doing", name: "Doing" },
+  { id: "planned", name: "Planned" },
+  { id: "done", name: "Done" },
+  { id: "template", name: "Template" },
+];
+
+const RESEARCH_STUDY_STATUS = {
+  doing: "working",
+  planned: "waiting",
+  done: "firm",
+  template: "scaffold",
+};
+
+const RESEARCH_STUDY_RANK = { doing: 0, planned: 1, done: 2, template: 3 };
+
+const RESEARCH_REPORT_TEXT = new Map();
 
 // Where an insight came from. Add a source here before you tag an insight with it.
 const RESEARCH_SOURCES = {
@@ -423,7 +448,7 @@ function emptyAccess() {
 }
 
 function emptyResearch() {
-  return { insights: [], plans: [] };
+  return { insights: [], plans: [], reports: [] };
 }
 
 function researchBoard() {
@@ -432,6 +457,7 @@ function researchBoard() {
   delete current.research.todos;
   if (!Array.isArray(current.research.insights)) current.research.insights = [];
   if (!Array.isArray(current.research.plans)) current.research.plans = [];
+  if (!Array.isArray(current.research.reports)) current.research.reports = [];
   return current.research;
 }
 
@@ -3385,39 +3411,347 @@ function renderLanguage() {
   setNavCount(els.navLanguageCount, entries.length);
 }
 
+function researchDate(value) {
+  const raw = String(value || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  return new Date(`${raw}T00:00:00`).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+// A study follows its task on Today: ticking the task done marks the study done.
+function researchStudyState(item) {
+  if (item?.template) return "template";
+  const task = String(item?.task || "");
+  if (task) {
+    const current = board();
+    if ((current.done || []).some((entry) => entry.id === task)) return "done";
+    if ((current.today || []).some((entry) => entry.id === task)) {
+      return item.status === "planned" ? "planned" : "doing";
+    }
+  }
+  return RESEARCH_STUDY_STATUS[item?.status] && item.status !== "template" ? item.status : "doing";
+}
+
+function researchStudyName(id) {
+  return RESEARCH_STUDY_STATES.find((item) => item.id === id)?.name || "Doing";
+}
+
+function researchStudyTag(item) {
+  const id = researchStudyState(item);
+  return deskTag(researchStudyName(id), RESEARCH_STUDY_STATUS[id]);
+}
+
+function activeResearchStudyState() {
+  const id = store?.researchStudyState;
+  return RESEARCH_STUDY_STATES.some((item) => item.id === id) ? id : "all";
+}
+
+function studyInsights(item) {
+  return (researchBoard().insights || [])
+    .filter((entry) => entry.study === item.id)
+    .sort((a, b) => insightScore(b) - insightScore(a));
+}
+
+function sortedStudies() {
+  return [...(researchBoard().plans || [])].sort((a, b) => {
+    const rank = RESEARCH_STUDY_RANK[researchStudyState(a)] - RESEARCH_STUDY_RANK[researchStudyState(b)];
+    if (rank) return rank;
+    return String(b.date || "").localeCompare(String(a.date || ""));
+  });
+}
+
+function sortedReports() {
+  return [...(researchBoard().reports || [])].sort((a, b) =>
+    String(b.date || "").localeCompare(String(a.date || ""))
+  );
+}
+
+function researchOpenItem() {
+  const [kind, id] = String(store?.researchOpen || "").split(":");
+  const pack = researchBoard();
+  if (kind === "plan") {
+    const item = (pack.plans || []).find((entry) => entry.id === id);
+    return item ? { kind, item } : null;
+  }
+  if (kind === "report") {
+    const item = (pack.reports || []).find((entry) => entry.id === id);
+    return item ? { kind, item } : null;
+  }
+  return null;
+}
+
+function researchKindTag(item) {
+  if (!item.kind || (item.template && item.kind === "Template")) return "";
+  return deskTag(item.kind, "draft");
+}
+
+function researchStudyMeta(item) {
+  const count = studyInsights(item).length;
+  return [
+    researchDate(item.date),
+    count ? (count === 1 ? "1 insight" : `${count} insights`) : "",
+    item.pages ? `${item.pages} pages` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function researchStudyCard(item) {
+  const meta = researchStudyMeta(item);
+  return deskCard({
+    open: { "data-action": "research-open", "data-id": `plan:${item.id}` },
+    title: item.title || "",
+    tags: `<span class="desk-card-tags">${researchStudyTag(item)}${researchKindTag(item)}</span>`,
+    body: escapeHtml(item.summary || ""),
+    foot: meta ? `<span class="astral-muted">${escapeHtml(meta)}</span>` : "",
+  });
+}
+
+function researchStudyRow(item) {
+  const count = studyInsights(item).length;
+  return deskRow({
+    open: { "data-action": "research-open", "data-id": `plan:${item.id}` },
+    title: item.title || "",
+    cells: [
+      researchStudyTag(item),
+      escapeHtml(item.kind || ""),
+      escapeHtml(researchDate(item.date)),
+      escapeHtml(count ? String(count) : ""),
+    ],
+  });
+}
+
+function researchReportCard(item) {
+  return deskCard({
+    open: { "data-action": "research-open", "data-id": `report:${item.id}` },
+    title: item.title || "",
+    tags: `<span class="desk-card-tags">${researchKindTag(item)}</span>`,
+    body: escapeHtml(item.summary || ""),
+    foot: item.date ? `<span class="astral-muted">${escapeHtml(researchDate(item.date))}</span>` : "",
+  });
+}
+
+function researchReportRow(item) {
+  const study = (researchBoard().plans || []).find((entry) => entry.id === item.study);
+  return deskRow({
+    open: { "data-action": "research-open", "data-id": `report:${item.id}` },
+    title: item.title || "",
+    cells: [
+      escapeHtml(item.kind || ""),
+      escapeHtml(researchDate(item.date)),
+      escapeHtml(study?.title || ""),
+    ],
+  });
+}
+
+function researchFile(item) {
+  const file = String(item.file || "");
+  if (!file) return "";
+  const name = file.split("/").pop() || "plan.pdf";
+  return deskSection(
+    "File",
+    `<div class="astral-actions desk-plan-actions">
+      <a class="astral-btn" href="${escapeHtml(file)}" target="_blank" rel="noreferrer">Open PDF</a>
+      <a class="brand-download" href="${escapeHtml(file)}" download="${escapeHtml(name)}">Download</a>
+    </div>
+    <iframe class="desk-plan-frame" src="${escapeHtml(file)}#view=FitH" title="${escapeHtml(
+      item.title || "Plan"
+    )} PDF" loading="lazy"></iframe>`
+  );
+}
+
+function researchStudyPage(item) {
+  const insights = studyInsights(item);
+  const report = (researchBoard().reports || []).find((entry) => entry.id === item.report);
+  const notes = (item.notes || []).map((line) => `<li>${escapeHtml(line)}</li>`).join("");
+  const format = [item.pages ? `${item.pages} pages` : "", item.format || ""].filter(Boolean).join(" · ");
+  return `
+    ${deskDetailHead({
+      back: "research-back",
+      where: "Planning",
+      kicker: `<span class="desk-card-tags">${researchStudyTag(item)}${researchKindTag(item)}</span>`,
+      title: item.title || "",
+      lead: item.summary || "",
+    })}
+    ${deskSection(
+      "About",
+      `<dl class="fact-grid">
+        ${factRow("When", researchDate(item.date))}
+        ${factRow("With", item.who)}
+        ${factRow("Where", item.where)}
+        ${factRow("Format", format)}
+        ${factRow("Source", insightSource(item)?.long)}
+      </dl>
+      ${notes ? `<ul class="notes">${notes}</ul>` : ""}
+      ${
+        report
+          ? `<div class="astral-actions"><button type="button" class="astral-btn" data-action="research-open" data-id="report:${escapeHtml(
+              report.id
+            )}">Read the report</button></div>`
+          : ""
+      }`
+    )}
+    ${
+      insights.length
+        ? deskSection(
+            `Insights it named (${insights.length})`,
+            deskTable(["Insight", "Severity", "Source", "Score", "Problem"], insights.map(insightRow))
+          )
+        : ""
+    }
+    ${researchFile(item)}
+  `;
+}
+
+function researchMarkdown(text) {
+  const out = [];
+  let para = [];
+  let list = null;
+  let table = null;
+  const inline = (value) =>
+    escapeHtml(value)
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+  const cells = (row) =>
+    row
+      .trim()
+      .replace(/^\|/, "")
+      .replace(/\|$/, "")
+      .split("|")
+      .map((cell) => cell.trim());
+  const flush = () => {
+    if (para.length) out.push(`<p>${inline(para.join(" "))}</p>`);
+    para = [];
+    if (list) {
+      out.push(`<${list.tag} class="notes">${list.items.map((item) => `<li>${inline(item)}</li>`).join("")}</${list.tag}>`);
+    }
+    list = null;
+    if (table) {
+      const [head, ...body] = table.filter((row) => !/^\s*\|?\s*:?-{2,}/.test(row)).map(cells);
+      out.push(`
+        <div class="astral-table-wrap desk-table">
+          <table class="astral-table">
+            <thead><tr>${(head || []).map((cell) => `<th scope="col">${inline(cell)}</th>`).join("")}</tr></thead>
+            <tbody>${body
+              .map((row) => `<tr>${row.map((cell) => `<td>${inline(cell)}</td>`).join("")}</tr>`)
+              .join("")}</tbody>
+          </table>
+        </div>`);
+    }
+    table = null;
+  };
+  let first = true;
+  for (const line of String(text || "").replace(/\r\n/g, "\n").split("\n")) {
+    const heading = line.match(/^(#{1,4})\s+(.*)$/);
+    const bullet = line.match(/^\s*[-*]\s+(.*)$/);
+    const numbered = line.match(/^\s*\d+\.\s+(.*)$/);
+    if (heading) {
+      flush();
+      // The page head already shows the title.
+      if (!(first && heading[1].length === 1)) {
+        out.push(`<h4>${inline(heading[2])}</h4>`);
+      }
+    } else if (/^\s*\|/.test(line)) {
+      if (!table) flush();
+      table = table || [];
+      table.push(line);
+    } else if (bullet || numbered) {
+      const tag = numbered ? "ol" : "ul";
+      if (!list || list.tag !== tag) flush();
+      list = list || { tag, items: [] };
+      list.items.push((bullet || numbered)[1]);
+    } else if (!line.trim()) {
+      flush();
+    } else {
+      if (list || table) flush();
+      para.push(line.trim());
+    }
+    if (line.trim()) first = false;
+  }
+  flush();
+  return out.join("");
+}
+
+function researchReportText(file) {
+  if (!file) return false;
+  if (RESEARCH_REPORT_TEXT.has(file)) return RESEARCH_REPORT_TEXT.get(file);
+  RESEARCH_REPORT_TEXT.set(file, null);
+  fetch(file, { cache: "no-store" })
+    .then((response) => (response.ok ? response.text() : Promise.reject(new Error(String(response.status)))))
+    .then((text) => RESEARCH_REPORT_TEXT.set(file, text))
+    .catch(() => RESEARCH_REPORT_TEXT.set(file, false))
+    .finally(() => {
+      if (store?.activeSection === "research") render();
+    });
+  return null;
+}
+
+function researchReportPage(item) {
+  const study = (researchBoard().plans || []).find((entry) => entry.id === item.study);
+  const text = researchReportText(item.file);
+  let body = `<p class="astral-muted">Loading the report.</p>`;
+  if (text === false) body = emptyCard("Could not load this report.");
+  if (text) body = `<div class="desk-prose">${researchMarkdown(text)}</div>`;
+  return `
+    ${deskDetailHead({
+      back: "research-back",
+      where: "Reporting",
+      kicker: `<span class="desk-card-tags">${researchKindTag(item)}</span>`,
+      title: item.title || "",
+      lead: item.summary || "",
+    })}
+    ${deskSection(
+      "About",
+      `<dl class="fact-grid">
+        ${factRow("Written", researchDate(item.date))}
+        ${factRow("From", study?.title)}
+      </dl>
+      ${
+        study
+          ? `<div class="astral-actions"><button type="button" class="astral-btn" data-action="research-open" data-id="plan:${escapeHtml(
+              study.id
+            )}">Open the research</button></div>`
+          : ""
+      }
+      ${item.file ? `<p class="token-path">${escapeHtml(item.file.replace(/^\//, ""))}</p>` : ""}`
+    )}
+    ${deskSection("Report", body)}
+  `;
+}
+
+// Only rewrite a host when its markup changes, so an open PDF keeps its place.
+function setResearchHost(host, html) {
+  if (!host) return;
+  if (host.deskHtml !== html) {
+    host.innerHTML = html;
+    host.deskHtml = html;
+  }
+}
+
 function renderResearch() {
   const pack = researchBoard();
   const insights = pack.insights || [];
+  const plans = pack.plans || [];
+  const reports = pack.reports || [];
   const shown = sortedInsights();
-  const view = activeResearchView();
   const filter = activeResearchSeverity();
+  const tab = activeResearchTab();
+  const open = researchOpenItem();
+  const detail = Boolean(open) && ((open.kind === "plan" && tab === "planning") || (open.kind === "report" && tab === "reporting"));
+  if (!detail) store.researchOpen = "";
+  setPanelDetail("research", detail);
 
   if (els.researchCount) {
     els.researchCount.textContent =
       insights.length === 1 ? "1 insight" : `${insights.length} insights`;
   }
-  if (els.researchFilters) {
-    els.researchFilters.innerHTML = deskStats(
-      RESEARCH_SEVERITIES.map((item) => {
-        const count =
-          item.id === "all"
-            ? insights.length
-            : insights.filter((entry) => insightSeverity(entry) === item.id).length;
-        return { id: item.id, name: item.name, count, disabled: !count };
-      }),
-      filter,
-      "data-research-severity",
-      "Severity"
-    );
-  }
-  const tab = activeResearchTab();
-  const plans = pack.plans || [];
   if (els.researchTabs) {
+    const counts = { insights: insights.length, planning: plans.length, reporting: reports.length };
     els.researchTabs.innerHTML = protoTabs(
-      RESEARCH_TABS.map((item) => ({
-        id: item.id,
-        name: item.id === "planning" ? `${item.name} (${plans.length})` : `${item.name} (${insights.length})`,
-      })),
+      RESEARCH_TABS.map((item) => ({ id: item.id, name: `${item.name} (${counts[item.id]})` })),
       tab,
       "data-research-tab",
       "Research pages"
@@ -3426,83 +3760,141 @@ function renderResearch() {
   if (els.researchLead) {
     els.researchLead.textContent = RESEARCH_TABS.find((item) => item.id === tab)?.lead || "";
   }
-  const onPlanning = tab === "planning";
-  if (els.researchFilters) els.researchFilters.hidden = onPlanning;
-  if (els.researchInsights) els.researchInsights.hidden = onPlanning;
-  if (els.researchPlanning) {
-    els.researchPlanning.hidden = !onPlanning;
-    const html = onPlanning
-      ? plans.length
-        ? plans.map(researchPlan).join("")
-        : emptyCard("No plans yet. Build one with /ux-research once the evidence review says Build plan.")
-      : "";
-    // Keep the open PDF where the reader left it when something else re-renders.
-    if (els.researchPlanning.deskHtml !== html) {
-      els.researchPlanning.innerHTML = html;
-      els.researchPlanning.deskHtml = html;
+  if (els.researchFilters) {
+    els.researchFilters.hidden = tab === "reporting";
+    if (tab === "insights") {
+      els.researchFilters.innerHTML = deskStats(
+        RESEARCH_SEVERITIES.map((item) => {
+          const count =
+            item.id === "all"
+              ? insights.length
+              : insights.filter((entry) => insightSeverity(entry) === item.id).length;
+          return { id: item.id, name: item.name, count, disabled: !count };
+        }),
+        filter,
+        "data-research-severity",
+        "Severity"
+      );
+    } else if (tab === "planning") {
+      els.researchFilters.innerHTML = deskStats(
+        RESEARCH_STUDY_STATES.map((item) => {
+          const count =
+            item.id === "all"
+              ? plans.length
+              : plans.filter((entry) => researchStudyState(entry) === item.id).length;
+          return { id: item.id, name: item.name, count, disabled: !count };
+        }),
+        activeResearchStudyState(),
+        "data-research-study",
+        "Research status"
+      );
+    } else {
+      els.researchFilters.innerHTML = "";
     }
   }
-  const matched = shown.filter((item) =>
-    deskMatch("research", item.title, item.problem, item.where, item.why, insightSource(item)?.name)
-  );
   if (els.researchView) {
     els.researchView.innerHTML = "";
     els.researchView.hidden = true;
   }
+
   if (els.researchInsights) {
-    els.researchInsights.className = "";
-    els.researchInsights.innerHTML = insights.length
-      ? deskSheet("research", {
-          placeholder: "Search insights",
-          label: "Search insights",
-          cards: matched.map(insightCard),
-          cols: ["Insight", "Severity", "Source", "Score", "Problem"],
-          rows: matched.map(insightRow),
-          empty: "Nothing in this severity.",
-        })
-      : emptyCard("No insights for this team yet.");
+    els.researchInsights.hidden = tab !== "insights";
+    if (tab === "insights") {
+      const matched = shown.filter((item) =>
+        deskMatch("research", item.title, item.problem, item.where, item.why, insightSource(item)?.name)
+      );
+      els.researchInsights.className = "";
+      els.researchInsights.innerHTML = insights.length
+        ? deskSheet("research", {
+            placeholder: "Search insights",
+            label: "Search insights",
+            cards: matched.map(insightCard),
+            cols: ["Insight", "Severity", "Source", "Score", "Problem"],
+            rows: matched.map(insightRow),
+            empty: "Nothing in this severity.",
+          })
+        : emptyCard("No insights for this team yet.");
+    }
+  }
+
+  if (els.researchPlanning) {
+    els.researchPlanning.hidden = tab !== "planning";
+    let html = "";
+    if (tab === "planning" && detail) {
+      html = researchStudyPage(open.item);
+    } else if (tab === "planning") {
+      const state = activeResearchStudyState();
+      const matched = sortedStudies().filter(
+        (item) =>
+          (state === "all" || researchStudyState(item) === state) &&
+          deskMatch("research-plans", item.title, item.kind, item.summary, item.who, item.where)
+      );
+      html = plans.length
+        ? deskSheet("research-plans", {
+            placeholder: "Search research",
+            label: "Search research",
+            cards: matched.map(researchStudyCard),
+            cols: ["Research", "Status", "Kind", "When", "Insights"],
+            rows: matched.map(researchStudyRow),
+            empty: "Nothing in this status.",
+          })
+        : emptyCard("No research yet. Build a plan with /ux-research once the evidence review says Build plan.");
+    }
+    setResearchHost(els.researchPlanning, html);
+  }
+
+  if (els.researchReporting) {
+    els.researchReporting.hidden = tab !== "reporting";
+    let html = "";
+    if (tab === "reporting" && detail) {
+      html = researchReportPage(open.item);
+    } else if (tab === "reporting") {
+      const matched = sortedReports().filter((item) =>
+        deskMatch("research-reports", item.title, item.kind, item.summary)
+      );
+      html = reports.length
+        ? deskSheet("research-reports", {
+            placeholder: "Search reports",
+            label: "Search reports",
+            cards: matched.map(researchReportCard),
+            cols: ["Report", "Kind", "Written", "From"],
+            rows: matched.map(researchReportRow),
+            empty: "Nothing matches that search.",
+          })
+        : emptyCard("No reports yet.");
+    }
+    setResearchHost(els.researchReporting, html);
   }
 
   setNavCount(els.navResearchCount, insights.length);
-}
-
-function researchPlan(item) {
-  const file = String(item.file || "");
-  const name = file.split("/").pop() || "plan.pdf";
-  const facts = [item.pages ? `${item.pages} pages` : "", item.format || ""].filter(Boolean).join(" ? ");
-  const notes = (item.notes || []).map((line) => `<li>${escapeHtml(line)}</li>`).join("");
-  return `
-    <section class="astral-card desk-block desk-plan">
-      <div class="desk-block-head desk-plan-head">
-        <div>
-          <h3>${escapeHtml(item.title || "Plan")}</h3>
-          ${facts ? `<p class="astral-muted">${escapeHtml(facts)}</p>` : ""}
-        </div>
-        <span class="desk-card-tags">${item.kind ? deskTag(item.kind, "scaffold") : ""}${insightSourceTag(item)}</span>
-      </div>
-      ${item.summary ? `<p>${escapeHtml(item.summary)}</p>` : ""}
-      ${notes ? `<ul class="notes">${notes}</ul>` : ""}
-      ${
-        file
-          ? `<div class="astral-actions desk-plan-actions">
-              <a class="astral-btn" href="${escapeHtml(file)}" target="_blank" rel="noreferrer">Open PDF</a>
-              <a class="brand-download" href="${escapeHtml(file)}" download="${escapeHtml(name)}">Download</a>
-            </div>
-            <iframe class="desk-plan-frame" src="${escapeHtml(file)}#view=FitH" title="${escapeHtml(
-              item.title || "Plan"
-            )} PDF" loading="lazy"></iframe>`
-          : ""
-      }
-    </section>
-  `;
 }
 
 function onResearchTab(event) {
   const tab = event.target.closest("[data-research-tab]");
   if (!tab) return;
   store.researchTab = tab.dataset.researchTab;
+  store.researchOpen = "";
   render();
   persistChrome();
+}
+
+function onResearchPage(event) {
+  const back = event.target.closest("[data-action='research-back']");
+  if (back) {
+    store.researchOpen = "";
+    render();
+    persistChrome();
+    document.querySelector(".stage")?.scrollTo?.({ top: 0 });
+    return;
+  }
+  const opener = event.target.closest("[data-action='research-open']");
+  if (!opener) return;
+  const id = String(opener.dataset.id || "");
+  store.researchTab = id.startsWith("report:") ? "reporting" : "planning";
+  store.researchOpen = id;
+  render();
+  persistChrome();
+  window.scrollTo({ top: 0 });
 }
 
 function renderStrategy() {
@@ -3924,6 +4316,8 @@ const CHROME_FIELDS = [
   "researchView",
   "researchSeverity",
   "researchTab",
+  "researchOpen",
+  "researchStudyState",
   "deskViews",
   "deskQueries",
   "patternStatus",
@@ -4238,6 +4632,8 @@ function applyChrome() {
     ? store.researchSeverity
     : "all";
   store.researchTab = activeResearchTab();
+  store.researchStudyState = activeResearchStudyState();
+  store.researchOpen = String(store.researchOpen || "");
   store.activePrototypeView = protoViewId(store.activePrototypeView);
   // A refresh keeps the place. Opening Portfolio from the rail still lands on All.
   store.prototypeScope = store.prototypeScope === "site" ? "site" : "group";
@@ -4856,6 +5252,14 @@ function onResearchClick(event) {
     persistChrome();
     return;
   }
+  const study = event.target.closest("[data-research-study]");
+  if (study) {
+    const id = study.dataset.researchStudy;
+    store.researchStudyState = RESEARCH_STUDY_STATES.some((item) => item.id === id) ? id : "all";
+    render();
+    persistChrome();
+    return;
+  }
   const filter = event.target.closest("[data-research-severity]");
   if (!filter) return;
   const id = filter.dataset.researchSeverity;
@@ -5240,6 +5644,8 @@ if (els.brandingTabs) els.brandingTabs.addEventListener("click", onBrandTab);
 if (els.researchView) els.researchView.addEventListener("click", onResearchClick);
 if (els.researchFilters) els.researchFilters.addEventListener("click", onResearchClick);
 if (els.researchTabs) els.researchTabs.addEventListener("click", onResearchTab);
+if (els.researchPlanning) els.researchPlanning.addEventListener("click", onResearchPage);
+if (els.researchReporting) els.researchReporting.addEventListener("click", onResearchPage);
 if (els.analyticsKeis) els.analyticsKeis.addEventListener("click", onAnalyticsClick);
 if (els.patternsList) els.patternsList.addEventListener("click", onPatternNav);
 if (els.skillsList) els.skillsList.addEventListener("click", onSkillNav);
