@@ -13711,6 +13711,63 @@ body:not(.is-share) .desk-shell {
   font-size: 0.75rem;
 }
 
+.desk-group-mark.astral-avatar {
+  --mark-bg: #d5f5f2;
+  --mark-ink: #02635c;
+  background: var(--mark-bg);
+  color: var(--mark-ink);
+  border-radius: 10px;
+}
+
+.desk-group-mark svg {
+  width: 18px;
+  height: 18px;
+}
+
+.desk-group-mark.is-sm.astral-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+}
+
+.desk-group-mark.is-sm svg {
+  width: 14px;
+  height: 14px;
+}
+
+.desk-group-mark.is-lg.astral-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+.desk-group-mark.is-lg svg {
+  width: 22px;
+  height: 22px;
+}
+
+.desk-group-mark[data-hue="amber"] { --mark-bg: #fef0c7; --mark-ink: #93370d; }
+.desk-group-mark[data-hue="green"] { --mark-bg: #dcfae3; --mark-ink: #05603a; }
+.desk-group-mark[data-hue="indigo"] { --mark-bg: #e0eaff; --mark-ink: #2d3282; }
+.desk-group-mark[data-hue="blue"] { --mark-bg: #d1e9ff; --mark-ink: #175cd3; }
+.desk-group-mark[data-hue="purple"] { --mark-bg: #f4ebff; --mark-ink: #6941c6; }
+.desk-group-mark[data-hue="rose"] { --mark-bg: #ffe4e8; --mark-ink: #c01048; }
+.desk-group-mark[data-hue="graphite"] { --mark-bg: #e9eaeb; --mark-ink: #181d27; }
+.desk-group-mark[data-hue="orange"] { --mark-bg: #fdead7; --mark-ink: #b93815; }
+.desk-group-mark[data-hue="brown"] { --mark-bg: #f2e6dc; --mark-ink: #6f3f1d; }
+
+.desk-cluster-title:has(.desk-group-mark),
+.desk-row-marked,
+.has-mark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.has-mark {
+  gap: 12px;
+}
+
 .desk-score b {
   color: #000;
   font-weight: 600;

@@ -1563,7 +1563,7 @@ function deskTable(cols, rows) {
   `;
 }
 
-function deskRow({ open, title, cells }) {
+function deskRow({ open, title, cells, mark }) {
   const dialog = open && open["data-open"] ? ' aria-haspopup="dialog"' : "";
   const head = open
     ? `<button type="button" class="desk-row-open" ${deskOpenAttrs(open)}${dialog}>${escapeHtml(
@@ -1572,7 +1572,7 @@ function deskRow({ open, title, cells }) {
     : escapeHtml(title);
   return `
     <tr class="${open ? "is-link" : ""}">
-      <th scope="row">${head}</th>
+      <th scope="row">${mark ? `<span class="desk-row-marked">${mark}${head}</span>` : head}</th>
       ${(cells || []).map((cell) => `<td>${cell}</td>`).join("")}
     </tr>
   `;
@@ -1669,11 +1669,53 @@ function deskAvatar(name) {
   )}</span>`;
 }
 
+// Desk-only marks for user groups. The shared icon set lives in astral-ui.js.
+const GROUP_ICON_MARKS = {
+  pound: `<path d="M16.2 7.4a3.7 3.7 0 0 0-6.9 1.9V13c0 2.6-.9 4.4-2.6 5.5h10.6M6.9 12.6h6.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
+  data: `<ellipse cx="12" cy="6" rx="7" ry="2.5" fill="none" stroke="currentColor" stroke-width="2" /><path d="M5 6v12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V6M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5" fill="none" stroke="currentColor" stroke-width="2" />`,
+  briefcase: `<rect x="3.5" y="7.5" width="17" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2" /><path d="M9 7.5v-2A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5v2M3.5 12.5h17" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />`,
+  pylon: `<path d="M12 3 7.5 21M12 3l4.5 18M5 8h14M8 14h8M6 21h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
+  streetlight: `<path d="M8 21V8a4 4 0 0 1 4-4h4.5M5 21h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /><path d="M13 8.5a3.5 3.5 0 0 1 7 0z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><path d="M16.5 11.5v1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />`,
+  archive: `<rect x="3.5" y="4.5" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="2" /><path d="M5 9v9.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V9M10 13h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
+};
+
+const GROUP_MARKS = {
+  "end-customer": { icon: "companies", hue: "teal" },
+  "energy-manager": { icon: "electricity", hue: "amber" },
+  "finance-user": { icon: "pound", hue: "green" },
+  "asset-manager": { icon: "servicing", hue: "indigo" },
+  "data-user": { icon: "data", hue: "blue" },
+  broker: { icon: "briefcase", hue: "purple" },
+  "portfolio-customer": { icon: "pylon", hue: "rose" },
+  "admin-user": { icon: "settings", hue: "graphite" },
+  "pda-unmetered": { icon: "streetlight", hue: "orange" },
+  "legacy-portal": { icon: "archive", hue: "brown" },
+};
+
+const GROUP_HUES = ["teal", "amber", "green", "indigo", "blue", "purple", "rose", "graphite", "orange", "brown"];
+
+function groupMarkOf(group) {
+  const id = String(group?.id || "");
+  if (GROUP_MARKS[id]) return GROUP_MARKS[id];
+  let hash = 0;
+  for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return { icon: "users", hue: GROUP_HUES[hash % GROUP_HUES.length] };
+}
+
+function groupMark(group, size) {
+  const { icon, hue } = groupMarkOf(group);
+  const inner = GROUP_ICON_MARKS[icon];
+  const svg = inner
+    ? `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${inner}</svg>`
+    : protoIconMark(icon);
+  return `<span class="astral-avatar desk-avatar desk-group-mark${size ? ` is-${size}` : ""}" data-hue="${hue}" aria-hidden="true">${svg}</span>`;
+}
+
 function groupItem(group) {
   const status = group.status || "draft";
   return deskCard({
     open: { "data-open": "group", "data-id": group.id },
-    lead: deskAvatar(group.name),
+    lead: groupMark(group),
     title: group.name,
     tags: deskTag(STATUS_LABEL[status] || "Draft", status),
     body: escapeHtml(cardLine(group, group.who) || "Open for the rest."),
@@ -1690,6 +1732,7 @@ function groupRow(group, kind) {
   const stages = (group.journey || []).length;
   return deskRow({
     open: { "data-open": kind, "data-id": group.id },
+    mark: groupMark(group, "sm"),
     title: group.name,
     cells: [
       escapeHtml(groupParentName(group) || "—"),
@@ -1736,7 +1779,7 @@ function groupClusters(groups, itemFn, include) {
       if (!cards.length) return "";
       return `
         <section class="desk-cluster">
-          <h4 class="desk-cluster-title">${escapeHtml(group.name)}</h4>
+          <h4 class="desk-cluster-title">${groupMark(group, "sm")}${escapeHtml(group.name)}</h4>
           <div class="astral-report-grid desk-grid">${cards.map(itemFn).join("")}</div>
         </section>
       `;
@@ -1801,7 +1844,7 @@ function journeyItem(group) {
   const stages = (group.journey || []).length;
   return deskCard({
     open: { "data-open": "journey", "data-id": group.id },
-    lead: deskAvatar(group.name),
+    lead: groupMark(group),
     title: group.name,
     tags: deskTag(STATUS_LABEL[status] || "Draft", status),
     body: escapeHtml(cardLine(group, group.who) || "Open for the map."),
@@ -2753,6 +2796,7 @@ function fillDetail() {
   if (!openDetail || !els.detailModal) return false;
   const { kind, id, scope } = openDetail;
   els.detailModal.dataset.wide = kind === "journey" ? "true" : "false";
+  els.detailTitle.classList.toggle("has-mark", kind === "group" || kind === "journey");
 
   if (kind === "person") {
     const person = (store.access.people || []).find((item) => item.id === id);
@@ -2792,7 +2836,7 @@ function fillDetail() {
     const group = (board().groups || []).find((item) => item.id === id);
     if (!group) return false;
     els.detailKicker.textContent = STATUS_LABEL[group.status] || "Draft";
-    els.detailTitle.textContent = group.name;
+    els.detailTitle.innerHTML = `${groupMark(group, "lg")}<span>${escapeHtml(group.name)}</span>`;
     els.detailBody.innerHTML = groupDetail(group);
     return true;
   }
@@ -2801,7 +2845,7 @@ function fillDetail() {
     const group = (board().groups || []).find((item) => item.id === id);
     if (!group) return false;
     els.detailKicker.textContent = STATUS_LABEL[group.status] || "Draft";
-    els.detailTitle.textContent = group.name;
+    els.detailTitle.innerHTML = `${groupMark(group, "lg")}<span>${escapeHtml(group.name)}</span>`;
     els.detailBody.innerHTML = `
       <p class="group-who">${escapeHtml(group.who || "")}</p>
       ${journeyPath(group)}
