@@ -14,6 +14,7 @@ const SECTIONS = [
   "today",
   "groups",
   "research",
+  "resources",
   "access",
   "library",
   "language",
@@ -113,6 +114,10 @@ const els = {
   skillsLead: document.getElementById("skills-lead"),
   skillsCount: document.getElementById("skills-count"),
   skillsList: document.getElementById("skills-list"),
+  resourcesLead: document.getElementById("resources-lead"),
+  resourcesCount: document.getElementById("resources-count"),
+  resourcesList: document.getElementById("resources-list"),
+  navResourcesCount: document.getElementById("nav-resources-count"),
   brandingLead: document.getElementById("branding-lead"),
   brandingCount: document.getElementById("branding-count"),
   brandingTabs: document.getElementById("branding-tabs"),
@@ -394,6 +399,7 @@ let store = null;
 let systems = { updated: "", systems: {} };
 let experience = { updated: "", keis: [], how: [], structure: [], cuts: [] };
 let skillsCatalog = { lead: "", groups: [] };
+let resourcesCatalog = { lead: "", themes: [], kinds: [] };
 let canWrite = false;
 let openDetail = null;
 
@@ -1097,6 +1103,8 @@ function normalize(data) {
     data.activePattern = data.activePattern || "";
     data.activeSkill = data.activeSkill || "";
     data.skillFold = data.skillFold || "";
+    data.activeResource = data.activeResource || "";
+    data.resourceKind = data.resourceKind || "all";
     if (!store) store = data;
     data.activePrototypeView = protoViewId(data.activePrototypeView);
     data.activePrototypeMeter = data.activePrototypeMeter || "";
@@ -1381,6 +1389,8 @@ function normalize(data) {
     activePattern: "",
     activeSkill: "",
     skillFold: "",
+    activeResource: "",
+    resourceKind: "all",
     teams: TEAMS,
     access: emptyAccess(),
     boards: {
@@ -1417,6 +1427,7 @@ const DESK_SECTION_ICONS = {
   today: "home",
   groups: "users",
   research: "analyse",
+  resources: "book",
   strategy: "outgoing",
   analytics: "chart-bar",
   access: "profile",
@@ -1428,6 +1439,21 @@ const DESK_SECTION_ICONS = {
   branding: "tag",
   workflow: "hours",
 };
+
+// Desk-only marks that the shared Astral icon set does not carry.
+const DESK_ICON_MARKS = {
+  book: `<path d="M5 5.5A1.5 1.5 0 0 1 6.5 4H19v13H6.5A1.5 1.5 0 0 0 5 18.5v-13z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><path d="M5 18.5A1.5 1.5 0 0 0 6.5 20H19v-3M9 8h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
+  layers: `<path d="M12 4 3.5 8.5 12 13l8.5-4.5L12 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><path d="M3.5 12.5 12 17l8.5-4.5M3.5 16.5 12 21l8.5-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
+  signpost: `<path d="M12 21V3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M12 5.5h6l2 2-2 2h-6M12 12H6l-2 2 2 2h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />`,
+  compass: `<circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="2" /><path d="m15.5 8.5-2 5-5 2 2-5 5-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />`,
+};
+
+function deskIconMark(name) {
+  const inner = DESK_ICON_MARKS[name];
+  return inner
+    ? `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${inner}</svg>`
+    : protoIconMark(name);
+}
 
 function deskView(section) {
   if (section === "research" && typeof activeResearchView === "function") {
@@ -2904,6 +2930,239 @@ function applySkillFolds() {
   });
 }
 
+function resourceKinds() {
+  return resourcesCatalog.kinds || [];
+}
+
+function resourceItems() {
+  return resourceKinds().flatMap((kind) =>
+    (kind.items || []).map((item) => ({
+      ...item,
+      kind: kind.id,
+      kindSingle: kind.single || kind.name,
+    }))
+  );
+}
+
+function resourceById(id) {
+  return resourceItems().find((item) => item.id === id) || null;
+}
+
+function resourceTheme(item) {
+  return (
+    (resourcesCatalog.themes || []).find((theme) => theme.id === item?.theme) || {
+      name: "",
+      icon: "book",
+      hue: "graphite",
+    }
+  );
+}
+
+function resourceMark(item, size) {
+  const theme = resourceTheme(item);
+  return `<span class="astral-avatar desk-avatar desk-group-mark${size ? ` is-${size}` : ""}" data-hue="${escapeHtml(
+    theme.hue || "graphite"
+  )}" aria-hidden="true">${deskIconMark(theme.icon || "book")}</span>`;
+}
+
+function activeResourceKind() {
+  const id = store?.resourceKind || "all";
+  return resourceKinds().some((kind) => kind.id === id && (kind.items || []).length) ? id : "all";
+}
+
+function resourceItem(item) {
+  const theme = resourceTheme(item);
+  return deskCard({
+    open: { "data-resource": item.id },
+    lead: resourceMark(item),
+    title: item.name,
+    body: escapeHtml(cardLine(item, item.summary)),
+    foot: `<span class="astral-muted">${escapeHtml(
+      [item.kindSingle, theme.name].filter(Boolean).join(" \u00b7 ")
+    )}</span>`,
+  });
+}
+
+function resourceRow(item) {
+  return deskRow({
+    open: { "data-resource": item.id },
+    mark: resourceMark(item, "sm"),
+    title: item.name,
+    cells: [
+      escapeHtml(item.kindSingle || ""),
+      escapeHtml(resourceTheme(item).name || ""),
+      `<span class="desk-cell-line">${escapeHtml(cardLine(item, item.summary))}</span>`,
+    ],
+  });
+}
+
+function resourceStep(item, dir) {
+  if (!item) return "<span></span>";
+  const label = dir === "next" ? "Next" : "Previous";
+  return `
+    <button type="button" class="desk-law-step${dir === "next" ? " is-next" : ""}" data-resource="${escapeHtml(item.id)}">
+      ${dir === "next" ? "" : protoIconMark("prev")}
+      <span class="desk-law-step-text">
+        <span class="astral-muted">${label}</span>
+        <strong>${escapeHtml(item.name)}</strong>
+      </span>
+      ${dir === "next" ? protoIconMark("next") : ""}
+    </button>
+  `;
+}
+
+function resourcePage(item) {
+  const theme = resourceTheme(item);
+  const siblings = resourceItems().filter((entry) => entry.kind === item.kind);
+  const at = siblings.findIndex((entry) => entry.id === item.id);
+  const related = (item.related || []).map(resourceById).filter(Boolean);
+  const takeaways = (item.takeaways || []).map((line) => `<li>${escapeHtml(line)}</li>`).join("");
+  const reading = (item.reading || [])
+    .map(
+      (link) => `
+      <li>
+        <a class="desk-reading-link" href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">
+          <span class="desk-reading-title">${escapeHtml(link.title)}</span>
+          <span class="astral-muted">${escapeHtml(link.by || "")}</span>
+        </a>
+      </li>`
+    )
+    .join("");
+  const ask = item.ask
+    ? deskSection(
+        "Ask in a review",
+        `<p>${escapeHtml(item.ask)}</p>`,
+        "A question to bring to IMSERV design reviews."
+      ).replace('class="astral-card desk-block"', 'class="astral-card desk-block is-ask"')
+    : "";
+  return `
+    ${deskDetailHead({
+      back: "resource-back",
+      where: "all resources",
+      kicker: `<span class="desk-card-tags"><span class="astral-tag">${escapeHtml(
+        item.kindSingle || "Resource"
+      )}</span>${theme.name ? `<span class="astral-muted">${escapeHtml(theme.name)}</span>` : ""}</span>`,
+      title: item.name,
+      mark: resourceMark(item, "lg"),
+    })}
+    <section class="astral-card desk-law-poster" data-hue="${escapeHtml(theme.hue || "graphite")}">
+      <span class="desk-law-poster-mark" aria-hidden="true">${deskIconMark(theme.icon || "book")}</span>
+      <p class="desk-law-statement">${escapeHtml(item.summary || "")}</p>
+    </section>
+    <div class="desk-group-pair">
+      ${deskSection("Takeaways", takeaways ? `<ol class="desk-law-takeaways">${takeaways}</ol>` : "<p>Not written yet.</p>")}
+      ${deskSection(
+        "Origins",
+        `<p>${escapeHtml(item.origins || "Not written yet.")}</p>${
+          item.source
+            ? `<p class="desk-law-source"><span class="field-label">Source</span><span>${escapeHtml(item.source)}</span></p>`
+            : ""
+        }`
+      )}
+    </div>
+    ${ask}
+    ${reading ? deskSection("Further reading", `<ul class="desk-reading">${reading}</ul>`, "Opens in a new tab.") : ""}
+    ${
+      related.length
+        ? deskSection("Related", `<div class="astral-report-grid desk-grid">${related.map(resourceItem).join("")}</div>`)
+        : ""
+    }
+    <nav class="desk-law-pager" aria-label="More ${escapeHtml((item.kindSingle || "resource").toLowerCase())}s">
+      ${resourceStep(at > 0 ? siblings[at - 1] : null, "prev")}
+      ${resourceStep(at >= 0 && at < siblings.length - 1 ? siblings[at + 1] : null, "next")}
+    </nav>
+  `;
+}
+
+let resourceListScroll = null;
+
+function openResource(id) {
+  if (!resourceById(id)) return;
+  const scroller = deskScroller();
+  if (!store.activeResource) resourceListScroll = scroller?.scrollTop || 0;
+  store.activeSection = "resources";
+  store.activeResource = id;
+  render();
+  persistChrome();
+  if (scroller) scroller.scrollTop = 0;
+}
+
+function closeResource() {
+  store.activeResource = "";
+  render();
+  persistChrome();
+  const scroller = deskScroller();
+  if (scroller) scroller.scrollTop = resourceListScroll || 0;
+  resourceListScroll = null;
+}
+
+function onResourceNav(event) {
+  if (event.target.closest("[data-action='resource-back']")) {
+    closeResource();
+    return;
+  }
+  const kind = event.target.closest("[data-resource-kind]");
+  if (kind) {
+    store.resourceKind = kind.dataset.resourceKind;
+    render();
+    persistChrome();
+    deskRefocus(`[data-resource-kind="${CSS.escape(kind.dataset.resourceKind)}"]`);
+    return;
+  }
+  const card = event.target.closest("[data-resource]");
+  if (card) openResource(card.dataset.resource);
+}
+
+function renderResources() {
+  if (!els.resourcesLead || !els.resourcesList) return;
+  const kinds = resourceKinds();
+  const items = resourceItems();
+  const open = items.find((item) => item.id === store.activeResource) || null;
+  if (!open) store.activeResource = "";
+  els.resourcesLead.textContent = resourcesCatalog.lead || "";
+  if (els.resourcesCount) {
+    els.resourcesCount.textContent = items.length === 1 ? "1 resource" : `${items.length} resources`;
+  }
+  setPanelDetail("resources", Boolean(open));
+  if (open) {
+    els.resourcesList.innerHTML = resourcePage(open);
+  } else {
+    const kind = activeResourceKind();
+    const help = kinds.find((entry) => entry.id === kind)?.help || "";
+    const shown = items
+      .filter((item) => kind === "all" || item.kind === kind)
+      .filter((item) =>
+        deskMatch("resources", item.name, item.summary, item.also, item.kindSingle, resourceTheme(item).name)
+      );
+    els.resourcesList.innerHTML = `
+      ${deskStats(
+        [
+          { id: "all", name: "All resources", count: items.length },
+          ...kinds.map((entry) => ({
+            id: entry.id,
+            name: entry.name,
+            count: (entry.items || []).length,
+            disabled: !(entry.items || []).length,
+          })),
+        ],
+        kind,
+        "data-resource-kind",
+        "Resource type"
+      )}
+      ${help ? `<p class="astral-muted desk-sheet-help">${escapeHtml(help)}</p>` : ""}
+      ${deskSheet("resources", {
+        placeholder: "Search resources",
+        label: "Search resources",
+        cards: shown.map(resourceItem),
+        cols: ["Resource", "Type", "Theme", "Summary"],
+        rows: shown.map(resourceRow),
+        empty: items.length ? "Nothing of this type yet." : "No resources yet.",
+      })}
+    `;
+  }
+  setNavCount(els.navResourcesCount, items.length);
+}
+
 function findTool(id, scope) {
   if (scope === "team") {
     return (board().access || []).find((item) => item.id === id) || null;
@@ -3225,7 +3484,7 @@ function renderNav() {
   );
   if (bar && current) {
     const label = current.querySelector(".desk-rail-label")?.textContent || "";
-    bar.innerHTML = `${protoIconMark(DESK_SECTION_ICONS[store.activeSection] || "home")}<span>${escapeHtml(
+    bar.innerHTML = `${deskIconMark(DESK_SECTION_ICONS[store.activeSection] || "home")}<span>${escapeHtml(
       label
     )}</span>`;
   }
@@ -3234,7 +3493,7 @@ function renderNav() {
 function deskShellIcons() {
   document.querySelectorAll(".desk-rail .side-link[data-icon]").forEach((link) => {
     if (link.querySelector("svg")) return;
-    link.insertAdjacentHTML("afterbegin", protoIconMark(link.dataset.icon));
+    link.insertAdjacentHTML("afterbegin", deskIconMark(link.dataset.icon));
   });
   const menu = document.querySelector(".desk-menu");
   if (menu && !menu.querySelector("svg")) {
@@ -4682,6 +4941,7 @@ function render() {
   renderLanguage();
   renderPatterns();
   renderSkills();
+  renderResources();
   renderPrototype();
   renderBranding();
 
@@ -4724,6 +4984,8 @@ const CHROME_FIELDS = [
   "groupTab",
   "groupReturn",
   "activeSkill",
+  "activeResource",
+  "resourceKind",
   "activePrototypeView",
   "activePrototypeMeter",
   "activePrototypeQuery",
@@ -5960,6 +6222,7 @@ function setSection(section) {
     store.activeGroup = "";
     store.groupReturn = "";
   }
+  if (section === "resources") store.activeResource = "";
   store.activeSection = section;
   if (sharePrototype()) store.prototypeFullscreen = true;
   render();
@@ -6049,6 +6312,21 @@ async function loadSkills() {
   }
 }
 
+async function loadResources() {
+  try {
+    const res = await fetch("/data/resources.json", { cache: "no-store" });
+    if (!res.ok) throw new Error("missing resources");
+    const data = await res.json();
+    resourcesCatalog = {
+      lead: data.lead || "",
+      themes: Array.isArray(data.themes) ? data.themes : [],
+      kinds: Array.isArray(data.kinds) ? data.kinds : [],
+    };
+  } catch {
+    resourcesCatalog = { lead: "", themes: [], kinds: [] };
+  }
+}
+
 async function load() {
   try {
     if (window.WORK_DESK_BOOT?.board) {
@@ -6072,6 +6350,7 @@ async function load() {
   await loadSystems();
   await loadExperience();
   await loadSkills();
+  await loadResources();
   applyChrome();
   clampSection();
   applyPreviewQuery();
@@ -6096,6 +6375,7 @@ if (els.researchReporting) els.researchReporting.addEventListener("click", onRes
 if (els.analyticsKeis) els.analyticsKeis.addEventListener("click", onAnalyticsClick);
 if (els.patternsList) els.patternsList.addEventListener("click", onPatternNav);
 if (els.skillsList) els.skillsList.addEventListener("click", onSkillNav);
+if (els.resourcesList) els.resourcesList.addEventListener("click", onResourceNav);
 if (els.prototypeRoot) {
   els.prototypeRoot.addEventListener("click", onPrototype);
   els.prototypeRoot.addEventListener("input", onPrototypeInput);

@@ -13831,6 +13831,179 @@ body:not(.is-share) .desk-shell {
   }
 }
 
+/* A resource's own page (UX laws first): poster, takeaways, origins, reading, related, pager. */
+.desk-law-poster {
+  --mark-bg: #d5f5f2;
+  --mark-ink: #02635c;
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 32px;
+  background: var(--mark-bg);
+  color: var(--mark-ink);
+  border-color: transparent;
+}
+
+.desk-law-poster[data-hue="amber"] { --mark-bg: #fef0c7; --mark-ink: #93370d; }
+.desk-law-poster[data-hue="green"] { --mark-bg: #dcfae3; --mark-ink: #05603a; }
+.desk-law-poster[data-hue="indigo"] { --mark-bg: #e0eaff; --mark-ink: #2d3282; }
+.desk-law-poster[data-hue="blue"] { --mark-bg: #d1e9ff; --mark-ink: #175cd3; }
+.desk-law-poster[data-hue="purple"] { --mark-bg: #f4ebff; --mark-ink: #6941c6; }
+.desk-law-poster[data-hue="graphite"] { --mark-bg: #e9eaeb; --mark-ink: #181d27; }
+
+.desk-law-poster-mark svg {
+  display: block;
+  width: 40px;
+  height: 40px;
+}
+
+.desk-law-statement {
+  margin: 0;
+  max-width: 40ch;
+  font-size: 1.5rem;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.desk-law-takeaways {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: takeaway;
+}
+
+.desk-law-takeaways li {
+  position: relative;
+  padding-left: 36px;
+  counter-increment: takeaway;
+}
+
+.desk-law-takeaways li::before {
+  content: counter(takeaway);
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #f5f5f5;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.desk-law-source {
+  display: grid;
+  gap: 2px;
+  margin: 12px 0 0;
+}
+
+.desk-block.is-ask {
+  box-shadow: inset 4px 0 0 #2e90fa;
+}
+
+.desk-block.is-ask p:last-child {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.desk-reading {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.desk-reading-link {
+  display: grid;
+  gap: 2px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border-subtle, #e0e0e0);
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.desk-reading-link:hover {
+  background: #f5f5f5;
+}
+
+.desk-reading-link:focus-visible {
+  outline: 2px solid #2e90fa;
+  outline-offset: 2px;
+}
+
+.desk-reading-title {
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.desk-law-pager {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-stack-default, 16px);
+}
+
+.desk-law-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--color-border-subtle, #e0e0e0);
+  border-radius: 12px;
+  background: var(--color-background-surface, #fff);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.desk-law-step.is-next {
+  grid-column: 2;
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.desk-law-step:hover {
+  background: #f5f5f5;
+}
+
+.desk-law-step svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+.desk-law-step-text {
+  display: grid;
+  gap: 2px;
+}
+
+@media (max-width: 760px) {
+  .desk-law-poster {
+    padding: 20px;
+    gap: 12px;
+  }
+
+  .desk-law-statement {
+    font-size: 1.1875rem;
+  }
+
+  .desk-law-pager {
+    grid-template-columns: 1fr;
+  }
+
+  .desk-law-step.is-next {
+    grid-column: auto;
+  }
+}
+
 .desk-score b {
   color: #000;
   font-weight: 600;

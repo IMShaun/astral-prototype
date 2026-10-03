@@ -1,0 +1,628 @@
+{
+  "lead": "Topics, principles, laws, and frameworks to lean on in UX and UI work. Open a card for what it says, where it came from, and a question to ask in a review.",
+  "themes": [
+    { "id": "perception", "name": "Perception", "icon": "show", "hue": "blue" },
+    { "id": "memory", "name": "Memory and attention", "icon": "layers", "hue": "purple" },
+    { "id": "choices", "name": "Choices", "icon": "signpost", "hue": "amber" },
+    { "id": "expectations", "name": "Expectations", "icon": "compass", "hue": "teal" },
+    { "id": "pace", "name": "Effort and pace", "icon": "hours", "hue": "green" },
+    { "id": "simplicity", "name": "Simplicity", "icon": "filter", "hue": "indigo" }
+  ],
+  "kinds": [
+    {
+      "id": "laws",
+      "name": "Laws",
+      "single": "UX law",
+      "help": "Rules of thumb from psychology and design research. Written in our words, with the original page linked under Further reading.",
+      "items": [
+        {
+          "id": "aesthetic-usability-effect",
+          "name": "Aesthetic-Usability Effect",
+          "theme": "choices",
+          "summary": "People tend to judge a good-looking design as easier to use.",
+          "takeaways": [
+            "A polished look builds trust before anyone has done a task, so first impressions carry more weight than we think.",
+            "People forgive small faults in something that looks cared for, and give up sooner on something that looks rough.",
+            "Polish can hide real problems in testing. Watch what people do, not only what they say about it."
+          ],
+          "origins": "In 1995 Masaaki Kurosu and Kaori Kashimura at Hitachi's design centre asked people to rate a set of cash machine screen layouts on looks and on ease of use. How easy people expected a layout to be tracked how good it looked far more closely than how well it was built. Noam Tractinsky repeated the study in Israel in 1997 and found an even stronger link.",
+          "source": "Kurosu and Kashimura, Apparent usability vs. inherent usability, CHI 1995",
+          "ask": "If this screen looked plain, would people still finish the task? Check task success in testing, not only how much people liked it.",
+          "reading": [
+            { "title": "Aesthetic-Usability Effect", "by": "Laws of UX", "url": "https://lawsofux.com/aesthetic-usability-effect/" },
+            { "title": "The Aesthetic-Usability Effect", "by": "Nielsen Norman Group", "url": "https://www.nngroup.com/articles/aesthetic-usability-effect/" },
+            { "title": "Aesthetic-usability effect", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Aesthetic%E2%80%93usability_effect" }
+          ],
+          "related": ["peak-end-rule", "doherty-threshold", "von-restorff-effect"]
+        },
+        {
+          "id": "choice-overload",
+          "name": "Choice Overload",
+          "theme": "choices",
+          "summary": "Too many options at once make people slower to choose, less sure of their choice, or likely to walk away.",
+          "takeaways": [
+            "More options feel like freedom but often stall the decision.",
+            "Show a short, sensible set first and let people ask for more.",
+            "Help people compare. Side by side views and clear defaults take the load off."
+          ],
+          "origins": "Alvin Toffler named the idea 'overchoice' in Future Shock in 1970. In 2000 Sheena Iyengar and Mark Lepper set up a tasting stall in a grocery shop. A table of 24 jams drew more visitors, but a table of 6 led to far more sales. Barry Schwartz took the idea to a wide audience in The Paradox of Choice in 2004.",
+          "source": "Iyengar and Lepper, When choice is demotivating, Journal of Personality and Social Psychology, 2000",
+          "ask": "How many options does someone face before their first action? Could a default or a shortlist take most people where they need to go?",
+          "reading": [
+            { "title": "Choice Overload", "by": "Laws of UX", "url": "https://lawsofux.com/choice-overload/" },
+            { "title": "Simplicity wins over abundance of choice", "by": "Nielsen Norman Group", "url": "https://www.nngroup.com/articles/simplicity-vs-choice/" },
+            { "title": "Overchoice", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Overchoice" }
+          ],
+          "related": ["hicks-law", "cognitive-load", "pareto-principle"]
+        },
+        {
+          "id": "chunking",
+          "name": "Chunking",
+          "theme": "memory",
+          "summary": "People take in and remember information more easily when it is broken into small, meaningful groups.",
+          "takeaways": [
+            "Group related content so the eye can take in one piece at a time.",
+            "Long strings such as account or meter numbers are easier to read and check when split into parts.",
+            "Chunking is about meaning, not only spacing. Each group should have one clear job."
+          ],
+          "origins": "George Miller used the word 'chunk' in 1956 to describe how we pack several items into one unit to get round the limits of short-term memory. In 1973 William Chase and Herbert Simon showed that chess masters remember board positions as familiar chunks, which is why they recall real games well but random boards no better than beginners.",
+          "source": "Miller, The magical number seven, plus or minus two, Psychological Review, 1956",
+          "ask": "Can someone scan this page and name its parts? Are long reference numbers shown in groups?",
+          "reading": [
+            { "title": "Chunking", "by": "Laws of UX", "url": "https://lawsofux.com/chunking/" },
+            { "title": "How chunking helps content processing", "by": "Nielsen Norman Group", "url": "https://www.nngroup.com/articles/chunking/" },
+            { "title": "Chunking (psychology)", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Chunking_(psychology)" }
+          ],
+          "related": ["millers-law", "working-memory", "law-of-proximity"]
+        },
+        {
+          "id": "cognitive-bias",
+          "name": "Cognitive Bias",
+          "theme": "choices",
+          "summary": "Mental shortcuts that make judgement fast also make it lean in predictable directions.",
+          "takeaways": [
+            "Everyone has biases, including the people designing and the people testing.",
+            "Framing, order, and defaults change what people choose, so use them with care.",
+            "In research, ask about what people did, not what they would do, and look for evidence against your idea."
+          ],
+          "origins": "Amos Tversky and Daniel Kahneman introduced the idea in the early 1970s. Their 1974 paper in Science described heuristics such as anchoring and availability, and the systematic errors they produce. Kahneman later shared the 2002 Nobel prize in economics for this work.",
+          "source": "Tversky and Kahneman, Judgment under uncertainty: heuristics and biases, Science, 1974",
+          "ask": "Does the way we frame this choice push people one way? Would we be happy if they knew why it is laid out like this?",
+          "reading": [
+            { "title": "Cognitive Bias", "by": "Laws of UX", "url": "https://lawsofux.com/cognitive-bias/" },
+            { "title": "Cognitive bias", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Cognitive_bias" }
+          ],
+          "related": ["peak-end-rule", "serial-position-effect", "mental-model"]
+        },
+        {
+          "id": "cognitive-load",
+          "name": "Cognitive Load",
+          "theme": "memory",
+          "summary": "The mental effort a design asks for. When it is more than someone has to spare, tasks slow down and mistakes go up.",
+          "takeaways": [
+            "Some effort comes from the task itself. The rest comes from the design, and that part is ours to cut.",
+            "Remove what does not help the task: extra choices, unclear labels, and things people have to hold in their heads.",
+            "Show information where it is needed rather than asking people to remember it from another screen."
+          ],
+          "origins": "John Sweller developed cognitive load theory in the late 1980s while studying how students solve problems. He split load into the effort the subject needs and the extra effort caused by how it is presented, and showed that cutting the extra effort improves learning.",
+          "source": "Sweller, Cognitive load during problem solving, Cognitive Science, 1988",
+          "ask": "What does someone have to remember to finish this task? Can the screen remember it for them?",
+          "reading": [
+            { "title": "Cognitive Load", "by": "Laws of UX", "url": "https://lawsofux.com/cognitive-load/" },
+            { "title": "Minimize cognitive load to maximize usability", "by": "Nielsen Norman Group", "url": "https://www.nngroup.com/articles/minimize-cognitive-load/" },
+            { "title": "Cognitive load", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Cognitive_load" }
+          ],
+          "related": ["working-memory", "choice-overload", "teslers-law"]
+        },
+        {
+          "id": "doherty-threshold",
+          "name": "Doherty Threshold",
+          "theme": "pace",
+          "summary": "When a system answers in under about 400 milliseconds, people stay in step with it and work faster.",
+          "takeaways": [
+            "Below about 400ms a response feels immediate and people keep their train of thought.",
+            "When work takes longer, show progress straight away so the wait feels shorter and safer.",
+            "Perceived speed counts. Load the parts people look at first and fill in the rest."
+          ],
+          "origins": "In 1982 IBM researchers Walter Doherty and Ahrvind Thadani argued that the then common target of a two second response was far too slow. Their paper showed that when responses came in under 400 milliseconds, people worked faster and got more done, which more than paid for faster machines.",
+          "source": "Doherty and Thadani, The economic value of rapid response time, IBM, 1982",
+          "ask": "What does someone see in the first half second after they change a filter or date range? Is there a loading state for anything slower?",
+          "reading": [
+            { "title": "Doherty Threshold", "by": "Laws of UX", "url": "https://lawsofux.com/doherty-threshold/" },
+            { "title": "Response times: the 3 important limits", "by": "Nielsen Norman Group", "url": "https://www.nngroup.com/articles/response-times-3-important-limits/" }
+          ],
+          "related": ["flow", "fittss-law", "aesthetic-usability-effect"]
+        },
+        {
+          "id": "fittss-law",
+          "name": "Fitts's Law",
+          "theme": "pace",
+          "summary": "The further away and the smaller a target is, the longer it takes to hit.",
+          "takeaways": [
+            "Make the things people press often big enough and easy to reach.",
+            "Keep enough space between targets so people do not hit the wrong one.",
+            "Put actions close to the content they act on."
+          ],
+          "origins": "Psychologist Paul Fitts published the model in 1954. He asked people to tap back and forth between two targets of different sizes and distances, and found movement time could be predicted from the ratio of distance to target width. It is one of the few laws in this field with a formula, and it still holds for mice, fingers, and pointers.",
+          "source": "Fitts, The information capacity of the human motor system in controlling the amplitude of movement, Journal of Experimental Psychology, 1954",
+          "ask": "Is the whole row or card clickable, or only a small link inside it? Are icon buttons at least 24px with room around them?",
+          "reading": [
+            { "title": "Fitts's Law", "by": "Laws of UX", "url": "https://lawsofux.com/fittss-law/" },
+            { "title": "Fitts's law and its applications in UX", "by": "Nielsen Norman Group", "url": "https://www.nngroup.com/articles/fitts-law/" },
+            { "title": "Fitts's law", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Fitts%27s_law" }
+          ],
+          "related": ["hicks-law", "doherty-threshold", "law-of-proximity"]
+        },
+        {
+          "id": "flow",
+          "name": "Flow",
+          "theme": "pace",
+          "summary": "The focused state where someone is fully absorbed in a task that is hard enough to engage them but not so hard it stops them.",
+          "card": "The focused state where a task is hard enough to absorb someone but not so hard it stops them.",
+          "takeaways": [
+            "Flow sits between boredom and anxiety. Match the challenge to the person's skill.",
+            "Clear goals and quick feedback help people keep going.",
+            "Interruptions, slow screens, and surprises break it, and it takes time to come back."
+          ],
+          "origins": "Psychologist Mihaly Csikszentmihalyi studied artists, chess players, climbers, and others who lost track of time in their work. He described the state in Beyond Boredom and Anxiety in 1975 and took it to a wide audience in his 1990 book Flow.",
+          "source": "Csikszentmihalyi, Beyond Boredom and Anxiety, 1975",
+          "ask": "Where does this task stop someone for no good reason: a confirm step, a page reload, a missing default?",
+          "reading": [
+            { "title": "Flow", "by": "Laws of UX", "url": "https://lawsofux.com/flow/" },
+            { "title": "Flow (psychology)", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Flow_(psychology)" }
+          ],
+          "related": ["doherty-threshold", "goal-gradient-effect", "zeigarnik-effect"]
+        },
+        {
+          "id": "goal-gradient-effect",
+          "name": "Goal-Gradient Effect",
+          "theme": "choices",
+          "summary": "People speed up as they get closer to finishing.",
+          "takeaways": [
+            "Show progress in multi-step tasks so people can see the end.",
+            "A head start, even an artificial one, makes people more likely to finish.",
+            "Keep the last steps light. That is where people expect to be nearly done."
+          ],
+          "origins": "Behaviourist Clark Hull put forward the goal-gradient hypothesis in 1932 after seeing rats run faster the nearer they got to food. In 2006 Ran Kivetz, Oleg Urminsky, and Yuhuang Zheng showed the same in people: coffee shop customers given a 12-stamp card with 2 stamps already filled finished it sooner than those given a blank 10-stamp card.",
+          "source": "Kivetz, Urminsky and Zheng, The goal-gradient hypothesis resurrected, Journal of Marketing Research, 2006",
+          "ask": "In a long setup or report flow, can people see how far they have come and how much is left?",
+          "reading": [
+            { "title": "Goal-Gradient Effect", "by": "Laws of UX", "url": "https://lawsofux.com/goal-gradient-effect/" }
+          ],
+          "related": ["zeigarnik-effect", "peak-end-rule", "flow"]
+        },
+        {
+          "id": "hicks-law",
+          "name": "Hick's Law",
+          "theme": "choices",
+          "summary": "The more choices and the harder they are to tell apart, the longer a decision takes.",
+          "takeaways": [
+            "Cut the options at the moment a quick decision matters.",
+            "Break a complex choice into smaller steps.",
+            "Highlight the likely choice, but do not oversimplify so far that people cannot find what they need."
+          ],
+          "origins": "In 1952 William Edmund Hick, and in 1953 Ray Hyman, ran experiments with sets of lights and matching keys. Reaction time rose with the logarithm of the number of choices, so each doubling of options added roughly the same extra time.",
+          "source": "Hick, On the rate of gain of information, Quarterly Journal of Experimental Psychology, 1952",
+          "ask": "Which choice do most people make here? Is it the easiest one to see?",
+          "reading": [
+            { "title": "Hick's Law", "by": "Laws of UX", "url": "https://lawsofux.com/hicks-law/" },
+            { "title": "Hick's law", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Hick%27s_law" }
+          ],
+          "related": ["choice-overload", "fittss-law", "millers-law"]
+        },
+        {
+          "id": "jakobs-law",
+          "name": "Jakob's Law",
+          "theme": "expectations",
+          "summary": "People spend most of their time on other products, so they expect yours to work the same way.",
+          "takeaways": [
+            "People bring habits from the tools they use every day. Lean on them.",
+            "Change a familiar pattern only when the gain is clear, and help people across.",
+            "When replacing an old system, let people keep familiar paths for a while."
+          ],
+          "origins": "Usability researcher Jakob Nielsen made the point in 2000, arguing that because users spend most of their time on other sites, those sites set their expectations. The name Jakob's Law came later as the idea spread.",
+          "source": "Nielsen, End of web design, Nielsen Norman Group, 2000",
+          "ask": "Does this table, filter, or date picker behave like the ones in Excel and the tools our users already know? If not, why not?",
+          "reading": [
+            { "title": "Jakob's Law", "by": "Laws of UX", "url": "https://lawsofux.com/jakobs-law/" },
+            { "title": "End of web design", "by": "Nielsen Norman Group", "url": "https://www.nngroup.com/articles/end-of-web-design/" },
+            { "title": "Jakob's Law of the internet user experience", "by": "Nielsen Norman Group (video)", "url": "https://www.nngroup.com/videos/jakobs-law-internet-ux/" }
+          ],
+          "related": ["mental-model", "paradox-of-the-active-user", "postels-law"]
+        },
+        {
+          "id": "law-of-common-region",
+          "name": "Law of Common Region",
+          "theme": "perception",
+          "summary": "Things inside the same boundary are seen as a group.",
+          "takeaways": [
+            "A card, panel, or background colour tells people these items belong together.",
+            "A boundary groups more strongly than space alone, so use it when grouping really matters.",
+            "Too many boxes inside boxes add noise. Use the lightest boundary that works."
+          ],
+          "origins": "Stephen Palmer added common region to the Gestalt grouping principles in 1992. He showed that a shared outline can group items even when other cues, such as closeness, pull the other way.",
+          "source": "Palmer, Common region: a new principle of perceptual grouping, Cognitive Psychology, 1992",
+          "ask": "Do the boxes on this page match the groups people think in? Are any boxes doing nothing?",
+          "reading": [
+            { "title": "Law of Common Region", "by": "Laws of UX", "url": "https://lawsofux.com/law-of-common-region/" },
+            { "title": "The principle of common region", "by": "Nielsen Norman Group", "url": "https://www.nngroup.com/articles/common-region/" },
+            { "title": "Principles of grouping", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Principles_of_grouping" }
+          ],
+          "related": ["law-of-proximity", "law-of-uniform-connectedness", "chunking"]
+        },
+        {
+          "id": "law-of-proximity",
+          "name": "Law of Proximity",
+          "theme": "perception",
+          "summary": "Things that sit close together are seen as related.",
+          "takeaways": [
+            "Space is a grouping tool. Tighter inside a group, looser between groups.",
+            "Keep labels close to the field or value they describe.",
+            "Equal spacing everywhere makes a page hard to read because nothing groups."
+          ],
+          "origins": "One of the Gestalt grouping principles set out by Max Wertheimer in 1923. The Gestalt psychologists in Germany showed that we see whole patterns before parts, and that nearness is one of the strongest cues for what belongs together.",
+          "source": "Wertheimer, Laws of organization in perceptual forms, 1923",
+          "ask": "Is a label closer to its own value than to the next one? Does the spacing show the groups without the boxes?",
+          "reading": [
+            { "title": "Law of Proximity", "by": "Laws of UX", "url": "https://lawsofux.com/law-of-proximity/" },
+            { "title": "Proximity principle in visual design", "by": "Nielsen Norman Group", "url": "https://www.nngroup.com/articles/gestalt-proximity/" },
+            { "title": "Principles of grouping", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Principles_of_grouping" }
+          ],
+          "related": ["law-of-common-region", "law-of-similarity", "chunking"]
+        },
+        {
+          "id": "law-of-pragnanz",
+          "name": "Law of Prägnanz",
+          "also": "Pragnanz good figure simplicity",
+          "theme": "perception",
+          "summary": "People read complex or unclear shapes in the simplest way they can.",
+          "takeaways": [
+            "The eye looks for the simplest whole. Simple shapes and layouts are read faster.",
+            "Clear, regular forms are easier to remember than busy ones.",
+            "If people can read a layout two ways, they will often pick the simpler one, which may not be yours."
+          ],
+          "origins": "Prägnanz is German for conciseness or clarity. It is the core idea of Gestalt psychology from Max Wertheimer, Kurt Koffka, and Wolfgang Köhler in the 1920s, and Koffka set it out in Principles of Gestalt Psychology in 1935. It is sometimes called the law of good figure or of simplicity.",
+          "source": "Koffka, Principles of Gestalt Psychology, 1935",
+          "ask": "Could this chart, icon, or layout be read a simpler way than we meant? What would someone see at a glance?",
+          "reading": [
+            { "title": "Law of Prägnanz", "by": "Laws of UX", "url": "https://lawsofux.com/law-of-pr%C3%A4gnanz/" },
+            { "title": "Prägnanz", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Pr%C3%A4gnanz" },
+            { "title": "Gestalt psychology", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Gestalt_psychology" }
+          ],
+          "related": ["occams-razor", "law-of-similarity", "aesthetic-usability-effect"]
+        },
+        {
+          "id": "law-of-similarity",
+          "name": "Law of Similarity",
+          "theme": "perception",
+          "summary": "Things that look alike are seen as alike, even when they are apart.",
+          "takeaways": [
+            "Colour, shape, and size tell people which items do the same job.",
+            "Keep links and buttons consistent so people know what is clickable.",
+            "Make things that behave differently look different."
+          ],
+          "origins": "Another of the Gestalt grouping principles described by Max Wertheimer in 1923. His dot patterns showed that people group items that share colour or shape, even when the spacing is even.",
+          "source": "Wertheimer, Laws of organization in perceptual forms, 1923",
+          "ask": "Does anything here look clickable but is not, or look like text but is a button? Do the meter colours mean the same thing on every chart?",
+          "reading": [
+            { "title": "Law of Similarity", "by": "Laws of UX", "url": "https://lawsofux.com/law-of-similarity/" },
+            { "title": "Similarity principle in visual design", "by": "Nielsen Norman Group", "url": "https://www.nngroup.com/articles/gestalt-similarity/" },
+            { "title": "Principles of grouping", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Principles_of_grouping" }
+          ],
+          "related": ["law-of-proximity", "von-restorff-effect", "jakobs-law"]
+        },
+        {
+          "id": "law-of-uniform-connectedness",
+          "name": "Law of Uniform Connectedness",
+          "theme": "perception",
+          "summary": "Things joined by a line or shared surface are seen as more related than things that are not.",
+          "takeaways": [
+            "Lines, connectors, and shared backgrounds make strong groups.",
+            "Use connectors to show order or flow, such as steps or a tree.",
+            "Connection beats closeness and likeness, so do not join things that are not related."
+          ],
+          "origins": "Stephen Palmer and Irvin Rock proposed uniform connectedness in 1994. They argued that regions of connected colour or texture are one of the first things the eye groups, before closeness or likeness come into play.",
+          "source": "Palmer and Rock, Rethinking perceptual organization: the role of uniform connectedness, Psychonomic Bulletin and Review, 1994",
+          "ask": "Do the lines in the meter tree show the real parent and child links? Is anything connected that should not be?",
+          "reading": [
+            { "title": "Law of Uniform Connectedness", "by": "Laws of UX", "url": "https://lawsofux.com/law-of-uniform-connectedness/" },
+            { "title": "Uniform connectedness", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Uniform_connectedness" }
+          ],
+          "related": ["law-of-common-region", "law-of-proximity", "law-of-similarity"]
+        },
+        {
+          "id": "mental-model",
+          "name": "Mental Model",
+          "theme": "expectations",
+          "summary": "The picture people carry of how a system works, which shapes what they expect it to do.",
+          "takeaways": [
+            "People act on what they believe the system does, not what it really does.",
+            "Design fails when our model and theirs do not match. Research finds the gap.",
+            "Match their model where you can. Where you cannot, show how it works."
+          ],
+          "origins": "Psychologist Kenneth Craik suggested in 1943 that the mind builds small-scale models of reality to predict events. Philip Johnson-Laird developed the idea in the 1980s, and Don Norman brought it into design, most widely in The Design of Everyday Things in 1988.",
+          "source": "Craik, The Nature of Explanation, 1943",
+          "ask": "How does an energy manager think about sites, meters, and readings? Does our structure match, or are we showing our database?",
+          "reading": [
+            { "title": "Mental Model", "by": "Laws of UX", "url": "https://lawsofux.com/mental-model/" },
+            { "title": "Mental models and user experience design", "by": "Nielsen Norman Group", "url": "https://www.nngroup.com/articles/mental-models/" },
+            { "title": "Mental model", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Mental_model" }
+          ],
+          "related": ["jakobs-law", "teslers-law", "cognitive-bias"]
+        },
+        {
+          "id": "millers-law",
+          "name": "Miller's Law",
+          "theme": "memory",
+          "summary": "People can hold only a handful of items in short-term memory at once.",
+          "takeaways": [
+            "The famous 'seven plus or minus two' is not a rule for menu length. Use it as a warning about memory.",
+            "Later work puts the limit nearer four chunks, so do not lean on memory at all where you can avoid it.",
+            "Group and order content so people do not have to hold much in mind."
+          ],
+          "origins": "George Miller's 1956 paper noted that across many tests people could judge or recall about seven items before errors rose. He was careful not to call it a fixed rule. In 2001 Nelson Cowan reviewed the evidence and put the real limit closer to four chunks.",
+          "source": "Miller, The magical number seven, plus or minus two, Psychological Review, 1956",
+          "ask": "Does someone need to remember a value from one screen to use it on the next?",
+          "reading": [
+            { "title": "Miller's Law", "by": "Laws of UX", "url": "https://lawsofux.com/millers-law/" },
+            { "title": "The magical number seven, plus or minus two", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/The_Magical_Number_Seven,_Plus_or_Minus_Two" }
+          ],
+          "related": ["chunking", "working-memory", "cognitive-load"]
+        },
+        {
+          "id": "occams-razor",
+          "name": "Occam's Razor",
+          "theme": "simplicity",
+          "summary": "Among options that work equally well, pick the one with the fewest assumptions.",
+          "takeaways": [
+            "The simplest design that does the job is usually the best one.",
+            "Remove parts until removing more would hurt the task.",
+            "Simple is not the same as fewer features. It means nothing that does not earn its place."
+          ],
+          "origins": "Named after William of Ockham, an English friar and philosopher of the early 14th century. He often argued that explanations should not add more than they need. The 'razor' name came centuries later.",
+          "source": "William of Ockham, 14th century",
+          "ask": "What can we take off this screen without hurting the task?",
+          "reading": [
+            { "title": "Occam's Razor", "by": "Laws of UX", "url": "https://lawsofux.com/occams-razor/" },
+            { "title": "Occam's razor", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Occam%27s_razor" }
+          ],
+          "related": ["law-of-pragnanz", "teslers-law", "pareto-principle"]
+        },
+        {
+          "id": "paradox-of-the-active-user",
+          "name": "Paradox of the Active User",
+          "theme": "expectations",
+          "summary": "People skip the manual and start using software straight away, even when reading first would save them time.",
+          "takeaways": [
+            "People want to get the task done, not learn the tool.",
+            "Put help in the flow, at the moment it is needed.",
+            "Design for people who will never read the guide."
+          ],
+          "origins": "John Carroll and Mary Beth Rosson described the paradox in 1987 after watching people learn new software at IBM. Users jumped in, learned only what the task needed, and stuck with slow habits rather than stop to learn faster ones.",
+          "source": "Carroll and Rosson, Paradox of the active user, in Interfacing Thought, 1987",
+          "ask": "If someone ignores every tooltip and help link, can they still finish this task?",
+          "reading": [
+            { "title": "Paradox of the Active User", "by": "Laws of UX", "url": "https://lawsofux.com/paradox-of-the-active-user/" },
+            { "title": "Paradox of the active user", "by": "Nielsen Norman Group", "url": "https://www.nngroup.com/articles/paradox-of-the-active-user/" }
+          ],
+          "related": ["jakobs-law", "mental-model", "selective-attention"]
+        },
+        {
+          "id": "pareto-principle",
+          "name": "Pareto Principle",
+          "theme": "simplicity",
+          "summary": "Roughly 80 percent of the effects come from 20 percent of the causes.",
+          "takeaways": [
+            "A few tasks make up most of the use. Find them and make them excellent.",
+            "A few problems cause most of the pain. Fix those first.",
+            "80/20 is a pattern, not a fixed ratio. Check it with real data."
+          ],
+          "origins": "Economist Vilfredo Pareto noted in 1896 that about 80 percent of land in Italy was owned by about 20 percent of people. In the 1940s quality expert Joseph Juran saw the same pattern in defects, called it the 'vital few and trivial many', and named it after Pareto.",
+          "source": "Pareto, Cours d'économie politique, 1896",
+          "ask": "Which few tasks do most of our users come for? Does the first screen serve them?",
+          "reading": [
+            { "title": "Pareto Principle", "by": "Laws of UX", "url": "https://lawsofux.com/pareto-principle/" },
+            { "title": "Pareto principle", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Pareto_principle" }
+          ],
+          "related": ["occams-razor", "choice-overload", "teslers-law"]
+        },
+        {
+          "id": "parkinsons-law",
+          "name": "Parkinson's Law",
+          "theme": "pace",
+          "summary": "Work expands to fill the time given for it.",
+          "takeaways": [
+            "Short, clear tasks get done faster than open ended ones.",
+            "Set expectations of how long a task takes, and keep it shorter.",
+            "Prefill, defaults, and autofill cut the time people spend on forms."
+          ],
+          "origins": "Historian Cyril Northcote Parkinson wrote a humorous essay in The Economist in 1955 about how British civil service departments grew whatever the work. It became a book in 1958 and the idea has been applied to time and effort ever since.",
+          "source": "Parkinson, Parkinson's law, The Economist, 1955",
+          "ask": "How long should this task take? What could we prefill or default to make it shorter?",
+          "reading": [
+            { "title": "Parkinson's Law", "by": "Laws of UX", "url": "https://lawsofux.com/parkinsons-law/" },
+            { "title": "Parkinson's law", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Parkinson%27s_law" }
+          ],
+          "related": ["goal-gradient-effect", "doherty-threshold", "flow"]
+        },
+        {
+          "id": "peak-end-rule",
+          "name": "Peak-End Rule",
+          "theme": "choices",
+          "summary": "People judge an experience mostly by how it felt at its strongest moment and at its end, not by the average.",
+          "takeaways": [
+            "Find the moments that matter most and make them go well.",
+            "Bad moments are remembered more than good ones. Plan for errors and recovery.",
+            "Finish well. A clear, positive end shapes how the whole task is remembered."
+          ],
+          "origins": "Daniel Kahneman, Barbara Fredrickson, and colleagues showed it in 1993. People held a hand in cold water for 60 seconds, and in another trial for 60 seconds plus 30 slightly less cold. Most chose to repeat the longer trial because it ended better. Redelmeier and Kahneman found the same with medical procedures in 1996.",
+          "source": "Kahneman, Fredrickson, Schreiber and Redelmeier, When more pain is preferred to less, Psychological Science, 1993",
+          "ask": "What is the high point of this flow, and what is the last thing people see? Does an export or report end with a clear success?",
+          "reading": [
+            { "title": "Peak-End Rule", "by": "Laws of UX", "url": "https://lawsofux.com/peak-end-rule/" },
+            { "title": "The peak-end rule", "by": "Nielsen Norman Group", "url": "https://www.nngroup.com/articles/peak-end-rule/" },
+            { "title": "Peak-end rule", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Peak%E2%80%93end_rule" }
+          ],
+          "related": ["serial-position-effect", "zeigarnik-effect", "aesthetic-usability-effect"]
+        },
+        {
+          "id": "postels-law",
+          "name": "Postel's Law",
+          "theme": "expectations",
+          "summary": "Be strict in what you send and generous in what you accept.",
+          "takeaways": [
+            "Accept input in the many forms people give it: dates, numbers, spaces, and case.",
+            "Be clear and consistent in what the system gives back.",
+            "Expect the unexpected: odd data, missing readings, and slow connections."
+          ],
+          "origins": "Computer scientist Jon Postel wrote the robustness principle into early internet specifications in 1980, including the one for TCP. It asked that programs follow the rules closely when sending but cope with imperfect messages when receiving, which helped different systems work together.",
+          "source": "Postel, RFC 760 and RFC 761, 1980",
+          "ask": "What happens if someone pastes a meter number with spaces, or types a date as 3/10/26? Do we accept it or fail?",
+          "reading": [
+            { "title": "Postel's Law", "by": "Laws of UX", "url": "https://lawsofux.com/postels-law/" },
+            { "title": "Robustness principle", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Robustness_principle" }
+          ],
+          "related": ["jakobs-law", "teslers-law", "mental-model"]
+        },
+        {
+          "id": "selective-attention",
+          "name": "Selective Attention",
+          "theme": "memory",
+          "summary": "People focus on what serves their goal and filter out the rest, often without noticing.",
+          "takeaways": [
+            "People look for what they came for. Anything else may not be seen at all.",
+            "Things that look like adverts or decoration are ignored, a pattern called banner blindness.",
+            "Put important messages in the path of the task, not off to the side."
+          ],
+          "origins": "Colin Cherry described the 'cocktail party' effect in 1953, showing how we follow one voice among many. Donald Broadbent built a filter model of attention in 1958. In 1999 Daniel Simons and Christopher Chabris showed that many people watching a ball game miss a person in a gorilla suit walking through it.",
+          "source": "Cherry, Some experiments on the recognition of speech, with one and with two ears, 1953",
+          "ask": "Would someone focused on their task notice this alert? Is it in their path, or in a corner that looks like decoration?",
+          "reading": [
+            { "title": "Selective Attention", "by": "Laws of UX", "url": "https://lawsofux.com/selective-attention/" },
+            { "title": "Banner blindness revisited", "by": "Nielsen Norman Group", "url": "https://www.nngroup.com/articles/banner-blindness-old-and-new-findings/" },
+            { "title": "Inattentional blindness", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Inattentional_blindness" }
+          ],
+          "related": ["von-restorff-effect", "cognitive-load", "working-memory"]
+        },
+        {
+          "id": "serial-position-effect",
+          "name": "Serial Position Effect",
+          "theme": "memory",
+          "summary": "People best remember the first and last items in a list.",
+          "takeaways": [
+            "Put the most important items at the start and the end.",
+            "Items in the middle are easiest to miss and forget.",
+            "Order navigation and summaries with this in mind."
+          ],
+          "origins": "Hermann Ebbinghaus noticed the pattern in his memory experiments in the 1880s. Bennet Murdock measured it in 1962, showing a strong start (primacy) and a strong end (recency) with a dip in the middle.",
+          "source": "Murdock, The serial position effect of free recall, Journal of Experimental Psychology, 1962",
+          "ask": "What is first and last in this menu or summary? Is that what matters most?",
+          "reading": [
+            { "title": "Serial Position Effect", "by": "Laws of UX", "url": "https://lawsofux.com/serial-position-effect/" },
+            { "title": "Serial-position effect", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Serial-position_effect" }
+          ],
+          "related": ["peak-end-rule", "von-restorff-effect", "millers-law"]
+        },
+        {
+          "id": "teslers-law",
+          "name": "Tesler's Law",
+          "theme": "simplicity",
+          "summary": "Every system has some complexity that cannot be removed, only moved. Someone has to deal with it.",
+          "takeaways": [
+            "Decide who carries the complexity: the system, or the person using it.",
+            "Where you can, let the system carry it, through defaults and smart handling.",
+            "Do not simplify so far that people lose control of the hard cases."
+          ],
+          "origins": "Larry Tesler, a computer scientist at Xerox PARC and later Apple, put forward the idea in the mid 1980s. He argued that an engineer should spend an extra week cutting complexity rather than make millions of users spend an extra minute.",
+          "source": "Tesler, Xerox PARC, mid 1980s",
+          "ask": "What hard part of this task are we leaving to the user? Could the system handle it, such as gaps in readings or tariff changes?",
+          "reading": [
+            { "title": "Tesler's Law", "by": "Laws of UX", "url": "https://lawsofux.com/teslers-law/" },
+            { "title": "Law of conservation of complexity", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Law_of_conservation_of_complexity" }
+          ],
+          "related": ["occams-razor", "cognitive-load", "postels-law"]
+        },
+        {
+          "id": "von-restorff-effect",
+          "name": "Von Restorff Effect",
+          "theme": "memory",
+          "summary": "When several similar things are shown together, the one that differs is the one people notice and remember.",
+          "takeaways": [
+            "Make the one thing that matters most look different.",
+            "If everything stands out, nothing does. Use emphasis sparingly.",
+            "Do not rely on colour alone. Shape, size, and text help everyone, including people with colour blindness."
+          ],
+          "origins": "Psychologist Hedwig von Restorff showed in 1933 that in a list of similar items, the one that is different is far more likely to be remembered. It is also called the isolation effect.",
+          "source": "Von Restorff, On the effect of field formation in the trace field, Psychologische Forschung, 1933",
+          "ask": "What is the one thing on this screen we want people to notice? Is it the only thing that stands out?",
+          "reading": [
+            { "title": "Von Restorff Effect", "by": "Laws of UX", "url": "https://lawsofux.com/von-restorff-effect/" },
+            { "title": "Von Restorff effect", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Von_Restorff_effect" }
+          ],
+          "related": ["selective-attention", "law-of-similarity", "serial-position-effect"]
+        },
+        {
+          "id": "working-memory",
+          "name": "Working Memory",
+          "theme": "memory",
+          "summary": "The small mental workspace that holds and handles information for the task in hand.",
+          "takeaways": [
+            "It is small and short lived. Things fall out within seconds.",
+            "Show what people need rather than make them recall it: recognition beats recall.",
+            "Keep context visible, such as which site, meter, and date range is in view."
+          ],
+          "origins": "The term was used in the 1960s, but Alan Baddeley and Graham Hitch set out the model most used today in 1974. They split it into parts for sound, for images and space, and a central part that directs attention.",
+          "source": "Baddeley and Hitch, Working memory, in The Psychology of Learning and Motivation, 1974",
+          "ask": "If someone looks away and comes back, can they tell what they were looking at and which filters are on?",
+          "reading": [
+            { "title": "Working Memory", "by": "Laws of UX", "url": "https://lawsofux.com/working-memory/" },
+            { "title": "Working memory and external memory", "by": "Nielsen Norman Group", "url": "https://www.nngroup.com/articles/working-memory-external-memory/" },
+            { "title": "Memory recognition and recall in user interfaces", "by": "Nielsen Norman Group", "url": "https://www.nngroup.com/articles/recognition-and-recall/" },
+            { "title": "Working memory", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Working_memory" }
+          ],
+          "related": ["millers-law", "cognitive-load", "chunking"]
+        },
+        {
+          "id": "zeigarnik-effect",
+          "name": "Zeigarnik Effect",
+          "theme": "memory",
+          "summary": "People remember unfinished tasks better than finished ones.",
+          "takeaways": [
+            "Unfinished work nags at people. Show what is left so they can come back to it.",
+            "Save progress so leaving does not mean starting again.",
+            "Use it to help people finish, not to nag them."
+          ],
+          "origins": "Psychologist Bluma Zeigarnik studied the effect in Berlin in the 1920s after her supervisor Kurt Lewin noticed that a waiter remembered unpaid orders in detail but forgot them once they were paid. Her experiments in 1927 found people recalled interrupted tasks far better than completed ones.",
+          "source": "Zeigarnik, On finished and unfinished tasks, Psychologische Forschung, 1927",
+          "ask": "If someone leaves a report or setup half done, can they see it and pick it up again later?",
+          "reading": [
+            { "title": "Zeigarnik Effect", "by": "Laws of UX", "url": "https://lawsofux.com/zeigarnik-effect/" },
+            { "title": "Zeigarnik effect", "by": "Wikipedia", "url": "https://en.wikipedia.org/wiki/Zeigarnik_effect" }
+          ],
+          "related": ["goal-gradient-effect", "peak-end-rule", "flow"]
+        }
+      ]
+    },
+    {
+      "id": "principles",
+      "name": "Principles",
+      "single": "Principle",
+      "help": "Guiding ideas for how we design. Waiting for the first one.",
+      "items": []
+    },
+    {
+      "id": "frameworks",
+      "name": "Frameworks",
+      "single": "Framework",
+      "help": "Structured ways to plan or judge work. Waiting for the first one.",
+      "items": []
+    },
+    {
+      "id": "topics",
+      "name": "Topics",
+      "single": "Topic",
+      "help": "Wider subjects worth knowing. Waiting for the first one.",
+      "items": []
+    }
+  ]
+}
