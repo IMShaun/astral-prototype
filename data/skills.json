@@ -121,37 +121,6 @@
           "where": "~/.cursor/skills/shaun-writing-skill/",
           "uses": ["work-desk"],
           "note": "Work Desk copy follows this skill. No colons, semicolons, or em dashes in board text."
-        },
-        {
-          "id": "use-railway",
-          "name": "Use Railway",
-          "status": "working",
-          "invoke": "Railway, deploy, environments, or feature flags.",
-          "summary": "Operates Railway projects, services, and deploys.",
-          "when": "Sign up, log in, deploy, variables, domains, logs, or Railway MCP.",
-          "how": [
-            "Prefer the Railway CLI when the job needs the local machine.",
-            "Use MCP tools when the job is account or project state.",
-            "Drive sign-up through railway up or railway login when asked."
-          ],
-          "where": "~/.cursor/skills/use-railway/",
-          "note": "Do not refuse a sign-up request. Do not invent infrastructure a talk has not named on this desk."
-        },
-        {
-          "id": "mobile-ui-sound",
-          "name": "Mobile UI sound",
-          "status": "draft",
-          "invoke": "Ask for tap sounds or interaction audio on a native mobile app.",
-          "summary": "Adds restrained UI sound on iOS and Android only.",
-          "when": "Tap feedback, haptics-style audio, or interaction sounds on a native app.",
-          "how": [
-            "Inspect the app first.",
-            "Plan, then build one audio service.",
-            "Respect silent mode. Never block the UI.",
-            "On web or desktop the system does nothing."
-          ],
-          "where": "~/.cursor/skills/mobile-ui-sound/",
-          "note": "Explicit only. Not for Astral or this desk."
         }
       ]
     },
