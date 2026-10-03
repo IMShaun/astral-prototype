@@ -19,6 +19,6 @@ The method lives in `.cursor/skills/ux-research/`. Invoke `/ux-research` to revi
 
 Do not invent studies, quotes, personas, or scores to fill these folders.
 
-Walk findings on the Work Desk stay in `data/board.json` Research. Each insight names its `source` (today all are `team`), which shows as a tag. Research has three tabs on the desk. Insights holds the findings. Planning lists every piece of research in `research.plans`: doing, planned, done, and templates. A study with a `task` follows that task, so ticking it on Today marks the study done. Each insight names its `study`, which lists it on that study's page. Reporting lists `research.reports` and reads the markdown in `reports/` in place. They are named problems from talks. They are not copied here unless a study backs them.
+Walk findings on the Work Desk stay in `data/board.json` Research. Each insight names its `source` (today all are `team`), which shows as a tag. Research has three tabs on the desk. Insights holds the findings. Planning lists every piece of research in `research.plans`, filtered by `activity`: usability, architecture, or workshopping. Templates set `template: true`. Each card still shows doing, planned, or done. A study with a `task` follows that task, so ticking it on Today marks the study done. Each insight names its `study`, which lists it on that study's page. Reporting lists `research.reports` and reads the markdown in `reports/` in place. They are named problems from talks. They are not copied here unless a study backs them.
 
 Pattern decisions stay in `docs/ux/`.

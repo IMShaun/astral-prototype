@@ -227,6 +227,14 @@ const RESEARCH_STUDY_STATUS = {
   template: "scaffold",
 };
 
+const RESEARCH_ACTIVITIES = [
+  { id: "all", name: "All" },
+  { id: "usability", name: "Usability" },
+  { id: "architecture", name: "Architecture" },
+  { id: "workshopping", name: "Workshopping" },
+  { id: "template", name: "Templates" },
+];
+
 const RESEARCH_STUDY_RANK = { doing: 0, planned: 1, done: 2, template: 3 };
 
 const RESEARCH_REPORT_TEXT = new Map();
@@ -3444,9 +3452,19 @@ function researchStudyTag(item) {
   return deskTag(researchStudyName(id), RESEARCH_STUDY_STATUS[id]);
 }
 
-function activeResearchStudyState() {
-  const id = store?.researchStudyState;
-  return RESEARCH_STUDY_STATES.some((item) => item.id === id) ? id : "all";
+function researchActivity(item) {
+  if (item?.template) return "template";
+  const id = String(item?.activity || "");
+  return RESEARCH_ACTIVITIES.some((entry) => entry.id === id && id !== "all") ? id : "usability";
+}
+
+function researchActivityName(item) {
+  return RESEARCH_ACTIVITIES.find((entry) => entry.id === researchActivity(item))?.name || "";
+}
+
+function activeResearchActivity() {
+  const id = store?.researchActivity;
+  return RESEARCH_ACTIVITIES.some((item) => item.id === id) ? id : "all";
 }
 
 function studyInsights(item) {
@@ -3517,6 +3535,7 @@ function researchStudyRow(item) {
     title: item.title || "",
     cells: [
       researchStudyTag(item),
+      escapeHtml(researchActivityName(item)),
       escapeHtml(item.kind || ""),
       escapeHtml(researchDate(item.date)),
       escapeHtml(count ? String(count) : ""),
@@ -3579,6 +3598,7 @@ function researchStudyPage(item) {
     ${deskSection(
       "About",
       `<dl class="fact-grid">
+        ${factRow("Activity", item.template ? "" : researchActivityName(item))}
         ${factRow("When", researchDate(item.date))}
         ${factRow("With", item.who)}
         ${factRow("Where", item.where)}
@@ -3777,16 +3797,16 @@ function renderResearch() {
       );
     } else if (tab === "planning") {
       els.researchFilters.innerHTML = deskStats(
-        RESEARCH_STUDY_STATES.map((item) => {
+        RESEARCH_ACTIVITIES.map((item) => {
           const count =
             item.id === "all"
               ? plans.length
-              : plans.filter((entry) => researchStudyState(entry) === item.id).length;
+              : plans.filter((entry) => researchActivity(entry) === item.id).length;
           return { id: item.id, name: item.name, count, disabled: !count };
         }),
-        activeResearchStudyState(),
-        "data-research-study",
-        "Research status"
+        activeResearchActivity(),
+        "data-research-activity",
+        "Research activity"
       );
     } else {
       els.researchFilters.innerHTML = "";
@@ -3823,20 +3843,20 @@ function renderResearch() {
     if (tab === "planning" && detail) {
       html = researchStudyPage(open.item);
     } else if (tab === "planning") {
-      const state = activeResearchStudyState();
+      const activity = activeResearchActivity();
       const matched = sortedStudies().filter(
         (item) =>
-          (state === "all" || researchStudyState(item) === state) &&
-          deskMatch("research-plans", item.title, item.kind, item.summary, item.who, item.where)
+          (activity === "all" || researchActivity(item) === activity) &&
+          deskMatch("research-plans", item.title, item.kind, researchActivityName(item), item.summary, item.who, item.where)
       );
       html = plans.length
         ? deskSheet("research-plans", {
             placeholder: "Search research",
             label: "Search research",
             cards: matched.map(researchStudyCard),
-            cols: ["Research", "Status", "Kind", "When", "Insights"],
+            cols: ["Research", "Status", "Activity", "Kind", "When", "Insights"],
             rows: matched.map(researchStudyRow),
-            empty: "Nothing in this status.",
+            empty: "Nothing in this activity yet.",
           })
         : emptyCard("No research yet. Build a plan with /ux-research once the evidence review says Build plan.");
     }
@@ -4317,7 +4337,7 @@ const CHROME_FIELDS = [
   "researchSeverity",
   "researchTab",
   "researchOpen",
-  "researchStudyState",
+  "researchActivity",
   "deskViews",
   "deskQueries",
   "patternStatus",
@@ -4632,7 +4652,7 @@ function applyChrome() {
     ? store.researchSeverity
     : "all";
   store.researchTab = activeResearchTab();
-  store.researchStudyState = activeResearchStudyState();
+  store.researchActivity = activeResearchActivity();
   store.researchOpen = String(store.researchOpen || "");
   store.activePrototypeView = protoViewId(store.activePrototypeView);
   // A refresh keeps the place. Opening Portfolio from the rail still lands on All.
@@ -5252,10 +5272,10 @@ function onResearchClick(event) {
     persistChrome();
     return;
   }
-  const study = event.target.closest("[data-research-study]");
-  if (study) {
-    const id = study.dataset.researchStudy;
-    store.researchStudyState = RESEARCH_STUDY_STATES.some((item) => item.id === id) ? id : "all";
+  const activity = event.target.closest("[data-research-activity]");
+  if (activity) {
+    const id = activity.dataset.researchActivity;
+    store.researchActivity = RESEARCH_ACTIVITIES.some((item) => item.id === id) ? id : "all";
     render();
     persistChrome();
     return;
