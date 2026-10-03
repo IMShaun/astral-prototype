@@ -13512,6 +13512,18 @@ body:not(.is-share) .desk-shell {
   max-width: 60rem;
 }
 
+.desk-shell .desk-lead-stack {
+  display: grid;
+}
+
+.desk-shell .desk-lead-stack > .desk-lead-item {
+  grid-area: 1 / 1;
+}
+
+.desk-shell .desk-lead-stack > .desk-lead-item[data-off] {
+  visibility: hidden;
+}
+
 .desk-section-head {
   display: grid;
   gap: 4px;

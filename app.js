@@ -4019,7 +4019,18 @@ function renderResearch() {
     );
   }
   if (els.researchLead) {
-    els.researchLead.textContent = RESEARCH_TABS.find((item) => item.id === tab)?.lead || "";
+    // Every lead sits in one grid cell, so the tabs below keep their place.
+    const leads = RESEARCH_TABS.map(
+      (item) =>
+        `<span class="desk-lead-item"${item.id === tab ? "" : ' aria-hidden="true" data-off'}>${escapeHtml(
+          item.lead || ""
+        )}</span>`
+    ).join("");
+    if (els.researchLead.dataset.tab !== tab || !els.researchLead.querySelector(".desk-lead-item")) {
+      els.researchLead.innerHTML = leads;
+      els.researchLead.dataset.tab = tab;
+    }
+    els.researchLead.classList.add("desk-lead-stack");
   }
   if (els.researchFilters) {
     els.researchFilters.hidden = tab === "reporting" || tab === "analytics";
