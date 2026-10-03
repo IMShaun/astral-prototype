@@ -13758,14 +13758,77 @@ body:not(.is-share) .desk-shell {
 
 .desk-cluster-title:has(.desk-group-mark),
 .desk-row-marked,
-.has-mark {
+.desk-detail-title {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.has-mark {
+.desk-detail-title {
   gap: 12px;
+}
+
+/* A user group's own page: tabs, then blocks. */
+.desk-shell .panel.is-detail > .desk-list-only {
+  display: none;
+}
+
+.desk-group-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-stack-default, 16px);
+}
+
+.desk-block.is-open {
+  box-shadow: inset 4px 0 0 #f79009;
+}
+
+.desk-group-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.desk-group-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 6px;
+  border: 1px solid var(--color-border-subtle, #e0e0e0);
+  border-radius: 999px;
+  background: var(--color-background-surface, #fff);
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  cursor: pointer;
+}
+
+.desk-group-link:hover {
+  background: #f5f5f5;
+}
+
+.desk-status-toggle {
+  cursor: pointer;
+  font: inherit;
+}
+
+.desk-note-days {
+  display: grid;
+  gap: 16px;
+}
+
+.desk-note-day .desk-sub-head {
+  margin: 0 0 4px;
+}
+
+.desk-note-day .notes {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .desk-group-pair {
+    grid-template-columns: 1fr;
+  }
 }
 
 .desk-score b {

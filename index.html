@@ -37,10 +37,6 @@
             <span class="desk-rail-label">User groups</span>
             <span id="nav-groups-count" class="nav-count"></span>
           </button>
-          <button type="button" class="side-link astral-rail-link" data-section="journeys" data-icon="chart-line">
-            <span class="desk-rail-label">Journeys</span>
-            <span id="nav-journeys-count" class="nav-count"></span>
-          </button>
           <button type="button" class="side-link astral-rail-link" data-section="research" data-icon="analyse">
             <span class="desk-rail-label">Research</span>
             <span id="nav-research-count" class="nav-count"></span>
@@ -186,12 +182,13 @@
               </div>
             </header>
             <p class="astral-muted astral-home-lead desk-lead">
-              Who this is for. Hats sit under the company they belong to. Open
-              a card for who they are, what they need, and notes from talks.
+              Who this is for and how they move through it. Hats sit under the
+              company they belong to. Open a card for the group's page: what
+              they need, their journey, and notes from talks.
             </p>
             <p id="groups-count" class="sr-only"></p>
             <div id="groups-list" class="desk-list-host"></div>
-            <section class="astral-home-section" aria-labelledby="group-add-heading">
+            <section class="astral-home-section desk-list-only" aria-labelledby="group-add-heading">
               <h3 id="group-add-heading" class="astral-home-section-title">Add a group</h3>
               <form id="group-form" class="astral-card add-form group-form desk-add">
                 <label class="sr-only" for="new-group">Group name</label>
@@ -217,19 +214,6 @@
                 <button type="submit" class="astral-btn">Add group</button>
               </form>
             </section>
-          </section>
-
-          <section id="panel-journeys" class="panel" data-panel="journeys" hidden>
-            <header class="page-head astral-page-head astral-page-tools">
-              <div><h2 id="journeys-heading">Journeys</h2></div>
-            </header>
-            <p class="astral-muted astral-home-lead desk-lead">
-              How they move through it. One card per group. Hats sit under the
-              company they belong to. Open it for now and later. Later is a
-              sketch, not a promise.
-            </p>
-            <p id="journeys-count" class="sr-only"></p>
-            <div id="journeys-list" class="desk-list-host"></div>
           </section>
 
           <section id="panel-research" class="panel" data-panel="research" hidden>

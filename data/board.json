@@ -563,8 +563,8 @@
         },
         {
           "id": "review-journeys",
-          "title": "Read the Journeys drafts and mark what feels off",
-          "note": "Open Journeys in the side menu. Later is the prompt-and-fix picture, not a promise.",
+          "title": "Read the journey drafts and mark what feels off",
+          "note": "Open a card in User groups, then Journey. Later is the prompt-and-fix picture, not a promise.",
           "project": "Astral",
           "added": "2026-09-04",
           "kind": "admin"

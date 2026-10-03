@@ -74,7 +74,7 @@ Each task needs `id`, `title`, `note`, `project`, `kind`, and `added` (`YYYY-MM-
 
 Each group needs `id`, `name`, `status` (`draft`, `working`, or `firm`), `who`, `need`, `heard` (a quote from a talk), `from` (which talk), `open` (one unanswered question), `notes` (`text` plus `added`), and `journey`.
 
-`journey` is an array of stages. Each stage needs `stage` (a short name such as Arrive, See, Notice, Act), `now` (what exists or is known), and `later` (the useful next line, including a prompt if the talk named one). Use an empty string for `later` when the talk has not named that future. Do not invent a later prompt. The Journeys page renders one map per group that has stages.
+`journey` is an array of stages. Each stage needs `stage` (a short name such as Arrive, See, Notice, Act), `now` (what exists or is known), and `later` (the useful next line, including a prompt if the talk named one). Use an empty string for `later` when the talk has not named that future. Do not invent a later prompt. Each group opens its own page under User groups; its Journey tab renders the stages.
 
 `research.insights` are named problems from a walk. Each needs `id`, `title`, `problem`, `where`, `why`, `note`, `severity` (`critical`, `high`, `medium-high`, or `medium`), and `score` (1 to 99). `example` is optional. Score ranks within a severity from what the talk named. Harm to access, customer data, or scale sits above extra effort. Critical first, then High, Medium high, and Medium. Use Critical only when a talk named it. Do not invent a red. Do not invent an insight a talk has not named. The Research page is insights only. Insights sit as cards. Switch to a list. Filter by All, then each severity. Walk work still to do goes on Today. Score is not a desk input.
 

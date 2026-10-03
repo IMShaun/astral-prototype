@@ -13,7 +13,6 @@ const TEAMS = [
 const SECTIONS = [
   "today",
   "groups",
-  "journeys",
   "research",
   "access",
   "library",
@@ -45,8 +44,6 @@ const els = {
   groupsCount: document.getElementById("groups-count"),
   groupsList: document.getElementById("groups-list"),
   groupForm: document.getElementById("group-form"),
-  journeysCount: document.getElementById("journeys-count"),
-  journeysList: document.getElementById("journeys-list"),
   researchCount: document.getElementById("research-count"),
   researchView: document.getElementById("research-view"),
   researchFilters: document.getElementById("research-filters"),
@@ -92,7 +89,6 @@ const els = {
   newKind: document.getElementById("new-kind"),
   navTodayCount: document.getElementById("nav-today-count"),
   navGroupsCount: document.getElementById("nav-groups-count"),
-  navJourneysCount: document.getElementById("nav-journeys-count"),
   navResearchCount: document.getElementById("nav-research-count"),
   navAccessCount: document.getElementById("nav-access-count"),
   navLibraryCount: document.getElementById("nav-library-count"),
@@ -435,7 +431,7 @@ function emptyBoard() {
     know: [
       {
         title: "Teams",
-        body: "Pick the team in the side menu. Today, User groups, Journeys, Research, Access, UI library, and Branding stay with that team.",
+        body: "Pick the team in the side menu. Today, User groups, Research, Access, UI library, and Branding stay with that team.",
       },
       {
         title: "Access",
@@ -1070,6 +1066,7 @@ function escapeHtml(value) {
 function normalize(data) {
   if (data && data.teams && data.boards) {
     data.activeTeam = data.activeTeam || "imserv";
+    if (data.activeSection === "journeys") data.activeSection = "groups";
     if (data.activeSection === "done") {
       data.activeSection = "today";
       data.activeKind = "done";
@@ -1419,7 +1416,6 @@ const DESK_VIEWS = [
 const DESK_SECTION_ICONS = {
   today: "home",
   groups: "users",
-  journeys: "chart-line",
   research: "analyse",
   strategy: "outgoing",
   analytics: "chart-bar",
@@ -1595,13 +1591,17 @@ function deskSheet(section, { placeholder, label, cards, cols, rows, empty }) {
   `;
 }
 
-function deskDetailHead({ back, where, kicker, title, lead, extra }) {
+function deskDetailHead({ back, where, kicker, title, lead, extra, mark }) {
   return `
     ${listBackButton(back, where)}
     <header class="astral-page-head astral-page-tools desk-detail-head">
       <div>
         ${kicker ? `<div class="desk-detail-kicker">${kicker}</div>` : ""}
-        <h2>${escapeHtml(title)}</h2>
+        ${
+          mark
+            ? `<h2 class="desk-detail-title">${mark}<span>${escapeHtml(title)}</span></h2>`
+            : `<h2>${escapeHtml(title)}</h2>`
+        }
       </div>
     </header>
     ${lead ? `<p class="astral-muted astral-home-lead desk-lead">${escapeHtml(lead)}</p>` : ""}
@@ -1711,14 +1711,27 @@ function groupMark(group, size) {
   return `<span class="astral-avatar desk-avatar desk-group-mark${size ? ` is-${size}` : ""}" data-hue="${hue}" aria-hidden="true">${svg}</span>`;
 }
 
+function groupStages(group) {
+  const stages = (group.journey || []).length;
+  return stages === 1 ? "1 journey stage" : `${stages} journey stages`;
+}
+
+function groupNoteCount(group) {
+  const notes = (group.notes || []).length;
+  return notes === 1 ? "1 note" : `${notes} notes`;
+}
+
 function groupItem(group) {
   const status = group.status || "draft";
   return deskCard({
-    open: { "data-open": "group", "data-id": group.id },
+    open: { "data-group-page": group.id },
     lead: groupMark(group),
     title: group.name,
     tags: deskTag(STATUS_LABEL[status] || "Draft", status),
     body: escapeHtml(cardLine(group, group.who) || "Open for the rest."),
+    foot: `<span class="astral-muted">${escapeHtml(
+      `${groupStages(group)} \u00b7 ${groupNoteCount(group)}`
+    )}</span>`,
   });
 }
 
@@ -1727,19 +1740,18 @@ function groupParentName(group) {
   return parent ? parent.name : "";
 }
 
-function groupRow(group, kind) {
+function groupRow(group) {
   const status = group.status || "draft";
   const stages = (group.journey || []).length;
   return deskRow({
-    open: { "data-open": kind, "data-id": group.id },
+    open: { "data-group-page": group.id },
     mark: groupMark(group, "sm"),
     title: group.name,
     cells: [
-      escapeHtml(groupParentName(group) || "—"),
+      escapeHtml(groupParentName(group) || "\u2014"),
       deskTag(STATUS_LABEL[status] || "Draft", status),
-      kind === "journey"
-        ? escapeHtml(stages === 1 ? "1 stage" : `${stages} stages`)
-        : `<span class="desk-cell-line">${escapeHtml(cardLine(group, group.who))}</span>`,
+      escapeHtml(stages === 1 ? "1 stage" : `${stages} stages`),
+      `<span class="desk-cell-line">${escapeHtml(cardLine(group, group.who))}</span>`,
     ],
   });
 }
@@ -1788,13 +1800,12 @@ function groupClusters(groups, itemFn, include) {
 }
 
 function groupSheet(section, groups, itemFn, include, placeholder, cols) {
-  const kind = section === "journeys" ? "journey" : "group";
   const list = deskView(section) === "list";
   const leaves = groupCards(groups, include);
   let inner = emptyCard("Nothing matches that search.");
   if (leaves.length) {
     inner = list
-      ? deskTable(cols, leaves.map((group) => groupRow(group, kind)))
+      ? deskTable(cols, leaves.map(groupRow))
       : `<div class="desk-clusters">${groupClusters(groups, itemFn, include)}</div>`;
   }
   return `
@@ -1839,19 +1850,209 @@ function journeyPath(group) {
   `;
 }
 
-function journeyItem(group) {
-  const status = group.status || "draft";
-  const stages = (group.journey || []).length;
-  return deskCard({
-    open: { "data-open": "journey", "data-id": group.id },
-    lead: groupMark(group),
-    title: group.name,
-    tags: deskTag(STATUS_LABEL[status] || "Draft", status),
-    body: escapeHtml(cardLine(group, group.who) || "Open for the map."),
-    foot: `<span class="astral-muted">${escapeHtml(
-      stages === 1 ? "1 stage" : `${stages} stages`
-    )}</span>`,
+const GROUP_TABS = [
+  { id: "overview", name: "Overview" },
+  { id: "journey", name: "Journey" },
+  { id: "notes", name: "From talks" },
+];
+
+function activeGroupTab() {
+  return GROUP_TABS.some((item) => item.id === store?.groupTab) ? store.groupTab : "overview";
+}
+
+function groupLink(group) {
+  return `<button type="button" class="desk-group-link" data-group-page="${escapeHtml(group.id)}">${groupMark(
+    group,
+    "sm"
+  )}<span>${escapeHtml(group.name)}</span></button>`;
+}
+
+function groupOverview(group) {
+  const groups = board().groups || [];
+  const parent = groups.find((item) => item.id === group.parent);
+  const kids = groupChildren(groups, group.id);
+  const moves = researchMoves().filter((move) => move.group === group.id);
+  const need = deskSection(
+    "What they need",
+    `<p>${escapeHtml(group.need || "Not known yet.")}</p>`
+  );
+  const open = deskSection(
+    "Still open",
+    `<p>${escapeHtml(group.open || "Nothing open.")}</p>`
+  ).replace('class="astral-card desk-block"', 'class="astral-card desk-block is-open"');
+  const heard = group.heard
+    ? deskSection(
+        "In their words",
+        `<blockquote class="heard">
+          <p>${escapeHtml(group.heard)}</p>
+          <footer>${escapeHtml(group.from || "From a talk")}</footer>
+        </blockquote>`
+      )
+    : "";
+  const sits = parent
+    ? deskSection("Sits on", `<div class="desk-group-links">${groupLink(parent)}</div>`, "The company this hat belongs to.")
+    : kids.length
+      ? deskSection(
+          "Hats inside",
+          `<div class="astral-report-grid desk-grid">${kids.map(groupItem).join("")}</div>`,
+          "Job hats on this company. Open one for its own page."
+        )
+      : "";
+  const research = moves.length
+    ? deskSection(
+        "Research next",
+        `<div class="astral-report-grid desk-grid">${moves.map(moveCard).join("")}</div>`,
+        "Moves in Research › Strategy that name this group."
+      )
+    : "";
+  return `
+    <div class="desk-group-pair">${need}${open}</div>
+    ${heard}
+    ${sits}
+    ${research}
+  `;
+}
+
+function groupJourney(group) {
+  const stages = group.journey || [];
+  return deskSection(
+    "How they move through it",
+    stages.length
+      ? journeyPath(group)
+      : `<p class="astral-muted">No journey yet. It appears when a talk names how they move through the product.</p>`,
+    "Now is what exists today. Later is a sketch, not a promise."
+  );
+}
+
+function groupNotes(group) {
+  const notes = (group.notes || [])
+    .map((note, index) => ({ ...note, index }))
+    .sort((a, b) => String(b.added || "").localeCompare(String(a.added || "")) || b.index - a.index);
+  const days = [];
+  notes.forEach((note) => {
+    const key = note.added || "";
+    let day = days.find((item) => item.key === key);
+    if (!day) {
+      day = { key, notes: [] };
+      days.push(day);
+    }
+    day.notes.push(note);
   });
+  const form = `
+    <form class="note-form" data-id="${escapeHtml(group.id)}">
+      <label class="sr-only" for="note-${escapeHtml(group.id)}">Add a note</label>
+      <input
+        id="note-${escapeHtml(group.id)}"
+        name="note"
+        type="text"
+        maxlength="200"
+        placeholder="Add a note from a talk"
+        autocomplete="off"
+        required
+      />
+      <button type="submit" class="astral-btn">Add note</button>
+    </form>
+  `;
+  const list = days.length
+    ? days
+        .map(
+          (day) => `
+        <section class="desk-note-day">
+          <h4 class="desk-sub-head">${escapeHtml(
+            day.key ? DAY_FMT.format(new Date(`${day.key}T12:00:00`)) : "Undated"
+          )}</h4>
+          <ul class="notes">${day.notes.map((note) => `<li>${escapeHtml(note.text)}</li>`).join("")}</ul>
+        </section>`
+        )
+        .join("")
+    : `<p class="astral-muted">No notes yet. Add the first one above.</p>`;
+  return deskSection(
+    "Notes from talks",
+    `${form}<div class="desk-note-days">${list}</div>`,
+    "Newest first, grouped by the day they were heard."
+  );
+}
+
+function groupBackWhere() {
+  const from = store?.groupReturn;
+  if (from && from !== "groups" && sectionAllowed(from)) {
+    const link = document.querySelector(`.desk-rail .side-link[data-section="${CSS.escape(from)}"] .desk-rail-label`);
+    return link?.textContent || "the last page";
+  }
+  return "all user groups";
+}
+
+function groupPage(group) {
+  const tab = activeGroupTab();
+  const status = group.status || "draft";
+  const counts = {
+    overview: "",
+    journey: ` (${(group.journey || []).length})`,
+    notes: ` (${(group.notes || []).length})`,
+  };
+  const body =
+    tab === "journey" ? groupJourney(group) : tab === "notes" ? groupNotes(group) : groupOverview(group);
+  const parent = groupParentName(group);
+  return `
+    ${deskDetailHead({
+      back: "group-back",
+      where: groupBackWhere(),
+      kicker: `<span class="desk-card-tags"><button type="button" class="astral-tag status desk-status-toggle" data-status="${escapeHtml(
+        status
+      )}" data-action="status" data-id="${escapeHtml(group.id)}" aria-label="Status: ${escapeHtml(
+        STATUS_LABEL[status] || "Draft"
+      )}. Change status">${escapeHtml(STATUS_LABEL[status] || "Draft")}</button>${
+        parent
+          ? `<span class="astral-muted">A hat on ${escapeHtml(parent.charAt(0).toLowerCase() + parent.slice(1))}</span>`
+          : ""
+      }</span>`,
+      title: group.name,
+      mark: groupMark(group, "lg"),
+      lead: group.who || "",
+    })}
+    <div class="desk-tabs-host">${protoTabs(
+      GROUP_TABS.map((item) => ({ id: item.id, name: `${item.name}${counts[item.id]}` })),
+      tab,
+      "data-group-tab",
+      "Group pages"
+    )}</div>
+    ${body}
+  `;
+}
+
+let groupListScroll = null;
+
+function deskScroller() {
+  const stage = document.querySelector(".stage");
+  return stage && stage.scrollHeight > stage.clientHeight ? stage : document.scrollingElement;
+}
+
+function openGroup(id) {
+  const group = (board().groups || []).find((item) => item.id === id);
+  if (!group) return;
+  const scroller = deskScroller();
+  if (store.activeSection !== "groups") store.groupReturn = store.activeSection;
+  else if (!store.activeGroup) store.groupReturn = "";
+  if (!store.activeGroup) groupListScroll = { section: store.activeSection, top: scroller?.scrollTop || 0 };
+  store.activeSection = "groups";
+  store.activeGroup = id;
+  store.groupTab = "overview";
+  render();
+  persistChrome();
+  if (scroller) scroller.scrollTop = 0;
+}
+
+function closeGroup() {
+  const from = store.groupReturn;
+  store.activeGroup = "";
+  store.groupReturn = "";
+  if (from && from !== "groups" && sectionAllowed(from)) store.activeSection = from;
+  render();
+  persistChrome();
+  const scroller = deskScroller();
+  const back = groupListScroll && groupListScroll.section === store.activeSection ? groupListScroll.top : 0;
+  groupListScroll = null;
+  if (scroller) scroller.scrollTop = back;
 }
 
 function accessItem(item, scope) {
@@ -2703,88 +2904,6 @@ function applySkillFolds() {
   });
 }
 
-function groupDetail(group) {
-  const groups = board().groups || [];
-  const parent = groups.find((item) => item.id === group.parent);
-  const kids = groupChildren(groups, group.id);
-  const notes = (group.notes || [])
-    .map((note) => `<li>${escapeHtml(note.text)}</li>`)
-    .join("");
-  const notesBlock = notes
-    ? `<div class="group-block">
-         <p class="field-label">From talks</p>
-         <ul class="notes">${notes}</ul>
-       </div>`
-    : "";
-  const heard = group.heard
-    ? `<blockquote class="heard">
-         <p>${escapeHtml(group.heard)}</p>
-         <footer>${escapeHtml(group.from || "From a talk")}</footer>
-       </blockquote>`
-    : "";
-  const open = group.open
-    ? `<div class="group-block is-open">
-         <p class="field-label">Still open</p>
-         <p>${escapeHtml(group.open)}</p>
-       </div>`
-    : "";
-  const need = group.need
-    ? `<div class="group-block">
-         <p class="field-label">What they need</p>
-         <p>${escapeHtml(group.need)}</p>
-       </div>`
-    : "";
-  const sits = parent
-    ? `<div class="group-block">
-         <p class="field-label">Sits on</p>
-         <p>${escapeHtml(parent.name)}</p>
-       </div>`
-    : kids.length
-      ? `<div class="group-block">
-         <p class="field-label">Hats inside</p>
-         <p>${escapeHtml(
-           kids.length === 1
-             ? kids[0].name
-             : kids.length === 2
-               ? `${kids[0].name} and ${kids[1].name}`
-               : `${kids
-                   .slice(0, -1)
-                   .map((item) => item.name)
-                   .join(", ")}, and ${kids[kids.length - 1].name}`
-         )}.</p>
-       </div>`
-      : "";
-  const status = group.status || "draft";
-  return `
-    <p class="group-who">${escapeHtml(group.who || "")}</p>
-    ${sits}
-    <button
-      type="button"
-      class="status"
-      data-status="${escapeHtml(status)}"
-      data-action="status"
-      data-id="${escapeHtml(group.id)}"
-    >${STATUS_LABEL[status] || "Draft"}</button>
-    ${need}
-    ${heard}
-    ${open}
-    ${notesBlock}
-    <form class="note-form" data-id="${escapeHtml(group.id)}">
-      <label class="sr-only" for="note-${escapeHtml(group.id)}">Add a note</label>
-      <input
-        id="note-${escapeHtml(group.id)}"
-        name="note"
-        type="text"
-        maxlength="200"
-        placeholder="Add a note from a talk"
-        autocomplete="off"
-        required
-      />
-      <button type="submit">Add note</button>
-    </form>
-  `;
-}
-
 function findTool(id, scope) {
   if (scope === "team") {
     return (board().access || []).find((item) => item.id === id) || null;
@@ -2795,8 +2914,7 @@ function findTool(id, scope) {
 function fillDetail() {
   if (!openDetail || !els.detailModal) return false;
   const { kind, id, scope } = openDetail;
-  els.detailModal.dataset.wide = kind === "journey" ? "true" : "false";
-  els.detailTitle.classList.toggle("has-mark", kind === "group" || kind === "journey");
+  els.detailModal.dataset.wide = "false";
 
   if (kind === "person") {
     const person = (store.access.people || []).find((item) => item.id === id);
@@ -2828,27 +2946,6 @@ function fillDetail() {
         "remove-access",
         `data-scope="${escapeHtml(scope)}" data-id="${escapeHtml(item.id)}"`
       )}
-    `;
-    return true;
-  }
-
-  if (kind === "group") {
-    const group = (board().groups || []).find((item) => item.id === id);
-    if (!group) return false;
-    els.detailKicker.textContent = STATUS_LABEL[group.status] || "Draft";
-    els.detailTitle.innerHTML = `${groupMark(group, "lg")}<span>${escapeHtml(group.name)}</span>`;
-    els.detailBody.innerHTML = groupDetail(group);
-    return true;
-  }
-
-  if (kind === "journey") {
-    const group = (board().groups || []).find((item) => item.id === id);
-    if (!group) return false;
-    els.detailKicker.textContent = STATUS_LABEL[group.status] || "Draft";
-    els.detailTitle.innerHTML = `${groupMark(group, "lg")}<span>${escapeHtml(group.name)}</span>`;
-    els.detailBody.innerHTML = `
-      <p class="group-who">${escapeHtml(group.who || "")}</p>
-      ${journeyPath(group)}
     `;
     return true;
   }
@@ -3956,7 +4053,8 @@ function researchGaps(moves) {
 function openGroupCard(group) {
   const status = group.status || "draft";
   return deskCard({
-    open: { "data-open": "group", "data-id": group.id },
+    open: { "data-group-page": group.id },
+    lead: groupMark(group),
     title: group.name || "",
     tags: deskTag(STATUS_LABEL[status] || "Draft", status),
     body: escapeHtml(group.open || ""),
@@ -4524,38 +4622,30 @@ function render() {
   const groupShown = groupCards(groups);
   els.groupsCount.textContent =
     groupShown.length === 1 ? "1 in play" : `${groupShown.length} in play`;
-  const groupHit = (group) => deskMatch("groups", group.name, group.who, group.need);
-  els.groupsList.innerHTML = groups.length
-    ? groupSheet("groups", groups, groupItem, groupHit, "Search groups", [
-        "Group",
-        "Sits on",
-        "Status",
-        "Who they are",
-      ])
-    : emptyCard("No groups for this team yet. Add one from a discussion.");
-
-  const mapped = groups.filter((group) => (group.journey || []).length);
-  const journeyShown = groupCards(groups, (group) =>
-    (group.journey || []).length
-  );
-  if (els.journeysCount) {
-    els.journeysCount.textContent =
-      journeyShown.length === 1 ? "1 map" : `${journeyShown.length} maps`;
-  }
-  if (els.journeysList) {
-    const journeyHit = (group) =>
-      (group.journey || []).length && deskMatch("journeys", group.name, group.who);
-    els.journeysList.innerHTML = mapped.length
-      ? groupSheet("journeys", groups, journeyItem, journeyHit, "Search journeys", [
+  const openGroupItem = store.activeGroup
+    ? groups.find((group) => group.id === store.activeGroup) || null
+    : null;
+  if (!openGroupItem) store.activeGroup = "";
+  setPanelDetail("groups", Boolean(openGroupItem));
+  const groupHit = (group) =>
+    deskMatch(
+      "groups",
+      group.name,
+      group.who,
+      group.need,
+      ...(group.journey || []).map((step) => `${step.stage} ${step.now} ${step.later}`)
+    );
+  els.groupsList.innerHTML = openGroupItem
+    ? groupPage(openGroupItem)
+    : groups.length
+      ? groupSheet("groups", groups, groupItem, groupHit, "Search groups and journeys", [
           "Group",
           "Sits on",
           "Status",
-          "Stages",
+          "Journey",
+          "Who they are",
         ])
-      : emptyCard(
-          "No journeys for this team yet. They appear when a talk names how someone moves through the product."
-        );
-  }
+      : emptyCard("No groups for this team yet. Add one from a discussion.");
 
   const people = store.access.people || [];
   els.peopleCount.textContent =
@@ -4597,7 +4687,6 @@ function render() {
 
   setNavCount(els.navTodayCount, today.length);
   setNavCount(els.navGroupsCount, groupShown.length);
-  setNavCount(els.navJourneysCount, journeyShown.length);
   setNavCount(
     els.navAccessCount,
     people.length + companyAccess.length + teamAccess.length
@@ -4631,6 +4720,9 @@ const CHROME_FIELDS = [
   "activeKei",
   "activeComponent",
   "activePattern",
+  "activeGroup",
+  "groupTab",
+  "groupReturn",
   "activeSkill",
   "activePrototypeView",
   "activePrototypeMeter",
@@ -4908,6 +5000,7 @@ function applyChrome() {
     return;
   }
   store.activeTeam = store.activeTeam || "imserv";
+  if (store.activeSection === "journeys") store.activeSection = "groups";
   if (store.activeSection === "done") {
     store.activeSection = "today";
     store.activeKind = "done";
@@ -5338,6 +5431,30 @@ function onAddGroup(event) {
 }
 
 function onGroupClick(event) {
+  if (event.target.closest("[data-action='group-back']")) {
+    closeGroup();
+    return;
+  }
+  const tab = event.target.closest("[data-group-tab]");
+  if (tab) {
+    store.groupTab = tab.dataset.groupTab;
+    render();
+    persistChrome();
+    return;
+  }
+  const research = event.target.closest("[data-action='research-open']");
+  if (research && els.groupsList.contains(research)) {
+    const id = String(research.dataset.id || "");
+    store.activeSection = "research";
+    store.activeGroup = "";
+    store.groupReturn = "";
+    store.researchTab = id.startsWith("report:") ? "reporting" : id.startsWith("move:") ? "strategy" : "planning";
+    store.researchOpen = id;
+    render();
+    persistChrome();
+    window.scrollTo({ top: 0 });
+    return;
+  }
   const button = event.target.closest("[data-action='status']");
   if (!button) return;
   event.preventDefault();
@@ -5473,6 +5590,11 @@ function onAccessClick(event) {
 }
 
 function onOpenCard(event) {
+  const page = event.target.closest("[data-group-page]");
+  if (page) {
+    openGroup(page.dataset.groupPage);
+    return;
+  }
   const trigger = event.target.closest("[data-open]");
   if (!trigger) return;
   if (event.target.closest("input[type='checkbox']")) return;
@@ -5833,6 +5955,10 @@ function setSection(section) {
     if (section === "access") store.accessFold = "";
     if (section === "skills") store.skillFold = store.skillFold || "";
     if (section === "library") store.libraryFold = "";
+  }
+  if (section === "groups") {
+    store.activeGroup = "";
+    store.groupReturn = "";
   }
   store.activeSection = section;
   if (sharePrototype()) store.prototypeFullscreen = true;
