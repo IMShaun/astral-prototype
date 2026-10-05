@@ -1,0 +1,250 @@
+{
+  "lead": "What Astral delivers from late 2026 to 2028. Each release builds on the one before.",
+  "all": "All three releases, from late 2026 to 2028.",
+  "kinds": [
+    {
+      "id": "core",
+      "name": "Core",
+      "legend": "Core platform"
+    },
+    {
+      "id": "new",
+      "name": "New",
+      "legend": "New capability"
+    },
+    {
+      "id": "intel",
+      "name": "Intelligence",
+      "legend": "Intelligence, powered by Arbnco"
+    }
+  ],
+  "releases": [
+    {
+      "id": "v1",
+      "when": "Late 2026",
+      "name": "The core platform",
+      "summary": "The core platform, and a smooth move across from today’s portals.",
+      "quarters": [
+        {
+          "name": "Q3 2026",
+          "items": [
+            {
+              "id": "portal",
+              "name": "Your Astral portal",
+              "kind": "core",
+              "summary": "One place for all your energy data."
+            },
+            {
+              "id": "data-downloads",
+              "name": "Data, downloads, and exports",
+              "kind": "core",
+              "summary": "Everything you download today, carried across."
+            },
+            {
+              "id": "scheduled-reports",
+              "name": "Scheduled reports",
+              "kind": "core",
+              "summary": "Reports that arrive on your timetable."
+            },
+            {
+              "id": "energy-analysis",
+              "name": "Energy analysis",
+              "kind": "core",
+              "summary": "See what your sites use, and why."
+            },
+            {
+              "id": "document-hub",
+              "name": "Document hub",
+              "kind": "core",
+              "summary": "Your documents, in one place."
+            },
+            {
+              "id": "unmetered-supplies",
+              "name": "Unmetered supplies",
+              "kind": "core",
+              "summary": "Unmetered data and reporting, carried across."
+            }
+          ]
+        },
+        {
+          "name": "Q4 2026",
+          "items": [
+            {
+              "id": "portfolio-view",
+              "name": "Portfolio view",
+              "kind": "core",
+              "summary": "Your estate, organised the way you work."
+            },
+            {
+              "id": "proactive-alerts",
+              "name": "Proactive alerts",
+              "kind": "core",
+              "summary": "Odd use, missing data, and meters not sending, flagged so you can act early."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "v2",
+      "when": "First half of 2027",
+      "name": "The differentiators",
+      "summary": "What sets Astral apart. Data health, settlement, live job status, and intelligence.",
+      "quarters": [
+        {
+          "name": "Q1 2027",
+          "items": [
+            {
+              "id": "data-health",
+              "name": "Data health",
+              "kind": "new",
+              "summary": "Know your data is complete."
+            },
+            {
+              "id": "capacity-insight",
+              "name": "Capacity and cross-site insight",
+              "kind": "new",
+              "summary": "Where capacity is wasted, and which sites drive use."
+            },
+            {
+              "id": "online-booking",
+              "name": "Online booking",
+              "kind": "new",
+              "summary": "Request a site visit online."
+            },
+            {
+              "id": "energy-intelligence",
+              "name": "Energy intelligence",
+              "kind": "intel",
+              "summary": "Insight built on your own data."
+            }
+          ]
+        },
+        {
+          "name": "Q2 2027",
+          "items": [
+            {
+              "id": "my-queries",
+              "name": "My queries",
+              "kind": "new",
+              "summary": "Raise a query and follow it through to a close."
+            },
+            {
+              "id": "settlement-performance",
+              "name": "Settlement performance",
+              "kind": "new",
+              "summary": "How your meters perform in settlement."
+            },
+            {
+              "id": "live-job-status",
+              "name": "Live job status",
+              "kind": "new",
+              "summary": "Where every job stands, as it happens."
+            },
+            {
+              "id": "unmetered-insight",
+              "name": "Unmetered reporting and insight",
+              "kind": "new",
+              "summary": "Richer unmetered reports."
+            },
+            {
+              "id": "site-video",
+              "name": "Site video",
+              "kind": "new",
+              "summary": "Video evidence from site visits."
+            },
+            {
+              "id": "asset-visibility",
+              "name": "Asset visibility",
+              "kind": "new",
+              "summary": "A first view of your site assets."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "v3",
+      "when": "Late 2027 to 2028",
+      "name": "Modules and integrations",
+      "summary": "Extra modules, and the integrations that connect them.",
+      "quarters": [
+        {
+          "name": "Q3 2027",
+          "items": [
+            {
+              "id": "next-best-action",
+              "name": "Next best action",
+              "kind": "new",
+              "summary": "What is holding a job up, and who needs to act."
+            },
+            {
+              "id": "leak-detection",
+              "name": "Leak detection",
+              "kind": "new",
+              "summary": "Catch leaks early."
+            },
+            {
+              "id": "asset-health",
+              "name": "Asset health outlook",
+              "kind": "intel",
+              "summary": "Which assets need attention next."
+            },
+            {
+              "id": "asset-register",
+              "name": "Asset register",
+              "kind": "new",
+              "summary": "Every asset, metered and unmetered."
+            },
+            {
+              "id": "efficiency-renewables",
+              "name": "Efficiency and renewables",
+              "kind": "intel",
+              "summary": "Where to save, and what renewables return."
+            }
+          ]
+        },
+        {
+          "name": "Q4 2027",
+          "items": [
+            {
+              "id": "self-serve-booking",
+              "name": "Full self-serve booking",
+              "kind": "new",
+              "summary": "Book and change visits yourself."
+            },
+            {
+              "id": "meter-location",
+              "name": "Meter location",
+              "kind": "new",
+              "summary": "Find every meter on the first visit."
+            }
+          ]
+        },
+        {
+          "name": "Q1 2028",
+          "items": [
+            {
+              "id": "invoices",
+              "name": "Invoices and statements",
+              "kind": "new",
+              "summary": "Your bills alongside your data."
+            },
+            {
+              "id": "field-updates",
+              "name": "Field service updates",
+              "kind": "new",
+              "summary": "Engineer visit outcomes, sent straight to Astral."
+            },
+            {
+              "id": "carbon-compliance",
+              "name": "Carbon compliance",
+              "kind": "intel",
+              "summary": "Energy Performance Certificates, Minimum Energy Efficiency Standards, and carbon reporting."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

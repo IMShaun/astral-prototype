@@ -15,6 +15,7 @@ const SECTIONS = [
   "groups",
   "research",
   "resources",
+  "roadmap",
   "access",
   "library",
   "language",
@@ -118,6 +119,10 @@ const els = {
   resourcesCount: document.getElementById("resources-count"),
   resourcesList: document.getElementById("resources-list"),
   navResourcesCount: document.getElementById("nav-resources-count"),
+  roadmapLead: document.getElementById("roadmap-lead"),
+  roadmapCount: document.getElementById("roadmap-count"),
+  roadmapList: document.getElementById("roadmap-list"),
+  navRoadmapCount: document.getElementById("nav-roadmap-count"),
   brandingLead: document.getElementById("branding-lead"),
   brandingCount: document.getElementById("branding-count"),
   brandingTabs: document.getElementById("branding-tabs"),
@@ -400,6 +405,7 @@ let systems = { updated: "", systems: {} };
 let experience = { updated: "", keis: [], how: [], structure: [], cuts: [] };
 let skillsCatalog = { lead: "", groups: [] };
 let resourcesCatalog = { lead: "", themes: [], kinds: [] };
+let roadmapCatalog = { lead: "", all: "", kinds: [], releases: [] };
 let canWrite = false;
 let openDetail = null;
 
@@ -1105,6 +1111,7 @@ function normalize(data) {
     data.skillFold = data.skillFold || "";
     data.activeResource = data.activeResource || "";
     data.resourceKind = data.resourceKind || "all";
+    data.roadmapRelease = data.roadmapRelease || "all";
     if (!store) store = data;
     data.activePrototypeView = protoViewId(data.activePrototypeView);
     data.activePrototypeMeter = data.activePrototypeMeter || "";
@@ -1200,7 +1207,6 @@ function normalize(data) {
     data.prototypePreviewHidden = Boolean(data.prototypePreviewHidden);
     data.prototypeLibraryOn = Boolean(data.prototypeLibraryOn);
     data.prototypeEmailsOn = Boolean(data.prototypeEmailsOn);
-    data.prototypeRoadmapOn = Boolean(data.prototypeRoadmapOn);
     data.prototypeFlow = [
       "product",
       "onboarding",
@@ -1400,6 +1406,7 @@ function normalize(data) {
     skillFold: "",
     activeResource: "",
     resourceKind: "all",
+    roadmapRelease: "all",
     teams: TEAMS,
     access: emptyAccess(),
     boards: {
@@ -1437,6 +1444,7 @@ const DESK_SECTION_ICONS = {
   groups: "users",
   research: "analyse",
   resources: "book",
+  roadmap: "signpost",
   strategy: "outgoing",
   analytics: "chart-bar",
   access: "profile",
@@ -3170,6 +3178,157 @@ function renderResources() {
     `;
   }
   setNavCount(els.navResourcesCount, items.length);
+}
+
+function roadmapItems() {
+  return (roadmapCatalog.releases || []).flatMap((release) =>
+    (release.quarters || []).flatMap((quarter) =>
+      (quarter.items || []).map((item) => ({ ...item, release: release.id, quarter: quarter.name }))
+    )
+  );
+}
+
+function roadmapKind(id) {
+  return (roadmapCatalog.kinds || []).find((kind) => kind.id === id) || { id, name: "", legend: "" };
+}
+
+function activeRoadmapRelease() {
+  const id = store?.roadmapRelease || "all";
+  return (roadmapCatalog.releases || []).some((release) => release.id === id) ? id : "all";
+}
+
+function roadmapMatch(item) {
+  return deskMatch("roadmap", item.name, item.summary, item.quarter, item.release, roadmapKind(item.kind).name);
+}
+
+function roadmapKindTag(item) {
+  return `<span class="roadmap-kind" data-kind="${escapeHtml(item.kind)}">${escapeHtml(
+    roadmapKind(item.kind).name
+  )}</span>`;
+}
+
+function roadmapCard(item) {
+  return `
+    <li class="astral-card roadmap-card" data-kind="${escapeHtml(item.kind)}">
+      <h5>${escapeHtml(item.name)}</h5>
+      <p>${escapeHtml(cardLine(item, item.summary))}</p>
+      ${roadmapKindTag(item)}
+    </li>
+  `;
+}
+
+function roadmapRow(item) {
+  return deskRow({
+    title: item.name,
+    cells: [
+      escapeHtml(item.release),
+      escapeHtml(item.quarter),
+      roadmapKindTag(item),
+      `<span class="desk-cell-line">${escapeHtml(cardLine(item, item.summary))}</span>`,
+    ],
+  });
+}
+
+function roadmapLegend() {
+  return `
+    <ul class="roadmap-legend" aria-label="Key">
+      ${(roadmapCatalog.kinds || [])
+        .map(
+          (kind) =>
+            `<li><span class="roadmap-swatch" data-kind="${escapeHtml(kind.id)}" aria-hidden="true"></span>${escapeHtml(
+              kind.legend || kind.name
+            )}</li>`
+        )
+        .join("")}
+    </ul>
+  `;
+}
+
+function roadmapBoard(releases) {
+  return releases
+    .map((release) => {
+      const quarters = (release.quarters || [])
+        .map((quarter) => ({
+          ...quarter,
+          shown: (quarter.items || [])
+            .map((item) => ({ ...item, release: release.id, quarter: quarter.name }))
+            .filter(roadmapMatch),
+        }))
+        .filter((quarter) => quarter.shown.length);
+      if (!quarters.length) return "";
+      const head = `roadmap-${escapeHtml(release.id)}`;
+      return `
+        <section class="roadmap-release" aria-labelledby="${head}">
+          <div class="roadmap-release-head">
+            <h3 id="${head}">${escapeHtml(`${release.id}. ${release.name}`)}</h3>
+            <p class="astral-muted">${escapeHtml(release.when)}</p>
+          </div>
+          <div class="roadmap-quarters">
+            ${quarters
+              .map(
+                (quarter) => `
+              <div class="roadmap-quarter">
+                <h4>${escapeHtml(quarter.name)}</h4>
+                <ul class="roadmap-cards">${quarter.shown.map(roadmapCard).join("")}</ul>
+              </div>`
+              )
+              .join("")}
+          </div>
+        </section>
+      `;
+    })
+    .join("");
+}
+
+function onRoadmapNav(event) {
+  const release = event.target.closest("[data-roadmap-release]");
+  if (!release) return;
+  store.roadmapRelease = release.dataset.roadmapRelease;
+  render();
+  persistChrome();
+  deskRefocus(`[data-roadmap-release="${CSS.escape(release.dataset.roadmapRelease)}"]`);
+}
+
+function renderRoadmap() {
+  if (!els.roadmapLead || !els.roadmapList) return;
+  const releases = roadmapCatalog.releases || [];
+  const items = roadmapItems();
+  const active = activeRoadmapRelease();
+  const picked = active === "all" ? releases : releases.filter((release) => release.id === active);
+  const current = releases.find((release) => release.id === active);
+  const help = current ? `${current.when}. ${current.summary}` : roadmapCatalog.all || "";
+  const shown = items.filter((item) => (active === "all" || item.release === active) && roadmapMatch(item));
+  const list = deskView("roadmap") === "list";
+  let inner = emptyCard(deskQuery("roadmap") ? "Nothing matches that search." : "Nothing on the roadmap yet.");
+  if (shown.length) {
+    inner = list
+      ? deskTable(["Capability", "Release", "Quarter", "Kind", "Summary"], shown.map(roadmapRow))
+      : `${roadmapLegend()}<div class="roadmap-board">${roadmapBoard(picked)}</div>`;
+  }
+  els.roadmapLead.textContent = roadmapCatalog.lead || "";
+  if (els.roadmapCount) {
+    els.roadmapCount.textContent = items.length === 1 ? "1 capability" : `${items.length} capabilities`;
+  }
+  els.roadmapList.innerHTML = `
+    ${deskStats(
+      [
+        { id: "all", name: "All releases", count: items.length },
+        ...releases.map((release) => {
+          const count = items.filter((item) => item.release === release.id).length;
+          return { id: release.id, name: release.id, count, disabled: !count };
+        }),
+      ],
+      active,
+      "data-roadmap-release",
+      "Release"
+    )}
+    ${help ? `<p class="astral-muted desk-sheet-help">${escapeHtml(help)}</p>` : ""}
+    <section class="astral-card astral-reports-sheet desk-sheet roadmap-sheet${list ? " is-list" : " is-cards"}">
+      ${deskTools("roadmap", "Search the roadmap", "Search the roadmap")}
+      ${inner}
+    </section>
+  `;
+  setNavCount(els.navRoadmapCount, items.length);
 }
 
 function findTool(id, scope) {
@@ -4951,6 +5110,7 @@ function render() {
   renderPatterns();
   renderSkills();
   renderResources();
+  renderRoadmap();
   renderPrototype();
   renderBranding();
 
@@ -4995,6 +5155,7 @@ const CHROME_FIELDS = [
   "activeSkill",
   "activeResource",
   "resourceKind",
+  "roadmapRelease",
   "activePrototypeView",
   "activePrototypeMeter",
   "activePrototypeQuery",
@@ -5067,7 +5228,6 @@ const CHROME_FIELDS = [
   "prototypePreviewHidden",
   "prototypeLibraryOn",
   "prototypeEmailsOn",
-  "prototypeRoadmapOn",
   "prototypeFlow",
   "prototypeAskOpen",
   "prototypeWalkOpen",
@@ -5253,12 +5413,11 @@ function applyPreviewQuery() {
   } catch (err) {
     return;
   }
-  if (!["prototype", "library", "emails", "roadmap"].includes(preview)) return;
+  if (preview !== "prototype" && preview !== "library" && preview !== "emails") return;
   store.activeSection = "prototype";
   store.prototypeFullscreen = true;
   store.prototypeLibraryOn = preview === "library";
   store.prototypeEmailsOn = preview === "emails";
-  store.prototypeRoadmapOn = preview === "roadmap";
   store.prototypePreviewHidden = false;
   try {
     const url = new URL(location.href);
@@ -5571,7 +5730,6 @@ function applyChrome() {
   store.prototypeSignedOut = Boolean(store.prototypeSignedOut);
   store.prototypeLibraryOn = Boolean(store.prototypeLibraryOn);
   store.prototypeEmailsOn = Boolean(store.prototypeEmailsOn);
-  store.prototypeRoadmapOn = Boolean(store.prototypeRoadmapOn);
   if (!Object.prototype.hasOwnProperty.call(chrome, "prototypeProfileDraftName")) {
     store.prototypeProfileDraftName = store.prototypeProfileName || "";
   }
@@ -6349,6 +6507,22 @@ async function loadResources() {
   }
 }
 
+async function loadRoadmap() {
+  try {
+    const res = await fetch("/data/roadmap.json", { cache: "no-store" });
+    if (!res.ok) throw new Error("missing roadmap");
+    const data = await res.json();
+    roadmapCatalog = {
+      lead: data.lead || "",
+      all: data.all || "",
+      kinds: Array.isArray(data.kinds) ? data.kinds : [],
+      releases: Array.isArray(data.releases) ? data.releases : [],
+    };
+  } catch {
+    roadmapCatalog = { lead: "", all: "", kinds: [], releases: [] };
+  }
+}
+
 async function load() {
   try {
     if (window.WORK_DESK_BOOT?.board) {
@@ -6373,6 +6547,7 @@ async function load() {
   await loadExperience();
   await loadSkills();
   await loadResources();
+  await loadRoadmap();
   applyChrome();
   clampSection();
   applyPreviewQuery();
@@ -6398,6 +6573,7 @@ if (els.analyticsKeis) els.analyticsKeis.addEventListener("click", onAnalyticsCl
 if (els.patternsList) els.patternsList.addEventListener("click", onPatternNav);
 if (els.skillsList) els.skillsList.addEventListener("click", onSkillNav);
 if (els.resourcesList) els.resourcesList.addEventListener("click", onResourceNav);
+if (els.roadmapList) els.roadmapList.addEventListener("click", onRoadmapNav);
 if (els.prototypeRoot) {
   els.prototypeRoot.addEventListener("click", onPrototype);
   els.prototypeRoot.addEventListener("input", onPrototypeInput);

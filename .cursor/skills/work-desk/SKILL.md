@@ -130,6 +130,8 @@ Skills for this desk live in `data/skills.json` and show on the Skills page. Fol
 
 Resources live in `data/resources.json` and show on the Resources page: laws, principles, frameworks, and topics for UX and UI work. Each item has a theme, a one-line summary, three takeaways, origins, a source, an IMSERV review question (`ask`), further reading, and three `related` ids. Write every line in our own words; link the original under further reading. Add a short `card` line when the summary runs over 120 characters.
 
+The roadmap lives in `data/roadmap.json` and shows on the Roadmap page. It has three releases, each with quarters of capabilities. Each capability has a name, a one-line summary, and a kind: `core` for the core platform, `new` for a new capability, or `intel` for intelligence powered by Arbnco. Use the product glossary for names, so Query, not ticket.
+
 ## Prototype
 
 Prototype is the live Astral build. IMSERV only. Off Axis and Stagerise stay empty.
