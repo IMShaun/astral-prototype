@@ -13545,19 +13545,24 @@ function protoShareWalk() {
 }
 
 function protoLibraryOn() {
-  return Boolean(store.prototypeLibraryOn) && !protoEmailsOn();
+  return Boolean(store.prototypeLibraryOn) && !protoEmailsOn() && !protoRoadmapOn();
 }
 
 function protoEmailsOn() {
-  return Boolean(store.prototypeEmailsOn);
+  return Boolean(store.prototypeEmailsOn) && !protoRoadmapOn();
 }
 
-// Library and Emails are sites in a frame. The walk stays painted underneath.
+function protoRoadmapOn() {
+  return Boolean(store.prototypeRoadmapOn);
+}
+
+// Library, Emails, and Roadmap are sites in a frame. The walk stays painted underneath.
 function protoSiteOn() {
-  return protoLibraryOn() || protoEmailsOn();
+  return protoLibraryOn() || protoEmailsOn() || protoRoadmapOn();
 }
 
 function protoPreviewMode() {
+  if (protoRoadmapOn()) return "roadmap";
   if (protoEmailsOn()) return "emails";
   return protoLibraryOn() ? "library" : "prototype";
 }
@@ -13594,6 +13599,7 @@ function protoToggleDesk() {
   }
   store.prototypeLibraryOn = false;
   store.prototypeEmailsOn = false;
+  store.prototypeRoadmapOn = false;
   if (open) {
     store.activeSection = "today";
     store.prototypeFullscreen = false;
@@ -13616,10 +13622,11 @@ function astralPreviewMenu() {
       { id: "prototype", name: "Prototype" },
       { id: "library", name: "Library" },
       { id: "emails", name: "Emails" },
+      { id: "roadmap", name: "Roadmap" },
     ],
     mode,
     "data-proto-share",
-    "Prototype, library, or emails"
+    "Preview"
   );
   const exit = protoShareWalk()
     ? ""
@@ -27043,6 +27050,7 @@ function protoPaintPreviewMenu(fs) {
 const PROTO_SITES = {
   library: { src: "library-site/", title: "Astral library" },
   emails: { src: "emails-site/", title: "Astral emails" },
+  roadmap: { src: "roadmap-site/", title: "Astral roadmap" },
 };
 
 function protoSiteHost(fs, id) {
@@ -29600,9 +29608,13 @@ function onPrototype(event) {
   }
   const shareBtn = event.target.closest("[data-proto-share]");
   if (shareBtn) {
-    const mode = ["library", "emails"].includes(shareBtn.dataset.protoShare) ? shareBtn.dataset.protoShare : "prototype";
+    const mode = ["library", "emails", "roadmap"].includes(shareBtn.dataset.protoShare) ? shareBtn.dataset.protoShare : "prototype";
     if (protoDeskKnock(event, mode === "library")) return;
-    setProto({ prototypeLibraryOn: mode === "library", prototypeEmailsOn: mode === "emails" });
+    setProto({
+      prototypeLibraryOn: mode === "library",
+      prototypeEmailsOn: mode === "emails",
+      prototypeRoadmapOn: mode === "roadmap",
+    });
     protoRestoreFocus(`#astral-fs [data-proto-share="${mode}"]`);
     return;
   }
@@ -29612,6 +29624,7 @@ function onPrototype(event) {
       prototypeFullscreen: fullBtn.dataset.protoFull === "show",
       prototypeLibraryOn: false,
       prototypeEmailsOn: false,
+      prototypeRoadmapOn: false,
     });
     return;
   }

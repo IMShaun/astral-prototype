@@ -309,10 +309,11 @@
         { id: "prototype", name: "Prototype" },
         { id: "library", name: "Library" },
         { id: "emails", name: "Emails" },
+        { id: "roadmap", name: "Roadmap" },
       ],
       "emails",
       "data-em-share",
-      "Prototype, library, or emails"
+      "Preview"
     );
     return `<div class="astral-preview-menu">${tabs}${protoGhost("Hide", 'data-em-preview="hide"')}</div>`;
   }
@@ -340,6 +341,7 @@
     if (!share) return;
     if (share.dataset.emShare === "prototype") location.assign(new URL("../?preview=prototype", location.href).href);
     if (share.dataset.emShare === "library") location.assign(new URL("../library-site/", location.href).href);
+    if (share.dataset.emShare === "roadmap") location.assign(new URL("../roadmap-site/", location.href).href);
   });
 
   readHash();

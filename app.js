@@ -1200,6 +1200,7 @@ function normalize(data) {
     data.prototypePreviewHidden = Boolean(data.prototypePreviewHidden);
     data.prototypeLibraryOn = Boolean(data.prototypeLibraryOn);
     data.prototypeEmailsOn = Boolean(data.prototypeEmailsOn);
+    data.prototypeRoadmapOn = Boolean(data.prototypeRoadmapOn);
     data.prototypeFlow = [
       "product",
       "onboarding",
@@ -5066,6 +5067,7 @@ const CHROME_FIELDS = [
   "prototypePreviewHidden",
   "prototypeLibraryOn",
   "prototypeEmailsOn",
+  "prototypeRoadmapOn",
   "prototypeFlow",
   "prototypeAskOpen",
   "prototypeWalkOpen",
@@ -5251,11 +5253,12 @@ function applyPreviewQuery() {
   } catch (err) {
     return;
   }
-  if (preview !== "prototype" && preview !== "library" && preview !== "emails") return;
+  if (!["prototype", "library", "emails", "roadmap"].includes(preview)) return;
   store.activeSection = "prototype";
   store.prototypeFullscreen = true;
   store.prototypeLibraryOn = preview === "library";
   store.prototypeEmailsOn = preview === "emails";
+  store.prototypeRoadmapOn = preview === "roadmap";
   store.prototypePreviewHidden = false;
   try {
     const url = new URL(location.href);
@@ -5568,6 +5571,7 @@ function applyChrome() {
   store.prototypeSignedOut = Boolean(store.prototypeSignedOut);
   store.prototypeLibraryOn = Boolean(store.prototypeLibraryOn);
   store.prototypeEmailsOn = Boolean(store.prototypeEmailsOn);
+  store.prototypeRoadmapOn = Boolean(store.prototypeRoadmapOn);
   if (!Object.prototype.hasOwnProperty.call(chrome, "prototypeProfileDraftName")) {
     store.prototypeProfileDraftName = store.prototypeProfileName || "";
   }
