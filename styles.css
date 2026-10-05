@@ -3823,6 +3823,18 @@ body.is-proto-fs .stage {
   background: #000;
 }
 
+.astral-switch.is-switch-hold,
+.astral-switch.is-switch-hold::after {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .astral-switch,
+  .astral-switch::after {
+    transition: none;
+  }
+}
+
 .astral-ghost {
   display: inline-flex;
   align-items: center;

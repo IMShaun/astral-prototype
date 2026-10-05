@@ -27376,7 +27376,9 @@ function renderPrototype() {
         protoSkelBooted = true;
         protoSkelStart("screen");
       }
+      const switches = protoSwitchCapture(fs);
       protoPaintWalkFs(fs);
+      protoSwitchReplay(fs, switches);
       protoScrollRestore(fs, scroll);
       protoScrollRestore(fs, protoScrollBootTake());
     }
@@ -27419,6 +27421,40 @@ function renderPrototype() {
   protoBindFloatMenus();
   protoPlaceFloatMenusSoon();
   protoFitChartSoon();
+}
+
+function protoSwitchKey(el) {
+  const host = el.closest('[role="switch"]') || el;
+  const data = Object.entries(host.dataset)
+    .map(([key, value]) => `${key}=${value}`)
+    .join("|");
+  return data || host.getAttribute("aria-label") || "";
+}
+
+function protoSwitchCapture(root) {
+  const seen = new Map();
+  root.querySelectorAll(".astral-switch").forEach((el) => {
+    const key = protoSwitchKey(el);
+    if (key) seen.set(key, el.classList.contains("is-on"));
+  });
+  return seen;
+}
+
+// A repaint swaps the switch, so start it from its old state to let the slide play.
+function protoSwitchReplay(root, seen) {
+  if (!seen.size) return;
+  root.querySelectorAll(".astral-switch").forEach((el) => {
+    const key = protoSwitchKey(el);
+    if (!seen.has(key)) return;
+    const was = seen.get(key);
+    const now = el.classList.contains("is-on");
+    if (was === now) return;
+    el.classList.add("is-switch-hold");
+    el.classList.toggle("is-on", was);
+    void el.offsetWidth;
+    el.classList.remove("is-switch-hold");
+    el.classList.toggle("is-on", now);
+  });
 }
 
 function protoFileDownload(body, name, type) {
