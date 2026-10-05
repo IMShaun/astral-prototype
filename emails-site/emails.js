@@ -133,11 +133,15 @@
           <h2>Writing</h2>
           <ul>
             <li>Sentence case, en-GB spelling. No colons or em dashes.</li>
-            <li>Dates as 4 Sep 2026. Times as 16.00.</li>
+            <li>Dates as 4 Sep 2026. Times as 16.00. Date first, then the time.</li>
             <li>Use the app's words. Alert, Query, Report, Download, Data alert.</li>
             <li>Name the site and the person. "Priya Shah replied", not "Someone replied".</li>
             <li>Missing data is not zero use. Say so.</li>
             <li>Codes are 6 digits. Never send a password or a link that signs someone in.</li>
+            <li>Write percent, not the symbol. 38 percent above expected.</li>
+            <li>Reading times are UTC, like the graph. Send times say UK time or UTC, like the report.</li>
+            <li>Name a meter by its name and MPAN. Say Incoming and Outgoing on the site.</li>
+            <li>Use full words. Write do not, not the short form.</li>
             <li>Do not promise a time unless the product keeps it.</li>
           </ul>
         </section>
