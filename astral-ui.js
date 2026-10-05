@@ -42,6 +42,9 @@ const PROTO_ICON_MARKS = {
   warning: `<path d="M12 3.9 21.15 20.1H2.85L12 3.9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><path d="M12 9.45v4.2M12 16.8v.02" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />`,
   help: `<circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="2" /><path d="M9.75 9.6a2.4 2.4 0 1 1 3.15 2.25c-.66.36-1.05.84-1.05 1.65" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M12 17.1v.02" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />`,
   chevron: `<path d="M6 9 12 15 18 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
+  calendar: `<rect x="4" y="5.5" width="16" height="14.5" rx="1.75" fill="none" stroke="currentColor" stroke-width="2" /><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />`,
+  battery: `<rect x="3" y="7.5" width="16" height="9" rx="1.75" fill="none" stroke="currentColor" stroke-width="2" /><path d="M21.5 10.5v3M6.5 10.5v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />`,
+  signal: `<path d="M5 19v-2.5M9.67 19v-5.5M14.33 19v-8.5M19 19V7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />`,
   hours: `<circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="2" /><path d="M12 7.5v4.8L15 15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
   tou: `<path d="M4.5 18V9.75h4.5V18M9.75 18V6h4.5v12M15 18V12h4.5v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />`,
   closed: `<circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="2" /><path d="M12 7.5v4.8L15 15M5.5 18.5l13-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
@@ -236,6 +239,28 @@ function protoStateIcon(word) {
 function protoStatePill(word) {
   const kind = protoStateKind(word);
   return `<span class="astral-state is-${kind}">${protoStateIcon(word)}<span>${protoEsc(word)}</span></span>`;
+}
+
+// Fault stages and risk reasons on Servicing. Red needs someone now, amber is stuck or slipping,
+// teal is planned, green is being fixed.
+const PROTO_SERVICE_PILLS = {
+  new: ["missing", "notice"],
+  "waiting for parts": ["stale", "hours"],
+  booked: ["info", "calendar"],
+  "on site": ["sending", "servicing"],
+  "3g modem": ["missing", "warning"],
+  "battery low": ["missing", "battery"],
+  "drops out": ["stale", "signal"],
+  "weak signal": ["stale", "signal"],
+  estimates: ["stale", "chart-line"],
+  recertify: ["info", "calendar"],
+};
+
+function protoServicePill(word) {
+  const [kind, icon] = PROTO_SERVICE_PILLS[String(word || "").trim().toLowerCase()] || ["info", "notice"];
+  return `<span class="astral-state is-${kind}">${protoIconMark(icon, "astral-state-icon")}<span>${protoEsc(
+    word
+  )}</span></span>`;
 }
 
 function protoClearButton(className, hit, label) {
@@ -712,7 +737,9 @@ function astralPreview(id) {
     )}${protoTag("Custom", "A name only. You cannot run it yet.")}${protoTag("Manager")}`,
     state: `${protoStatePill("Sending")}${protoStatePill("Odd use")}${protoStatePill(
       "Missing data"
-    )}${protoStatePill("Not sending")}`,
+    )}${protoStatePill("Not sending")}${protoServicePill("New")}${protoServicePill(
+      "Waiting for parts"
+    )}${protoServicePill("Booked")}${protoServicePill("On site")}`,
     "flow-pill": `${protoFlowPill("in")}${protoFlowPill("out")}`,
     count: `<span class="ds-count is-filter">${protoCountChip(2)}</span><span class="ds-count is-compare">${protoCountChip(
       3

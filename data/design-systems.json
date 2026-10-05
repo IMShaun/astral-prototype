@@ -6730,7 +6730,7 @@
             "status": "draft",
             "say": "New, Booked, On site, Waiting for parts",
             "avoid": "Triage, Dispatched, Pending.",
-            "note": "Stage sits in a Tag. A fixed fault leaves the list.",
+            "note": "Stage sits in a coloured pill with an icon. New is red with a bell. Waiting for parts is amber with a clock. Booked is teal with a calendar. On site is green with a wrench. A fixed fault leaves the list.",
             "from": "Admin servicing and inbox brief, 6 Oct"
           },
           {
@@ -7447,7 +7447,7 @@
             "name": "Servicing",
             "status": "draft",
             "summary": "Meter health across every company. Faults, not sending, and at risk in one place.",
-            "now": "IMSERV admin only. Four numbers sit at the top: Meters sending, Not sending, Open faults, and At risk. Each opens its tab. Tabs are Faults, Not sending, At risk, and Companies. Each tab is one table. Search finds a company, site, or meter point. Faults show the fault, the stage, the engineer, and when it is due. Late says how many days late. Not sending lists meters that are not sending or have missing data, and says if a fault is open. At risk is still sending but likely to stop. Say why: 3G modem, Weak signal, Drops out, Recertify, Battery low, or Estimates. A row opens that meter as the company. A company with no meter data here opens as that company.",
+            "now": "IMSERV admin only. Four numbers sit at the top: Meters sending, Not sending, Open faults, and At risk. Each opens its tab. Tabs are Faults, Not sending, At risk, and Companies. Each tab is one table. Search finds a company, site, or meter point. Faults show the fault, the stage, the engineer, and when it is due. Late says how many days late. Not sending lists meters that are not sending or have missing data, and says if a fault is open. At risk is still sending but likely to stop. Say why in a coloured pill with an icon: 3G modem and Battery low are red, Weak signal, Drops out, and Estimates are amber, and Recertify is teal. A row opens that meter as the company. A company with no meter data here opens as that company.",
             "later": "Book an engineer from the row. Due dates per contract. Signal over time. Group by how the meter talks to us.",
             "uses": [
               "page-header",

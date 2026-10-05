@@ -64,6 +64,7 @@
   --color-status-danger: #b42318;
   --color-status-danger-subtle: #fee4e2;
   --color-status-info: #028178;
+  --color-status-info-subtle: #ddf3f1;
   --color-text-danger: #b42318;
   --color-text-success: #067647;
   --color-text-warning: #b54708;
@@ -6425,6 +6426,11 @@ button.astral-flow-pill {
 .astral-state.is-missing {
   background: var(--color-status-danger-subtle);
   color: var(--color-status-danger);
+}
+
+.astral-state.is-info {
+  background: var(--color-status-info-subtle);
+  color: color-mix(in srgb, var(--color-status-info) 80%, #000);
 }
 
 button.astral-state {
