@@ -16,9 +16,13 @@ en-GB-oxendict. British English with Oxford spelling. Product glossary outranks 
 
 Serious, destructive, privacy or permission copy stays on the default, not the informal.
 
+Keep the voice stable but adapt tone to the task, risk and circumstances. Choose vocabulary from evidence, not demographic stereotypes. Short, friendly and conversational are not synonyms for clear.
+
+Clarity, conciseness and consistency are useful checks, not a complete quality model. Accuracy, necessary context, accessibility, consequences and recovery outrank brevity or personality. Design for scanning with descriptive headings and useful information first, without assuming nobody reads.
+
 | Situation | Neutral | More formal | More informal | Do not use |
 | --- | --- | --- | --- | --- |
-| Create team | Add team | Create team | Add team | Let’s build a team! |
+| Create team | Add team | Add team | Add team | Let’s build a team! |
 | Saved | Changes saved | Changes have been saved | Saved | Success!!! |
 | Missing name | Enter a team name | Enter the team name | Add a team name | Oops! You forgot the name |
 | Remove member | Remove member? | Confirm member removal | Remove member? | Kick them out? |
@@ -26,6 +30,7 @@ Serious, destructive, privacy or permission copy stays on the default, not the i
 | Failure | Could not export data. Try again. | The export could not be completed. Try again. | We could not export the data. Try again. | Something went wrong :( |
 
 Confirm changes only replaces Save changes when confirmation is the action.
+The failure examples assume confirmed failure and a safe, supported retry. For uncertain outcomes, use the separate pattern in [templates.md](templates.md). Tone variants must not change capability, scope or outcome.
 
 ## Spelling
 
@@ -72,9 +77,14 @@ Do not ship Enter a valid {field} when the constraint is known. Prefer Enter an 
 
 invalid can sit in technical diagnostics. Do not blame the person in user-facing errors.
 
+Continue and Next are acceptable for progress through a clearly explained flow. They must not conceal payment, publication, submission, access changes or deletion. Explain the actual consequence before commitment.
+
+Do not force positive language when the truth is uncertain. Confirm only known outcomes. A clear fallback can acknowledge an unknown cause without inventing one, but must include the supported next step when available.
+
 ## Length budgets
 
 Warn. Do not silently cut.
+Remove unnecessary wording, not information required to decide or recover. Explain a budget overrun and recommend layout changes when a shorter version would lose meaning.
 
 | Component | Preferred budget | Guidance |
 | --- | --- | --- |

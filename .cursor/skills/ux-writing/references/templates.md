@@ -4,22 +4,24 @@ Patterns, not strings to paste blindly. Fill ORCA+ first. Examples state the ass
 
 For each pattern: placeholders, short, long, formal, informal, when to use, what to avoid.
 
+Every variant must preserve the same product facts, action, scope and consequence. A short or informal version is not permission to omit a material fact. Read [content-planning.md](content-planning.md) for journey-state coverage. Include only supported states and recovery.
+
 ## CTA
 
 Pattern: Add {object}
 Short: Add {object}
 Long: Add {object} to {parent}
-Formal: Create {object}
+Formal: Add {object}
 Informal: Add {object}
 When: The user can create that object now.
-Avoid: Let’s build a {object}. Continue when the action is known. Add team before the object is team.
+Avoid: Let’s build a {object}. Continue when it conceals a consequential action. Add team before the object is team. Use Create only if the glossary permits it for this action.
 
 ## Save CTA
 
 Pattern: Save changes
 Short: Save changes
 Long: Save {object} changes
-Formal: Confirm changes
+Formal: Save changes
 Informal: Save changes
 When: They have edited a form. Disabled until a line changes.
 Avoid: Persist. Confirm changes unless confirmation is the action.
@@ -30,29 +32,69 @@ Pattern: {Object} added
 Short: {Object} added
 Long: {Object} has been added to {parent}.
 Formal: {Object} has been added.
-Informal: {Object} is ready.
-When: The create or save finished.
-Avoid: Success!!! Praise with no outcome.
+Informal: {Object} added.
+When: Creation and persistence are confirmed. Use Changes saved for a confirmed save. Include what happens next when needed.
+Avoid: Success!!! Praise with no outcome. Ready when only creation is confirmed. Confirming success while a request is pending.
 
-## Validation error
+## Missing required input
 
 Pattern: Enter {field}.
 Short: Enter {field}.
-Long: Enter {field} in this format: {example}.
-Formal: Enter {field} in this format: {example}.
-Informal: Check {field} and try again.
-When: A required or formatted field needs attention.
-Avoid: Invalid {field}. You forgot. Enter a valid {field} when the constraint is known.
+Long: Enter {field}. {necessary instruction}.
+Formal: Enter {field}.
+Informal: Enter {field}.
+When: A required field is empty.
+Avoid: Invalid {field}. You forgot. Enter a valid {field} when the constraint is known. Dropping a required format or correction from a variant.
+
+## Format or constraint error
+
+Pattern: {field} must {known constraint}.
+Short: Same
+Long: {field} must {known constraint}. {additional correction if needed}.
+Formal: Same
+Informal: Same
+When: A supplied value does not meet a known format, range or allowed value. Use an instruction such as Enter {field} in the format {example} when clearer. Keep the constraint in every variant unless it is already explained in associated visible instructions.
+Avoid: Invalid input. A short variant that removes the only explanation of the constraint. Invented restrictions.
 
 ## System error
 
-Pattern: Could not {action}. Try again.
-Short: Could not {action}. Try again.
-Long: We could not {action}. Your changes have not been saved. Try again.
-Formal: {Action} could not be completed. Try again.
-Informal: We could not {action}. Try again.
-When: The product failed, not the person.
-Avoid: Something went wrong. Oops. Error codes the audience does not need.
+Pattern: We could not {action}. {supported recovery}.
+Short: Could not {action}. {supported recovery}.
+Long: We could not {action}. {verified impact}. {supported recovery}.
+Formal: {Action} could not be completed. {supported recovery}.
+Informal: We could not {action}. {supported recovery}.
+When: Failure is confirmed. Use Try again only when retry is supported and safe. Include saved or unsaved work status only when known.
+Avoid: Something went wrong. Oops. Error codes the audience does not need. Repeated payment or submission when completion is uncertain.
+
+## Uncertain outcome
+
+Pattern: We could not confirm whether {outcome}. {supported way to check}.
+Short: Could not confirm {outcome}. {supported way to check}.
+Long: We could not confirm whether {outcome}. {supported way to check before repeating the action}.
+Formal: Same
+Informal: Same
+When: Completion is unknown, such as a timeout after a submission. Confirm the status-check route exists.
+Avoid: Your changes have not been saved. You have not been charged. Try again before checking a potentially completed action. Invented guarantees.
+
+## Loading or pending
+
+Pattern: {Action in progress}
+Short: Saving changes
+Long: Saving changes to {object}
+Formal: Same
+Informal: Same
+When: The request is still in progress. Describe the actual stage.
+Avoid: Changes saved before confirmation. Invented durations. Claiming work continues in the background unless supported.
+
+## Partial completion
+
+Pattern: {confirmed completed scope}. {confirmed incomplete scope}. {supported next action}.
+Short: Same, with redundant words removed
+Long: Same, with relevant scope details
+Formal: Same
+Informal: Same
+When: Some outcomes are confirmed complete and others are not. Separate failed from unknown outcomes.
+Avoid: A blanket success or failure. Asking someone to repeat the whole operation when that could duplicate completed work.
 
 ## Empty state
 
@@ -61,18 +103,28 @@ Short: No {objects} yet
 Long: There are no {objects} in {scope} yet. {next action}.
 Formal: No {objects} are available.
 Informal: No {objects} yet. Add the first one.
-When: The list is empty and adding is allowed.
-Avoid: An empty graphic with no text. Add {object} if they cannot add.
+When: The collection is confirmed empty. Offer adding only when it is allowed.
+Avoid: An empty graphic with no text. Add {object} if they cannot add. Treating a loading failure or filtered list as a new empty collection.
+
+## No matching results
+
+Pattern: No {objects} match {search or filters}.
+Short: No matching {objects}
+Long: No {objects} match {search or filters}. {supported search or filter adjustment}.
+Formal: Same
+Informal: Same
+When: Search or filtering completed and no results match.
+Avoid: No {objects} yet when the collection is not empty. Remove a filter when there is no filter to remove.
 
 ## Confirmation or destructive action
 
 Pattern: {Action} {object}?
 Short: {Action} {object}?
-Long: {consequence}. This cannot be undone.
-Formal: Permanently delete {object}
+Long: {verified consequence and scope}. {verified reversibility}.
+Formal: {Action} {object}?
 Informal: {Action} {object}?
-When: Remove is reversible. Delete is permanent.
-Avoid: Kick them out. Playful copy on a destructive act.
+When: Confirm the actual removal or deletion semantics. Name the affected object and scope. Use This cannot be undone only when irreversibility is confirmed.
+Avoid: Kick them out. Playful copy on a destructive act. Are you sure with no consequence. Claiming undo, permanent erasure or a refund without product facts.
 
 ## Permission request
 
@@ -81,18 +133,28 @@ Short: Allow {capability}
 Long: Allow {actor} to {action} {scope}.
 Formal: Grant {capability}
 Informal: Let {actor} {action} {scope}.
-When: Actor, action and scope are known. Do not infer consent.
-Avoid: Give third-party consent. Give access when scope is missing.
+When: Actor, action, scope and actual capability are known. Explain material consequences before commitment. Do not infer consent.
+Avoid: Give third-party consent. Give access when scope is missing. Shame-based refusal labels or a hidden refusal path.
+
+## Access restriction
+
+Pattern: {required capability} is needed to {action} {scope}.
+Short: You do not have permission to {action} {object}.
+Long: {known restriction}. {supported way to request access or continue}.
+Formal: Same
+Informal: Same
+When: The product confirms the restriction. Name a required role only when the capability map establishes it.
+Avoid: Access denied with no explanation. An invented Request access button. Presenting a permission restriction as an invalid field.
 
 ## Onboarding step
 
 Pattern: {Verb} your {object}
 Short: {Verb} your {object}
-Long: {explanation}. You can change this later.
-Formal: Configure {object}
+Long: {explanation}. {confirmed next step or reversibility if relevant}.
+Formal: {Verb} your {object}
 Informal: Set up your {object}
 When: One goal per step.
-Avoid: A second verify or a sign-in link the flow does not use.
+Avoid: A second verify or a sign-in link the flow does not use. You can change this later without a supported way to do so.
 
 ## Tooltip
 
