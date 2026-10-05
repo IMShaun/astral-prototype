@@ -5247,6 +5247,12 @@ button.astral-catch {
   min-width: 180px;
 }
 
+.astral-setting-control .astral-select-btn {
+  width: 100%;
+  max-width: none;
+  justify-content: space-between;
+}
+
 .astral-group-name {
   flex: 1;
   min-width: 0;
