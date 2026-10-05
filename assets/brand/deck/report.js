@@ -49,7 +49,7 @@
     { title: "Who Gets the Report", screen: "add-report-details", crop: { x: 800, y: 212, w: 772, h: 420 }, cap: "Add a report: Recipients", ids: [6, 7] },
     { title: "When It Sends", screen: "add-report-schedule", crop: { x: 20, y: 212, w: 780, h: 548 }, cap: "Add a report: Schedule tab", ids: [8, 9] },
     { title: "Which Dates It Covers", screen: "add-report-date-range", crop: { x: 20, y: 212, w: 780, h: 450 }, cap: "Add a report: Date range tab", ids: [10] },
-    { title: "Managing Reports", screen: "reports", crop: { x: 36, y: 420, w: 750, h: 486 }, cap: "Reports and compliance: report cards", ids: [11, 12] }
+    { title: "Managing Reports", screen: "reports", crop: { x: 36, y: 420, w: 750, h: 486 }, cap: "Reports: report cards", ids: [11, 12] }
   ];
 
   const TOP5 = [

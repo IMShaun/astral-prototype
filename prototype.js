@@ -13469,7 +13469,7 @@ function protoReportsAreaHead(active, below = "") {
             `data-proto-report-edit="new" aria-haspopup="dialog" aria-expanded="${store.prototypeReportPick ? "true" : "false"}" aria-controls="astral-report-pick"`
           )
         : "";
-  const title = protoAlertsArea(active) ? "Alerts" : "Reports and compliance";
+  const title = protoAlertsArea(active) ? "Alerts" : "Reports";
   return `
     <header class="astral-page-head astral-page-tools">
       <div>
