@@ -1199,6 +1199,7 @@ function normalize(data) {
     data.prototypeFullscreen = Boolean(data.prototypeFullscreen);
     data.prototypePreviewHidden = Boolean(data.prototypePreviewHidden);
     data.prototypeLibraryOn = Boolean(data.prototypeLibraryOn);
+    data.prototypeEmailsOn = Boolean(data.prototypeEmailsOn);
     data.prototypeFlow = [
       "product",
       "onboarding",
@@ -5064,6 +5065,7 @@ const CHROME_FIELDS = [
   "prototypeFullscreen",
   "prototypePreviewHidden",
   "prototypeLibraryOn",
+  "prototypeEmailsOn",
   "prototypeFlow",
   "prototypeAskOpen",
   "prototypeWalkOpen",
@@ -5249,10 +5251,11 @@ function applyPreviewQuery() {
   } catch (err) {
     return;
   }
-  if (preview !== "prototype" && preview !== "library") return;
+  if (preview !== "prototype" && preview !== "library" && preview !== "emails") return;
   store.activeSection = "prototype";
   store.prototypeFullscreen = true;
   store.prototypeLibraryOn = preview === "library";
+  store.prototypeEmailsOn = preview === "emails";
   store.prototypePreviewHidden = false;
   try {
     const url = new URL(location.href);
@@ -5564,6 +5567,7 @@ function applyChrome() {
   if (typeof protoSeedWalkUsers === "function") protoSeedWalkUsers();
   store.prototypeSignedOut = Boolean(store.prototypeSignedOut);
   store.prototypeLibraryOn = Boolean(store.prototypeLibraryOn);
+  store.prototypeEmailsOn = Boolean(store.prototypeEmailsOn);
   if (!Object.prototype.hasOwnProperty.call(chrome, "prototypeProfileDraftName")) {
     store.prototypeProfileDraftName = store.prototypeProfileName || "";
   }

@@ -1146,10 +1146,11 @@
       [
         { id: "prototype", name: "Prototype" },
         { id: "library", name: "Library" },
+        { id: "emails", name: "Emails" },
       ],
       "library",
       "data-lib-share",
-      "Prototype or library"
+      "Prototype, library, or emails"
     );
     return `
       <div class="astral-preview-menu">
@@ -1183,6 +1184,9 @@
     if (!shareBtn) return;
     if (shareBtn.dataset.libShare === "prototype") {
       location.assign(prototypeHref());
+    }
+    if (shareBtn.dataset.libShare === "emails") {
+      location.assign(new URL("../emails-site/", location.href).href);
     }
   });
 

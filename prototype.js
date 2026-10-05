@@ -13545,7 +13545,21 @@ function protoShareWalk() {
 }
 
 function protoLibraryOn() {
-  return Boolean(store.prototypeLibraryOn);
+  return Boolean(store.prototypeLibraryOn) && !protoEmailsOn();
+}
+
+function protoEmailsOn() {
+  return Boolean(store.prototypeEmailsOn);
+}
+
+// Library and Emails are sites in a frame. The walk stays painted underneath.
+function protoSiteOn() {
+  return protoLibraryOn() || protoEmailsOn();
+}
+
+function protoPreviewMode() {
+  if (protoEmailsOn()) return "emails";
+  return protoLibraryOn() ? "library" : "prototype";
 }
 
 // The Work Desk is hidden. Shift and click Library three times on the preview bar to open it.
@@ -13579,6 +13593,7 @@ function protoToggleDesk() {
     return;
   }
   store.prototypeLibraryOn = false;
+  store.prototypeEmailsOn = false;
   if (open) {
     store.activeSection = "today";
     store.prototypeFullscreen = false;
@@ -13595,20 +13610,21 @@ function astralPreviewMenu() {
       </div>
     `;
   }
-  const libraryOn = protoLibraryOn();
+  const mode = protoPreviewMode();
   const walkTabs = protoTabs(
     [
       { id: "prototype", name: "Prototype" },
       { id: "library", name: "Library" },
+      { id: "emails", name: "Emails" },
     ],
-    libraryOn ? "library" : "prototype",
+    mode,
     "data-proto-share",
-    "Prototype or library"
+    "Prototype, library, or emails"
   );
   const exit = protoShareWalk()
     ? ""
     : `<button type="button" data-proto-full="hide">Exit</button>`;
-  const picks = libraryOn
+  const picks = mode !== "prototype"
     ? ""
     : `
       <div class="astral-preview-pick">
@@ -21034,7 +21050,7 @@ function protoScrollPageKey() {
   return [
     protoViewId(store.activePrototypeView),
     store.prototypeSettingsSection || "",
-    protoLibraryOn() ? "library" : "",
+    protoPreviewMode() === "prototype" ? "" : protoPreviewMode(),
   ].join("|");
 }
 
@@ -21122,7 +21138,7 @@ let protoScrollBootDone = false;
 
 function protoScrollStash() {
   const root = document.querySelector("#astral-fs");
-  if (!root || root.hidden || protoLibraryOn()) return;
+  if (!root || root.hidden || protoSiteOn()) return;
   const saved = [];
   root.querySelectorAll("*").forEach((node) => {
     if (!node.scrollTop && !node.scrollLeft) return;
@@ -27024,14 +27040,29 @@ function protoPaintPreviewMenu(fs) {
   protoSlideHost(next.querySelector(".astral-tabs"), "button.is-on", "shareWalk", true);
 }
 
-function protoPaintLibraryFs(fs) {
+const PROTO_SITES = {
+  library: { src: "library-site/", title: "Astral library" },
+  emails: { src: "emails-site/", title: "Astral emails" },
+};
+
+function protoSiteHost(fs, id) {
+  return [...fs.children].find((node) => node.dataset?.protoSite === id) || null;
+}
+
+function protoPaintLibraryFs(fs, id = "library") {
   const app = fs.querySelector(".astral-app");
   if (app) app.hidden = true;
-  let host = protoFsChild(fs, "astral-lib-host");
+  Object.keys(PROTO_SITES).forEach((key) => {
+    const other = protoSiteHost(fs, key);
+    if (other && key !== id) other.hidden = true;
+  });
+  let host = protoSiteHost(fs, id);
   if (!host) {
+    const site = PROTO_SITES[id] || PROTO_SITES.library;
     host = document.createElement("div");
     host.className = "astral-lib-host";
-    host.innerHTML = `<iframe src="library-site/" title="Astral library"></iframe>`;
+    host.dataset.protoSite = id;
+    host.innerHTML = `<iframe src="${site.src}" title="${escapeHtml(site.title)}"></iframe>`;
     const menu = protoFsChild(fs, "astral-preview-menu");
     if (menu) fs.insertBefore(host, menu);
     else fs.appendChild(host);
@@ -27041,8 +27072,10 @@ function protoPaintLibraryFs(fs) {
 }
 
 function protoPaintWalkFs(fs) {
-  const host = protoFsChild(fs, "astral-lib-host");
-  if (host) host.hidden = true;
+  Object.keys(PROTO_SITES).forEach((key) => {
+    const host = protoSiteHost(fs, key);
+    if (host) host.hidden = true;
+  });
   const tmp = document.createElement("div");
   tmp.innerHTML = protoApp().trim();
   const next = tmp.querySelector(".astral-app") || tmp.firstElementChild;
@@ -27542,7 +27575,7 @@ function renderPrototype() {
   protoFilterSectionsLive();
   root.innerHTML = protoGallery();
   const share = protoShareWalk();
-  const libraryOn = protoLibraryOn();
+  const libraryOn = protoSiteOn();
   const full = share
     ? true
     : Boolean(store.prototypeFullscreen) && store.activeSection === "prototype";
@@ -27554,7 +27587,7 @@ function renderPrototype() {
     if (!full) {
       fs.innerHTML = "";
     } else if (libraryOn) {
-      protoPaintLibraryFs(fs);
+      protoPaintLibraryFs(fs, protoPreviewMode());
     } else {
       if (!protoSkelBooted) {
         protoSkelBooted = true;
@@ -29567,10 +29600,10 @@ function onPrototype(event) {
   }
   const shareBtn = event.target.closest("[data-proto-share]");
   if (shareBtn) {
-    const on = shareBtn.dataset.protoShare === "library";
-    if (protoDeskKnock(event, on)) return;
-    setProto({ prototypeLibraryOn: on });
-    protoRestoreFocus(`#astral-fs [data-proto-share="${on ? "library" : "prototype"}"]`);
+    const mode = ["library", "emails"].includes(shareBtn.dataset.protoShare) ? shareBtn.dataset.protoShare : "prototype";
+    if (protoDeskKnock(event, mode === "library")) return;
+    setProto({ prototypeLibraryOn: mode === "library", prototypeEmailsOn: mode === "emails" });
+    protoRestoreFocus(`#astral-fs [data-proto-share="${mode}"]`);
     return;
   }
   const fullBtn = event.target.closest("[data-proto-full]");
@@ -29578,6 +29611,7 @@ function onPrototype(event) {
     setProto({
       prototypeFullscreen: fullBtn.dataset.protoFull === "show",
       prototypeLibraryOn: false,
+      prototypeEmailsOn: false,
     });
     return;
   }
