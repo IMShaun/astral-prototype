@@ -1296,7 +1296,9 @@ function normalize(data) {
     data.prototypeBrandSecondary = data.prototypeBrandSecondary || "";
     data.prototypeOrgName = String(data.prototypeOrgName || "").slice(0, 80);
     data.prototypeOrgCountry = data.prototypeOrgCountry || "";
-    data.prototypeSettingsSection = ["organisation", "profile", "billing"].includes(
+    data.prototypeNotifyActivity = data.prototypeNotifyActivity !== false;
+    data.prototypeNotifyRecurrence = data.prototypeNotifyRecurrence || "daily";
+    data.prototypeSettingsSection = ["organisation", "profile", "notifications", "billing"].includes(
       data.prototypeSettingsSection
     )
       ? data.prototypeSettingsSection
@@ -5124,6 +5126,8 @@ const CHROME_FIELDS = [
   "prototypeOrgName",
   "prototypeOrgCountry",
   "prototypeSettingsSection",
+  "prototypeNotifyActivity",
+  "prototypeNotifyRecurrence",
   "prototypeUserForm",
   "prototypeUserQuery",
   "prototypeUserDrafts",

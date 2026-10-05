@@ -8355,6 +8355,14 @@ function protoPickSelect(id, value) {
     protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
     return;
   }
+  if (id === "notify-recurrence") {
+    setProto({
+      prototypeSelectOpen: "",
+      prototypeNotifyRecurrence: value,
+    });
+    protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
+    return;
+  }
   if (id === "org-country") {
     if (!protoCanManagePeople()) return;
     protoPatchOrg({ country: protoOrgCountryId(value) }, false);
@@ -23419,7 +23427,7 @@ function protoSeesBilling() {
 }
 
 function protoSettingsAllowed() {
-  const items = ["profile", "organisation"];
+  const items = ["profile", "notifications", "organisation"];
   if (protoCanManagePeople()) items.push("users");
   if (protoSeesBilling()) items.push("billing");
   return items;
@@ -25544,11 +25552,12 @@ function protoUsers() {
 
 function protoSettingsNav(section) {
   const items = [
-    { id: "profile", name: "Profile" },
-    { id: "organisation", name: "Organisation" },
+    { id: "profile", name: "Profile", icon: "profile" },
+    { id: "notifications", name: "Notifications", icon: "notice" },
+    { id: "organisation", name: "Organisation", icon: "companies" },
   ];
-  if (protoCanManagePeople()) items.push({ id: "users", name: "Users" });
-  if (protoSeesBilling()) items.push({ id: "billing", name: "Billing" });
+  if (protoCanManagePeople()) items.push({ id: "users", name: "Users", icon: "users" });
+  if (protoSeesBilling()) items.push({ id: "billing", name: "Billing", icon: "rates" });
   const rows = items
     .map((item) => {
       const on = item.id === section;
@@ -25560,6 +25569,7 @@ function protoSettingsNav(section) {
             data-proto-settings="${escapeHtml(item.id)}"
             ${on ? 'aria-current="page"' : ""}
           >
+            ${protoIconMark(item.icon, "astral-group-icon")}
             <span class="astral-group-name">${escapeHtml(item.name)}</span>
           </button>
         </li>
@@ -25578,6 +25588,8 @@ function protoSettingsFrame(section, inner, leadText) {
     leadText ||
     (section === "profile"
       ? "Your name, discipline, and job title."
+      : section === "notifications"
+        ? "Choose what Astral emails you about, and how often."
       : section === "users"
         ? protoData()?.usersLead ||
           "Invite people from your company. Super admin, Admin, and Manager can group them into teams."
@@ -25701,10 +25713,82 @@ function protoBillingCard() {
   `;
 }
 
+const PROTO_NOTIFY_RECURRENCE = [
+  { value: "every", label: "Every time" },
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+  { value: "never", label: "Never" },
+];
+
+function protoNotifyActivity() {
+  return store.prototypeNotifyActivity !== false;
+}
+
+function protoNotifyRecurrence() {
+  const raw = String(store.prototypeNotifyRecurrence || "");
+  return PROTO_NOTIFY_RECURRENCE.some((item) => item.value === raw) ? raw : "daily";
+}
+
+function protoSettingRow(label, note, control) {
+  return `
+    <div class="astral-setting-row">
+      <div class="astral-setting-copy">
+        <span class="astral-setting-label">${escapeHtml(label)}</span>
+        ${note ? `<span class="astral-muted">${escapeHtml(note)}</span>` : ""}
+      </div>
+      <div class="astral-setting-control">${control}</div>
+    </div>
+  `;
+}
+
+function protoNotificationsCard() {
+  const activity = protoNotifyActivity();
+  const label = "Activity in my workspace";
+  return `
+    <section class="astral-card astral-pane">
+      ${protoPaneShell(
+        `<div class="astral-detail-head"><div><h3>Notifications</h3></div></div>`,
+        `
+      <h4 class="astral-setting-head">Email notifications</h4>
+      <div class="astral-setting-rows">
+        ${protoSettingRow(
+          label,
+          "Alerts, queries, and reports that change in the places you can see.",
+          `<button
+            type="button"
+            class="astral-switch${activity ? " is-on" : ""}"
+            role="switch"
+            aria-checked="${activity ? "true" : "false"}"
+            aria-label="${escapeHtml(label)}"
+            data-proto-notify="activity"
+          ></button>`
+        )}
+        ${protoSettingRow(
+          "Recurrence of email notifications",
+          activity ? "How often we send them." : "Turn on Activity in my workspace to choose.",
+          protoSelect({
+            id: "notify-recurrence",
+            label: "Recurrence of email notifications",
+            value: protoNotifyRecurrence(),
+            disabled: !activity,
+            options: PROTO_NOTIFY_RECURRENCE,
+          })
+        )}
+      </div>
+        `
+      )}
+    </section>
+  `;
+}
+
 function protoSettings() {
   const section = protoSettingsSection();
   if (section === "profile") {
     return protoSettingsFrame("profile", protoProfileCard());
+  }
+  if (section === "notifications") {
+    return protoSettingsFrame("notifications", protoNotificationsCard());
   }
   if (section === "users") return protoUsers();
   if (section === "billing") {
@@ -29960,6 +30044,12 @@ function onPrototype(event) {
     setProto({
       prototypeWalkOpen: next === "hide" ? false : !store.prototypeWalkOpen,
     });
+    return;
+  }
+  const notifyBtn = event.target.closest("[data-proto-notify]");
+  if (notifyBtn) {
+    setProto({ prototypeNotifyActivity: !protoNotifyActivity() });
+    protoRestoreFocus('#astral-fs [data-proto-notify="activity"]');
     return;
   }
   const settingsBtn = event.target.closest("[data-proto-settings]");

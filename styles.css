@@ -5182,6 +5182,55 @@ button.astral-catch {
   transform: rotate(-90deg);
 }
 
+.astral-group-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+}
+
+.astral-setting-head {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.astral-setting-rows {
+  display: grid;
+}
+
+.astral-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 0;
+  border-top: 1px solid var(--color-border-default);
+}
+
+.astral-setting-row:first-child {
+  border-top: 0;
+}
+
+.astral-setting-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.astral-setting-label {
+  font-weight: 600;
+}
+
+.astral-setting-control {
+  flex: none;
+  min-width: 0;
+}
+
+.astral-setting-control .astral-select {
+  min-width: 180px;
+}
+
 .astral-group-name {
   flex: 1;
   min-width: 0;
