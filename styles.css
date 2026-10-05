@@ -6104,22 +6104,27 @@ button.astral-catch {
 
 .astral-downloads .astral-table th:nth-child(3),
 .astral-downloads .astral-table td:nth-child(3) {
-  width: 4.75rem;
+  width: 11.5rem;
 }
 
 .astral-downloads .astral-table th:nth-child(4),
 .astral-downloads .astral-table td:nth-child(4) {
+  width: 4.75rem;
+}
+
+.astral-downloads .astral-table th:nth-child(5),
+.astral-downloads .astral-table td:nth-child(5) {
   width: 11rem;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
-.astral-downloads .astral-table th:nth-child(5),
-.astral-downloads .astral-table td:nth-child(5) {
+.astral-downloads .astral-table th:nth-child(6),
+.astral-downloads .astral-table td:nth-child(6) {
   width: 8rem;
 }
 
-.astral-downloads .astral-table th:nth-child(6),
+.astral-downloads .astral-table th:nth-child(7),
 .astral-downloads .astral-table td.astral-downloads-get {
   width: 7.5rem;
   text-align: right;

@@ -16979,7 +16979,8 @@ function protoFilterItemCount(attr, item) {
   if (attr === "data-proto-report-filter") return protoReportFilterCount(item?.id);
   if (attr === "data-proto-alert-filter") return item?.id ? protoAlertFilterCount(item.id) : null;
   if (attr === "data-proto-download-filter") {
-    return item?.id ? protoDownloads().filter((row) => protoDownloadMatches(row, "", [item.id])).length : null;
+    const rows = protoDownloadCountRows || protoDownloads();
+    return item?.id ? rows.filter((row) => protoDownloadMatches(row, "", [item.id])).length : null;
   }
   if (attr === "data-proto-user-filter") {
     return item?.id ? protoUserPeople().filter((person) => person.role === item.id).length : null;
@@ -17144,9 +17145,9 @@ function protoToggleCompareFilterGroup(groupId) {
 }
 
 function protoToggleDownloadFilterGroup(groupId) {
-  const group = PROTO_DOWNLOAD_FILTERS.find((row) => row.id === groupId);
+  const group = protoDownloadFilterGroups().find((row) => row.id === groupId);
   if (!group) return;
-  const picked = protoDownloadFilterIds();
+  const picked = protoDownloadPicked();
   const selectAll = protoFilterGroupTickState(group, "data-proto-download-filter", picked) !== "on";
   setProto({
     prototypeDownloadFilterOpen: true,
@@ -18959,6 +18960,7 @@ function protoDownloadsFrom(raw) {
         type,
         fileId,
         name: String(item.name || "Interval").slice(0, 120),
+        category: PROTO_DOWNLOAD_CATEGORY_IDS.includes(item.category) ? item.category : "",
         added: Number(item.added) || 0,
         waitMs: waitMs > 0 ? waitMs : 0,
       };
@@ -19026,7 +19028,7 @@ function protoDownloadReady(item) {
 function protoDownloadMadeAt(item) {
   if (protoDownloadType(item) === "document" && Number(item?.added) <= 1) {
     const doc = protoDocuments().find((row) => row.id === item.fileId);
-    return doc ? doc.published.setHours(7, 0, 0, 0) : 0;
+    return doc ? (doc.timed ? doc.published.getTime() : doc.published.setHours(7, 0, 0, 0)) : 0;
   }
   if (protoDownloadType(item) === "report" && String(item?.id || "").startsWith("clockwork-")) {
     const def = protoReportDef(item.fileId);
@@ -19107,15 +19109,98 @@ const PROTO_DOWNLOAD_FILTERS = [
     ],
   },
 ];
-const PROTO_DOWNLOAD_FILTER_IDS = PROTO_DOWNLOAD_FILTERS.flatMap((group) =>
-  group.items.map((item) => item.id)
+
+// Only BG gets Daily report. Maxim's list, 5 October 2026.
+const PROTO_BG_COMPANY = "British Gas";
+
+// Astral reports take the short name of their report type. Documents carry one of Maxim's operational categories.
+const PROTO_DOWNLOAD_CATEGORIES = [
+  { id: "cat-billing", report: "billing" },
+  { id: "cat-extract", report: "extract" },
+  { id: "cat-dcda", report: "dcda" },
+  { id: "cat-amr-impl", name: "AMR implementation" },
+  { id: "cat-smets-impl", name: "SMETS implementation" },
+  { id: "cat-gas-impl", name: "Gas implementation" },
+  { id: "cat-impl", name: "Implementation", lenses: ["end-customer", "broker"] },
+  { id: "cat-all-jobs", name: "All jobs" },
+  { id: "cat-gsop", name: "GSOP" },
+  { id: "cat-daily", name: "Daily report", company: PROTO_BG_COMPANY },
+  { id: "cat-reasonable-steps", name: "All reasonable steps" },
+  { id: "cat-connect-comms", name: "Connect comms" },
+  { id: "cat-aborts", name: "Aborts" },
+  { id: "cat-complaints", name: "Complaints" },
+  { id: "cat-dpm", name: "DPM" },
+  { id: "cat-contract-mismatch", name: "Contract mismatch" },
+  { id: "cat-mpm", name: "MPM" },
+  { id: "cat-nhh-dial", name: "NHH dial failures" },
+].map((item) =>
+  item.report ? { ...item, name: PROTO_REPORT_TYPES.find((type) => type.id === item.report).short } : item
 );
+const PROTO_DOWNLOAD_CATEGORY_IDS = PROTO_DOWNLOAD_CATEGORIES.map((item) => item.id);
+
+const PROTO_DOWNLOAD_FILTER_IDS = [
+  ...PROTO_DOWNLOAD_FILTERS.flatMap((group) => group.items.map((item) => item.id)),
+  ...PROTO_DOWNLOAD_CATEGORY_IDS,
+];
+
+function protoDownloadCategory(id) {
+  return PROTO_DOWNLOAD_CATEGORIES.find((item) => item.id === id) || null;
+}
+
+function protoReportCategoryId(type) {
+  const id = `cat-${type}`;
+  return protoDownloadCategory(id)?.report ? id : "";
+}
+
+function protoDownloadCategoryId(item) {
+  const own = String(item?.category || "");
+  if (PROTO_DOWNLOAD_CATEGORY_IDS.includes(own)) return own;
+  const type = protoDownloadType(item);
+  if (type === "report") return protoReportCategoryId(protoReportDef(item.fileId)?.type);
+  if (type === "document") return PROTO_OP_DOCUMENTS.find((doc) => doc.id === item.fileId)?.category || "";
+  return "";
+}
+
+function protoDownloadCategoryName(item) {
+  return protoDownloadCategory(protoDownloadCategoryId(item))?.name || "";
+}
+
+// Implementation goes to Customer and Partner companies only. Daily report goes to BG only.
+function protoDownloadCategoryOpen(id) {
+  const category = protoDownloadCategory(id);
+  if (!category) return true;
+  if (category.lenses && !category.lenses.includes(protoLens().id)) return false;
+  if (category.company && category.company !== protoHomeCompany()) return false;
+  return true;
+}
+
+function protoDownloadCategoryShown(rows = protoDownloads()) {
+  const shown = new Set(rows.map(protoDownloadCategoryId).filter(Boolean));
+  return PROTO_DOWNLOAD_CATEGORIES.filter((item) => shown.has(item.id));
+}
+
+function protoDownloadFilterGroups(rows = protoDownloads()) {
+  const items = protoDownloadCategoryShown(rows).map(({ id, name }) => ({ id, name }));
+  if (!items.length) return PROTO_DOWNLOAD_FILTERS;
+  const at = PROTO_DOWNLOAD_FILTERS.findIndex((group) => group.id === "type") + 1;
+  return [
+    ...PROTO_DOWNLOAD_FILTERS.slice(0, at),
+    { id: "category", name: "Category", items },
+    ...PROTO_DOWNLOAD_FILTERS.slice(at),
+  ];
+}
 
 function protoDownloadFilterIds(raw) {
   const list = Array.isArray(raw) ? raw : Array.isArray(store.prototypeDownloadFilters)
     ? store.prototypeDownloadFilters
     : [];
   return list.filter((id) => PROTO_DOWNLOAD_FILTER_IDS.includes(id));
+}
+
+// Drops a ticked category this company has no files in, so its name never shows as a pill.
+function protoDownloadPicked(rows = protoDownloads()) {
+  const shown = new Set(protoDownloadCategoryShown(rows).map((item) => item.id));
+  return protoDownloadFilterIds().filter((id) => !PROTO_DOWNLOAD_CATEGORY_IDS.includes(id) || shown.has(id));
 }
 
 function protoDownloadQuery() {
@@ -19131,27 +19216,40 @@ function protoDownloadFilterName(id) {
     const item = group.items.find((row) => row.id === id);
     if (item) return item.name;
   }
-  return id;
+  return protoDownloadCategory(id)?.name || id;
 }
 
 function protoDownloadMatches(item, q, picked) {
   const query = String(q || "").trim().toLowerCase();
   if (query) {
-    const hay = `${item.name} ${item.kind} ${protoDownloadTypeName(item)}`.toLowerCase();
+    const hay = `${item.name} ${item.kind} ${protoDownloadTypeName(item)} ${protoDownloadCategoryName(item)}`.toLowerCase();
     if (!hay.includes(query)) return false;
   }
-  const ids = Array.isArray(picked) ? picked : protoDownloadFilterIds();
+  const ids = Array.isArray(picked) ? picked : protoDownloadPicked();
   const kinds = ids.filter((id) => id === "csv" || id === "pdf" || id === "xlsx");
   if (kinds.length && !kinds.includes(item.kind)) return false;
   const types = ids.filter((id) => id === "report" || id === "export" || id === "document");
   if (types.length && !types.includes(protoDownloadType(item))) return false;
+  const categories = ids.filter((id) => PROTO_DOWNLOAD_CATEGORY_IDS.includes(id));
+  if (categories.length && !categories.includes(protoDownloadCategoryId(item))) return false;
   const waits = ids.filter((id) => id === "ready" || id === "processing");
   if (waits.length && !waits.includes(protoDownloadReady(item) ? "ready" : "processing")) return false;
   return true;
 }
 
+// Set while the Filter menu is built, so each tick counts against one list.
+let protoDownloadCountRows = null;
+
 function protoDownloadFilterControl() {
-  const picked = protoDownloadFilterIds();
+  const rows = protoDownloads();
+  const picked = protoDownloadPicked(rows);
+  protoDownloadCountRows = rows;
+  let menu = "";
+  try {
+    menu = protoFilterTickGroups(picked, "data-proto-download-filter", protoDownloadFilterGroups(rows));
+  } finally {
+    protoDownloadCountRows = null;
+  }
   return protoFilterShell({
     hit: `data-proto-download-filter="toggle"`,
     open: protoDownloadFilterOpen(),
@@ -19159,12 +19257,12 @@ function protoDownloadFilterControl() {
     menuId: "astral-download-filter-menu",
     clear: 'data-proto-download-filter="clear"',
     canClear: picked.length > 0,
-    menu: protoFilterTickGroups(picked, "data-proto-download-filter", PROTO_DOWNLOAD_FILTERS),
+    menu,
   });
 }
 
 function protoDownloadFilterPills() {
-  const picked = protoDownloadFilterIds();
+  const picked = protoDownloadPicked();
   if (!picked.length) return "";
   const pills = picked
     .map((id) => {
@@ -19211,15 +19309,17 @@ function protoDownloads() {
       type: "report",
       fileId: item.id,
       name: item.name,
+      category: protoReportCategoryId(item.type),
       added: 1,
       waitMs: 1,
     }));
   const docs = protoDocuments().map((doc) => ({
     id: `doc-${doc.id}`,
-    kind: "pdf",
+    kind: doc.kind || "pdf",
     type: "document",
     fileId: doc.id,
     name: doc.name,
+    category: doc.category || "",
     added: 1,
     waitMs: 1,
   }));
@@ -19228,7 +19328,9 @@ function protoDownloads() {
     ...clockwork.filter((item) => !seen.has(item.id)),
     ...docs.filter((item) => !seen.has(item.id)),
     ...queued,
-  ].slice(0, 40);
+  ]
+    .filter((item) => protoDownloadCategoryOpen(protoDownloadCategoryId(item)))
+    .slice(0, 40);
 }
 
 function protoExportPlaceName(fileId) {
@@ -19412,13 +19514,14 @@ function protoDownloadWaitCell(item) {
 function protoDownloadsSection() {
   const all = protoDownloads();
   const q = protoDownloadQuery();
-  const picked = protoDownloadFilterIds();
+  const picked = protoDownloadPicked(all);
   const rows = protoSortedRows(
     "downloads",
     all.filter((item) => protoDownloadMatches(item, q, picked)),
     (item, key) => {
       if (key === "name") return item.name;
       if (key === "type") return protoDownloadTypeName(item);
+      if (key === "category") return protoDownloadCategoryName(item);
       if (key === "kind") return item.kind.toUpperCase();
       if (key === "made") return protoDownloadMadeAt(item);
       if (key === "status") return protoDownloadReady(item) ? 0 : protoDownloadLeftMs(item);
@@ -19458,6 +19561,7 @@ function protoDownloadsSection() {
             <tr>
               <th scope="row">${escapeHtml(item.name)}</th>
               <td>${protoDownloadTypeTag(item)}</td>
+              <td>${escapeHtml(protoDownloadCategoryName(item))}</td>
               <td><span class="astral-tag">${kind}</span></td>
               <td>${protoDownloadMadeCell(item)}</td>
               <td>${wait}</td>
@@ -19466,7 +19570,7 @@ function protoDownloadsSection() {
           `;
         })
         .join("")
-    : `<tr><td colspan="6" class="astral-muted">${escapeHtml(empty)}</td></tr>`;
+    : `<tr><td colspan="7" class="astral-muted">${escapeHtml(empty)}</td></tr>`;
   return `
     <section class="astral-card astral-downloads" id="astral-downloads">
       <div class="astral-downloads-head">
@@ -19487,6 +19591,7 @@ function protoDownloadsSection() {
             <tr>
             ${protoSortHead("downloads", "name", "Name")}
             ${protoSortHead("downloads", "type", "Type")}
+            ${protoSortHead("downloads", "category", "Category")}
             ${protoSortHead("downloads", "kind", "Kind")}
             ${protoSortHead("downloads", "made", "Created")}
             ${protoSortHead("downloads", "status", "Status")}
@@ -19530,12 +19635,89 @@ function protoDocuments() {
     from: qStart,
     carbon: true,
   });
-  return list;
+  return [...list, ...protoOpDocuments()].filter((doc) => protoDownloadCategoryOpen(doc.category));
+}
+
+const PROTO_COMPANY_CODES = {
+  "Network Rail": "NWR",
+  "Scottish Water": "SCW",
+  Tesco: "TSC",
+  EDF: "EDF",
+  [PROTO_BG_COMPANY]: "BGS",
+};
+
+// Operational files IMSERV loads. Names stay as they arrive: company code, file code, meter, date, and time.
+const PROTO_OP_DOCUMENTS = [
+  { id: "op-daily-1", back: 0, at: "0600", category: "cat-daily", kind: "csv", code: "DAILY_RPT" },
+  { id: "op-daily-2", back: 1, at: "0600", category: "cat-daily", kind: "csv", code: "DAILY_RPT" },
+  { id: "op-daily-3", back: 2, at: "0601", category: "cat-daily", kind: "csv", code: "DAILY_RPT" },
+  { id: "op-nhh-1", back: 1, at: "0215", category: "cat-nhh-dial", kind: "csv", code: "NHH_DIAL_FAIL" },
+  { id: "op-nhh-2", back: 2, at: "0215", category: "cat-nhh-dial", kind: "csv", code: "NHH_DIAL_FAIL" },
+  { id: "op-nhh-3", back: 3, at: "0216", category: "cat-nhh-dial", kind: "csv", code: "NHH_DIAL_FAIL" },
+  { id: "op-jobs-1", back: 1, at: "0500", category: "cat-all-jobs", kind: "csv", code: "ALL_JOBS" },
+  { id: "op-amr-1", back: 2, at: "0614", category: "cat-amr-impl", kind: "csv", code: "AMR_IMPL", meter: "1012345678901" },
+  { id: "op-amr-2", back: 6, at: "0612", category: "cat-amr-impl", kind: "csv", code: "AMR_IMPL", meter: "1050000123456" },
+  { id: "op-comms-1", back: 2, at: "0715", category: "cat-connect-comms", kind: "csv", code: "CONN_COMMS" },
+  { id: "op-impl-1", back: 3, at: "0800", category: "cat-impl", kind: "xlsx", code: "IMPL_TRACKER" },
+  { id: "op-impl-2", back: 10, at: "0800", category: "cat-impl", kind: "xlsx", code: "IMPL_TRACKER" },
+  { id: "op-aborts-1", back: 3, at: "1630", category: "cat-aborts", kind: "csv", code: "ABORTS" },
+  { id: "op-smets-1", back: 4, at: "0730", category: "cat-smets-impl", kind: "csv", code: "SMETS2_IMPL", meter: "1098765432109" },
+  { id: "op-gsop-1", back: 4, at: "0930", category: "cat-gsop", kind: "pdf", code: "GSOP_Q3" },
+  { id: "op-complaints-1", back: 4, at: "0900", category: "cat-complaints", kind: "xlsx", code: "COMPLAINTS_MTH" },
+  { id: "op-ars-1", back: 5, at: "1145", category: "cat-reasonable-steps", kind: "pdf", code: "ARS", meter: "1012345678901" },
+  { id: "op-dpm-1", back: 5, at: "0400", category: "cat-dpm", kind: "csv", code: "DPM", meter: "1012345678901" },
+  { id: "op-gas-1", back: 6, at: "0905", category: "cat-gas-impl", kind: "xlsx", code: "GAS_IMPL", meter: "7493021856" },
+  { id: "op-mismatch-1", back: 6, at: "1010", category: "cat-contract-mismatch", kind: "xlsx", code: "CONTRACT_MISMATCH" },
+  { id: "op-mpm-1", back: 7, at: "0345", category: "cat-mpm", kind: "csv", code: "MPM" },
+];
+
+function protoCompanyCode(name) {
+  const text = String(name || "");
+  return PROTO_COMPANY_CODES[text] || text.replace(/[^a-z]/gi, "").slice(0, 3).toUpperCase() || "IMS";
+}
+
+function protoOpDocuments() {
+  const today = protoToday();
+  const code = protoCompanyCode(protoHomeCompany());
+  return PROTO_OP_DOCUMENTS.map((item) => {
+    const day = protoAddDays(today, -item.back);
+    day.setHours(Number(item.at.slice(0, 2)), Number(item.at.slice(2)), 0, 0);
+    const stamp = `${day.getFullYear()}${String(day.getMonth() + 1).padStart(2, "0")}${String(day.getDate()).padStart(2, "0")}`;
+    return {
+      id: item.id,
+      name: [code, item.code, item.meter, stamp, item.at].filter(Boolean).join("_") + `.${item.kind}`,
+      kind: item.kind,
+      category: item.category,
+      meter: item.meter || "",
+      published: day,
+      timed: true,
+    };
+  });
+}
+
+function protoOpDocumentPack(doc) {
+  const states = ["Open", "In progress", "Closed"];
+  const day = protoFormatUkDate(doc.published);
+  return {
+    file: doc.name.replace(/\.[a-z0-9]+$/i, ""),
+    title: doc.name,
+    note: `${protoHomeCompany()}. ${protoDownloadCategory(doc.category)?.name || "Document"}. Loaded by IMSERV on ${day}.`,
+    headers: ["Site", "Meter", "Status", "Updated"],
+    rows: protoEstateSites()
+      .slice(0, 12)
+      .map((site, i) => [
+        site.name,
+        doc.meter || (site.meters?.[0] ? protoMeterRef(site.meters[0]) : ""),
+        states[i % states.length],
+        day,
+      ]),
+  };
 }
 
 function protoDocumentPack(id) {
   const doc = protoDocuments().find((item) => item.id === id);
   if (!doc) return null;
+  if (doc.category) return protoOpDocumentPack(doc);
   const days = Math.round((protoAddMonths(doc.from, doc.months) - doc.from) / 86400000);
   return {
     file: doc.id,
@@ -23920,7 +24102,8 @@ function protoCanEditPersonRole(person) {
   return true;
 }
 
-const PROTO_TEAM_COMPANIES = ["Network Rail", "Scottish Water", "Tesco", "EDF"];
+const PROTO_TEAM_COMPANIES = ["Network Rail", "Scottish Water", "Tesco", "EDF", PROTO_BG_COMPANY];
+const PROTO_TEAM_COMPANY_TYPES = { [PROTO_BG_COMPANY]: "supplier" };
 const PROTO_IMSERV_BUCKET = "c:IMSERV";
 const PROTO_IMSERV_ADMINS = [
   { id: "u-imserv-nadia", name: "Nadia Brooks", email: "nadia.brooks@imserv.com", lastActive: "Now" },
@@ -23984,6 +24167,7 @@ function protoTeamCompanyNames(raw) {
 }
 
 function protoCompanyTypeForName(name) {
+  if (PROTO_TEAM_COMPANY_TYPES[name]) return PROTO_TEAM_COMPANY_TYPES[name];
   const added = protoAddedCompanies().find((item) => item.name === name);
   return added ? added.type : "customer";
 }
@@ -27687,6 +27871,15 @@ function protoReportSlug(report) {
 }
 
 function protoXlsx(id) {
+  const docPack = protoDocumentPack(id);
+  if (docPack) {
+    protoFileDownload(
+      protoXlsxBytes([docPack.headers, ...docPack.rows], "Sheet1"),
+      `${docPack.file}.xlsx`,
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    return;
+  }
   const report = protoReportDef(id);
   if (!report || !protoReportIsFile(report.type)) {
     protoCsv(id);
@@ -27732,7 +27925,7 @@ function protoCsv(id) {
     protoCsvDownload(protoReportCsv(report), `${protoReportSlug(report)}.csv`);
     return;
   }
-  const pack = protoIntervalCsvPack(id);
+  const pack = protoDocumentPack(id) || protoIntervalCsvPack(id);
   if (!pack) return;
   const cell = (text) => (/[",\n]/.test(String(text)) ? `"${String(text).replace(/"/g, '""')}"` : String(text));
   const lines = [pack.headers.map(cell).join(","), ...pack.rows.map((row) => row.map(cell).join(","))];
