@@ -25836,11 +25836,11 @@ function protoNotificationsCard() {
           protoSettingSwitch("activity", label, activity)
         )}
         ${protoSettingRow(
-          "Recurrence of email notifications",
-          activity ? "How often we send them." : "Turn on Activity in my workspace to choose.",
+          "How often",
+          activity ? "How often we email you about activity." : "Turn on Activity in my workspace to choose.",
           protoSelect({
             id: "notify-recurrence",
-            label: "Recurrence of email notifications",
+            label: "How often",
             value: protoNotifyRecurrence(),
             disabled: !activity,
             options: PROTO_NOTIFY_RECURRENCE,
