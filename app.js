@@ -1303,6 +1303,9 @@ function normalize(data) {
     )
       ? data.prototypeSettingsSection
       : "organisation";
+    data.prototypeSettingsFrom = String(data.prototypeSettingsFrom || "");
+    data.prototypeSeeAsFrom = String(data.prototypeSeeAsFrom || "");
+    data.prototypeSeeAsPerson = String(data.prototypeSeeAsPerson || "");
     data.prototypeUserForm = Boolean(data.prototypeUserForm);
     data.prototypeTeamDraftPeople = Array.isArray(data.prototypeTeamDraftPeople)
       ? data.prototypeTeamDraftPeople
@@ -5126,6 +5129,9 @@ const CHROME_FIELDS = [
   "prototypeOrgName",
   "prototypeOrgCountry",
   "prototypeSettingsSection",
+  "prototypeSettingsFrom",
+  "prototypeSeeAsFrom",
+  "prototypeSeeAsPerson",
   "prototypeNotifyActivity",
   "prototypeNotifyRecurrence",
   "prototypeUserForm",

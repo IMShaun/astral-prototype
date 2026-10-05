@@ -356,10 +356,35 @@ function protoSeeAs() {
   return null;
 }
 
+function protoSeeAsFromPatch(personId) {
+  if (protoSeeAs()) return {};
+  return {
+    prototypeSeeAsFrom: protoState().view,
+    prototypeSeeAsPerson: personId || "",
+  };
+}
+
+function protoViewName(id) {
+  const view =
+    PROTO_VIEWS.find((item) => item.id === id) ||
+    PROTO_ACCOUNT_VIEWS.find((item) => item.id === id) ||
+    PROTO_LENS_EXTRA[id];
+  if (view) return view.name;
+  if (id === "downloads") return "Downloads";
+  if (id === PROTO_ALERT_RULES_VIEW) return "Alerts";
+  return "";
+}
+
+function protoSeeAsBackLabel() {
+  const name = protoViewName(String(store.prototypeSeeAsFrom || ""));
+  return name ? `Back to ${name}` : "Back to admin";
+}
+
 function protoOpenCompany(raw) {
   const company = protoKnownSeeAsCompany(raw);
   if (!company) return;
   setProto({
+    ...protoSeeAsFromPatch(),
     ...protoSeeAsClear(),
     prototypeSeeAsCompany: company,
     activePrototypeView: "home",
@@ -375,6 +400,7 @@ function protoLoginAsUser(id) {
   const company = protoKnownSeeAsCompany(person.company);
   if (!company) return;
   setProto({
+    ...protoSeeAsFromPatch(store.prototypeUserOpen === person.id ? person.id : ""),
     prototypeSeeAsUser: person.id,
     prototypeSeeAsCompany: company,
     activePrototypeView: "home",
@@ -386,9 +412,14 @@ function protoLoginAsUser(id) {
 }
 
 function protoBackToAdmin() {
+  const from = String(store.prototypeSeeAsFrom || "");
+  const person = from === "users" ? String(store.prototypeSeeAsPerson || "") : "";
   setProto({
     ...protoSeeAsClear(),
-    activePrototypeView: "companies",
+    activePrototypeView: from || "companies",
+    prototypeSeeAsFrom: "",
+    prototypeSeeAsPerson: "",
+    prototypeUserOpen: person,
     prototypeCompanyQuery: "",
     prototypeFullscreen: true,
   });
@@ -13647,7 +13678,7 @@ function protoSeeAsBar() {
   return `
     <div class="astral-see-as" role="status">
       <p>Seeing as ${escapeHtml(who)}</p>
-      ${protoGhost("Back to admin", 'data-proto-see-as="back"')}
+      ${protoGhost(protoSeeAsBackLabel(), 'data-proto-see-as="back"')}
     </div>
   `;
 }
@@ -23281,7 +23312,9 @@ function protoProfile() {
   return astralShell(`
     ${astralPageHead(
       "Profile",
-      "Your name, discipline, and job title."
+      "Your name, discipline, and job title.",
+      "",
+      protoSettingsBackLink()
     )}
     ${protoProfileCard()}
   `);
@@ -23451,12 +23484,30 @@ function protoClosePersonPatch() {
   };
 }
 
+const PROTO_SETTINGS_VIEWS = ["settings", "users", "profile"];
+
+function protoSettingsFromPatch() {
+  const view = protoState().view;
+  if (PROTO_SETTINGS_VIEWS.includes(view)) return {};
+  return { prototypeSettingsFrom: view };
+}
+
+function protoSettingsBackLink() {
+  const from = String(store.prototypeSettingsFrom || "");
+  if (!from || PROTO_SETTINGS_VIEWS.includes(from)) return "";
+  if (protoViewId(from) !== from) return "";
+  const name = protoViewName(from);
+  if (!name) return "";
+  return protoBackLink(`Back to ${name}`, "data-proto-settings-back");
+}
+
 function protoGoSettings(section) {
   if (!protoCanOpenSettings()) return false;
   const nextSection = protoSettingsAllowed().includes(section)
     ? section
     : "organisation";
   setProto({
+    ...protoSettingsFromPatch(),
     activePrototypeView: nextSection === "users" ? "users" : "settings",
     prototypeSettingsSection: nextSection,
     prototypeFullscreen: true,
@@ -25488,7 +25539,8 @@ function protoUsersPane() {
       ${protoPaneShell(
         `
           <div class="astral-detail-head">
-            <div>
+            <div${openPerson ? ' class="astral-page-title"' : ""}>
+              ${openPerson ? protoBackLink("Back to users", "data-proto-person-close") : ""}
               ${kicker ? `<p class="astral-kicker">${escapeHtml(kicker)}</p>` : ""}
               ${protoDetailTitle(title, meta)}
             </div>
@@ -25510,7 +25562,6 @@ function protoUsersPane() {
                   )
                 : ""
             }
-            ${protoIconBtn("close", "Close", "data-proto-person-close")}
           </div>`
               : ""}
           </div>
@@ -25597,7 +25648,7 @@ function protoSettingsFrame(section, inner, leadText) {
         ? "Invoices still wait."
         : "Logo, primary colour, and secondary colour.");
   return astralShell(`
-    ${astralPageHead("Settings", lead)}
+    ${astralPageHead("Settings", lead, "", protoSettingsBackLink())}
     <div class="astral-split astral-settings-split">
       ${protoSettingsNav(section)}
       <div class="astral-settings-main">${inner}</div>
@@ -29991,6 +30042,7 @@ function onPrototype(event) {
   if (usagePerson) {
     if (!protoCanManagePeople()) return;
     setProto({
+      ...protoSettingsFromPatch(),
       activePrototypeView: "users",
       prototypeUserOpen: usagePerson.dataset.protoUsagePerson,
       prototypeUserMenu: "",
@@ -30009,6 +30061,7 @@ function onPrototype(event) {
     const site = protoSiteByMeter(id);
     if (!meter) return;
     setProto({
+      ...protoSeeAsFromPatch(),
       ...protoSeeAsClear(),
       prototypeSeeAsCompany: "Network Rail",
       activePrototypeMeter: id,
@@ -30052,6 +30105,17 @@ function onPrototype(event) {
     protoRestoreFocus('#astral-fs [data-proto-notify="activity"]');
     return;
   }
+  const settingsBack = event.target.closest("[data-proto-settings-back]");
+  if (settingsBack) {
+    const from = String(store.prototypeSettingsFrom || "");
+    setProto({
+      activePrototypeView: from || "home",
+      prototypeSettingsFrom: "",
+      prototypeFullscreen: true,
+      ...protoClosePersonPatch(),
+    });
+    return;
+  }
   const settingsBtn = event.target.closest("[data-proto-settings]");
   if (settingsBtn) {
     const section = settingsBtn.dataset.protoSettings;
@@ -30071,6 +30135,7 @@ function onPrototype(event) {
       return;
     }
     setProto({
+      ...(view === "profile" ? protoSettingsFromPatch() : {}),
       activePrototypeView: view,
       prototypeFullscreen: true,
       ...(view === "companies" ? {} : { prototypeCompanyQuery: "" }),
