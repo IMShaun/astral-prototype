@@ -25640,7 +25640,7 @@ function protoSettingsFrame(section, inner, leadText) {
     (section === "profile"
       ? "Your name, discipline, and job title."
       : section === "notifications"
-        ? "Choose what Astral emails you about, and how often."
+        ? "Choose which emails and app notifications you get, and how often."
       : section === "users"
         ? protoData()?.usersLead ||
           "Invite people from your company. Super admin, Admin, and Manager can group them into teams."
@@ -25851,12 +25851,12 @@ function protoNotificationsCard() {
       <div class="astral-setting-rows">
         ${protoSettingRow(
           "Show previews",
-          "Show the first line of the alert or query in each notification.",
+          "Show the first line of the alert, query, or report in each notification.",
           protoSettingSwitch("previews", "Show previews", protoNotifyPreviews())
         )}
         ${protoSettingRow(
           "Notification grouping",
-          "How we bundle notifications that arrive close together.",
+          "How we group notifications that arrive close together.",
           protoSelect({
             id: "notify-grouping",
             label: "Notification grouping",
