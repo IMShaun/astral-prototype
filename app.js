@@ -1298,6 +1298,8 @@ function normalize(data) {
     data.prototypeOrgCountry = data.prototypeOrgCountry || "";
     data.prototypeNotifyActivity = data.prototypeNotifyActivity !== false;
     data.prototypeNotifyRecurrence = data.prototypeNotifyRecurrence || "daily";
+    data.prototypeNotifyPreviews = data.prototypeNotifyPreviews !== false;
+    data.prototypeNotifyGrouping = data.prototypeNotifyGrouping || "auto";
     data.prototypeSettingsSection = ["organisation", "profile", "notifications", "billing"].includes(
       data.prototypeSettingsSection
     )
@@ -5134,6 +5136,8 @@ const CHROME_FIELDS = [
   "prototypeSeeAsPerson",
   "prototypeNotifyActivity",
   "prototypeNotifyRecurrence",
+  "prototypeNotifyPreviews",
+  "prototypeNotifyGrouping",
   "prototypeUserForm",
   "prototypeUserQuery",
   "prototypeUserDrafts",

@@ -8386,10 +8386,10 @@ function protoPickSelect(id, value) {
     protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
     return;
   }
-  if (id === "notify-recurrence") {
+  if (id === "notify-recurrence" || id === "notify-grouping") {
     setProto({
       prototypeSelectOpen: "",
-      prototypeNotifyRecurrence: value,
+      [id === "notify-grouping" ? "prototypeNotifyGrouping" : "prototypeNotifyRecurrence"]: value,
     });
     protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
     return;
@@ -25781,6 +25781,33 @@ function protoNotifyRecurrence() {
   return PROTO_NOTIFY_RECURRENCE.some((item) => item.value === raw) ? raw : "daily";
 }
 
+const PROTO_NOTIFY_GROUPING = [
+  { value: "auto", label: "Automatic" },
+  { value: "type", label: "By type" },
+  { value: "site", label: "By site" },
+  { value: "off", label: "Off" },
+];
+
+function protoNotifyPreviews() {
+  return store.prototypeNotifyPreviews !== false;
+}
+
+function protoNotifyGrouping() {
+  const raw = String(store.prototypeNotifyGrouping || "");
+  return PROTO_NOTIFY_GROUPING.some((item) => item.value === raw) ? raw : "auto";
+}
+
+function protoSettingSwitch(key, label, on) {
+  return `<button
+            type="button"
+            class="astral-switch${on ? " is-on" : ""}"
+            role="switch"
+            aria-checked="${on ? "true" : "false"}"
+            aria-label="${escapeHtml(label)}"
+            data-proto-notify="${escapeHtml(key)}"
+          ></button>`;
+}
+
 function protoSettingRow(label, note, control) {
   return `
     <div class="astral-setting-row">
@@ -25806,14 +25833,7 @@ function protoNotificationsCard() {
         ${protoSettingRow(
           label,
           "Alerts, queries, and reports that change in the places you can see.",
-          `<button
-            type="button"
-            class="astral-switch${activity ? " is-on" : ""}"
-            role="switch"
-            aria-checked="${activity ? "true" : "false"}"
-            aria-label="${escapeHtml(label)}"
-            data-proto-notify="activity"
-          ></button>`
+          protoSettingSwitch("activity", label, activity)
         )}
         ${protoSettingRow(
           "Recurrence of email notifications",
@@ -25824,6 +25844,24 @@ function protoNotificationsCard() {
             value: protoNotifyRecurrence(),
             disabled: !activity,
             options: PROTO_NOTIFY_RECURRENCE,
+          })
+        )}
+      </div>
+      <h4 class="astral-setting-head">App notifications</h4>
+      <div class="astral-setting-rows">
+        ${protoSettingRow(
+          "Show previews",
+          "Show the first line of the alert or query in each notification.",
+          protoSettingSwitch("previews", "Show previews", protoNotifyPreviews())
+        )}
+        ${protoSettingRow(
+          "Notification grouping",
+          "How we bundle notifications that arrive close together.",
+          protoSelect({
+            id: "notify-grouping",
+            label: "Notification grouping",
+            value: protoNotifyGrouping(),
+            options: PROTO_NOTIFY_GROUPING,
           })
         )}
       </div>
@@ -30101,8 +30139,10 @@ function onPrototype(event) {
   }
   const notifyBtn = event.target.closest("[data-proto-notify]");
   if (notifyBtn) {
-    setProto({ prototypeNotifyActivity: !protoNotifyActivity() });
-    protoRestoreFocus('#astral-fs [data-proto-notify="activity"]');
+    const key = notifyBtn.dataset.protoNotify;
+    if (key === "previews") setProto({ prototypeNotifyPreviews: !protoNotifyPreviews() });
+    else setProto({ prototypeNotifyActivity: !protoNotifyActivity() });
+    protoRestoreFocus(`#astral-fs [data-proto-notify="${key === "previews" ? "previews" : "activity"}"]`);
     return;
   }
   const settingsBack = event.target.closest("[data-proto-settings-back]");

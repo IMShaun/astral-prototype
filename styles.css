@@ -5195,6 +5195,10 @@ button.astral-catch {
   font-weight: 600;
 }
 
+.astral-setting-rows + .astral-setting-head {
+  margin-top: var(--space-24);
+}
+
 .astral-setting-rows {
   display: grid;
 }
