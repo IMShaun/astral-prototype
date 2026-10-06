@@ -121,6 +121,34 @@ patterns:
     health: healthy
     last_reviewed: "2026-10-06"
     decision_refs: []
+  - id: foundation.type-tags
+    name: Type tags
+    level: foundation
+    user_goal: Tell alert types apart at a glance and read the type label easily
+    objects: [tag, type-mark]
+    actions: [scan]
+    used_in: [Alerts]
+    entry_points:
+      - A tag built with a type mark, such as Threshold alert or Missing data
+    structure: Tag filled with the mark's light colour, icon and text in its dark colour
+    components: [astral-tag, astral-type-badge]
+    states: [default]
+    permissions: all
+    content_terms: [Threshold alert, Missing data]
+    variants: [threshold, missing-data, no-signal]
+    exceptions:
+      - Tags with no mark keep their own fill
+      - Filter pills keep a neutral fill with a coloured icon
+    accessibility: Label names the type, so colour is not the only signal. Text contrast is at least 4.5:1.
+    implementation_refs:
+      - styles.css .astral-tag.has-mark
+      - astral-ui.js protoTag
+    evidence:
+      - User correction on 2026-10-06. Tag fill is the mark's light colour, text and icon its dark colour.
+    maturity: emerging
+    health: healthy
+    last_reviewed: "2026-10-06"
+    decision_refs: []
   - id: foundation.heading-spacing
     name: Heading spacing
     level: foundation

@@ -8,3 +8,4 @@ One Markdown file per pattern. Templates live in `.cursor/skills/ux-patterns/ref
 - [Section box](foundation.section-box.md)
 - [Heading spacing](foundation.heading-spacing.md)
 - [Stable controls](foundation.stable-controls.md)
+- [Type tags](foundation.type-tags.md)
