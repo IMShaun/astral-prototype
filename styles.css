@@ -10710,6 +10710,8 @@ tr.is-off .astral-person-mark {
 .astral-report-types {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  /* Every card in a set is as tall as the tallest, so a longer hint never makes one row stand out. */
+  grid-auto-rows: 1fr;
   gap: 8px;
 }
 
