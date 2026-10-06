@@ -240,3 +240,35 @@ patterns:
     health: needs-evidence
     last_reviewed: "2026-10-06"
     decision_refs: []
+  - id: foundation.date-fields
+    name: Date fields
+    level: foundation
+    user_goal: Choose the dates for a data file by typing or picking, with the same control everywhere
+    objects: [date-input, calendar]
+    actions: [type, pick, validate]
+    used_in: [Reports, Export]
+    entry_points:
+      - Reports editor, Date range, Exact dates and First send on
+      - Export pop-up, Source data, Change
+    structure: Typed dd/mm/yyyy field with a calendar dialog below it, errors under the field
+    components: [astral-day-cal, astral-day-cal-menu, astral-date-input, astral-report-pair]
+    states: [closed, open, months-view, error]
+    permissions: report editors for Reports fields, anyone who can act for Export fields
+    content_terms: [Data from, Data to, First send on]
+    variants: []
+    exceptions:
+      - The graph date picker sets a viewing range and keeps its own control
+      - Renewal dates on company settings keep the plain typed field
+    accessibility: aria-haspopup dialog, aria-expanded, errors linked with aria-describedby and role alert, no calendar opening on focus moved by the code (WCAG 3.2.1, 3.3.1, 3.3.3)
+    implementation_refs:
+      - prototype.js PROTO_REPORT_DATES
+      - prototype.js protoReportDayCalHtml
+      - prototype.js protoDayCalAllowed
+      - prototype.js protoFocusDayCalInput
+      - prototype.js protoExportDatesHtml
+    evidence:
+      - UX patterns review on 2026-10-06. Export Source data used plain From and To fields while Reports used this control for the same task. User approved reuse (commit 7875e05).
+    maturity: emerging
+    health: needs-evidence
+    last_reviewed: "2026-10-06"
+    decision_refs: []
