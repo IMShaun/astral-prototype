@@ -12534,6 +12534,24 @@ tr.is-off .astral-person-mark {
 .astral-type-badge[data-mark="missing-data"], .astral-tag[data-mark="missing-data"] { --mark-bg: #e0eaff; --mark-ink: #2d3282; }
 .astral-type-badge[data-mark="no-signal"], .astral-tag[data-mark="no-signal"] { --mark-bg: #ffe4e8; --mark-ink: #a11043; }
 
+/* On a card the type is a boxed icon before the heading, not a pill. The tip names the type. */
+.astral-report-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+.astral-report-mark {
+  display: inline-flex;
+  border-radius: 8px;
+}
+
+.astral-report-mark:focus-visible {
+  outline: 2px solid var(--color-action-primary);
+  outline-offset: 2px;
+}
+
 .astral-summary-name .astral-type-badge {
   width: var(--summary-mark);
   height: var(--summary-mark);

@@ -15,6 +15,7 @@ Any `astral-tag` built with a type mark (`protoTag(label, tip, className, mark)`
 - Tags with no mark, such as report or export tags. They keep their own fill.
 - Filter pills. They show the icon in its dark colour on the pill's neutral fill.
 - The standalone badge in summary cards and alert cards. It is already the light box with the dark icon.
+- Card headings, such as alert cards in Alerts > Settings. Put the boxed badge before the heading instead of a pill. Its tip and accessible name give the type.
 
 ## Anatomy
 
@@ -61,7 +62,7 @@ The label names the type, so colour is never the only signal. Text contrast is a
 
 ## Product surfaces using it
 
-Alerts > Settings table (Type column) and report cards.
+Alerts > Settings table (Type column).
 
 ## Evidence
 

@@ -23373,8 +23373,14 @@ function protoReportCard(def) {
   return `
     <article class="astral-card astral-report-card${def.on ? "" : " is-off"}" data-proto-report-card="${id}">
       <div class="astral-card-head">
-        <h3>${escapeHtml(def.name)}</h3>
-        ${protoTag(type.short, type.blurb, `is-${def.type}`, type.mark)}
+        ${
+          type.mark
+            ? `<div class="astral-report-name">${protoIconTip(
+                `<span class="astral-report-mark" tabindex="0" role="img" aria-label="${escapeHtml(type.short)}">${protoTypeBadge(type.mark)}</span>`,
+                `${type.short}. ${type.blurb}`
+              )}<h3>${escapeHtml(def.name)}</h3></div>`
+            : `<h3>${escapeHtml(def.name)}</h3>${protoTag(type.short, type.blurb, `is-${def.type}`)}`
+        }
       </div>
       <p>${escapeHtml(protoReportSummary(def))}</p>
       <div class="astral-actions"${canEdit ? ` data-proto-report-toggle="${id}"` : ""}>
