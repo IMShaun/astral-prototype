@@ -152,3 +152,30 @@ patterns:
     health: needs-evidence
     last_reviewed: "2026-10-06"
     decision_refs: []
+  - id: foundation.stable-controls
+    name: Stable controls
+    level: foundation
+    user_goal: Click through tabs or options without the control moving away from the pointer
+    objects: [tabs, segmented-control, tree, stat-card, pagination]
+    actions: [switch, select, filter]
+    used_in: [Alerts, Reports, Downloads]
+    entry_points:
+      - Any control clicked repeatedly to switch between items
+    structure: Reserve the size of anything above the control so every state puts it in the same place
+    components: [astral-page-tools, astral-page-actions, astral-tabs]
+    states: [each-tab, with-action, without-action, loading]
+    permissions: all
+    content_terms: []
+    variants: []
+    exceptions:
+      - Movement the person asks for, such as scrolling, resizing, or opening a panel
+    accessibility: WCAG 3.2.3 Consistent navigation. Helps magnification, tremor, and switch access users.
+    implementation_refs:
+      - styles.css .astral-page-tools min-height
+      - prototype.js protoReportsAreaHead
+    evidence:
+      - User correction on 2026-10-06. Alerts tabs dropped 4px on Settings because Add an alert made the head 36px.
+    maturity: emerging
+    health: needs-evidence
+    last_reviewed: "2026-10-06"
+    decision_refs: []
