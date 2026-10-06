@@ -21085,6 +21085,15 @@ function protoCompareDetail() {
             `;
             })
             .join("");
+  const meterBreakdown =
+    meters.length && !protoConsumptionUnitsMixed(meters)
+      ? protoMeterCompareTable(meters, allMeters, {
+          chart: protoPaneChartLabel(false),
+          site: true,
+          fold: "meters",
+          name: `${protoBelowSiteHeading(1)} breakdown`,
+        })
+      : "";
   return protoPaneShell(
     `
       <div class="astral-detail-head">
@@ -21129,7 +21138,9 @@ function protoCompareDetail() {
         bundle.level !== "group" && meters.length > 1
           ? protoChartIsIndividual()
             ? protoMeterCompareTable(meters, allMeters, { chart: protoPaneChartLabel(false), site: true })
-            : protoPaneBreakdown({ tracks, points: protoTracksToTotalPoints(tracks), meters, dual: false })
+            : `${protoPaneBreakdown({ tracks, points: protoTracksToTotalPoints(tracks), meters, dual: false })}${
+                bundle.level === "site" ? meterBreakdown : ""
+              }`
           : `${
               bundle.level === "group"
                 ? protoPaneBreakdown({
@@ -21140,7 +21151,7 @@ function protoCompareDetail() {
                     by: "group",
                   })
                 : ""
-            }${
+            }${bundle.level === "meter" ? "" : meterBreakdown}${
               rows
                 ? protoPaneListTable(
                     [
