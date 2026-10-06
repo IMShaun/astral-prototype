@@ -26427,7 +26427,8 @@ function protoNotificationsCard() {
       ${protoPaneShell(
         `<div class="astral-detail-head"><div><h3>Notifications</h3></div></div>`,
         `
-      <h4 class="astral-setting-head">Email notifications</h4>
+      <section class="astral-setting-group" aria-labelledby="astral-setting-email">
+      <h4 class="astral-setting-head" id="astral-setting-email">Email notifications</h4>
       <div class="astral-setting-rows">
         ${protoSettingRow(
           label,
@@ -26446,7 +26447,9 @@ function protoNotificationsCard() {
           })
         )}
       </div>
-      <h4 class="astral-setting-head">App notifications</h4>
+      </section>
+      <section class="astral-setting-group" aria-labelledby="astral-setting-app">
+      <h4 class="astral-setting-head" id="astral-setting-app">App notifications</h4>
       <div class="astral-setting-rows">
         ${protoSettingRow(
           "Show previews",
@@ -26464,6 +26467,7 @@ function protoNotificationsCard() {
           })
         )}
       </div>
+      </section>
         `
       )}
     </section>

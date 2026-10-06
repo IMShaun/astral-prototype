@@ -5215,6 +5215,26 @@ button.astral-catch {
   margin-top: var(--space-24);
 }
 
+/* One box per settings section. A bordered group inside the card, not a second card. */
+.astral-setting-group {
+  padding: var(--space-16) var(--space-16) 0;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.astral-setting-group + .astral-setting-group {
+  margin-top: var(--space-16);
+}
+
+.astral-setting-group > .astral-setting-head {
+  margin: 0;
+}
+
+.astral-setting-group > .astral-setting-rows > .astral-setting-row:first-child {
+  margin-top: var(--space-4);
+}
+
 .astral-setting-rows {
   display: grid;
 }
