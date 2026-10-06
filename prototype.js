@@ -8593,18 +8593,21 @@ const PROTO_REPORT_TYPES = [
     name: "Scheduled data extract",
     short: "Data extract",
     blurb: "Interval data, meter reads or missing data, sent on a schedule.",
+    icon: "usage",
   },
   {
     id: "dcda",
     name: "DC and DA",
     short: "DC/DA",
     blurb: "Reads from your data collector and data aggregator, sent on a schedule.",
+    icon: "meter",
   },
   {
     id: "billing",
     name: "Tenant billing",
     short: "Tenant billing",
     blurb: "A site's projected cost and the share one tenant pays.",
+    icon: "rates",
   },
   {
     id: "alert",
@@ -23683,14 +23686,15 @@ function protoReportTypeIds(tab = protoReportSheetTab()) {
 }
 
 // Summary cards on the page under the tabs: a count per kind that filters the list below.
+// Every card has the same shape: boxed icon and name on top, count below. A card with no type colour gets a neutral icon.
 function protoSummaryCards(label, cards) {
   // A card with none is disabled, like an empty option in Filter.
   const card = ({ attr, n, name, on, mark }) => `
     <button type="button" class="astral-stat astral-summary-stat${on ? " is-on" : ""}" aria-pressed="${on ? "true" : "false"}" ${attr}${
       !n && !on ? ' disabled title="None in this view"' : ""
     }>
+      <span class="astral-summary-name">${protoTypeBadge(mark || "grid")}<span>${escapeHtml(name)}</span></span>
       <span class="astral-stat-value">${n}</span>
-      ${mark ? `<span class="astral-summary-name">${protoTypeBadge(mark)}<span>${escapeHtml(name)}</span></span>` : `<span>${escapeHtml(name)}</span>`}
     </button>
   `;
   return `<div class="astral-summary-stats" role="group" aria-label="${escapeHtml(label)}">${cards.map(card).join("")}</div>`;
@@ -23709,7 +23713,7 @@ function protoReportTypeCards(tab, defs) {
   const noun = tab === "alerts" ? "alerts" : "reports";
   return protoSummaryCards(`Show ${noun} by type`, [
     { attr: attr("all"), n: defs.length, name: `All ${noun}`, on: !on.length },
-    ...cards.map((item) => ({ attr: attr(item.id), n: item.n, name: item.name, mark: item.mark, on: on.includes(item.id) })),
+    ...cards.map((item) => ({ attr: attr(item.id), n: item.n, name: item.name, mark: item.mark || PROTO_REPORT_TYPES.find((type) => type.id === item.id)?.icon || "report", on: on.includes(item.id) })),
   ]);
 }
 
@@ -23727,6 +23731,7 @@ function protoDownloadTypeCards() {
       attr: attr(item.id),
       n: all.filter((row) => protoDownloadType(row) === item.id).length,
       name: item.name,
+      mark: { report: "chart-bar", export: "export", document: "report" }[item.id],
       on: picked.includes(item.id),
     })),
   ]);
@@ -23742,13 +23747,14 @@ function protoAlertFacetCards() {
     const reasons = protoAlertFilterPicks().filter((id) => PROTO_ALERT_REASON_IDS.includes(id));
     const done = all.filter((row) => protoAlertResolved(row));
     return protoSummaryCards("Show resolved flags by what they were resolved as", [
-      { attr: attr("all"), n: done.length, name: "Resolved flags", on: !reasons.length },
+      { attr: attr("all"), n: done.length, name: "Resolved flags", mark: "resolve", on: !reasons.length },
       ...PROTO_RESOLVE.map((item) => {
         const id = `reason-${item.id}`;
         return {
           attr: attr(id),
           n: done.filter((row) => protoAlertFacetValue(row, "reason") === id).length,
           name: item.name,
+          mark: item.icon,
           on: reasons.includes(id),
         };
       }),
@@ -23761,7 +23767,7 @@ function protoAlertFacetCards() {
       attr: attr(item.id),
       n: all.filter((row) => protoAlertMatchesFacet(row, item.id, resolved)).length,
       name: item.id === "all" ? "Open flags" : item.name,
-      mark: item.mark,
+      mark: item.mark || (item.id === "all" ? "notice" : undefined),
       on: item.id === "all" ? !types.length : types.includes(item.id),
     }))
   );
