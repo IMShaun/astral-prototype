@@ -743,6 +743,7 @@ function protoPageFilterReset() {
     prototypeQueryMore: "",
     prototypeAckOpen: "",
     prototypeAlertInfo: "",
+    prototypeExportModal: null,
     prototypeTableSort: {},
     prototypeSiteMeters: [],
     prototypeGroupSites: [],
@@ -7696,6 +7697,12 @@ function protoPinClose() {
 }
 
 function protoCloseModal(kind) {
+  if (kind === "export") {
+    const file = protoExportModalState()?.file || "";
+    setProto({ prototypeExportModal: null });
+    protoRestoreFocus(`#astral-fs [data-proto-export="toggle"][data-proto-file="${CSS.escape(file)}"]`);
+    return;
+  }
   if (kind === "alert-info") {
     const id = store.prototypeAlertInfo;
     setProto({ prototypeAlertInfo: "" });
@@ -13810,6 +13817,7 @@ function astralShell(inner) {
         ${protoDateModal()}
         ${protoCompareModal()}
         ${protoAlertInfoModal()}
+        ${protoExportModal()}
       </div>
       ${protoQueryPinOverlay()}
     </div>
@@ -17795,32 +17803,87 @@ function protoSiteButton(site, on) {
   `;
 }
 
+// Export opens a modal like Add a report: pick the format, then Export.
 function protoExportControl(fileId) {
   if (!protoCanAct()) return "";
-  const open = Boolean(store.prototypeExportOpen);
+  const open = protoExportModalState()?.file === String(fileId || "");
   return `
     <div class="astral-export">
       ${protoIconBtn(
         "export",
         "Export",
-        `data-proto-export="toggle" aria-haspopup="menu" aria-expanded="${
-          open ? "true" : "false"
-        }" aria-controls="astral-export-menu"`,
+        `data-proto-export="toggle" data-proto-file="${escapeHtml(fileId)}" aria-haspopup="dialog"`,
         { on: open }
       )}
+    </div>
+  `;
+}
+
+const PROTO_EXPORT_FORMATS = [
+  { id: "csv", name: "CSV", blurb: "The data, to open in a spreadsheet or load into another system." },
+  { id: "pdf", name: "PDF", blurb: "What you see now, laid out to share or print." },
+];
+
+function protoExportTitle(fileId) {
+  if (fileId === "users") return "Export people";
+  if (fileId === "usage") return "Export usage";
+  if (fileId === "compare") return "Export this comparison";
+  return "Export this graph";
+}
+
+function protoExportLead(fileId) {
+  const uses = fileId === "users" || fileId === "usage" ? "the search and filters" : "the dates and filters";
+  return `Pick a format. It uses ${uses} on screen now. Find the file on Downloads.`;
+}
+
+function protoExportModalState() {
+  const raw = store.prototypeExportModal;
+  if (!raw || typeof raw !== "object" || !raw.file) return null;
+  return { file: String(raw.file), kind: raw.kind === "pdf" ? "pdf" : "csv" };
+}
+
+function protoExportModal() {
+  const state = protoExportModalState();
+  if (!state || !protoCanAct()) return "";
+  return `
+    <div class="astral-modal-back" data-proto-modal="export">
       <div
-        id="astral-export-menu"
-        class="astral-export-menu${open ? protoMenuEnterClass("export") : ""}"
-        role="menu"
-        aria-label="Export"
-        ${open ? "" : "hidden"}
+        class="astral-modal astral-report-pick astral-export-pick"
+        id="astral-export-pick"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="astral-export-pick-title"
       >
-        <button type="button" role="menuitem" data-proto-export="csv" data-proto-file="${escapeHtml(
-          fileId
-        )}">CSV</button>
-        <button type="button" role="menuitem" data-proto-export="pdf" data-proto-file="${escapeHtml(
-          fileId
-        )}">PDF</button>
+        ${protoModalHead("astral-export-pick-title", protoExportTitle(state.file), escapeHtml(protoExportLead(state.file)), "export")}
+        <div class="astral-modal-body">
+          <div class="astral-report-type-field">
+            <span class="sr-only" id="astral-export-format-label">Format</span>
+            <div class="astral-report-types" role="radiogroup" aria-labelledby="astral-export-format-label">
+              ${PROTO_EXPORT_FORMATS.map((item) => {
+                const on = state.kind === item.id;
+                return `
+                  <button
+                    type="button"
+                    role="radio"
+                    class="astral-report-type${on ? " is-on" : ""}"
+                    aria-checked="${on ? "true" : "false"}"
+                    tabindex="${on ? "0" : "-1"}"
+                    data-proto-export-kind="${escapeHtml(item.id)}"
+                  >
+                    <span class="astral-report-type-head">${protoRadio(on)}<span>${escapeHtml(item.name)}</span></span>
+                    <span class="astral-muted">${escapeHtml(item.blurb)}</span>
+                  </button>
+                `;
+              }).join("")}
+            </div>
+          </div>
+        </div>
+        <div class="astral-modal-foot">
+          <div class="astral-actions">
+            ${protoBtn("Export", 'data-proto-export="go"')}
+            ${protoGhost("Cancel", 'data-proto-modal-close="export"')}
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -19472,6 +19535,7 @@ function protoQueueExport(kind, fileId) {
   };
   setProto({
     prototypeExportOpen: false,
+    prototypeExportModal: null,
     prototypeDownloads: [item, ...protoDownloads()].slice(0, 40),
     prototypeExportNotice: { kind: nextKind, id, shownAt: Date.now() },
   });
@@ -31331,13 +31395,22 @@ function onPrototype(event) {
     if (open) protoRestoreFocus("#astral-chart-settings-menu .astral-select-btn");
     return;
   }
+  const exportKind = event.target.closest("[data-proto-export-kind]");
+  if (exportKind) {
+    const state = protoExportModalState();
+    if (!state) return;
+    setProto({ prototypeExportModal: { ...state, kind: exportKind.dataset.protoExportKind } });
+    protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
+    return;
+  }
   const exportBtn = event.target.closest("[data-proto-export]");
   if (exportBtn) {
     if (!protoCanAct()) return;
     const act = exportBtn.dataset.protoExport;
     if (act === "toggle") {
       setProto({
-        prototypeExportOpen: !store.prototypeExportOpen,
+        prototypeExportModal: { file: String(exportBtn.dataset.protoFile || ""), kind: "csv" },
+        prototypeExportOpen: false,
         prototypeDateOpen: false,
         prototypeTreeFilterOpen: false,
         prototypePaneFilterOpen: false,
@@ -31345,6 +31418,13 @@ function onPrototype(event) {
         prototypeSelectOpen: "",
         prototypeAckOpen: "",
       });
+      protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
+      return;
+    }
+    if (act === "go") {
+      const state = protoExportModalState();
+      if (state) protoQueueExport(state.kind, state.file);
+      protoRestoreFocus("#astral-fs .astral-banner [data-proto-downloads='open']");
       return;
     }
     const fileId = exportBtn.dataset.protoFile;
@@ -32731,7 +32811,7 @@ function onPrototypeKey(event) {
   }
   if (event.key === "Escape" && store?.prototypeFullscreen) {
     const modalKind = document.querySelector(
-      "#astral-fs .astral-modal-back[data-proto-modal^='report-'], #astral-fs .astral-modal-back[data-proto-modal='alert-info']"
+      "#astral-fs .astral-modal-back[data-proto-modal^='report-'], #astral-fs .astral-modal-back[data-proto-modal='alert-info'], #astral-fs .astral-modal-back[data-proto-modal='export']"
     )?.dataset.protoModal;
     if (modalKind && !store.prototypeSelectOpen) {
       protoCloseModal(modalKind);

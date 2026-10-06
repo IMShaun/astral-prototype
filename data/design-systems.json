@@ -6220,7 +6220,7 @@
             "status": "working",
             "say": "Export",
             "avoid": "Excel.",
-            "note": "The people list extract on Users. An icon. Hover for Export. Pick CSV or PDF. Same as the download on a group or a site.",
+            "note": "The people list extract on Users. An icon. Hover for Export. Pick CSV or PDF in a modal like Add a report. Radio cards with a line each. Export queues it. Cancel or Escape returns to the icon. Same as the download on a group or a site.",
             "from": "Users list, 5 Sep"
           },
           {
@@ -6230,7 +6230,7 @@
             "status": "working",
             "say": "Export",
             "avoid": "Export CSV as the only action. Excel.",
-            "note": "The download on a group or a site. An icon. Hover for Export. Pick CSV or PDF. A banner floats under the nav, in the middle. A 1px Infra Grey B outline. It goes after 10 seconds. View downloads opens Downloads. Not the outgoing channel.",
+            "note": "The download on a group or a site. An icon. Hover for Export. Pick CSV or PDF in a modal like Add a report. Radio cards with a line each. Export queues it. Cancel or Escape returns to the icon. A banner floats under the nav, in the middle. A 1px Infra Grey B outline. It goes after 10 seconds. View downloads opens Downloads. Not the outgoing channel.",
             "from": "Shaun on the export control, 5 Sep"
           },
           {
@@ -7594,7 +7594,7 @@
             "name": "Export the data",
             "status": "working",
             "summary": "Take the interval view as CSV or PDF.",
-            "now": "The download is an icon. Hover for Export. It waits 0.7 seconds. Pick CSV or PDF. A banner floats under the nav, in the middle. A 1px Infra Grey B outline. It goes after 10 seconds. View downloads opens Downloads. Hide puts that banner away. Downloads is a subpage from Reports. Reports and Downloads sit as Tabs on the page, under the Reports title and above the content card, not inside it. Alerts uses the same place for Activity and Settings. The selected tab is a black pill. The pill slides. Do not put a ghost Downloads or Reports button in the page actions. Type is Report or Data export. CSV and PDF sit there as Kind. Status is the column. Complete sits in Tag when it is ready. A bar and time left sit on the row while it processes. Minutes if a minute or more. Seconds if under a minute. The cyan bar fills while it waits. Download waits until it is ready. Then it sits as an Icon button. Hover for Download. In this walk, Download plays a short dummy of the bar, then the file. CSV from this walk stays UTC. Local time waits as a report or export setting. Daylight saving can show the same local clock twice. Keep both rows. Outgoing stays positive.",
+            "now": "The download is an icon. Hover for Export. It waits 0.7 seconds. Pick CSV or PDF in a modal like Add a report. Radio cards with a line each. Export queues it. Cancel or Escape returns to the icon. A banner floats under the nav, in the middle. A 1px Infra Grey B outline. It goes after 10 seconds. View downloads opens Downloads. Hide puts that banner away. Downloads is a subpage from Reports. Reports and Downloads sit as Tabs on the page, under the Reports title and above the content card, not inside it. Alerts uses the same place for Activity and Settings. The selected tab is a black pill. The pill slides. Do not put a ghost Downloads or Reports button in the page actions. Type is Report or Data export. CSV and PDF sit there as Kind. Status is the column. Complete sits in Tag when it is ready. A bar and time left sit on the row while it processes. Minutes if a minute or more. Seconds if under a minute. The cyan bar fills while it waits. Download waits until it is ready. Then it sits as an Icon button. Hover for Download. In this walk, Download plays a short dummy of the bar, then the file. CSV from this walk stays UTC. Local time waits as a report or export setting. Daylight saving can show the same local clock twice. Keep both rows. Outgoing stays positive.",
             "later": "Local time as a report or export setting. Not a graph control. Daylight saving can show the same local clock twice. Keep both rows. Do not rename them or delete one.",
             "uses": [
               "icon-button",
