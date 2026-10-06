@@ -94,3 +94,30 @@ patterns:
     last_reviewed: "2026-09-18"
     decision_refs:
       - UXDR-2026-09-18-library-check
+  - id: foundation.section-box
+    name: Section box
+    level: foundation
+    user_goal: See where one labelled set of options ends and the next begins inside a card
+    objects: [card, section, setting-row]
+    actions: [scan, group]
+    used_in: [Settings]
+    entry_points:
+      - A card or pane with two or more labelled sets of rows
+    structure: Section, heading above, then a bordered box of rows
+    components: [astral-setting-group, astral-setting-head, astral-setting-rows]
+    states: [default]
+    permissions: all
+    content_terms: []
+    variants: []
+    exceptions:
+      - One set of rows with no heading needs no box
+    accessibility: Section is labelled by its heading via aria-labelledby. Focus is a 2px black edge.
+    implementation_refs:
+      - styles.css .astral-setting-group
+      - prototype.js protoNotificationsCard
+    evidence:
+      - User corrections on 2026-10-06. Corners match cards (16px). Heading sits outside and above the box.
+    maturity: emerging
+    health: healthy
+    last_reviewed: "2026-10-06"
+    decision_refs: []
