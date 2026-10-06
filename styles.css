@@ -4329,6 +4329,8 @@ button.astral-avatar {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--space-16) var(--space-24);
   align-items: start;
+  /* Reserve the button height so the tabs below do not jump when a tab adds or drops a page action. */
+  min-height: var(--control-height-sm);
 }
 
 .astral-page-head.has-tabs .astral-tabs {
