@@ -10921,6 +10921,49 @@ tr.is-off .astral-person-mark {
   font-size: 0.875rem;
 }
 
+/* Stepped modal. The new step slides in from the side it was reached from. */
+.astral-modal.is-step-next .astral-modal-body,
+.astral-modal.is-step-next .astral-modal-copy {
+  animation: astral-modal-step-next var(--motion-slide) var(--ease-slide);
+}
+
+.astral-modal.is-step-back .astral-modal-body,
+.astral-modal.is-step-back .astral-modal-copy {
+  animation: astral-modal-step-back var(--motion-slide) var(--ease-slide);
+}
+
+@keyframes astral-modal-step-next {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+@keyframes astral-modal-step-back {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .astral-modal.is-step-next .astral-modal-body,
+  .astral-modal.is-step-next .astral-modal-copy,
+  .astral-modal.is-step-back .astral-modal-body,
+  .astral-modal.is-step-back .astral-modal-copy {
+    animation: none;
+  }
+}
+
+.astral-modal-lead h3:focus {
+  outline: none;
+}
+
+.astral-modal-head .astral-modal-lead .astral-icon-tip {
+  left: 0;
+  right: auto;
+}
+
 .astral-report-charges {
   display: grid;
   gap: 8px;

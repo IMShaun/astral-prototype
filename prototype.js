@@ -17899,7 +17899,10 @@ function protoExportModalState() {
   const prefs = protoExportPrefs();
   const what = protoExportChoices(file).some((item) => item.id === prefs.what) ? prefs.what : "chart";
   const errors = raw.errors && typeof raw.errors === "object" ? raw.errors : {};
-  return { file, what, prefs, more: raw.more === true, edit: raw.edit === true, errors };
+  // Source data needs more fields, so they sit on a second step.
+  const step = what === "source" && raw.step === 2 ? 2 : 1;
+  const dir = raw.dir === "next" || raw.dir === "back" ? raw.dir : "";
+  return { file, what, prefs, step, dir, more: raw.more === true, edit: raw.edit === true, errors };
 }
 
 function protoExportSourceFormat(id) {
@@ -18076,17 +18079,11 @@ function protoExportModal() {
   const state = protoExportModalState();
   if (!state || !protoCanAct()) return "";
   const choices = protoExportChoices(state.file);
-  return `
-    <div class="astral-modal-back" data-proto-modal="export">
-      <div
-        class="astral-modal astral-report-pick astral-export-pick has-menus"
-        id="astral-export-pick"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="astral-export-pick-title"
-      >
-        ${protoModalHead("astral-export-pick-title", "Export", "", "export")}
-        <div class="astral-modal-body">
+  const sourceStep = state.what === "source" && state.step === 2;
+  const sourcePick = state.what === "source" && state.step === 1;
+  const body = sourceStep
+    ? protoExportFieldsHtml(state)
+    : `
           <fieldset class="astral-report-split">
             <legend id="astral-export-what-label">What do you want to export?</legend>
             <div
@@ -18116,18 +18113,46 @@ function protoExportModal() {
             </div>
             ${state.errors.what ? `<p class="astral-export-error" id="astral-export-what-error" role="alert">${escapeHtml(state.errors.what)}</p>` : ""}
           </fieldset>
-          ${protoExportFieldsHtml(state)}
+          ${sourcePick ? "" : protoExportFieldsHtml(state)}
+        `;
+  const motion = state.dir ? ` is-step-${state.dir}` : "";
+  return `
+    <div class="astral-modal-back" data-proto-modal="export">
+      <div
+        class="astral-modal astral-report-pick astral-export-pick has-menus${motion}"
+        id="astral-export-pick"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="astral-export-pick-title"
+      >
+        ${
+          sourceStep
+            ? protoModalHead("astral-export-pick-title", "Export source data", "", "export", 'data-proto-export-step="back"')
+            : protoModalHead("astral-export-pick-title", "Export", "", "export")
+        }
+        <div class="astral-modal-body">
+          ${body}
         </div>
         <div class="astral-modal-foot">
-          <p class="astral-export-sum" aria-live="polite">${escapeHtml(protoExportSummary(state))}</p>
+          ${sourcePick ? "" : `<p class="astral-export-sum" aria-live="polite">${escapeHtml(protoExportSummary(state))}</p>`}
           <div class="astral-actions">
-            ${protoBtn("Export", 'data-proto-export="go"')}
+            ${sourcePick ? protoBtn("Continue", 'data-proto-export-step="next"') : protoBtn("Export", 'data-proto-export="go"')}
             ${protoGhost("Cancel", 'data-proto-modal-close="export"')}
           </div>
         </div>
       </div>
     </div>
   `;
+}
+
+// Moves between the export steps. The slide plays once, then later renders stay still.
+function protoExportStep(step) {
+  const raw = store.prototypeExportModal;
+  if (!raw || !protoExportModalState()) return;
+  setProto({ prototypeExportModal: { ...raw, step, dir: step === 2 ? "next" : "back", errors: {} } });
+  store.prototypeExportModal = { ...store.prototypeExportModal, dir: "" };
+  if (step === 2) protoRestoreFocus("#astral-fs #astral-export-pick-title");
+  else protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
 }
 
 function protoSetExportPrefs(patch) {
@@ -18156,6 +18181,10 @@ async function protoExportGo() {
   const state = protoExportModalState();
   if (!state) return;
   const { file, what, prefs } = state;
+  if (what === "source" && state.step !== 2) {
+    protoExportStep(2);
+    return;
+  }
   if (what === "source" && state.edit) {
     const errors = protoExportDateErrors();
     if (Object.keys(errors).length) {
@@ -32052,6 +32081,11 @@ function onPrototype(event) {
     store.prototypeExportModal = { ...raw, errors: {} };
     protoSetExportPrefs({ what: exportKind.dataset.protoExportKind });
     protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
+    return;
+  }
+  const exportStep = event.target.closest("[data-proto-export-step]");
+  if (exportStep) {
+    protoExportStep(exportStep.dataset.protoExportStep === "next" ? 2 : 1);
     return;
   }
   const exportOpt = event.target.closest("[data-proto-export-opt]");

@@ -333,13 +333,16 @@ function protoSearchField({ name, value, placeholder, label }) {
   `;
 }
 
-function protoModalHead(titleId, title, leadHtml, closeKind) {
+// backAttr adds a Back icon before the title, for step 2 of a stepped modal.
+function protoModalHead(titleId, title, leadHtml, closeKind, backAttr) {
+  const copy = `
+      <div class="astral-modal-copy">
+        <h3 id="${protoEsc(titleId)}"${backAttr ? ' tabindex="-1"' : ""}>${protoEsc(title)}</h3>
+        ${leadHtml ? `<p class="astral-muted">${leadHtml}</p>` : ""}
+      </div>`;
   return `
     <div class="astral-modal-head">
-      <div class="astral-modal-copy">
-        <h3 id="${protoEsc(titleId)}">${protoEsc(title)}</h3>
-        ${leadHtml ? `<p class="astral-muted">${leadHtml}</p>` : ""}
-      </div>
+      ${backAttr ? `<div class="astral-detail-lead astral-modal-lead">${protoIconBtn("prev", "Back", backAttr)}${copy}</div>` : copy}
       ${protoIconBtn("close", "Close", `data-proto-modal-close="${protoEsc(closeKind)}"`)}
     </div>
   `;
