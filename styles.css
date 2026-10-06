@@ -10901,6 +10901,21 @@ tr.is-off .astral-person-mark {
   margin: 0;
 }
 
+/* The date and Change share one centred line, so the text sits level with the button label. */
+.astral-export-date-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+}
+
+/* Sections inside More options sit 16px apart, as in the modal body. Each heading stays closer to its own options. */
+.astral-export-more-body {
+  display: grid;
+  gap: 16px;
+  padding-top: 8px;
+}
+
 .astral-day-cal .astral-date-input[aria-invalid="true"] {
   border-color: var(--color-text-danger);
 }

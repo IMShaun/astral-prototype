@@ -18030,23 +18030,28 @@ function protoExportDatesHtml(state) {
     `;
   }
   const { from, to } = protoExportGraphDates();
-  const change = state.what === "source" ? protoTextBtn("Change", 'data-proto-export-dates="change" aria-label="Change dates"') : "";
-  return `<div><dt>Dates</dt><dd>${escapeHtml(protoRangeWords(from, to))}${change}</dd></div>`;
+  if (state.what === "source") {
+    return `
+      <div class="astral-field">
+        <span>Dates</span>
+        <div class="astral-export-date-line">
+          <span>${escapeHtml(protoRangeWords(from, to))}</span>
+          ${protoTextBtn("Change", 'data-proto-export-dates="change" aria-label="Change dates"')}
+        </div>
+      </div>
+    `;
+  }
+  return `<div><dt>Dates</dt><dd>${escapeHtml(protoRangeWords(from, to))}</dd></div>`;
 }
 
 function protoExportFieldsHtml(state) {
   const { what, prefs } = state;
   const dates = protoExportDatesHtml(state);
-  const editing = what === "source" && state.edit;
   const fixed = what === "pdf" ? "PDF" : what === "image" ? "PNG" : "CSV, comma";
-  const facts = [editing ? "" : dates, what === "source" ? "" : `<div><dt>Format</dt><dd>${escapeHtml(fixed)}</dd></div>`]
-    .filter(Boolean)
-    .join("");
-  const list = facts ? `<dl class="astral-export-facts">${facts}</dl>` : "";
-  if (what !== "source") return list;
+  const facts = [dates, `<div><dt>Format</dt><dd>${escapeHtml(fixed)}</dd></div>`].filter(Boolean).join("");
+  if (what !== "source") return `<dl class="astral-export-facts">${facts}</dl>`;
   return `
-    ${list}
-    ${editing ? dates : ""}
+    ${dates}
     ${protoReportOptionSelect("export-format", "Format", PROTO_EXPORT_SOURCE_FORMATS, prefs.format)}
     ${protoAccordion({
       id: "astral-export-more",
