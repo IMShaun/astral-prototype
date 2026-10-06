@@ -313,8 +313,8 @@ patterns:
     used_in: [Export]
     entry_points:
       - Export pop-up, Source data step
-    structure: Labels stacked above controls. Label to control 4 to 8px, disclosure head to first section 8px, section to section 16px. Checkboxes and radios centre on the first label line, not on the label and hint
-    components: [astral-field, astral-report-split, astral-export-more-body, astral-check, astral-radio, astral-report-consent]
+    structure: Labels stacked above controls. Label to control 4 to 8px, disclosure head to first section 8px, section to section 16px. Checkboxes and radios centre on the first label line, not on the label and hint. Self-explanatory choice cards show the name only, on one line, all the same size
+    components: [astral-field, astral-report-split, astral-export-more-body, astral-check, astral-radio, astral-report-consent, astral-report-types, astral-report-type]
     states: [default, expanded]
     permissions: anyone who can act
     content_terms: []
@@ -326,8 +326,11 @@ patterns:
       - prototype.js protoExportDatesHtml
       - styles.css astral-report-split
       - styles.css astral-export-more-body
+      - prototype.js protoRangeFieldsHtml
+      - styles.css astral-export-pick
     evidence:
       - User corrections on 2026-10-06 on Dates alignment and More options spacing (commit 5c057b4).
+      - User corrections on 2026-10-06 on the Date range cards, hints removed and pop-up widened so names fit on one line (commit 44e3e9a).
     maturity: emerging
     health: needs-evidence
     last_reviewed: "2026-10-06"

@@ -31,6 +31,8 @@ Any form, pop-up or disclosure that holds fields, radio groups or read-only valu
 | One field or section to the next | 16px, the same as `.astral-modal-body` |
 
 - Centre a checkbox or radio on the first line of its label, the heading, not on the label and hint together. When there is a hint, top-align the row (`align-items: flex-start`) and give the 16px box `margin-top: calc((1lh - 16px) / 2)`. When there is only a label, `align-items: center` does the same job.
+- Choice cards (`.astral-report-type`) whose names explain themselves show the name only. Drop the hint, so every card in the set is the same size. The Date range cards (Exact dates, Common range, Custom range) need no hint, because the fields below them show what each one does.
+- Keep every choice card name on one line. If a name wraps, widen the pop-up rather than shorten the name. The cards share `grid-auto-rows: 1fr`, so one wrapped name makes every card taller. The Export pop-up is 40rem wide (`.astral-export-pick`) so Common range fits beside the other two.
 - Give a disclosure body (`{modifier}-body` from `protoAccordion`) its own grid and gap. It has no spacing of its own, so sections inside it touch.
 - Measure the rendered gaps in the browser after the change.
 
@@ -40,6 +42,8 @@ Any form, pop-up or disclosure that holds fields, radio groups or read-only valu
 - Put a heading as close to the section above as to its own content, or closer. A 0px gap between sections with 4px under each legend makes each heading look like it belongs to the section above.
 - Let a text button decide the line height of the value next to it without centring them.
 - Nudge a checkbox or radio with a fixed pixel margin, such as `margin-top: 2px`. It was 2px high on a 24px line and drifts further when the text size changes.
+- Add a hint to a choice card that only repeats its name, such as "Pick a start and end date" under Exact dates. The cards grew to 149px tall for 2 words each.
+- Let a choice card name wrap onto a second line. Common range wrapped by a few pixels at 36rem, and the 1fr rows made all 3 cards 82px instead of 58px.
 - Centre the box on the whole label and hint block. With a hint, the box falls between the heading and the hint and belongs to neither.
 
 ## Accessibility
@@ -49,6 +53,7 @@ Stacked labels keep the label and the control together when the text is enlarged
 ## Product surfaces using it
 
 - Export pop-up, Source data step: Dates, Format and More options (commit `5c057b4`)
+- Date range choice cards in Reports and Export, name only (commit `44e3e9a`)
 - Checkbox rows with a hint: "Include source IDs" in Export, the Reports consent row and multi-select options with a note
 
 ## Known limitations
@@ -61,6 +66,7 @@ Stacked labels keep the label and the control together when the text is enlarged
 - User correction on 6 October 2026: "Can you sort the alignment issues here" on the Source data Dates row. The label sat in a side column, while Format was stacked, and the date sat above the centre of "Change".
 - User correction on 6 October 2026: "You might as well just show the to and from fields" on the read-only Source data dates. Step 2 exists for the dates, so the Change step was an extra click.
 - User correction on 6 October 2026: "Headings should be more closely spaced than gaps between other sections or content" on More options. The sections were 0px apart, with 4px under each legend.
+- User correction on 6 October 2026: "take out the sub text so they can all be the same size" on the Date range cards, then "Make the modal wider so it can allow the common range to fit on one line". Measured after: 3 cards at 189 by 58px, each name on 1 line.
 - User correction on 6 October 2026: "Checkboxes and radio buttons in these circumstances need to be centre aligned with the text on the right (heading)" on "Include source IDs". The box centre sat 2px above the centre of the label line.
 
 ## Related patterns / decisions
