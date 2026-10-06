@@ -12530,9 +12530,21 @@ tr.is-off .astral-person-mark {
 .astral-type-badge[data-mark="no-signal"] { --mark-bg: #ffe4e8; --mark-ink: #a11043; }
 
 .astral-summary-name .astral-type-badge {
-  width: 36px;
-  height: 36px;
+  width: var(--summary-mark);
+  height: var(--summary-mark);
   border-radius: 10px;
+}
+
+/* Every summary card reserves the badge row, with or without a badge, so cards line up across pages.
+   min-height, not height: a label that wraps on a narrow screen can still grow the card. */
+.astral-summary-stat {
+  --summary-mark: 36px;
+}
+
+.astral-summary-stat > :last-child {
+  display: flex;
+  align-items: center;
+  min-height: var(--summary-mark);
 }
 
 .astral-summary-name .astral-type-badge .astral-type-mark {
