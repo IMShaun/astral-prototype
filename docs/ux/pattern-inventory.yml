@@ -249,7 +249,7 @@ patterns:
     used_in: [Reports, Export]
     entry_points:
       - Reports editor, Date range, Exact dates and First send on
-      - Export pop-up, Source data, Change
+      - Export pop-up, Source data step 2, Exact dates, Common range and Custom range
     structure: Typed dd/mm/yyyy field with a calendar dialog below it, errors under the field
     components: [astral-day-cal, astral-day-cal-menu, astral-date-input, astral-report-pair]
     states: [closed, open, months-view, error]
@@ -263,6 +263,7 @@ patterns:
     implementation_refs:
       - prototype.js PROTO_REPORT_DATES
       - prototype.js protoReportDayCalHtml
+      - prototype.js protoRangeFieldsHtml
       - prototype.js protoDayCalAllowed
       - prototype.js protoFocusDayCalInput
       - prototype.js protoExportDatesHtml

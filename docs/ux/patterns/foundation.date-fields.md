@@ -9,7 +9,7 @@ Choose the dates for a data file quickly, whether by typing them or by picking t
 ## When to use
 
 - Reports > Date range > Exact dates ("Data from", "Data to") and Schedule ("First send on")
-- Export > Source data, step 2 ("Data from", "Data to", filled with the graph's dates)
+- Export > Source data, step 2. It reuses the whole Reports date range: Exact dates ("Data from", "Data to", filled with the graph's dates), Common range and Custom range
 - Any new field that asks for a single day for data
 
 ## When not to use
@@ -21,7 +21,8 @@ Choose the dates for a data file quickly, whether by typing them or by picking t
 
 ### Do
 
-- Render with `protoReportDayCalHtml(value, label, field, error)`. Register the field in `PROTO_REPORT_DATES` with its input name and store key, and add `export: true` (or a new gate in `protoDayCalAllowed`) when it is not a report field.
+- Offer a date range with `protoRangeFieldsHtml(range, cfg)`: Exact dates, Common range and Custom range, as in Reports. Pass a `cfg.key` so the attributes and select IDs stay unique. Common and Custom ranges in Export count back from today.
+- Render a single date with `protoReportDayCalHtml(value, label, field, error)`. Register the field in `PROTO_REPORT_DATES` with its input name and store key, and add `export: true` (or a new gate in `protoDayCalAllowed`) when it is not a report field.
 - Label a data range "Data from" and "Data to".
 - Open the calendar when the person clicks or tabs into the field. Typing still works while it is open, and the calendar follows the typed month.
 - Disable future days for data ranges. Only "First send on" allows the future.
@@ -32,6 +33,7 @@ Choose the dates for a data file quickly, whether by typing them or by picking t
 
 ### Don't
 
+- Build a second set of range choices for a new page. If someone can pick "Last month" in Reports, they can pick it in Export too.
 - Build a second date input for a new page. Reuse this one so the calendar, masking and errors stay in step.
 - Use bare "From" and "To" labels for a data range. They do not say what the dates apply to.
 - Open the calendar when the code moves focus to the field, for example after "Change", a pick, or an error. Only the person's own click or Tab should open it.
@@ -44,7 +46,7 @@ The input has `aria-haspopup="dialog"`, `aria-expanded` and `aria-controls` for 
 ## Product surfaces using it
 
 - Reports editor: Exact dates and First send on
-- Export pop-up: Source data dates (commit `7875e05`)
+- Export pop-up: Source data dates (commit `7875e05`), then the full Reports date range
 
 ## Known limitations
 
@@ -54,6 +56,7 @@ The input has `aria-haspopup="dialog"`, `aria-expanded` and `aria-controls` for 
 ## Evidence
 
 - UX patterns review of the Export pop-up on 6 October 2026. Source data used plain From and To fields while Reports used this control for the same task. The user approved reuse.
+- The user asked Export to reuse the Reports date ranges, so Source data offers the same three ways to set dates. Verified: each mode updates the summary and file name, a bad Custom range count shows a linked error, and the Reports range markup is unchanged.
 - Verified in the preview: typing, calendar pick, future days disabled, errors linked and announced, Esc order, and Reports Exact dates unchanged. The pick no longer reopens the calendar in Reports either.
 
 ## Related patterns / decisions

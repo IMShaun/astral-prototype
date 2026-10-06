@@ -8134,10 +8134,10 @@ function protoReportAddEmail(raw) {
 }
 
 function protoPickSelect(id, value) {
-  if (id === "export-format") {
+  if (id === "export-format" || id === "export-range-preset" || id === "export-range-unit") {
     store.prototypeSelectOpen = "";
-    protoSetExportPrefs({ format: value });
-    protoRestoreFocus('#astral-fs [data-proto-select="export-format"] .astral-select-btn');
+    protoSetExportPrefs({ [id === "export-format" ? "format" : id === "export-range-unit" ? "rangeUnit" : "rangePreset"]: value });
+    protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
     return;
   }
   if (String(id).startsWith("tpl-")) {
@@ -10805,52 +10805,70 @@ function protoReportWhenFields(draft) {
 
 // The Date range tab: exact dates, a common range, or the last so many days, weeks or months.
 function protoReportRangeFields(draft) {
-  const mode = PROTO_REPORT_RANGE_MODES.some((item) => item.id === draft.rangeMode) ? draft.rangeMode : "preset";
   const def = protoReportDraftDef(draft);
   const ref = protoReportOnce(def) ? protoFromUkDate(def.start) || protoToday() : protoReportNextSend(def) || protoToday();
-  const unit = protoReportRangeUnit(draft.rangeUnit);
-  const on = Boolean(draft.rangeCurrent);
+  return `
+    ${protoRangeFieldsHtml(draft, {
+      key: "report",
+      ref,
+      from: "from",
+      to: "to",
+      count: protoReportInput("Last", "rangeCount", draft.rangeCount, 'inputmode="numeric" placeholder="3" maxlength="3"'),
+    })}
+    <p class="astral-muted" data-proto-report-range-line>${escapeHtml(protoReportRangeLine(draft))}</p>
+    <div data-proto-report-range-warn>${protoReportOldStartWarn(draft)}</div>
+  `;
+}
+
+// Reports and Export share these, so setting a date range works the same everywhere.
+// cfg.key names the attributes and select IDs, cfg.from and cfg.to are PROTO_REPORT_DATES fields.
+function protoRangeFieldsHtml(range, cfg) {
+  const mode = PROTO_REPORT_RANGE_MODES.some((item) => item.id === range.rangeMode) ? range.rangeMode : "preset";
+  const unit = protoReportRangeUnit(range.rangeUnit);
+  const on = Boolean(range.rangeCurrent);
+  const errors = cfg.errors || {};
   const body =
     mode === "dates"
       ? `<div class="astral-report-pair">
-          ${protoReportDayCalHtml(protoReportDraftDate("from"), "Data from", "from")}
-          ${protoReportDayCalHtml(protoReportDraftDate("to"), "Data to", "to")}
+          ${protoReportDayCalHtml(protoReportDraftDate(cfg.from), "Data from", cfg.from, errors.from)}
+          ${protoReportDayCalHtml(protoReportDraftDate(cfg.to), "Data to", cfg.to, errors.to)}
         </div>`
       : mode === "preset"
         ? `<div class="astral-report-pair">
             ${protoReportField(
               "Range",
               protoSelect({
-                id: "report-range-preset",
+                id: `${cfg.key}-range-preset`,
                 label: "Range",
                 wide: true,
-                value: protoReportPick(PROTO_REPORT_RANGE_PRESETS, draft.rangePreset),
+                value: protoReportPick(PROTO_REPORT_RANGE_PRESETS, range.rangePreset),
                 options: PROTO_REPORT_RANGE_PRESETS.map((item) => ({
                   value: item.id,
                   label: item.name,
-                  note: protoReportSpanWords(protoReportRangeAt({ rangeMode: "preset", rangePreset: item.id }, ref)),
+                  note: protoReportSpanWords(protoReportRangeAt({ rangeMode: "preset", rangePreset: item.id }, cfg.ref)),
                 })),
               })
             )}
           </div>`
         : `<div class="astral-report-pair">
-            ${protoReportInput("Last", "rangeCount", draft.rangeCount, 'inputmode="numeric" placeholder="3" maxlength="3"')}
-            ${protoReportOptionSelect("report-range-unit", "Of", PROTO_REPORT_RANGE_UNITS, unit.id)}
+            ${cfg.count}
+            ${protoReportOptionSelect(`${cfg.key}-range-unit`, "Of", PROTO_REPORT_RANGE_UNITS, unit.id)}
           </div>
+          ${errors.count ? `<p class="astral-export-error" id="astral-${cfg.key}-range-count-error" role="alert">${escapeHtml(errors.count)}</p>` : ""}
           <button
             type="button"
             role="checkbox"
             class="astral-report-consent${on ? " is-on" : ""}"
             aria-checked="${on ? "true" : "false"}"
-            data-proto-report-range-current
+            data-proto-${cfg.key}-range-current
           >
             ${protoCheck(on)}
             <span class="astral-report-consent-copy"><span>${escapeHtml(`Include ${unit.current}`)}</span></span>
           </button>`;
   return `
     <div class="astral-report-type-field">
-      <span class="astral-report-type-label" id="astral-report-range-label">How do you want to set the dates?</span>
-      <div class="astral-report-types is-three" role="radiogroup" aria-labelledby="astral-report-range-label">
+      <span class="astral-report-type-label" id="astral-${cfg.key}-range-label">How do you want to set the dates?</span>
+      <div class="astral-report-types is-three" role="radiogroup" aria-labelledby="astral-${cfg.key}-range-label">
         ${PROTO_REPORT_RANGE_MODES.map((item) => {
           const picked = item.id === mode;
           return `
@@ -10860,7 +10878,7 @@ function protoReportRangeFields(draft) {
               class="astral-report-type${picked ? " is-on" : ""}"
               aria-checked="${picked ? "true" : "false"}"
               tabindex="${picked ? "0" : "-1"}"
-              data-proto-report-range-mode="${item.id}"
+              data-proto-${cfg.key}-range-mode="${item.id}"
             >
               <span class="astral-report-type-head">${protoRadio(picked)}<span>${escapeHtml(item.name)}</span></span>
               <span class="astral-muted">${escapeHtml(item.note)}</span>
@@ -10870,8 +10888,6 @@ function protoReportRangeFields(draft) {
       </div>
     </div>
     ${body}
-    <p class="astral-muted" data-proto-report-range-line>${escapeHtml(protoReportRangeLine(draft))}</p>
-    <div data-proto-report-range-warn>${protoReportOldStartWarn(draft)}</div>
   `;
 }
 
@@ -17889,6 +17905,12 @@ function protoExportPrefs() {
     quality: raw.quality === "actual" ? "actual" : "all",
     time: raw.time === "uk" ? "uk" : "utc",
     ids: raw.ids === true,
+    // Source data dates work like the Reports date range. Exact dates start as the graph's dates.
+    rangeMode: PROTO_REPORT_RANGE_MODES.some((item) => item.id === raw.rangeMode) ? raw.rangeMode : "dates",
+    rangePreset: protoReportPick(PROTO_REPORT_RANGE_PRESETS, raw.rangePreset || "last-month"),
+    rangeCount: raw.rangeCount == null ? "3" : String(raw.rangeCount).slice(0, 3),
+    rangeUnit: protoReportRangeUnit(raw.rangeUnit).id,
+    rangeCurrent: raw.rangeCurrent === true,
   };
 }
 
@@ -17924,15 +17946,33 @@ function protoExportGraphDates() {
   return { from: span.from, to: span.to };
 }
 
-// Source data uses the graph's dates until someone selects Change.
+// A whole number of days, weeks or months, or null.
+function protoExportRangeCount(prefs) {
+  const n = Number(String(prefs.rangeCount ?? "").trim());
+  return Number.isInteger(n) && n >= 1 && n <= PROTO_REPORT_RANGE_MAX ? n : null;
+}
+
+// Exact dates are typed. A common or custom range counts back from today.
 function protoExportSourceDates(state) {
   if (!state?.edit) return protoExportGraphDates();
-  return { from: protoFromUkDate(store.prototypeExportFrom), to: protoFromUkDate(store.prototypeExportTo) };
+  const { prefs } = state;
+  if (prefs.rangeMode === "dates") {
+    return { from: protoFromUkDate(store.prototypeExportFrom), to: protoFromUkDate(store.prototypeExportTo) };
+  }
+  if (prefs.rangeMode === "rolling" && !protoExportRangeCount(prefs)) return { from: null, to: null };
+  return protoReportRangeAt(prefs, protoToday());
 }
 
 // Each error names its field, says what is needed, and keeps what they typed.
-function protoExportDateErrors() {
+function protoExportDateErrors(prefs = protoExportPrefs()) {
   const errors = {};
+  if (prefs.rangeMode === "preset") return errors;
+  if (prefs.rangeMode === "rolling") {
+    if (!protoExportRangeCount(prefs)) {
+      errors.count = `Enter how many ${protoReportRangeUnit(prefs.rangeUnit).many}, a whole number from 1 to ${PROTO_REPORT_RANGE_MAX}.`;
+    }
+    return errors;
+  }
   const today = protoDayStamp(protoToday());
   const check = (key, label) => {
     const text = String(store[key === "from" ? "prototypeExportFrom" : "prototypeExportTo"] || "").trim();
@@ -18029,15 +18069,21 @@ function protoExportRadioSet(key, legend, list, value) {
 function protoExportDatesHtml(state) {
   if (protoExportIsTable(state.file)) return "";
   if (state.what === "source") {
+    const { prefs, errors } = state;
+    const countError = errors.count ? 'aria-invalid="true" aria-describedby="astral-export-range-count-error"' : "";
     return `
-      <fieldset class="astral-report-split">
-        <legend>Dates</legend>
-        <div class="astral-report-pair">
-          ${protoReportDayCalHtml(protoReportDraftDate("exportFrom"), "Data from", "exportFrom", state.errors.from)}
-          ${protoReportDayCalHtml(protoReportDraftDate("exportTo"), "Data to", "exportTo", state.errors.to)}
-        </div>
-        <div>${protoTextBtn("Use the graph's dates", 'data-proto-export-dates="graph"')}</div>
-      </fieldset>
+      ${protoRangeFieldsHtml(prefs, {
+        key: "export",
+        ref: protoToday(),
+        from: "exportFrom",
+        to: "exportTo",
+        errors,
+        count: protoField(
+          "Last",
+          `type="text" name="proto-export-range-count" value="${escapeHtml(prefs.rangeCount)}" inputmode="numeric" placeholder="3" maxlength="3" autocomplete="off" ${countError}`
+        ),
+      })}
+      <div>${protoTextBtn("Use the graph's dates", 'data-proto-export-dates="graph"')}</div>
     `;
   }
   const { from, to } = protoExportGraphDates();
@@ -18194,7 +18240,8 @@ async function protoExportGo() {
     const errors = protoExportDateErrors();
     if (Object.keys(errors).length) {
       setProto({ prototypeExportModal: { ...store.prototypeExportModal, errors } });
-      protoFocusDayCalInput(`#astral-fs input[name="proto-export-${errors.from ? "from" : "to"}"]`);
+      if (errors.count) protoRestoreFocus('#astral-fs input[name="proto-export-range-count"]');
+      else protoFocusDayCalInput(`#astral-fs input[name="proto-export-${errors.from ? "from" : "to"}"]`);
       return;
     }
   }
@@ -32125,10 +32172,24 @@ function onPrototype(event) {
     const graph = protoExportGraphDates();
     setProto({
       prototypeExportModal: { ...raw, errors: {} },
+      prototypeExportPrefs: { ...protoExportPrefs(), rangeMode: "dates" },
       prototypeExportFrom: protoFormatUkDate(graph.from),
       prototypeExportTo: protoFormatUkDate(graph.to),
     });
     protoRestoreFocus('#astral-fs [data-proto-export-dates="graph"]');
+    return;
+  }
+  const exportRangeMode = event.target.closest("[data-proto-export-range-mode]");
+  if (exportRangeMode) {
+    const rangeMode = exportRangeMode.dataset.protoExportRangeMode;
+    const raw = store.prototypeExportModal;
+    if (raw) setProto({ prototypeExportModal: { ...raw, errors: {} }, prototypeExportPrefs: { ...protoExportPrefs(), rangeMode } });
+    protoRestoreFocus(`#astral-fs [data-proto-export-range-mode="${rangeMode}"]`);
+    return;
+  }
+  if (event.target.closest("[data-proto-export-range-current]")) {
+    protoSetExportPrefs({ rangeCurrent: !protoExportPrefs().rangeCurrent });
+    protoRestoreFocus("#astral-fs [data-proto-export-range-current]");
     return;
   }
   const exportBtn = event.target.closest("[data-proto-export]");
@@ -32854,6 +32915,17 @@ function onPrototypeInput(event) {
     const start = downloadSearch.selectionStart;
     render();
     if (active) protoRestoreFocus("#astral-fs input[name='proto-download-query']", start);
+    return;
+  }
+  const exportCount = event.target.closest("input[name='proto-export-range-count']");
+  if (exportCount) {
+    if (!store.prototypeExportModal) return;
+    const value = exportCount.value.replace(/\D/g, "").slice(0, 3);
+    const start = exportCount.selectionStart;
+    store.prototypeExportPrefs = { ...protoExportPrefs(), rangeCount: value };
+    persistChrome();
+    render();
+    protoRestoreFocus("#astral-fs input[name='proto-export-range-count']", Math.min(start, value.length));
     return;
   }
   const dateField = protoUkDateField(event.target);
