@@ -312,8 +312,8 @@ patterns:
     used_in: [Export]
     entry_points:
       - Export pop-up, Source data step
-    structure: Labels stacked above controls. Label to control 4 to 8px, disclosure head to first section 8px, section to section 16px
-    components: [astral-field, astral-report-split, astral-export-date-line, astral-export-more-body]
+    structure: Labels stacked above controls. Label to control 4 to 8px, disclosure head to first section 8px, section to section 16px. Checkboxes and radios centre on the first label line, not on the label and hint
+    components: [astral-field, astral-report-split, astral-export-date-line, astral-export-more-body, astral-check, astral-radio, astral-report-consent]
     states: [default, expanded]
     permissions: anyone who can act
     content_terms: []

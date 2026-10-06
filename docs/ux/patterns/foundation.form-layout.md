@@ -29,6 +29,7 @@ Any form, pop-up or disclosure that holds fields, radio groups or read-only valu
 | Disclosure head to its first section | 8px |
 | One field or section to the next | 16px, the same as `.astral-modal-body` |
 
+- Centre a checkbox or radio on the first line of its label, the heading, not on the label and hint together. When there is a hint, top-align the row (`align-items: flex-start`) and give the 16px box `margin-top: calc((1lh - 16px) / 2)`. When there is only a label, `align-items: center` does the same job.
 - Give a disclosure body (`{modifier}-body` from `protoAccordion`) its own grid and gap. It has no spacing of its own, so sections inside it touch.
 - Measure the rendered gaps in the browser after the change.
 
@@ -37,6 +38,8 @@ Any form, pop-up or disclosure that holds fields, radio groups or read-only valu
 - Mix side labels (a 6rem label column) and stacked labels in one form. The left edges of the labels and the controls stop lining up.
 - Put a heading as close to the section above as to its own content, or closer. A 0px gap between sections with 4px under each legend makes each heading look like it belongs to the section above.
 - Let a text button decide the line height of the value next to it without centring them.
+- Nudge a checkbox or radio with a fixed pixel margin, such as `margin-top: 2px`. It was 2px high on a 24px line and drifts further when the text size changes.
+- Centre the box on the whole label and hint block. With a hint, the box falls between the heading and the hint and belongs to neither.
 
 ## Accessibility
 
@@ -45,6 +48,7 @@ Stacked labels keep the label and the control together when the text is enlarged
 ## Product surfaces using it
 
 - Export pop-up, Source data step: Dates, Format and More options (commit `5c057b4`)
+- Checkbox rows with a hint: "Include source IDs" in Export, the Reports consent row and multi-select options with a note
 
 ## Known limitations
 
@@ -55,6 +59,7 @@ Stacked labels keep the label and the control together when the text is enlarged
 
 - User correction on 6 October 2026: "Can you sort the alignment issues here" on the Source data Dates row. The label sat in a side column, while Format was stacked, and the date sat above the centre of "Change".
 - User correction on 6 October 2026: "Headings should be more closely spaced than gaps between other sections or content" on More options. The sections were 0px apart, with 4px under each legend.
+- User correction on 6 October 2026: "Checkboxes and radio buttons in these circumstances need to be centre aligned with the text on the right (heading)" on "Include source IDs". The box centre sat 2px above the centre of the label line.
 
 ## Related patterns / decisions
 
