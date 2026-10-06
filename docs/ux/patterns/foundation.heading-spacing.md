@@ -25,6 +25,7 @@ Match the gap under a heading to the largest gap inside its content. Do not go a
 | Between sections | One section box to the next heading | 24px (`--space-24`) |
 | Pane head with a control bar | Settings > Users search and filter | 16px (`--space-stack-default`) |
 | Section heading | Email notifications `h4` to its box | 8px (`--space-8`) |
+| Form legend or label | Data quality legend to its radios | 4px to 8px. Sections 16px apart. See [Form layout](foundation.form-layout.md) |
 
 A section heading sits closer to its own box (8px) than to the section above (24px). That is the same rule from the other side.
 
