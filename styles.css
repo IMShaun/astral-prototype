@@ -10572,6 +10572,13 @@ tr.is-off .astral-person-mark {
   z-index: 3;
 }
 
+/* Every menu in a has-menus modal floats to #astral-fs, so the body can scroll when the content is taller than the screen. */
+.astral-modal.has-menus .astral-modal-body {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .astral-modal .astral-select:has(.astral-select-menu:not([hidden])),
 .astral-modal .astral-day-cal:has(.astral-day-cal-menu:not([hidden])) {
   z-index: 4;
