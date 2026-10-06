@@ -19861,8 +19861,13 @@ function protoAlertMatchesFacet(item, facet, resolved = false) {
   return item.kind === "Alert";
 }
 
-// Alerts Activity and History: the cards pick a kind. Filter adds Priority.
+// Activity cards pick a kind. History cards pick what it was resolved as. Filter adds Priority.
 const PROTO_ALERT_TYPE_IDS = ["gaps", "stale", "alerts"];
+const PROTO_ALERT_REASON_IDS = PROTO_RESOLVE.map((item) => `reason-${item.id}`);
+const PROTO_ALERT_SORTS = [
+  { id: "newest", name: "Newest first" },
+  { id: "oldest", name: "Oldest first" },
+];
 const PROTO_ALERT_FILTERS = [
   {
     id: "type",
@@ -19882,13 +19887,9 @@ const PROTO_ALERT_FILTERS = [
     ],
   },
   {
-    id: "raised",
-    name: "Raised",
-    items: [
-      { id: "raised-hour", name: "Last hour" },
-      { id: "raised-six", name: "1 to 6 hours ago" },
-      { id: "raised-older", name: "Over 6 hours ago" },
-    ],
+    id: "reason",
+    name: "Resolved as",
+    items: PROTO_RESOLVE.map((item) => ({ id: `reason-${item.id}`, name: item.name })),
   },
 ];
 const PROTO_ALERT_FILTER_IDS = PROTO_ALERT_FILTERS.flatMap((group) => group.items.map((item) => item.id));
@@ -19904,6 +19905,29 @@ function protoAlertQuery() {
 
 function protoAlertResolvedView() {
   return protoViewId(store.activePrototypeView) === PROTO_ALERT_HISTORY_VIEW;
+}
+
+// Resolved as only means something on History.
+function protoAlertFilterGroups() {
+  return protoAlertResolvedView() ? PROTO_ALERT_FILTERS : PROTO_ALERT_FILTERS.filter((group) => group.id !== "reason");
+}
+
+// The card row on this tab: kinds on Activity, resolved as on History.
+function protoAlertCardIds() {
+  return protoAlertResolvedView() ? PROTO_ALERT_REASON_IDS : PROTO_ALERT_TYPE_IDS;
+}
+
+function protoAlertSortId() {
+  return store.prototypeAlertSort === "oldest" ? "oldest" : "newest";
+}
+
+function protoAlertSortName(id = protoAlertSortId()) {
+  return PROTO_ALERT_SORTS.find((item) => item.id === id)?.name || "";
+}
+
+function protoAlertSorted(rows) {
+  const dir = protoAlertSortId() === "oldest" ? -1 : 1;
+  return [...rows].sort((a, b) => dir * (protoAlertAgeMinutes(a) - protoAlertAgeMinutes(b)));
 }
 
 // Kind ids picked, from the Filter or an older link that set the kind as the facet.
@@ -19924,9 +19948,9 @@ function protoAlertAgeMinutes(item) {
 function protoAlertFacetValue(item, groupId) {
   if (groupId === "type") return item.kind === "Gap" ? "gaps" : item.kind === "Stale" ? "stale" : "alerts";
   if (groupId === "level") return `level-${String(item.level || "").toLowerCase()}`;
-  if (groupId === "raised") {
-    const mins = protoAlertAgeMinutes(item);
-    return mins < 60 ? "raised-hour" : mins <= 360 ? "raised-six" : "raised-older";
+  if (groupId === "reason") {
+    const reason = protoAlertAckRecords().find((row) => row.id === item.id)?.reason;
+    return reason ? `reason-${reason}` : "";
   }
   return "";
 }
@@ -19945,7 +19969,7 @@ function protoAlertMatches(item, q, picked, types, resolved) {
     if (!words.every((word) => hay.includes(word))) return false;
   }
   if (types.length && !types.includes(protoAlertFacetValue(item, "type"))) return false;
-  return PROTO_ALERT_FILTERS.filter((group) => group.id !== "type").every((group) => {
+  return protoAlertFilterGroups().filter((group) => group.id !== "type").every((group) => {
     const on = group.items.map((row) => row.id).filter((id) => picked.includes(id));
     return !on.length || on.includes(protoAlertFacetValue(item, group.id));
   });
@@ -19970,12 +19994,39 @@ function protoAlertFilterName(id) {
 
 function protoAlertFilterPicks() {
   const types = protoAlertTypePicks();
-  return [...types, ...protoAlertFilterIds().filter((id) => !PROTO_ALERT_TYPE_IDS.includes(id))];
+  const reasons = protoAlertResolvedView() ? [] : PROTO_ALERT_REASON_IDS;
+  return [...types, ...protoAlertFilterIds().filter((id) => !PROTO_ALERT_TYPE_IDS.includes(id) && !reasons.includes(id))];
 }
 
 function protoAlertTools() {
   const picked = protoAlertFilterPicks();
-  const pills = picked.length
+  const sort = protoAlertSortId();
+  const sorted = sort !== "newest";
+  const count = picked.length + (sorted ? 1 : 0);
+  const sorts = PROTO_ALERT_SORTS.map((item) => {
+    const on = sort === item.id;
+    return `
+        <button
+          type="button"
+          role="menuitemradio"
+          class="${on ? "is-on" : ""}"
+          aria-checked="${on ? "true" : "false"}"
+          data-proto-alert-sort="${escapeHtml(item.id)}"
+        >
+          <span class="astral-check${on ? " is-on" : ""}" aria-hidden="true"></span>
+          <span>${escapeHtml(item.name)}</span>
+        </button>
+      `;
+  }).join("");
+  const sortPill = sorted
+    ? `
+              <span class="astral-filter-pill">
+                ${protoFilterFace("sort", protoAlertSortName())}
+                ${protoClearButton("astral-filter-pill-clear", 'data-proto-alert-sort="newest"', `Clear ${protoAlertSortName()}`)}
+              </span>
+            `
+    : "";
+  const pills = count
     ? `
       <div class="astral-filter-pills">
         ${picked
@@ -19989,6 +20040,7 @@ function protoAlertTools() {
             `;
           })
           .join("")}
+        ${sortPill}
         ${protoTextBtn("Clear", 'data-proto-alert-filter="clear"')}
       </div>
     `
@@ -20005,11 +20057,17 @@ function protoAlertTools() {
         ${protoFilterShell({
           hit: 'data-proto-alert-filter="toggle"',
           open: Boolean(store.prototypeAlertFilterOpen),
-          count: picked.length,
+          count,
           menuId: "astral-alert-filter-menu",
           clear: 'data-proto-alert-filter="clear"',
-          canClear: picked.length > 0,
-          menu: protoFilterTickGroups(picked, "data-proto-alert-filter", PROTO_ALERT_FILTERS),
+          canClear: count > 0,
+          menu: `${protoFilterTickGroups(picked, "data-proto-alert-filter", protoAlertFilterGroups())}
+            ${protoFilterSection(
+              protoFilterSectionKey("astral-alert-filter-menu", "sort"),
+              "Sort by",
+              protoAlertSortName(sort),
+              sorts
+            )}`,
         })}
       </div>
       ${pills}
@@ -20018,7 +20076,7 @@ function protoAlertTools() {
 }
 
 function protoToggleAlertFilterGroup(groupId) {
-  const group = PROTO_ALERT_FILTERS.find((row) => row.id === groupId);
+  const group = protoAlertFilterGroups().find((row) => row.id === groupId);
   if (!group) return;
   const picked = protoAlertFilterPicks();
   const selectAll = protoFilterGroupTickState(group, "data-proto-alert-filter", picked) !== "on";
@@ -23027,9 +23085,11 @@ function protoAlerts() {
   const q = protoAlertQuery();
   const picked = protoAlertFilterIds();
   const types = protoAlertTypePicks();
-  const alerts = (protoData()?.alerts || []).filter((item) => protoAlertMatches(item, q, picked, types, resolved));
+  const alerts = protoAlertSorted(
+    (protoData()?.alerts || []).filter((item) => protoAlertMatches(item, q, picked, types, resolved))
+  );
   const cards = alerts.map((item) => protoAlertCard(item, item.meter)).join("");
-  const narrowed = Boolean(q.trim() || picked.length || types.length);
+  const narrowed = Boolean(q.trim() || protoAlertFilterPicks().length);
   const empty = narrowed
     ? `<div class="astral-empty"><h3>No flags match</h3><p class="astral-muted">Try another word or fewer filters.</p>${protoTextBtn(
         "Clear search and filters",
@@ -23428,18 +23488,35 @@ function protoDownloadTypeCards() {
   ]);
 }
 
-// Alerts Activity and History: all flags, then one card per kind. A kind card sets the Type filter, so the menu and pills stay in step.
+// Activity: open flags, then one card per kind. It sets the Type filter.
+// History: resolved flags, then one card per Resolved as. It sets that filter. Menu and pills stay in step.
 function protoAlertFacetCards() {
   const all = protoData()?.alerts || [];
   const resolved = protoAlertResolvedView();
-  const types = protoAlertTypePicks();
   const attr = (id) => `data-proto-facet="${escapeHtml(id)}"`;
+  if (resolved) {
+    const reasons = protoAlertFilterPicks().filter((id) => PROTO_ALERT_REASON_IDS.includes(id));
+    const done = all.filter((row) => protoAlertResolved(row));
+    return protoSummaryCards("Show resolved flags by what they were resolved as", [
+      { attr: attr("all"), n: done.length, name: "Resolved flags", on: !reasons.length },
+      ...PROTO_RESOLVE.map((item) => {
+        const id = `reason-${item.id}`;
+        return {
+          attr: attr(id),
+          n: done.filter((row) => protoAlertFacetValue(row, "reason") === id).length,
+          name: item.name,
+          on: reasons.includes(id),
+        };
+      }),
+    ]);
+  }
+  const types = protoAlertTypePicks();
   return protoSummaryCards(
     "Show flags by kind",
     PROTO_ALERT_FACETS.map((item) => ({
       attr: attr(item.id),
       n: all.filter((row) => protoAlertMatchesFacet(row, item.id, resolved)).length,
-      name: item.id === "all" ? (resolved ? "Resolved flags" : "Open flags") : item.name,
+      name: item.id === "all" ? "Open flags" : item.name,
       on: item.id === "all" ? !types.length : types.includes(item.id),
     }))
   );
@@ -30850,13 +30927,17 @@ function onPrototype(event) {
   }
   const facetBtn = event.target.closest("[data-proto-facet]");
   if (facetBtn) {
-    const id = protoAlertFacetId(facetBtn.dataset.protoFacet);
-    const rest = protoAlertFilterIds().filter((item) => !PROTO_ALERT_TYPE_IDS.includes(item));
-    const types = protoAlertTypePicks();
+    const ids = protoAlertCardIds();
+    const raw = facetBtn.dataset.protoFacet;
+    const id = ids.includes(raw) ? raw : "all";
+    const rest = protoAlertFilterIds().filter((item) => !ids.includes(item));
+    const types = protoAlertResolvedView()
+      ? protoAlertFilterIds().filter((item) => ids.includes(item))
+      : protoAlertTypePicks();
     const facet = "all";
     let next = rest;
     let focus = "all";
-    if (PROTO_ALERT_TYPE_IDS.includes(id) && !(types.length === 1 && types[0] === id)) {
+    if (ids.includes(id) && !(types.length === 1 && types[0] === id)) {
       next = [...rest, id];
       focus = id;
     }
@@ -31221,6 +31302,22 @@ function onPrototype(event) {
     );
     return;
   }
+  const alertSortBtn = event.target.closest("[data-proto-alert-sort]");
+  if (alertSortBtn) {
+    const fromPill = Boolean(alertSortBtn.closest(".astral-filter-pill"));
+    const sortKey = protoFilterSectionKey("astral-alert-filter-menu", "sort");
+    if (!fromPill && protoFilterSectionOpen === sortKey) protoFilterSectionOpen = "";
+    setProto({
+      prototypeAlertSort: alertSortBtn.dataset.protoAlertSort === "oldest" ? "oldest" : "newest",
+      prototypeAlertFilterOpen: fromPill ? Boolean(store.prototypeAlertFilterOpen) : true,
+    });
+    protoRestoreFocus(
+      fromPill
+        ? "#astral-fs [data-proto-alert-filter='toggle']"
+        : `#astral-fs [data-proto-filter-section-toggle="${CSS.escape(sortKey)}"]`
+    );
+    return;
+  }
   const alertFilterBtn = event.target.closest("[data-proto-alert-filter], [data-proto-alert-filter-all]");
   if (alertFilterBtn) {
     const groupAll = alertFilterBtn.dataset.protoAlertFilterAll;
@@ -31245,6 +31342,7 @@ function onPrototype(event) {
       setProto({
         activePrototypeFacet: keepFacet,
         prototypeAlertFilters: [],
+        prototypeAlertSort: "newest",
         prototypeAlertFilterOpen: false,
         ...(act === "reset" ? { prototypeAlertQuery: "" } : {}),
       });
