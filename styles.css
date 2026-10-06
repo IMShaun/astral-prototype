@@ -4337,6 +4337,10 @@ button.astral-avatar {
   max-width: 100%;
 }
 
+.astral-page-actions:empty {
+  display: none;
+}
+
 .astral-page-actions {
   display: flex;
   flex-wrap: wrap;
@@ -12654,9 +12658,16 @@ button.astral-state:focus-visible,
   .proto-thumbs,
   .astral-hero,
   .astral-metrics,
-  .astral-split,
-  .astral-page-tools {
+  .astral-split {
     grid-template-columns: 1fr;
+  }
+
+  .astral-page-tools {
+    gap: var(--space-8) var(--space-16);
+  }
+
+  .astral-page-head h2 {
+    font-size: 1.5rem;
   }
 
   .astral-stage,
