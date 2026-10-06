@@ -17839,9 +17839,9 @@ function protoSiteButton(site, on) {
 // What the Export pop-up can make. Image needs a graph on screen.
 const PROTO_EXPORT_WHAT = [
   { id: "chart", name: "Chart data", note: "What the graph shows now" },
-  { id: "source", name: "Source data", note: "Raw readings for any dates" },
+  { id: "source", name: "Source data", note: "Every reading, for the dates you choose" },
   { id: "image", name: "Image", note: "The graph as a PNG" },
-  { id: "pdf", name: "PDF", note: "The graph and breakdown" },
+  { id: "pdf", name: "PDF", note: "The chart data, to share or print" },
 ];
 
 // People and Usage are tables, so they have no source data or image.
@@ -17912,16 +17912,23 @@ function protoExportSourceDates(state) {
   return { from: protoFromUkDate(store.prototypeExportFrom), to: protoFromUkDate(store.prototypeExportTo) };
 }
 
+// Each error names its field, says what is needed, and keeps what they typed.
 function protoExportDateErrors() {
   const errors = {};
-  const from = protoFromUkDate(store.prototypeExportFrom);
-  const to = protoFromUkDate(store.prototypeExportTo);
   const today = protoDayStamp(protoToday());
-  if (!from) errors.from = "Enter a date as dd/mm/yyyy.";
-  else if (protoDayStamp(from) > today) errors.from = "Dates can't be in the future.";
-  if (!to) errors.to = "Enter a date as dd/mm/yyyy.";
-  else if (protoDayStamp(to) > today) errors.to = "Dates can't be in the future.";
-  if (!errors.from && !errors.to && protoDayStamp(to) < protoDayStamp(from)) errors.to = "'To' must be after 'From'.";
+  const check = (key, label) => {
+    const text = String(store[key === "from" ? "prototypeExportFrom" : "prototypeExportTo"] || "").trim();
+    const day = protoFromUkDate(text);
+    if (!text) errors[key] = `Enter the ${label} date.`;
+    else if (!day) errors[key] = `Enter the ${label} date as dd/mm/yyyy.`;
+    else if (protoDayStamp(day) > today) errors[key] = `The ${label} date must be today or earlier.`;
+    return day;
+  };
+  const from = check("from", "From");
+  const to = check("to", "To");
+  if (!errors.from && !errors.to && protoDayStamp(to) < protoDayStamp(from)) {
+    errors.to = "The To date must be the same as or after the From date.";
+  }
   return errors;
 }
 
