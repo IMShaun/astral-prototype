@@ -8839,7 +8839,7 @@ function protoReportQualityOk(pick, reading) {
 
 const PROTO_REPORT_FORMAT = [
   { id: "csv", name: "CSV", note: "For a system to read in" },
-  { id: "xlsx", name: "XLSX", note: "For a spreadsheet" },
+  { id: "xlsx", name: "XLSX" },
 ];
 
 const PROTO_REPORT_TIME = [
@@ -17868,7 +17868,7 @@ const PROTO_EXPORT_SOURCE_FORMATS = [
   { id: "csv", name: "CSV, comma", ext: "csv", sep: "," },
   { id: "csv-semicolon", name: "CSV, semicolon", ext: "csv", sep: ";" },
   { id: "csv-tab", name: "CSV, tab", ext: "csv", sep: "\t" },
-  { id: "xlsx", name: "XLSX", ext: "xlsx", note: "For a spreadsheet" },
+  { id: "xlsx", name: "XLSX", ext: "xlsx" },
 ];
 
 function protoExportIsTable(fileId) {
