@@ -34,7 +34,9 @@ A page with a list that splits into kinds, where a count per kind helps. Alerts 
 
 - Give every card a badge, including the "all" card.
 - Make the badge neutral grey when the card groups more than one type: the "all" cards (`all`, `open`, `resolved`) and Resolved as (`fixed`, `expected`, `duplicate`). Keep the icon.
-- Use the same mark as the type shows in the list, tags, filter menu and pills. See [Type tags](foundation.type-tags.md).
+- Use the same mark as the type shows in the list and tags. See [Type tags](foundation.type-tags.md).
+- Treat the cards like tabs. A picked card filters the list but adds no pill, does not count on the Filter button, and its group (Type, or Resolved as on History) is not in the Filter menu.
+- Keep the picked card when someone uses Clear or Clear search and filters. Those clear the Filter menu and search, not the cards.
 - Put the icon and name on top and the count below, so the icon says what the card is and the count answers it.
 - Show selection on the container: brand border, inset ring and brand count. Keep the badge in its type colour.
 - Pass the mark into `protoSummaryCards`. Add a missing type to the shared palette before shipping.
@@ -47,10 +49,12 @@ A page with a list that splits into kinds, where a count per kind helps. Alerts 
 - Colour a mixed group. It suggests one type that may not be there.
 - Recolour the badge to the selected colour. That hides the type at the moment it matters.
 - Give a large count a line height much taller than its text. The extra space makes the card top-heavy.
+- Show a pill or a ticked Filter option for a picked card. The cards are always on screen, so a pill says the same thing twice and makes a fixed view look like a filter someone added.
+- Offer the card group in the Filter menu as well. Two controls for one choice can disagree.
 
 ### Why
 
-One shape on every page lets people scan cards the same way everywhere. Type colour carries meaning, so it stays fixed. Selection is a separate state, so it sits on the container.
+One shape on every page lets people scan cards the same way everywhere. Type colour carries meaning, so it stays fixed. Selection is a separate state, so it sits on the container. The cards stay on screen like tabs, so the picked card already shows the choice. Pills are for filters someone adds and may forget.
 
 ## Accessibility
 
@@ -70,6 +74,7 @@ Work Desk stat strips use the same class at 140px minimum width and have not bee
 - User correction on 6 October 2026: grey icons on Reports were not wanted. Every page's types got their own marks (commit `ff78c87`).
 - User correction on 6 October 2026: Resolved as cards hold a mix of alert types, so they and the "all" cards are grey.
 - Selected state versus type colour: agreed on 6 October 2026, in line with Polaris and Material, which mark selection on the container.
+- User correction on 6 October 2026: picking a card added a pill as if the user had applied a filter, which looked strange because the cards are always there. The user chose "cards act like tabs" (commit `e7d0b1a`).
 
 ## Related patterns / decisions
 

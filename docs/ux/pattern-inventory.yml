@@ -161,7 +161,7 @@ patterns:
     used_in: [Alerts, Reports, Downloads]
     entry_points:
       - The count cards under the page tabs
-    structure: Badge and name on top, count below. Every card has a badge, coloured for one type, grey for a mixed group. Selection shows on the container.
+    structure: Badge and name on top, count below. Every card has a badge, coloured for one type, grey for a mixed group. Selection shows on the container. Cards work like tabs, with no pill or Filter menu group.
     components: [astral-summary-stat, astral-summary-name, astral-type-badge]
     states: [default, selected, disabled]
     permissions: all

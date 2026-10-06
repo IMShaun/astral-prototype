@@ -75,7 +75,7 @@ The label names the type, so colour is never the only signal. Text contrast is a
 
 ## Product surfaces using it
 
-Alerts > Settings table (Type column). Reports table and cards. Downloads table (Type column). Inbox and Queries (Resolved as). Summary cards, filter menus and filter pills on Alerts, History, Reports and Downloads.
+Alerts > Settings table (Type column). Reports table and cards. Downloads table (Type column). Inbox and Queries (Resolved as). Summary cards on Alerts, History, Reports and Downloads. Filter menus and pills where the type is not on a card, such as Type on History.
 
 ## Evidence
 
