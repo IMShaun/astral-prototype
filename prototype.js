@@ -578,9 +578,9 @@ function protoShownViews() {
 }
 
 const PROTO_RESOLVE = [
-  { id: "fixed", name: "Fixed" },
-  { id: "expected", name: "Expected" },
-  { id: "duplicate", name: "Duplicate" },
+  { id: "fixed", name: "Fixed", icon: "servicing" },
+  { id: "expected", name: "Expected", icon: "expected" },
+  { id: "duplicate", name: "Duplicate", icon: "duplicate" },
 ];
 
 function astralAccountIcon(id) {
@@ -22569,7 +22569,7 @@ function protoAckControl(kind, id, resolved) {
         data-proto-resolve="${escapeHtml(kind)}"
         data-proto-resolve-id="${escapeHtml(id)}"
         data-proto-resolve-reason="${escapeHtml(item.id)}"
-      >${escapeHtml(item.name)}</button>
+      >${protoIconMark(item.icon)}<span>${escapeHtml(item.name)}</span></button>
     `
   ).join("");
   return `

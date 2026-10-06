@@ -7687,6 +7687,19 @@ button.astral-state {
   min-width: max-content;
 }
 
+/* Resolve reasons: icon then label, matching the account menu. */
+.astral-ack-menu [data-proto-resolve] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.astral-ack-menu [data-proto-resolve] svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
 .astral-ghost.is-on {
   background: var(--color-background-subtle);
 }
