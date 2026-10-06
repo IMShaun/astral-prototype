@@ -8383,6 +8383,7 @@ function protoPickSelect(id, value) {
     "report-period": "period",
     "report-basis": "basis",
     "report-direction": "direction",
+    "report-priority": "priority",
     "report-silence": "hours",
     "report-content": "content",
     "report-channel": "channel",
@@ -8627,6 +8628,13 @@ const PROTO_ALERT_HISTORY_VIEW = "alert-history";
 const PROTO_REPORT_DIRECTION = [
   { id: "above", name: "Above" },
   { id: "below", name: "Below" },
+];
+
+// Who set the alert decides how urgent its flags are. Activity shows it as Priority.
+const PROTO_REPORT_PRIORITY = [
+  { id: "high", name: "High", note: "Someone should look now" },
+  { id: "medium", name: "Medium", note: "Look at it today" },
+  { id: "low", name: "Low", note: "Look when there is time" },
 ];
 
 const PROTO_REPORT_NOTIFY = [
@@ -9357,6 +9365,7 @@ function protoReportNormalize(raw) {
     vat: protoReportNumber(raw.vat, 20, 0, 100),
     basis: raw.basis === "absolute" ? "absolute" : "average",
     direction: raw.direction === "below" ? "below" : "above",
+    priority: protoReportPick(PROTO_REPORT_PRIORITY, raw.priority || "medium"),
     notify: (() => {
       const list = PROTO_REPORT_NOTIFY.map((item) => item.id).filter((id) =>
         (Array.isArray(raw.notify) ? raw.notify : ["astral", "email"]).includes(id)
@@ -9489,6 +9498,7 @@ function protoReportSeed() {
       sites: [],
       basis: "average",
       percent: 50,
+      priority: "medium",
       people: ["me"],
     },
     {
@@ -9496,6 +9506,7 @@ function protoReportSeed() {
       type: "missing",
       name: "Sites not sending data",
       hours: 3,
+      priority: "high",
       people: ["me"],
     },
   ];
@@ -12545,6 +12556,9 @@ function protoReportGroups(draft, opts = {}) {
                 : protoReportInput(`${below ? "Below" : "Above"} site average by (%)`, "percent", draft.percent, 'inputmode="decimal"')
             }
           </div>
+          <div class="astral-report-pair">
+            ${protoReportOptionSelect("report-priority", "Priority", PROTO_REPORT_PRIORITY, draft.priority)}
+          </div>
           <p class="astral-muted">Water is in m³, not kWh, so alerts watch electricity and gas.</p>
         `
       ),
@@ -12570,7 +12584,12 @@ function protoReportGroups(draft, opts = {}) {
             label: protoReportSilenceName(hours),
           })),
         })
-      )}${protoReportUtilitySelect(draft)}</div>`
+      )}${protoReportUtilitySelect(draft)}</div><div class="astral-report-pair">${protoReportOptionSelect(
+        "report-priority",
+        "Priority",
+        PROTO_REPORT_PRIORITY,
+        draft.priority
+      )}</div>`
     ),
     protoReportGroup("delivery", protoReportNotifyFields(draft, opts)),
   ];
@@ -12628,7 +12647,7 @@ function protoReportTypePicker(tab, own) {
               tabindex="${item.id === picked ? "0" : "-1"}"
               data-proto-report-type="${escapeHtml(item.id)}"
             >
-              <span class="astral-report-type-head">${protoRadio(on)}${item.mark ? protoIconMark(item.mark, "astral-type-mark") : ""}<span>${escapeHtml(item.name)}</span></span>
+              <span class="astral-report-type-head">${protoRadio(on)}${item.mark ? protoTypeBadge(item.mark) : ""}<span>${escapeHtml(item.name)}</span></span>
               <span class="astral-muted">${escapeHtml(item.blurb)}</span>
             </button>
           `;
@@ -15556,7 +15575,7 @@ function protoTemplateSourcePicker(draft) {
             tabindex="${on ? "0" : "-1"}"
             data-proto-template-source="${escapeHtml(item.id)}"
           >
-            <span class="astral-report-type-head">${protoRadio(on)}${item.mark ? protoIconMark(item.mark, "astral-type-mark") : ""}<span>${escapeHtml(item.name)}</span></span>
+            <span class="astral-report-type-head">${protoRadio(on)}${item.mark ? protoTypeBadge(item.mark) : ""}<span>${escapeHtml(item.name)}</span></span>
             <span class="astral-muted">${escapeHtml(item.note)}</span>
           </button>
         `;
@@ -17053,7 +17072,7 @@ function protoFilterMeterKind(id) {
 }
 
 function protoMarkFace(mark, name) {
-  return `<span class="astral-filter-face">${protoIconMark(mark, "astral-type-mark")}<span>${escapeHtml(name)}</span></span>`;
+  return `<span class="astral-filter-face">${protoTypeBadge(mark)}<span>${escapeHtml(name)}</span></span>`;
 }
 
 function protoFilterFace(id, label) {
@@ -20026,7 +20045,7 @@ function protoAlertAgeMinutes(item) {
 
 function protoAlertFacetValue(item, groupId) {
   if (groupId === "type") return item.kind === "Gap" ? "gaps" : item.kind === "Stale" ? "stale" : "alerts";
-  if (groupId === "level") return `level-${String(item.level || "").toLowerCase()}`;
+  if (groupId === "level") return `level-${protoAlertLevel(item).toLowerCase()}`;
   if (groupId === "reason") {
     const reason = protoAlertAckRecords().find((row) => row.id === item.id)?.reason;
     return reason ? `reason-${reason}` : "";
@@ -20044,7 +20063,7 @@ function protoAlertMatches(item, q, picked, types, resolved) {
   if (protoAlertResolved(item) !== resolved) return false;
   const words = String(q || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length) {
-    const hay = [item.meter, item.summary, protoAlertKindName(item), item.level].join(" ").toLowerCase();
+    const hay = [item.meter, item.summary, protoAlertKindName(item), protoAlertLevel(item)].join(" ").toLowerCase();
     if (!words.every((word) => hay.includes(word))) return false;
   }
   if (types.length && !types.includes(protoAlertFacetValue(item, "type"))) return false;
@@ -20194,7 +20213,7 @@ function protoAlertKindMark(kind) {
 function protoAlertCard(item, title, opts = {}) {
   const resolved = protoAlertResolved(item);
   const id = escapeHtml(item.id);
-  const mark = protoIconMark(protoAlertKindMark(item.kind), "astral-type-mark");
+  const mark = protoTypeBadge(protoAlertKindMark(item.kind));
   return `
     <article class="astral-alert${resolved ? " is-resolved" : ""}" data-proto-alert-card="${id}">
       <div class="astral-alert-body">
@@ -23126,6 +23145,12 @@ function protoAlertRuleFor(item) {
   );
 }
 
+// A flag set off by one of their alerts takes that alert's priority. Astral's own checks keep theirs.
+function protoAlertLevel(item) {
+  const def = protoAlertRuleFor(item);
+  return def ? protoReportOptionName(PROTO_REPORT_PRIORITY, def.priority) : String(item?.level || "");
+}
+
 // Only say what the numbers back up. Without a rule, the card's own summary is all we know.
 function protoAlertFound(item, def) {
   const site = protoSiteByMeter(item.meterId);
@@ -23182,8 +23207,8 @@ function protoAlertInfoModal() {
         )}
         <div class="astral-modal-body">
           <dl class="astral-alert-info-grid">
-            ${row("Type", `<span class="astral-alert-kind">${protoIconMark(protoAlertKindMark(item.kind), "astral-type-mark")}<span>${text(word)}</span></span>`)}
-            ${row("Priority", text(item.level))}
+            ${row("Type", `<span class="astral-alert-kind">${protoTypeBadge(protoAlertKindMark(item.kind))}<span>${text(word)}</span></span>`)}
+            ${row("Priority", text(protoAlertLevel(item)))}
             ${row("Raised", text(item.age ? `${item.age} ago` : ""))}
             ${row("Status", text(resolved ? (reason ? `Resolved as ${reason}` : "Resolved") : protoAlertStateWord(item)))}
             ${row("Site", text(site?.name || item.meter))}
@@ -23649,7 +23674,7 @@ function protoSummaryCards(label, cards) {
       !n && !on ? ' disabled title="None in this view"' : ""
     }>
       <span class="astral-stat-value">${n}</span>
-      ${mark ? `<span class="astral-summary-name">${protoIconMark(mark, "astral-type-mark")}<span>${escapeHtml(name)}</span></span>` : `<span>${escapeHtml(name)}</span>`}
+      ${mark ? `<span class="astral-summary-name">${protoTypeBadge(mark)}<span>${escapeHtml(name)}</span></span>` : `<span>${escapeHtml(name)}</span>`}
     </button>
   `;
   return `<div class="astral-summary-stats" role="group" aria-label="${escapeHtml(label)}">${cards.map(card).join("")}</div>`;

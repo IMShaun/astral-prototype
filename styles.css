@@ -12463,8 +12463,8 @@ tr.is-off .astral-person-mark {
 }
 
 .astral-type-mark {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   flex: none;
 }
 
@@ -12473,15 +12473,72 @@ tr.is-off .astral-person-mark {
   padding-left: 8px;
 }
 
-.astral-tag.has-mark .astral-type-mark {
-  width: 14px;
-  height: 14px;
-}
-
 .astral-summary-name {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+}
+
+.astral-type-badge {
+  --mark-bg: var(--color-background-subtle);
+  --mark-ink: var(--color-text-primary);
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--mark-bg);
+  color: var(--mark-ink);
+}
+
+.astral-type-badge .astral-type-mark {
+  width: 18px;
+  height: 18px;
+}
+
+.astral-type-badge[data-mark="threshold"] { --mark-bg: #fef0c7; --mark-ink: #93370d; }
+.astral-type-badge[data-mark="missing-data"] { --mark-bg: #e0eaff; --mark-ink: #2d3282; }
+.astral-type-badge[data-mark="no-signal"] { --mark-bg: #ffe4e8; --mark-ink: #a11043; }
+
+.astral-summary-name .astral-type-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+
+.astral-summary-name .astral-type-badge .astral-type-mark {
+  width: 22px;
+  height: 22px;
+}
+
+.astral-filter-menu .astral-type-badge,
+.astral-alert-kind .astral-type-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+}
+
+.astral-filter-menu .astral-type-badge .astral-type-mark,
+.astral-alert-kind .astral-type-badge .astral-type-mark {
+  width: 16px;
+  height: 16px;
+}
+
+/* Inside a tag or a pill the box would crowd it, so the icon keeps only its colour. */
+.astral-tag .astral-type-badge,
+.astral-filter-pill .astral-type-badge,
+.astral-filter-section-pill .astral-type-badge {
+  width: auto;
+  height: auto;
+  background: none;
+}
+
+.astral-tag .astral-type-badge .astral-type-mark,
+.astral-filter-pill .astral-type-badge .astral-type-mark,
+.astral-filter-section-pill .astral-type-badge .astral-type-mark {
+  width: 16px;
+  height: 16px;
 }
 
 .astral-modal.astral-alert-info {

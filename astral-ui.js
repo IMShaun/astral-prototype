@@ -80,6 +80,12 @@ function protoIconMark(kind, className) {
   return `<svg${cls} viewBox="0 0 24 24" aria-hidden="true" focusable="false">${inner}</svg>`;
 }
 
+// A type icon in a light rounded box. Each type keeps one colour wherever it shows.
+function protoTypeBadge(kind) {
+  const svg = protoIconMark(kind, "astral-type-mark");
+  return svg ? `<span class="astral-type-badge" data-mark="${protoEsc(kind)}" aria-hidden="true">${svg}</span>` : "";
+}
+
 function protoChevronMark(kind) {
   if (kind === "prev") return protoIconMark("prev");
   if (kind === "next") return protoIconMark("next");
@@ -152,7 +158,7 @@ function protoTextarea(label, value, rows = 2) {
 
 function protoTag(label, tip, className, mark) {
   const cls = `${className ? ` ${protoEsc(className)}` : ""}${mark ? " has-mark" : ""}`;
-  const icon = mark ? protoIconMark(mark, "astral-type-mark") : "";
+  const icon = mark ? protoTypeBadge(mark) : "";
   const tag = `<span class="astral-tag${cls}"${tip ? ' tabindex="0"' : ""}>${icon}${protoEsc(label)}</span>`;
   return tip ? protoIconTip(tag, tip) : tag;
 }
