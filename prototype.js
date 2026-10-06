@@ -10881,7 +10881,6 @@ function protoRangeFieldsHtml(range, cfg) {
               data-proto-${cfg.key}-range-mode="${item.id}"
             >
               <span class="astral-report-type-head">${protoRadio(picked)}<span>${escapeHtml(item.name)}</span></span>
-              <span class="astral-muted">${escapeHtml(item.note)}</span>
             </button>
           `;
         }).join("")}

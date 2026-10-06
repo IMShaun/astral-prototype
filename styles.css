@@ -10795,6 +10795,11 @@ tr.is-off .astral-person-mark {
   max-height: min(44rem, calc(100vh - 48px));
 }
 
+/* Wide enough for the three date range cards to keep their names on one line. */
+.astral-modal.astral-export-pick {
+  width: min(40rem, 100%);
+}
+
 .astral-report-pick .astral-report-types {
   grid-template-columns: minmax(0, 1fr);
 }
