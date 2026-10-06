@@ -134,7 +134,7 @@
           <ul>
             <li>Sentence case, en-GB spelling. No colons or em dashes.</li>
             <li>Dates as 4 Sep 2026. Times as 16.00. Date first, then the time.</li>
-            <li>Use the app's words. Alert, Query, Report, Download, Data alert.</li>
+            <li>Use the app's words. Alert, Query, Report, Download, Threshold alert.</li>
             <li>Name the site and the person. "Priya Shah replied", not "Someone replied".</li>
             <li>Missing data is not zero use. Say so.</li>
             <li>Codes are 6 digits. Never send a password or a link that signs someone in.</li>
@@ -150,7 +150,7 @@
           <ul>
             <li>Every time sends each alert, query, and document as it happens. Alerts that land close together are grouped.</li>
             <li>Daily, Weekly, and Monthly send one summary instead, and only when there was activity.</li>
-            <li>Never stops these emails. Security emails, invites, reports, and Data alerts still send.</li>
+            <li>Never stops these emails. Security emails, invites, reports, and Threshold alerts still send.</li>
           </ul>
         </section>
       </div>

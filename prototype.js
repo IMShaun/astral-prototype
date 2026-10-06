@@ -8584,8 +8584,8 @@ const PROTO_REPORT_TYPES = [
   },
   {
     id: "alert",
-    name: "Data alert",
-    short: "Data alert",
+    name: "Threshold alert",
+    short: "Threshold alert",
     blurb: "Tell people when a site goes above or below a threshold you set.",
     tab: "alerts",
   },
@@ -8728,7 +8728,7 @@ const PROTO_REPORT_UTILITY = [
   { id: "water", name: "Water" },
 ];
 
-// The utilities a type can pick. A Data alert adds up kWh, and water is in m³, so it has no Water.
+// The utilities a type can pick. A Threshold alert adds up kWh, and water is in m³, so it has no Water.
 function protoReportUtilityChoices(type) {
   return PROTO_REPORT_UTILITY.filter((item) => item.id !== "all" && !(type === "alert" && item.id === "water"));
 }
@@ -8984,7 +8984,7 @@ function protoReportSilenceName(hours) {
 
 function protoReportDefaultName(type) {
   if (type === "billing") return "Tenant billing";
-  if (type === "alert") return "Data alert";
+  if (type === "alert") return "Threshold alert";
   if (type === "missing") return "Missing data alert";
   if (type === "dcda") return "DC and DA reads";
   return "Interval data extract";
@@ -23033,7 +23033,7 @@ function protoAlertRules() {
   if (protoReportPageOpen()) return protoReportPage();
   const defs = protoReportDefs().filter((def) => protoReportTabOf(def.type) === "alerts");
   const empty = protoCanAddReports()
-    ? `<h3>No alerts yet</h3><p class="astral-muted">Add a data alert or a missing data alert.</p>`
+    ? `<h3>No alerts yet</h3><p class="astral-muted">Add a threshold alert or a missing data alert.</p>`
     : `<h3>No alerts yet</h3><p class="astral-muted">Alerts your admin sets up show here.</p>`;
   return protoReportsSheet(PROTO_ALERT_RULES_VIEW, defs, empty);
 }
