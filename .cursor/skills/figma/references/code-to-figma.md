@@ -114,7 +114,7 @@ Astral is already tokenised. Do not add Style Dictionary to invent a second toke
 | `protoIconMark("chevron")` / `.astral-select-chevron` | Icon Size=16, glyph Icon/Chevron. Open rotates 180. Not a Material dropdown |
 | `protoIconMark("electricity" \| "gas")` | Meter mark on that row |
 | `protoIconMark("incoming" \| "outgoing")` | Flow pill In / Out |
-| `protoIconMark("tick" \| "warning")` | State Sending vs Odd use, Missing data, Not sending |
+| `protoIconMark("tick" \| "warning")` | State Sending vs Outside threshold, Missing data, Not sending |
 | Icon size 16 / 18 / 24 | Icon Size property. 16 State and Flow, 18 Icon button, 24 asset. Glyph strokes outlined to fills so the weight scales |
 | `placeholder="…"` | Content=Empty characters. Live string, muted |
 | `--font-family-sans` / Roobert | Text style Roobert Medium, Label SemiBold |

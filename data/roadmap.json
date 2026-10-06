@@ -79,7 +79,7 @@
               "id": "proactive-alerts",
               "name": "Proactive alerts",
               "kind": "core",
-              "summary": "Odd use, missing data, and meters not sending, flagged so you can act early."
+              "summary": "Use outside your thresholds, missing data, and meters not sending, flagged so you can act early."
             }
           ]
         }

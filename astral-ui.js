@@ -238,7 +238,7 @@ function protoStateKind(word) {
   if (raw === "sending") return "sending";
   if (raw === "missing data") return "missing";
   if (raw === "not sending") return "stale";
-  if (raw === "odd use") return "odd";
+  if (raw === "outside threshold" || raw === "odd use") return "odd";
   return "sending";
 }
 
@@ -738,14 +738,14 @@ function astralPreview(id) {
       ["Meter", "State"],
       [
         ["1600002234567", protoStatePill("Sending")],
-        ["1600001234567", protoStatePill("Odd use")],
+        ["1600001234567", protoStatePill("Outside threshold")],
       ]
     ),
     tag: `${protoTag("Live", "People are sent this report.")}${protoTag(
       "Waiting",
       "This report is not in yet. You cannot run it."
     )}${protoTag("Custom", "A name only. You cannot run it yet.")}${protoTag("Manager")}`,
-    state: `${protoStatePill("Sending")}${protoStatePill("Odd use")}${protoStatePill(
+    state: `${protoStatePill("Sending")}${protoStatePill("Outside threshold")}${protoStatePill(
       "Missing data"
     )}${protoStatePill("Not sending")}${protoServicePill("New")}${protoServicePill(
       "Waiting for parts"
@@ -767,7 +767,7 @@ function astralPreview(id) {
         <div class="astral-modal-foot">${protoBtn("Add team")}${protoGhost("Cancel")}</div>
       </div>
     `,
-    status: `${protoStatePill("Sending")}${protoStatePill("Odd use")}${protoStatePill(
+    status: `${protoStatePill("Sending")}${protoStatePill("Outside threshold")}${protoStatePill(
       "Missing data"
     )}${protoStatePill("Not sending")}${protoTag("Live", "People are sent this report.")}${protoTag(
       "Waiting",

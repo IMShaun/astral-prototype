@@ -114,7 +114,7 @@ Do this on every component, not only fields. Read live CSS and the builder first
 
 **Placeholder text.** Empty copy must say what to enter, from the live control. Muted. Focus clears it. Filled is a kept value, not the hint. Take the string from the builder, `prototype.js`, the JSON snippet, or a Language entry. Sentence case. en-GB-oxendict. For new lines, use `/ux-writing`. Do not invent Type here, Search…, Placeholder, or lorem. Do not store a password. Named live hints: Input email `name@company.com`. Tree Search `Search site or meter`. Users `Search people`. Downloads `Search downloads`. Date `dd/mm/yyyy`. Comment `Comment`. Select shows a real option or a named pick such as `Pick a discipline`.
 
-**Placeholder icons.** The mark must be the live `protoIconMark` for that control. Search has no leading magnifying glass. Filled Search uses close. Select uses the chevron. Filter uses filter. State uses tick for Sending and warning for Odd use, Missing data, and Not sending. Meter rows use electricity, gas, or water. Incoming and Outgoing use those marks. Waiting uses the tag hover. Do not drop a decorative icon into Empty. Do not copy Lucide, Material, or Uber glyphs. Tree still waits.
+**Placeholder icons.** The mark must be the live `protoIconMark` for that control. Search has no leading magnifying glass. Filled Search uses close. Select uses the chevron. Filter uses filter. State uses tick for Sending and warning for Outside threshold, Missing data, and Not sending. Meter rows use electricity, gas, or water. Incoming and Outgoing use those marks. Waiting uses the tag hover. Do not drop a decorative icon into Empty. Do not copy Lucide, Material, or Uber glyphs. Tree still waits.
 
 ## Do not
 

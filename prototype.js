@@ -2,7 +2,7 @@ const PROTO_VIEWS = [
   { id: "home", name: "Overview", kicker: "Estate", blurb: "The picture for the whole estate." },
   { id: "portfolio", name: "Portfolio", kicker: "Sites", blurb: "Pick a group or a site, then open consumption." },
   { id: "finance", name: "Finance", kicker: "Spend", blurb: "Highest spend first, then why, then what you can cut." },
-  { id: "alerts", name: "Alerts", kicker: "Flags", blurb: "Odd use and missing data, before they hit a bill." },
+  { id: "alerts", name: "Alerts", kicker: "Flags", blurb: "Use outside a threshold and missing data, before they hit a bill." },
   { id: "queries", name: "Queries", kicker: "Threads", blurb: "Raise it from a reading and keep the thread." },
   { id: "reports", name: "Reports", kicker: "Runs", blurb: "Run what you need now, or wait on what is not in yet." },
 ];
@@ -11,7 +11,7 @@ const PROTO_ALERT_FACETS = [
   { id: "all", name: "All" },
   { id: "gaps", name: "Missing data", mark: "missing-data" },
   { id: "stale", name: "Not sending", mark: "no-signal" },
-  { id: "alerts", name: "Odd use", mark: "threshold" },
+  { id: "alerts", name: "Outside threshold", mark: "threshold" },
 ];
 
 const PROTO_TREE_FILTERS = [
@@ -2251,7 +2251,7 @@ function protoSiteByMeter(id) {
 function protoAlertWord(kind) {
   if (kind === "Gap") return "Missing data";
   if (kind === "Stale") return "Not sending";
-  return "Odd use";
+  return "Outside threshold";
 }
 
 function protoSiteAlerts(site) {
@@ -2302,7 +2302,7 @@ function protoGroupFlagWords(group) {
 
 function protoActionRank(words) {
   const list = words || [];
-  if (list.includes("Odd use")) return 0;
+  if (list.includes("Outside threshold")) return 0;
   if (list.includes("Missing data")) return 1;
   if (list.includes("Not sending")) return 2;
   return 3;
@@ -3279,7 +3279,7 @@ function protoCalDayCells({ year, month, selectedIso, allowFuture, minIso, pickA
   return `${blanks}${days}`;
 }
 
-// A site with an Odd use alert had a spike yesterday. Threshold alerts check the same day.
+// A site with an Outside threshold alert had a spike yesterday. Threshold alerts check the same day.
 function protoMeterSpikeDay(meter, date) {
   if (protoDaySeed(date) !== protoDaySeed(protoAddDays(protoToday(), -1))) return false;
   const site = protoSiteByMeter(meter?.id);
@@ -14052,7 +14052,7 @@ function protoHomeBroker(facts) {
     <div class="astral-metrics">
       ${protoWaitCard("New access", "A list of letters that started or ended still waits.")}
       ${protoWaitCard("Failed deliveries", "Scheduled pushes still wait. Clockwork email stays on Reports.")}
-      ${protoHomeCard("alerts", "Flags", alerts.length, "Odd use, missing data, and not sending on this letter.")}
+      ${protoHomeCard("alerts", "Flags", alerts.length, "Outside threshold, missing data, and not sending on this letter.")}
     </div>
   `;
 }
@@ -16796,7 +16796,7 @@ function protoHomeOwner(facts) {
     <div class="astral-metrics">
       ${protoHomeCard("queries", "Queries", queries, "Open queries.")}
       ${protoHomeCard("reports", "Reports", live, "Reports switched on.")}
-      ${protoWaitCard("Jobs", "Fault jobs still wait. Odd use sits on Alerts.")}
+      ${protoWaitCard("Jobs", "Fault jobs still wait. Outside threshold sits on Alerts.")}
     </div>
   `;
 }
@@ -16899,7 +16899,7 @@ function protoHomeExceptions(facts) {
     <div class="astral-metrics">
       ${protoHomeCard("stale", "Missing or stale", missing, "Alerts that are missing data or not sending.")}
       ${protoWaitCard("Overdue jobs", "Job age still waits.")}
-      ${protoWaitCard("Unusual use", "Odd use sits on Alerts. A dedicated exception list still waits.")}
+      ${protoWaitCard("Unusual use", "Outside threshold sits on Alerts. A dedicated exception list still waits.")}
     </div>
   `;
 }

@@ -324,7 +324,7 @@
         {
           "id": "alerts-later",
           "title": "Leave user-defined alert thresholds and extra collaboration for later",
-          "note": "V1 flags Odd use, Missing data, and Not sending. Queries already sit on the graph.",
+          "note": "V1 flags Outside threshold, Missing data, and Not sending. Queries already sit on the graph.",
           "project": "Astral",
           "kind": "ux",
           "added": "2026-09-22"
@@ -943,7 +943,7 @@
         },
         {
           "id": "alerts-v1-simple",
-          "title": "Start alerts with Odd use, Missing data, and Not sending",
+          "title": "Start alerts with Outside threshold, Missing data, and Not sending",
           "note": "A star sits on the graph. Investigate opens the point. Thresholds stay system-defined. User-defined rules wait.",
           "project": "Astral",
           "kind": "ux",
@@ -1511,7 +1511,7 @@
         {
           "id": "alerts-dummy-filters",
           "title": "Put dummy cards in every Alerts filter",
-          "note": "Odd use, Missing data, and Not sending have unread cards. Resolved keeps Euston.",
+          "note": "Outside threshold, Missing data, and Not sending have unread cards. Resolved keeps Euston.",
           "project": "Astral",
           "kind": "ui",
           "added": "2026-09-08",
@@ -1754,7 +1754,7 @@
         {
           "id": "alerts-resolved-filter",
           "title": "Put Resolved in the Alerts filters",
-          "note": "All, Missing data, Not sending, and Odd use are unread. Resolve sends the card there. The card stays white. Investigate becomes View alert. After resolve, Undo puts it back. Do not use Acknowledged on the card.",
+          "note": "All, Missing data, Not sending, and Outside threshold are unread. Resolve sends the card there. The card stays white. Investigate becomes View alert. After resolve, Undo puts it back. Do not use Acknowledged on the card.",
           "project": "Astral",
           "kind": "ux",
           "added": "2026-09-08",
@@ -2278,7 +2278,7 @@
             },
             {
               "stage": "Notice",
-              "now": "Odd use sits on Alerts. Push alerts exist when spend or use crosses a line they set.",
+              "now": "Outside threshold sits on Alerts. Push alerts exist when spend or use crosses a line they set.",
               "later": "Have you noticed this has been trending down for the last 7 days?"
             },
             {
@@ -2312,7 +2312,7 @@
               "added": "2026-09-07"
             },
             {
-              "text": "Finance sits on the navbar. The list is incoming spend last 24 hours. Reports is the file they send back. Odd use sits on Alerts. Cut spend advice still waits.",
+              "text": "Finance sits on the navbar. The list is incoming spend last 24 hours. Reports is the file they send back. Outside threshold sits on Alerts. Cut spend advice still waits.",
               "added": "2026-09-11"
             },
             {
@@ -2341,7 +2341,7 @@
             },
             {
               "stage": "Notice",
-              "now": "Odd use sits on Alerts. Missing invoices are not listed.",
+              "now": "Outside threshold sits on Alerts. Missing invoices are not listed.",
               "later": ""
             },
             {
@@ -2387,12 +2387,12 @@
           "journey": [
             {
               "stage": "Arrive",
-              "now": "Alerts lists odd use, missing data, and not sending.",
+              "now": "Alerts lists Outside threshold, Missing data, and Not sending.",
               "later": "A home of faulty meters and open jobs."
             },
             {
               "stage": "See",
-              "now": "State sits in pills on the tree. Odd use, missing data, and not sending have a warning.",
+              "now": "State sits in pills on the tree. Outside threshold, Missing data, and Not sending have a warning.",
               "later": ""
             },
             {
@@ -3285,7 +3285,7 @@
             "problem": "A guessed reading and an abnormal reading are different states. Using the same mark mixes confidence with attention.",
             "where": "Graphs, Site profile, and Alerts.",
             "why": "The handoff named Estimated as we do not have an actual reading. Alert is unusually high, unusually low, or outside expected range. Version one alerts stay simple, such as high and low from the system.",
-            "note": "Estimated is confidence. Alert is attention. Odd use, Missing data, and Not sending stay on Alerts. Do not invent a statistical threshold builder for version one.",
+            "note": "Estimated is confidence. Alert is attention. Outside threshold, Missing data, and Not sending stay on Alerts. Do not invent a statistical threshold builder for version one.",
             "severity": "high",
             "score": 72,
             "source": "team",

@@ -346,7 +346,7 @@
     {
       id: "alert-use",
       group: "alerts",
-      name: "Odd use alert",
+      name: "Outside threshold alert",
       summary: "One alert, sent as it happens. Leads with the site and what changed.",
       when: "Astral raises an alert on a site you can see, and How often is Every time.",
       who: "People who can see the site and have Activity in my workspace on.",
