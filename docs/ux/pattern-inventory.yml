@@ -130,7 +130,7 @@ patterns:
     used_in: [Alerts, Reports, Downloads, Inbox, Queries]
     entry_points:
       - A tag built with a type mark, such as Threshold alert, Data extract, Data export, or Fixed
-    structure: Tag filled with the mark's light colour, icon and text in its dark colour
+    structure: Tag filled with the mark's light colour, icon and text in its dark colour. Mixed groups (all cards, Resolved as) use the neutral palette.
     components: [astral-tag, astral-type-badge]
     states: [default]
     permissions: all
@@ -161,7 +161,7 @@ patterns:
     used_in: [Alerts, Reports, Downloads]
     entry_points:
       - The count cards under the page tabs
-    structure: Badge and name on top, count below. Every card has a badge. Selection shows on the container.
+    structure: Badge and name on top, count below. Every card has a badge, coloured for one type, grey for a mixed group. Selection shows on the container.
     components: [astral-summary-stat, astral-summary-name, astral-type-badge]
     states: [default, selected, disabled]
     permissions: all
