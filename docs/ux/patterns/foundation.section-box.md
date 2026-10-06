@@ -62,4 +62,4 @@ Settings > Notifications.
 ## Related patterns / decisions
 
 - [Card stack](foundation.card-stack.md)
-- [Heading spacing](foundation.heading-spacing.md). The pane heading sits 32px above the first section.
+- [Heading spacing](foundation.heading-spacing.md). The pane heading sits 24px above the first section.

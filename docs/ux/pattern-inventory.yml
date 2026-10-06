@@ -130,21 +130,24 @@ patterns:
     used_in: [Settings]
     entry_points:
       - Any heading over content with its own internal gaps
-    structure: Gap under a heading is one step bigger than the largest gap inside its content
-    components: [astral-pane-head, astral-setting-head]
-    states: [default]
+    structure: Gap under a heading matches the largest gap inside its content. Control bars keep 16px.
+    components: [astral-pane-head, astral-setting-head, astral-people-tools]
+    states: [heading-only, with-control-bar]
     permissions: all
     content_terms: []
-    variants: []
+    variants:
+      - Heading only gets 24px on Settings
+      - Head with a control bar keeps 16px
     exceptions:
       - Desk folds sit flush
-      - Heads with a toolbar or tabs measure from the last item in the head
+      - Control bars stay 16px from the content they act on, measured from the bar
     accessibility: Spacing supports, but does not replace, real heading levels.
     implementation_refs:
       - styles.css .astral-settings-main .astral-pane-head
       - styles.css .astral-setting-group
     evidence:
       - User correction on 2026-10-06. Settings pane heading went from 16px to 32px above 24px-spaced sections.
+      - User correction on 2026-10-06. 32px was too big, now 24px. Control bar heads keep 16px.
     maturity: emerging
     health: needs-evidence
     last_reviewed: "2026-10-06"
