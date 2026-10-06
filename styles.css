@@ -7643,6 +7643,15 @@ button.astral-state {
   font-size: 0.8125rem;
 }
 
+/* A checkbox centres on the label line, not on the label and hint together. */
+.astral-select-options button:has(> .astral-check):has(> .astral-select-option-copy > .astral-muted) {
+  align-items: flex-start;
+}
+
+.astral-select-options button:has(> .astral-select-option-copy > .astral-muted) > .astral-check {
+  margin-top: calc((1lh - 16px) / 2);
+}
+
 .astral-date-menu button:hover,
 .astral-export-menu button:hover,
 .astral-filter-menu button:hover,
@@ -7955,8 +7964,9 @@ button.astral-state {
   outline-offset: 2px;
 }
 
-.astral-pack-picks .astral-check {
-  margin-top: 2px;
+.astral-pack-picks .astral-check,
+.astral-report-consent .astral-check {
+  margin-top: calc((1lh - 16px) / 2);
 }
 
 .astral-pack-copy {
@@ -11118,10 +11128,6 @@ tr.is-off .astral-person-mark {
 .astral-report-consent:focus-visible {
   outline: 2px solid #000;
   outline-offset: 2px;
-}
-
-.astral-report-consent .astral-check {
-  margin-top: 2px;
 }
 
 .astral-report-consent-copy {
