@@ -20206,7 +20206,7 @@ function protoAlertStateWord(item) {
 }
 
 function protoAlertKindMark(kind) {
-  if (kind === "Gap") return "missing-data";
+  if (kind === "Gap" || kind === "Stale") return "missing-data";
   return "threshold";
 }
 
@@ -20215,14 +20215,12 @@ function protoAlertCard(item, title, opts = {}) {
   const resolved = protoAlertResolved(item);
   const id = escapeHtml(item.id);
   const mark = protoTypeBadge(protoAlertKindMark(item.kind));
+  const kindWord = opts.kind ? `<span class="sr-only">${escapeHtml(protoAlertWord(item.kind))}. </span>` : "";
   return `
     <article class="astral-alert${resolved ? " is-resolved" : ""}" data-proto-alert-card="${id}">
       <div class="astral-alert-body">
         <div class="astral-alert-copy">
-          ${opts.kind ? `<p class="astral-alert-kind">${mark}<span>${escapeHtml(protoAlertWord(item.kind))}</span></p>` : ""}
-          <h3 class="astral-alert-title"><button type="button" class="astral-alert-open" data-proto-alert-info="${id}" aria-haspopup="dialog">${
-            opts.kind ? "" : mark
-          }<span>${escapeHtml(title)}</span></button></h3>
+          <h3 class="astral-alert-title"><button type="button" class="astral-alert-open" data-proto-alert-info="${id}" aria-haspopup="dialog">${mark}${kindWord}<span>${escapeHtml(title)}</span></button></h3>
           ${item.summary ? `<p>${escapeHtml(item.summary)}</p>` : ""}
         </div>
         ${protoAlertActions(item)}
