@@ -272,3 +272,34 @@ patterns:
     health: needs-evidence
     last_reviewed: "2026-10-06"
     decision_refs: []
+  - id: foundation.modal-steps
+    name: Modal steps
+    level: foundation
+    user_goal: Keep a pop-up short when one choice needs many more fields than the others
+    objects: [modal, step]
+    actions: [continue, go-back, close]
+    used_in: [Export]
+    entry_points:
+      - Export pop-up, Source data, Continue
+    structure: Step 1 holds the choice with Continue for the long option. Step 2 has a Back icon before the title, the fields, the summary and the final action
+    components: [astral-modal, astral-modal-lead, astral-detail-lead, is-step-next, is-step-back]
+    states: [step-1, step-2, error]
+    permissions: anyone who can act
+    content_terms: [Continue, Back, Export source data]
+    variants: []
+    exceptions:
+      - Choices that need only 1 or 2 extra fields keep them on step 1
+      - Optional settings go in More options, not a step
+    accessibility: explicit Continue, never advance on radio selection (WCAG 3.2.2), focus to step heading, Back returns focus to the selected option, slide off for reduced motion
+    implementation_refs:
+      - astral-ui.js protoModalHead backAttr
+      - prototype.js protoExportStep
+      - prototype.js protoExportModal
+      - prototype.js protoExportModalState
+      - styles.css astral-modal-step-next and astral-modal-step-back
+    evidence:
+      - User request on 2026-10-06 to move Source data to a second step with Back (commit 740f5dd).
+    maturity: emerging
+    health: needs-evidence
+    last_reviewed: "2026-10-06"
+    decision_refs: []
