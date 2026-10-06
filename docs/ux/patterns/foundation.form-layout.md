@@ -19,7 +19,7 @@ Any form, pop-up or disclosure that holds fields, radio groups or read-only valu
 ### Do
 
 - Stack every label above its control: `.astral-field` with the label `span` first, or a `fieldset` with a `legend`.
-- Show a read-only value with an action (for example the date with "Change") as a stacked field too: label above, then the value and the text button on one line.
+- Show a read-only value with an action (for example the date with "Change") as a stacked field too: label above, then the value and the text button in one bordered row, styled like the Settings colour rows (`.astral-brand-row`: 1px strong border, 12px radius, 12px 16px padding, 60px minimum height). The value fills the left and the action sits on the right.
 - Centre the value and the text button on that line (`align-items: center`). The button is 36px tall for the target size, so baseline or top alignment leaves the text higher than the button label.
 - Space the levels in this order, smallest first:
 
