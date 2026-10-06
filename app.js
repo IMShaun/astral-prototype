@@ -3245,7 +3245,7 @@ function roadmapLegend() {
 }
 
 function roadmapBoard(releases) {
-  return releases
+  const lanes = releases
     .map((release) => {
       const quarters = (release.quarters || [])
         .map((quarter) => ({
@@ -3265,19 +3265,23 @@ function roadmapBoard(releases) {
           </div>
           <div class="roadmap-quarters">
             ${quarters
-              .map(
-                (quarter) => `
+              .map((quarter) => {
+                const n = quarter.shown.length;
+                return `
               <div class="roadmap-quarter">
-                <h4>${escapeHtml(quarter.name)}</h4>
+                <h4>${escapeHtml(quarter.name)}<span class="roadmap-count">${n}<span class="sr-only"> ${
+                  n === 1 ? "capability" : "capabilities"
+                }</span></span></h4>
                 <ul class="roadmap-cards">${quarter.shown.map(roadmapCard).join("")}</ul>
-              </div>`
-              )
+              </div>`;
+              })
               .join("")}
           </div>
         </section>
       `;
     })
     .join("");
+  return `<div class="roadmap-board" role="region" aria-label="Roadmap board" tabindex="0">${lanes}</div>`;
 }
 
 function onRoadmapNav(event) {
@@ -3303,7 +3307,7 @@ function renderRoadmap() {
   if (shown.length) {
     inner = list
       ? deskTable(["Capability", "Release", "Quarter", "Kind", "Summary"], shown.map(roadmapRow))
-      : `${roadmapLegend()}<div class="roadmap-board">${roadmapBoard(picked)}</div>`;
+      : `${roadmapLegend()}${roadmapBoard(picked)}`;
   }
   els.roadmapLead.textContent = roadmapCatalog.lead || "";
   if (els.roadmapCount) {
