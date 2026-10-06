@@ -29,10 +29,14 @@ A control may move when the person asks for it, for example by scrolling, resizi
 - Keep tab widths fixed between states. The selected state must not change the font weight, padding, or border width in a way that changes the width.
 - Put content that changes size below the control, not above it.
 - Check by clicking every option in turn and measuring each control's position in the browser. Every option should report the same left and top.
+- Give repeated elements the same size on every page that shows them, so they sit in the same place when people move between pages. Summary cards reserve the badge row (`--summary-mark`, 36px) whether or not the card has a badge, so every card is 122px on Alerts, Reports, and Downloads.
+- Reserve space with `min-height`, not `height` or `max-height`. Content that needs more room, such as a label that wraps on a narrow screen, must still grow the element instead of overflowing or being clipped.
 
 ### Don't
 
 - Let a page action, notice, or count above the tabs push them down on one tab only.
+- Let an optional part, such as an icon badge, change the height of one variant of a shared element. Reserve its space in every variant.
+- Fix equal heights with `height`, `max-height`, or `overflow: hidden`. That trades a jump for clipped text or broken framing.
 - Bold the selected tab if that makes it wider and moves the tabs to its right.
 - Swap a control between two places, such as a header on one tab and a toolbar on another.
 - Show a loading skeleton with a different height from the loaded state above a control.
@@ -45,14 +49,16 @@ Supports WCAG 3.2.3 Consistent navigation, and people using magnification, a poi
 
 - Alerts > Activity, Settings, History. The tabs measured 29, 177 on all three after the fix. Before it, they dropped 4px on Settings.
 - Reports > Reports, Downloads. 29, 177 on both.
+- Summary cards on Alerts (Activity, Settings, History), Reports, and Downloads. All 122px, labels at the same line, content card at the same top. Before the fix, cards with a type badge were 122px and the rest 110px.
 
 ## Known limitations
 
-Only page tabs have been measured. Pane tabs, tree items, and stat cards have not been audited against this rule.
+Pane tabs, tree items, and Work Desk stat strips have not been measured against this rule.
 
 ## Evidence
 
-User correction on 6 October 2026: switching tabs should never move them, so it does not feel like the control is running away (commit `b60b8f6`).
+- User correction on 6 October 2026: switching tabs should never move them, so it does not feel like the control is running away (commit `b60b8f6`).
+- User correction on 6 October 2026: filter cards keep the same height across pages, without causing overflow or framing problems (commit `431b040`). A wrapped label grew the card to 134px with no overflow.
 
 ## Related patterns / decisions
 

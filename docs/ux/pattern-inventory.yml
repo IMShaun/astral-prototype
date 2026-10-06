@@ -172,9 +172,11 @@ patterns:
     accessibility: WCAG 3.2.3 Consistent navigation. Helps magnification, tremor, and switch access users.
     implementation_refs:
       - styles.css .astral-page-tools min-height
+      - styles.css .astral-summary-stat --summary-mark
       - prototype.js protoReportsAreaHead
     evidence:
       - User correction on 2026-10-06. Alerts tabs dropped 4px on Settings because Add an alert made the head 36px.
+      - User correction on 2026-10-06. Summary cards were 122px with a badge and 110px without. Now all 122px, min-height so wraps still grow.
     maturity: emerging
     health: needs-evidence
     last_reviewed: "2026-10-06"
