@@ -29,7 +29,7 @@ A control may move when the person asks for it, for example by scrolling, resizi
 - Keep tab widths fixed between states. The selected state must not change the font weight, padding, or border width in a way that changes the width.
 - Put content that changes size below the control, not above it.
 - Check by clicking every option in turn and measuring each control's position in the browser. Every option should report the same left and top.
-- Give repeated elements the same size on every page that shows them, so they sit in the same place when people move between pages. Summary cards reserve the badge row (`--summary-mark`, 36px) whether or not the card has a badge, so every card is 122px on Alerts, Reports, and Downloads.
+- Give repeated elements the same size on every page that shows them, so they sit in the same place when people move between pages. Every summary card has a badge row (`--summary-mark`, 36px), so every card is 117px on Alerts, Reports, and Downloads. See [Summary cards](foundation.summary-cards.md).
 - Reserve space with `min-height`, not `height` or `max-height`. Content that needs more room, such as a label that wraps on a narrow screen, must still grow the element instead of overflowing or being clipped.
 
 ### Don't
@@ -49,7 +49,7 @@ Supports WCAG 3.2.3 Consistent navigation, and people using magnification, a poi
 
 - Alerts > Activity, Settings, History. The tabs measured 29, 177 on all three after the fix. Before it, they dropped 4px on Settings.
 - Reports > Reports, Downloads. 29, 177 on both.
-- Summary cards on Alerts (Activity, Settings, History), Reports, and Downloads. All 122px, labels at the same line, content card at the same top. Before the fix, cards with a type badge were 122px and the rest 110px.
+- Summary cards on Alerts (Activity, Settings, History), Reports, and Downloads. All 117px since every card got a badge (commit `6e29f8f`). Before the first fix, cards with a type badge were 122px and the rest 110px.
 
 ## Known limitations
 

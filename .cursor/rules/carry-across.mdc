@@ -1,0 +1,36 @@
+---
+description: A change to an element on one page applies to every page that shows the same element. Sweep before you call it done.
+alwaysApply: true
+---
+
+# Carry it across
+
+The user points at one element on one page. The fix is for the element, not the page. Other pages that show the same element must get the same change, unless the user limits it.
+
+## Before you change it
+
+1. Name the shared thing: the builder (`protoSummaryCards`, `protoTag`, `protoTypeBadge`), the class, or the family (alert types, report types, download types, Resolved as).
+2. Search every caller and every member of the family. List the pages it reaches.
+3. Read `docs/ux/patterns/` for a rule on it. The pattern's "Product surfaces using it" list is the minimum sweep.
+
+## While you change it
+
+- Change the shared builder or class, not one call site.
+- If one member of a family has no value yet, such as a type with no mark, add it. Do not hide the gap with a grey, neutral, or default fallback.
+- Keep each surface's own meaning. A count card, a tag, a filter pill, and a menu option all show the same mark.
+
+## Before you say it is done
+
+- Check each page in the preview, not just the one the user pointed at. Measure, do not assume.
+- Tell the user which pages changed. If a page was left out on purpose, say which and why.
+- Update the pattern's "Product surfaces using it" and "Known limitations".
+
+## Don't
+
+- Fix the page in front of you and leave the same element different elsewhere.
+- Add a fallback that makes the code run but leaves a page looking unfinished.
+- Ask the user to find the other places. Finding them is part of the change.
+
+## Why
+
+On 6 October 2026, type colours were added to Alerts only. A later summary card fix gave Reports and Downloads grey icons as a fallback. The user had to ask for every page to match (commits `6e29f8f`, `ff78c87`).

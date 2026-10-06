@@ -190,7 +190,7 @@ I will document:
 
 Then implement. Reuse existing pattern, then component, then variant, then primitive, then tokens. New component last. Do not hard-code style when a token exists. Do not install a new UI library. Do not redesign adjacent elements.
 
-Verify the target task, loading, empty, success, failure, validation, data preservation, destructive recovery, keyboard, focus, screen size, permissions, and existing tests, lint, a11y, or visual regression if already present. Do not claim a check passed unless it was run or inspected. If the change paints cards, check sibling cards. They must sit in a 16px stack. Labelled blocks inside a `.board-block` use the same gap. Details: [references/spacing.md](references/spacing.md).
+Verify the target task, loading, empty, success, failure, validation, data preservation, destructive recovery, keyboard, focus, screen size, permissions, and existing tests, lint, a11y, or visual regression if already present. Do not claim a check passed unless it was run or inspected. If the change paints cards, check sibling cards. They must sit in a 16px stack. Labelled blocks inside a `.board-block` use the same gap. Details: [references/spacing.md](references/spacing.md). If the change touches a shared builder or a family of types, apply it on every page that shows it and check each one. Do not leave a grey or default fallback for a missing member. See `.cursor/rules/carry-across.mdc`.
 
 If the change affects a reusable pattern, update inventory and pattern docs in the same change. Create or update a UXDR when a future designer or agent would reasonably question it again. Templates: [references/documentation-templates.md](references/documentation-templates.md).
 

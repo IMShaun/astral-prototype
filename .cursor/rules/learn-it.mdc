@@ -41,6 +41,8 @@ Product memory for patterns lives in `docs/ux/`, not in `.cursor/skills/ux-patte
 3. If none fits, create a pattern from `.cursor/skills/ux-patterns/references/documentation-templates.md` with maturity `emerging`. Add it to the inventory and the folder README.
 4. If the new lesson contradicts a recorded rule, stop and ask which wins. Do not overwrite silently.
 5. Use evidence from this change, such as the selector, token, file, and commit. Do not invent research or usage.
-6. Follow the UX writing skill for the wording of the rule itself.
-7. Commit the documentation on its own, for example "Learn: settings groups use card radius".
-8. Reply with where it was recorded and the rule in one line.
+6. Fill "Product surfaces using it" from a search of the shared builder or class, not from the page the user pointed at. List any page not yet changed under "Known limitations". See `carry-across.mdc`.
+7. Check the docs that the change made stale, such as old sizes or counts in a related pattern, and correct them in the same commit.
+8. Follow the UX writing skill for the wording of the rule itself.
+9. Commit the documentation on its own, for example "Learn: settings groups use card radius".
+10. Reply with where it was recorded and the rule in one line.

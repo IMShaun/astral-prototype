@@ -124,27 +124,58 @@ patterns:
   - id: foundation.type-tags
     name: Type tags
     level: foundation
-    user_goal: Tell alert types apart at a glance and read the type label easily
+    user_goal: Tell types apart at a glance and read the type label easily
     objects: [tag, type-mark]
     actions: [scan]
-    used_in: [Alerts]
+    used_in: [Alerts, Reports, Downloads, Inbox, Queries]
     entry_points:
-      - A tag built with a type mark, such as Threshold alert or Missing data
+      - A tag built with a type mark, such as Threshold alert, Data extract, Data export, or Fixed
     structure: Tag filled with the mark's light colour, icon and text in its dark colour
     components: [astral-tag, astral-type-badge]
     states: [default]
     permissions: all
     content_terms: [Threshold alert, Missing data]
-    variants: [threshold, missing-data, no-signal]
+    variants: [threshold, missing-data, no-signal, all, open, resolved, extract, dcda, billing, template, download-report, download-export, download-document, fixed, expected, duplicate]
     exceptions:
-      - Tags with no mark keep their own fill
+      - Status tags such as Weekly or Coming soon are not types and have no mark
       - Filter pills keep a neutral fill with a coloured icon
     accessibility: Label names the type, so colour is not the only signal. Text contrast is at least 4.5:1.
     implementation_refs:
       - styles.css .astral-tag.has-mark
+      - styles.css .astral-type-badge[data-mark]
       - astral-ui.js protoTag
+      - astral-ui.js PROTO_MARK_ICONS
     evidence:
       - User correction on 2026-10-06. Tag fill is the mark's light colour, text and icon its dark colour.
+      - User correction on 2026-10-06. Alerts changes must reach every page. Grey icons on Reports were not wanted (commit ff78c87).
+    maturity: emerging
+    health: healthy
+    last_reviewed: "2026-10-06"
+    decision_refs: []
+  - id: foundation.summary-cards
+    name: Summary cards
+    level: foundation
+    user_goal: See how many of each kind there are and filter to one kind with a click
+    objects: [stat-card, type-mark]
+    actions: [scan, filter]
+    used_in: [Alerts, Reports, Downloads]
+    entry_points:
+      - The count cards under the page tabs
+    structure: Badge and name on top, count below. Every card has a badge. Selection shows on the container.
+    components: [astral-summary-stat, astral-summary-name, astral-type-badge]
+    states: [default, selected, disabled]
+    permissions: all
+    content_terms: [Open flags, Resolved flags]
+    variants: []
+    exceptions:
+      - Work Desk stat strips are not yet checked
+    accessibility: Buttons with aria-pressed. Name gives the type, so colour is not the only signal.
+    implementation_refs:
+      - prototype.js protoSummaryCards
+      - styles.css .astral-summary-stat
+    evidence:
+      - User question on 2026-10-06. The card felt off with the badge under the count (commit 6e29f8f).
+      - User correction on 2026-10-06. Grey icons on Reports were not wanted (commit ff78c87).
     maturity: emerging
     health: healthy
     last_reviewed: "2026-10-06"
@@ -204,7 +235,7 @@ patterns:
       - prototype.js protoReportsAreaHead
     evidence:
       - User correction on 2026-10-06. Alerts tabs dropped 4px on Settings because Add an alert made the head 36px.
-      - User correction on 2026-10-06. Summary cards were 122px with a badge and 110px without. Now all 122px, min-height so wraps still grow.
+      - User correction on 2026-10-06. Summary cards were 122px with a badge and 110px without. Now every card has a badge and all are 117px, min-height so wraps still grow.
     maturity: emerging
     health: needs-evidence
     last_reviewed: "2026-10-06"
