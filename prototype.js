@@ -19449,26 +19449,29 @@ let protoDownloadCountRows = null;
 function protoDownloadFilterControl() {
   const rows = protoDownloads();
   const picked = protoDownloadPicked(rows);
+  const count = picked.filter((id) => !PROTO_DOWNLOAD_TYPE_IDS.includes(id)).length;
   protoDownloadCountRows = rows;
   let menu = "";
   try {
-    menu = protoFilterTickGroups(picked, "data-proto-download-filter", protoDownloadFilterGroups(rows));
+    // Type belongs to the summary cards, which work like tabs.
+    const groups = protoDownloadFilterGroups(rows).filter((group) => group.id !== "type");
+    menu = protoFilterTickGroups(picked, "data-proto-download-filter", groups);
   } finally {
     protoDownloadCountRows = null;
   }
   return protoFilterShell({
     hit: `data-proto-download-filter="toggle"`,
     open: protoDownloadFilterOpen(),
-    count: picked.length,
+    count,
     menuId: "astral-download-filter-menu",
     clear: 'data-proto-download-filter="clear"',
-    canClear: picked.length > 0,
+    canClear: count > 0,
     menu,
   });
 }
 
 function protoDownloadFilterPills() {
-  const picked = protoDownloadPicked();
+  const picked = protoDownloadPicked().filter((id) => !PROTO_DOWNLOAD_TYPE_IDS.includes(id));
   if (!picked.length) return "";
   const pills = picked
     .map((id) => {
@@ -20102,8 +20105,16 @@ function protoAlertFilterPicks() {
   return [...types, ...protoAlertFilterIds().filter((id) => !PROTO_ALERT_TYPE_IDS.includes(id) && !reasons.includes(id))];
 }
 
+// The card row's group (Type on Activity, Resolved as on History) works like tabs. It is not in the Filter menu, its count, or the pills.
+function protoAlertMenuGroups() {
+  const cards = protoAlertResolvedView() ? "reason" : "type";
+  return protoAlertFilterGroups().filter((group) => group.id !== cards);
+}
+
 function protoAlertTools() {
-  const picked = protoAlertFilterPicks();
+  const cardIds = protoAlertCardIds();
+  const ticks = protoAlertFilterPicks();
+  const picked = ticks.filter((id) => !cardIds.includes(id));
   const sort = protoAlertSortId();
   const sorted = sort !== "newest";
   const count = picked.length + (sorted ? 1 : 0);
@@ -20166,7 +20177,7 @@ function protoAlertTools() {
           menuId: "astral-alert-filter-menu",
           clear: 'data-proto-alert-filter="clear"',
           canClear: count > 0,
-          menu: `${protoFilterTickGroups(picked, "data-proto-alert-filter", protoAlertFilterGroups())}
+          menu: `${protoFilterTickGroups(ticks, "data-proto-alert-filter", protoAlertMenuGroups())}
             ${protoFilterSection(
               protoFilterSectionKey("astral-alert-filter-menu", "sort"),
               "Sort by",
@@ -23565,21 +23576,32 @@ function protoReportFilterName(id, tab) {
   return id;
 }
 
+// Type belongs to the summary cards, which work like tabs. It is not in the Filter menu, its count, or the pills.
+function protoReportMenuGroups(tab) {
+  return protoReportFilterGroups(tab).filter((group) => group.id !== "type");
+}
+
+function protoReportMenuPicks(tab) {
+  const types = new Set(protoReportTypeIds(tab));
+  return protoReportFilterIds(null, tab).filter((id) => !types.has(id));
+}
+
 function protoReportFilterControl(tab) {
   const picked = protoReportFilterIds(null, tab);
+  const count = protoReportMenuPicks(tab).length;
   return protoFilterShell({
     hit: 'data-proto-report-filter="toggle"',
     open: Boolean(store.prototypeReportFilterOpen),
-    count: picked.length,
+    count,
     menuId: "astral-report-filter-menu",
     clear: 'data-proto-report-filter="clear"',
-    canClear: picked.length > 0,
-    menu: protoFilterTickGroups(picked, "data-proto-report-filter", protoReportFilterGroups(tab)),
+    canClear: count > 0,
+    menu: protoFilterTickGroups(picked, "data-proto-report-filter", protoReportMenuGroups(tab)),
   });
 }
 
 function protoReportFilterPills(tab) {
-  const picked = protoReportFilterIds(null, tab);
+  const picked = protoReportMenuPicks(tab);
   if (!picked.length) return "";
   const pills = picked
     .map((id) => {
@@ -23701,7 +23723,7 @@ function protoSummaryCards(label, cards) {
   return `<div class="astral-summary-stats" role="group" aria-label="${escapeHtml(label)}">${cards.map(card).join("")}</div>`;
 }
 
-// One card per report or alert type, with how many there are. A card sets the Type filter, so the menu and pills stay in step.
+// One card per report or alert type, with how many there are. The cards work like tabs: they hold the Type pick, with no menu group or pill.
 function protoReportTypeCards(tab, defs) {
   const types = protoReportFilterGroups(tab).find((group) => group.id === "type")?.items || [];
   const picked = protoReportFilterIds(null, tab);
@@ -23738,8 +23760,8 @@ function protoDownloadTypeCards() {
   ]);
 }
 
-// Activity: open flags, then one card per kind. It sets the Type filter.
-// History: resolved flags, then one card per Resolved as. It sets that filter. Menu and pills stay in step.
+// Activity: open flags, then one card per kind. It holds the Type pick.
+// History: resolved flags, then one card per Resolved as. It holds that pick. Like tabs, neither shows in the Filter menu or pills.
 function protoAlertFacetCards() {
   const all = protoData()?.alerts || [];
   const resolved = protoAlertResolvedView();
@@ -31560,7 +31582,7 @@ function onPrototype(event) {
     }
     if (act === "clear") {
       setProto({
-        prototypeDownloadFilters: [],
+        prototypeDownloadFilters: protoDownloadFilterIds().filter((id) => PROTO_DOWNLOAD_TYPE_IDS.includes(id)),
         prototypeDownloadFilterOpen: false,
       });
       protoRestoreFocus("#astral-fs [data-proto-download-filter='toggle']");
@@ -31621,9 +31643,10 @@ function onPrototype(event) {
       return;
     }
     if (act === "clear" || act === "reset") {
+      const cardIds = protoAlertCardIds();
       setProto({
         activePrototypeFacet: keepFacet,
-        prototypeAlertFilters: [],
+        prototypeAlertFilters: protoAlertFilterPicks().filter((id) => cardIds.includes(id)),
         prototypeAlertSort: "newest",
         prototypeAlertFilterOpen: false,
         ...(act === "reset" ? { prototypeAlertQuery: "" } : {}),
@@ -31691,8 +31714,9 @@ function onPrototype(event) {
       return;
     }
     if (act === "clear" || act === "reset") {
+      const types = new Set(protoReportTypeIds());
       setProto({
-        prototypeReportFilters: [],
+        prototypeReportFilters: protoReportFilterIds().filter((id) => types.has(id)),
         prototypeReportFilterOpen: false,
         ...(act === "reset" ? { prototypeReportQuery: "" } : {}),
       });
