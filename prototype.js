@@ -10,7 +10,6 @@ const PROTO_VIEWS = [
 const PROTO_ALERT_FACETS = [
   { id: "all", name: "All" },
   { id: "gaps", name: "Missing data", mark: "missing-data" },
-  { id: "stale", name: "Not sending", mark: "no-signal" },
   { id: "alerts", name: "Outside threshold", mark: "threshold" },
 ];
 
@@ -2237,7 +2236,7 @@ function protoGroupAlerts(group) {
 }
 
 function protoGroupFlagWords(group) {
-  const words = protoGroupAlerts(group).map((item) => protoAlertWord(item.kind));
+  const words = protoGroupAlerts(group).map((item) => protoMeterAlertWord(item.kind));
   if (words.length) return [...new Set(words)];
   if ((group?.sites || []).some((site) => site.status === "gaps")) return ["Missing data"];
   if ((group?.sites || []).some((site) => site.status === "stale")) return ["Not sending"];
@@ -2248,10 +2247,14 @@ function protoSiteByMeter(id) {
   return protoSites().find((site) => site.meters.some((item) => item.id === id)) || null;
 }
 
+// On Alerts a meter that stopped sending is missing data. Meter health still says Not sending.
 function protoAlertWord(kind) {
-  if (kind === "Gap") return "Missing data";
-  if (kind === "Stale") return "Not sending";
+  if (kind === "Gap" || kind === "Stale") return "Missing data";
   return "Outside threshold";
+}
+
+function protoMeterAlertWord(kind) {
+  return kind === "Stale" ? "Not sending" : protoAlertWord(kind);
 }
 
 function protoSiteAlerts(site) {
@@ -2279,7 +2282,7 @@ function protoQueriesForMeters(meters, sites, groupIds) {
 }
 
 function protoSiteFlagWords(site) {
-  const words = protoSiteAlerts(site).map((item) => protoAlertWord(item.kind));
+  const words = protoSiteAlerts(site).map((item) => protoMeterAlertWord(item.kind));
   if (words.length) return [...new Set(words)];
   if (site?.status === "gaps") return ["Missing data"];
   if (site?.status === "stale") return ["Not sending"];
@@ -2289,7 +2292,7 @@ function protoSiteFlagWords(site) {
 function protoMeterFlagWords(meter) {
   const words = (protoData()?.alerts || [])
     .filter((item) => item.meterId === meter?.id)
-    .map((item) => protoAlertWord(item.kind));
+    .map((item) => protoMeterAlertWord(item.kind));
   if (words.length) return [...new Set(words)];
   if (meter?.status === "gaps") return ["Missing data"];
   if (meter?.status === "stale") return ["Not sending"];
@@ -13912,7 +13915,7 @@ const PROTO_HOME_GO = {
     prototypePane: "consumption",
     prototypeChartPoint: null,
   }),
-  stale: () => ({ activePrototypeView: "alerts", activePrototypeFacet: "all", prototypeAlertFilters: ["stale"] }),
+  stale: () => ({ activePrototypeView: "alerts", activePrototypeFacet: "all", prototypeAlertFilters: ["gaps"] }),
   gaps: () => ({ activePrototypeView: "alerts", activePrototypeFacet: "all", prototypeAlertFilters: ["gaps"] }),
   "service-faults": () => protoServiceGo("faults"),
   "service-late": () => ({
@@ -16897,7 +16900,7 @@ function protoHomeExceptions(facts) {
       ${protoStatButton("queries", queries, queries === 1 ? "Open query" : "Open queries")}
     </div>
     <div class="astral-metrics">
-      ${protoHomeCard("stale", "Missing or stale", missing, "Alerts that are missing data or not sending.")}
+      ${protoHomeCard("stale", "Missing data", missing, "Gaps and meters that stopped sending.")}
       ${protoWaitCard("Overdue jobs", "Job age still waits.")}
       ${protoWaitCard("Unusual use", "Outside threshold sits on Alerts. A dedicated exception list still waits.")}
     </div>
@@ -19953,13 +19956,12 @@ function protoPaneQueryCount(rows) {
 function protoAlertMatchesFacet(item, facet, resolved = false) {
   if (protoAlertResolved(item) !== resolved) return false;
   if (facet === "all") return true;
-  if (facet === "gaps") return item.kind === "Gap";
-  if (facet === "stale") return item.kind === "Stale";
+  if (facet === "gaps") return item.kind === "Gap" || item.kind === "Stale";
   return item.kind === "Alert";
 }
 
 // Activity cards pick a kind. History cards pick what it was resolved as. Filter adds Priority.
-const PROTO_ALERT_TYPE_IDS = ["gaps", "stale", "alerts"];
+const PROTO_ALERT_TYPE_IDS = ["gaps", "alerts"];
 const PROTO_ALERT_REASON_IDS = PROTO_RESOLVE.map((item) => `reason-${item.id}`);
 const PROTO_ALERT_SORTS = [
   { id: "newest", name: "Newest first" },
@@ -20044,7 +20046,7 @@ function protoAlertAgeMinutes(item) {
 }
 
 function protoAlertFacetValue(item, groupId) {
-  if (groupId === "type") return item.kind === "Gap" ? "gaps" : item.kind === "Stale" ? "stale" : "alerts";
+  if (groupId === "type") return item.kind === "Gap" || item.kind === "Stale" ? "gaps" : "alerts";
   if (groupId === "level") return `level-${protoAlertLevel(item).toLowerCase()}`;
   if (groupId === "reason") {
     const reason = protoAlertAckRecords().find((row) => row.id === item.id)?.reason;
@@ -20205,7 +20207,6 @@ function protoAlertStateWord(item) {
 
 function protoAlertKindMark(kind) {
   if (kind === "Gap") return "missing-data";
-  if (kind === "Stale") return "no-signal";
   return "threshold";
 }
 
@@ -21060,7 +21061,7 @@ function protoCompareDetail() {
               const words = [...new Set(
                 (protoData()?.alerts || [])
                   .filter((item) => item.meterId === meter.id)
-                  .map((item) => protoAlertWord(item.kind))
+                  .map((item) => protoMeterAlertWord(item.kind))
               )];
               return `
                 <tr data-proto-meter="${escapeHtml(meter.id)}">
