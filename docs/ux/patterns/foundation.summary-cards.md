@@ -32,7 +32,8 @@ A page with a list that splits into kinds, where a count per kind helps. Alerts 
 
 ### Do
 
-- Give every card a badge, including the "all" card. The "all" card uses the brand mark (`all`, `open` or `resolved`).
+- Give every card a badge, including the "all" card.
+- Make the badge neutral grey when the card groups more than one type: the "all" cards (`all`, `open`, `resolved`) and Resolved as (`fixed`, `expected`, `duplicate`). Keep the icon.
 - Use the same mark as the type shows in the list, tags, filter menu and pills. See [Type tags](foundation.type-tags.md).
 - Put the icon and name on top and the count below, so the icon says what the card is and the count answers it.
 - Show selection on the container: brand border, inset ring and brand count. Keep the badge in its type colour.
@@ -42,7 +43,8 @@ A page with a list that splits into kinds, where a count per kind helps. Alerts 
 
 - Put the badge under the count. It competes with the number and the card looks top-heavy.
 - Leave one card without a badge. Its name floats in an empty row and the cards stop lining up.
-- Fall back to a grey or neutral icon for a type. A grey card reads as unfinished, not neutral.
+- Fall back to a grey icon for a single type. Grey is for mixed groups only. On a type card it reads as unfinished.
+- Colour a mixed group. It suggests one type that may not be there.
 - Recolour the badge to the selected colour. That hides the type at the moment it matters.
 - Give a large count a line height much taller than its text. The extra space makes the card top-heavy.
 
@@ -66,6 +68,7 @@ Work Desk stat strips use the same class at 140px minimum width and have not bee
 
 - User question on 6 October 2026: the card felt off after the framed icon was added. The badge sat below a 32px count on a 48px line (commit `6e29f8f`).
 - User correction on 6 October 2026: grey icons on Reports were not wanted. Every page's types got their own marks (commit `ff78c87`).
+- User correction on 6 October 2026: Resolved as cards hold a mix of alert types, so they and the "all" cards are grey.
 - Selected state versus type colour: agreed on 6 October 2026, in line with Polaris and Material, which mark selection on the container.
 
 ## Related patterns / decisions
