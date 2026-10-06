@@ -8129,8 +8129,12 @@ button.astral-state {
   box-shadow: inset 0 0 0 2px #000;
 }
 
-.astral-cal-day.is-end.is-today {
-  box-shadow: inset 0 0 0 2px #fff;
+/* The white today ring sits 2px inside the fill, so the rounded corners stay clean. */
+.astral-cal-day.is-end.is-today,
+.astral-cal-month.is-end.is-today {
+  box-shadow:
+    inset 0 0 0 2px var(--color-brand-primary),
+    inset 0 0 0 4px #fff;
 }
 
 .astral-cal-day:disabled {
