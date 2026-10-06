@@ -10922,39 +10922,6 @@ tr.is-off .astral-person-mark {
   margin: 0;
 }
 
-/* The date and Change share one centred line, so the text sits level with the button label. */
-/* A read-only value with an action, styled like the Settings colour rows (.astral-brand-row). */
-.astral-export-date-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 12px;
-  min-height: 60px;
-  padding: 12px 16px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 12px;
-  background: #fff;
-}
-
-.astral-export-date-pair {
-  flex: 1;
-  min-width: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0;
-}
-
-.astral-export-date-pair dt {
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
-}
-
-.astral-export-date-pair dd {
-  margin: 0;
-  font-weight: 600;
-}
-
 /* Sections inside More options sit 16px apart, as in the modal body. Each heading stays closer to its own options. */
 .astral-export-more-body {
   display: grid;

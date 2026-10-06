@@ -19,7 +19,8 @@ Any form, pop-up or disclosure that holds fields, radio groups or read-only valu
 ### Do
 
 - Stack every label above its control: `.astral-field` with the label `span` first, or a `fieldset` with a `legend`.
-- Show a read-only value with an action (for example the date with "Change") as a stacked field too: label above, then the value and the text button in one bordered row, styled like the Settings colour rows (`.astral-brand-row`: 1px strong border, 12px radius, 12px 16px padding, 60px minimum height). The value fills the left and the action sits on the right.
+- When a step exists to collect a value, show its fields straight away. Do not hide them behind a read-only value and "Change" (Export > Source data shows Data from and Data to, filled with the graph's dates).
+- Outside such a step, a read-only value with an action is a stacked field too: label above, then the value and the text button in one bordered row, styled like the Settings colour rows (`.astral-brand-row`: 1px strong border, 12px radius, 12px 16px padding, 60px minimum height). The value fills the left and the action sits on the right.
 - Centre the value and the text button on that line (`align-items: center`). The button is 36px tall for the target size, so baseline or top alignment leaves the text higher than the button label.
 - Space the levels in this order, smallest first:
 
@@ -58,6 +59,7 @@ Stacked labels keep the label and the control together when the text is enlarged
 ## Evidence
 
 - User correction on 6 October 2026: "Can you sort the alignment issues here" on the Source data Dates row. The label sat in a side column, while Format was stacked, and the date sat above the centre of "Change".
+- User correction on 6 October 2026: "You might as well just show the to and from fields" on the read-only Source data dates. Step 2 exists for the dates, so the Change step was an extra click.
 - User correction on 6 October 2026: "Headings should be more closely spaced than gaps between other sections or content" on More options. The sections were 0px apart, with 4px under each legend.
 - User correction on 6 October 2026: "Checkboxes and radio buttons in these circumstances need to be centre aligned with the text on the right (heading)" on "Include source IDs". The box centre sat 2px above the centre of the label line.
 

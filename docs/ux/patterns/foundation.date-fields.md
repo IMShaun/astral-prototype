@@ -9,7 +9,7 @@ Choose the dates for a data file quickly, whether by typing them or by picking t
 ## When to use
 
 - Reports > Date range > Exact dates ("Data from", "Data to") and Schedule ("First send on")
-- Export > Source data > Change ("Data from", "Data to")
+- Export > Source data, step 2 ("Data from", "Data to", filled with the graph's dates)
 - Any new field that asks for a single day for data
 
 ## When not to use

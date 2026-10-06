@@ -17902,7 +17902,8 @@ function protoExportModalState() {
   // Source data needs more fields, so they sit on a second step.
   const step = what === "source" && raw.step === 2 ? 2 : 1;
   const dir = raw.dir === "next" || raw.dir === "back" ? raw.dir : "";
-  return { file, what, prefs, step, dir, more: raw.more === true, edit: raw.edit === true, errors };
+  // Source data step 2 exists for the dates, so the From and To fields always show.
+  return { file, what, prefs, step, dir, more: raw.more === true, edit: what === "source", errors };
 }
 
 function protoExportSourceFormat(id) {
@@ -18027,7 +18028,7 @@ function protoExportRadioSet(key, legend, list, value) {
 
 function protoExportDatesHtml(state) {
   if (protoExportIsTable(state.file)) return "";
-  if (state.what === "source" && state.edit) {
+  if (state.what === "source") {
     return `
       <fieldset class="astral-report-split">
         <legend>Dates</legend>
@@ -18040,20 +18041,6 @@ function protoExportDatesHtml(state) {
     `;
   }
   const { from, to } = protoExportGraphDates();
-  if (state.what === "source") {
-    return `
-      <div class="astral-field">
-        <span>Dates</span>
-        <div class="astral-export-date-line">
-          <dl class="astral-export-date-pair">
-            <div><dt>From</dt><dd>${escapeHtml(protoDayHeading(from))}</dd></div>
-            <div><dt>To</dt><dd>${escapeHtml(protoDayHeading(to))}</dd></div>
-          </dl>
-          ${protoTextBtn("Change", 'data-proto-export-dates="change" aria-label="Change dates"')}
-        </div>
-      </div>
-    `;
-  }
   return `<div><dt>Dates</dt><dd>${escapeHtml(protoRangeWords(from, to))}</dd></div>`;
 }
 
@@ -32135,18 +32122,13 @@ function onPrototype(event) {
   if (exportDates) {
     const raw = store.prototypeExportModal;
     if (!raw) return;
-    if (exportDates.dataset.protoExportDates === "change") {
-      setProto({ prototypeExportModal: { ...raw, edit: true, errors: {} } });
-      protoFocusDayCalInput('#astral-fs input[name="proto-export-from"]');
-      return;
-    }
     const graph = protoExportGraphDates();
     setProto({
-      prototypeExportModal: { ...raw, edit: false, errors: {} },
+      prototypeExportModal: { ...raw, errors: {} },
       prototypeExportFrom: protoFormatUkDate(graph.from),
       prototypeExportTo: protoFormatUkDate(graph.to),
     });
-    protoRestoreFocus('#astral-fs [data-proto-export-dates="change"]');
+    protoRestoreFocus('#astral-fs [data-proto-export-dates="graph"]');
     return;
   }
   const exportBtn = event.target.closest("[data-proto-export]");
