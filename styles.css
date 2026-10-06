@@ -12496,9 +12496,14 @@ tr.is-off .astral-person-mark {
   flex: none;
 }
 
+/* A type tag takes its badge's colours: light fill, dark text and icon. The palette is set by data-mark below. */
 .astral-tag.has-mark {
+  --mark-bg: var(--color-background-subtle);
+  --mark-ink: var(--color-text-primary);
   gap: 6px;
   padding-left: 8px;
+  background: var(--mark-bg);
+  color: var(--mark-ink);
 }
 
 .astral-summary-name {
@@ -12525,9 +12530,9 @@ tr.is-off .astral-person-mark {
   height: 18px;
 }
 
-.astral-type-badge[data-mark="threshold"] { --mark-bg: #fef0c7; --mark-ink: #93370d; }
-.astral-type-badge[data-mark="missing-data"] { --mark-bg: #e0eaff; --mark-ink: #2d3282; }
-.astral-type-badge[data-mark="no-signal"] { --mark-bg: #ffe4e8; --mark-ink: #a11043; }
+.astral-type-badge[data-mark="threshold"], .astral-tag[data-mark="threshold"] { --mark-bg: #fef0c7; --mark-ink: #93370d; }
+.astral-type-badge[data-mark="missing-data"], .astral-tag[data-mark="missing-data"] { --mark-bg: #e0eaff; --mark-ink: #2d3282; }
+.astral-type-badge[data-mark="no-signal"], .astral-tag[data-mark="no-signal"] { --mark-bg: #ffe4e8; --mark-ink: #a11043; }
 
 .astral-summary-name .astral-type-badge {
   width: var(--summary-mark);

@@ -159,7 +159,7 @@ function protoTextarea(label, value, rows = 2) {
 function protoTag(label, tip, className, mark) {
   const cls = `${className ? ` ${protoEsc(className)}` : ""}${mark ? " has-mark" : ""}`;
   const icon = mark ? protoTypeBadge(mark) : "";
-  const tag = `<span class="astral-tag${cls}"${tip ? ' tabindex="0"' : ""}>${icon}${protoEsc(label)}</span>`;
+  const tag = `<span class="astral-tag${cls}"${mark ? ` data-mark="${protoEsc(mark)}"` : ""}${tip ? ' tabindex="0"' : ""}>${icon}${protoEsc(label)}</span>`;
   return tip ? protoIconTip(tag, tip) : tag;
 }
 
