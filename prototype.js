@@ -8739,7 +8739,7 @@ const PROTO_REPORT_DATES = {
 const PROTO_REPORT_FILE_DAYS = 62;
 
 // Data arrives once a day, the day after, so No data for counts whole days. Stored in hours.
-const PROTO_REPORT_SILENCE = [24, 48, 72, 168, 336];
+const PROTO_REPORT_SILENCE = [24, 48, 72];
 
 const PROTO_REPORT_BASIS = [
   { id: "absolute", name: "Absolute amount", note: "A fixed daily use in kWh" },
@@ -9377,7 +9377,7 @@ function protoReportNormalize(raw) {
     })(),
     amount: protoReportNumber(raw.amount, 2000, 0, 10000000),
     percent: protoReportNumber(raw.percent, 25, 0, 1000),
-    hours: PROTO_REPORT_SILENCE.find((hours) => hours >= Number(raw.hours)) || 24,
+    hours: PROTO_REPORT_SILENCE.find((hours) => hours >= Number(raw.hours)) || (Number(raw.hours) > 72 ? 72 : 24),
     owner: String(raw.owner || protoProfileEmail()),
     template: "",
     step: PROTO_TEMPLATE_STEPS.some((item) => item.id === raw.step) ? String(raw.step) : "",
@@ -9508,7 +9508,7 @@ function protoReportSeed() {
       id: "seed-missing",
       type: "missing",
       name: "Sites not sending data",
-      hours: 3,
+      hours: 24,
       priority: "high",
       people: ["me"],
     },
