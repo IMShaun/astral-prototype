@@ -9586,11 +9586,17 @@ function protoMeterSilentHours(meter) {
   return 0;
 }
 
+// A whole site checks all its meters. A site reached only by an MPAN checks just that meter.
 function protoReportMissingHits(def) {
   const ids = protoReportUtilityIds(def.utility, def.type);
-  return protoEstateSites().filter((site) =>
+  const whole = protoReportWholeSiteIds(def);
+  const mpans = new Set((def.meters || []).map(String));
+  return protoReportScopeSites(def).filter((site) =>
     (site.meters || []).some(
-      (meter) => ids.includes(protoMeterKind(meter)) && protoMeterSilentHours(meter) >= def.hours
+      (meter) =>
+        (!protoReportPicksAny(def) || whole.has(String(protoSiteId(site))) || mpans.has(String(meter.id))) &&
+        ids.includes(protoMeterKind(meter)) &&
+        protoMeterSilentHours(meter) >= def.hours
     )
   );
 }
@@ -9914,12 +9920,14 @@ function protoReportSummary(def) {
       protoReportAlertLimit(def)
     )} a day.`;
   }
-  const home = protoHomeCompany() || "the portfolio";
   const silence = protoReportSilenceName(def.hours);
+  const where = protoReportPicksAny(def)
+    ? protoReportJoin(protoReportScopeSites(def).map((site) => site.name))
+    : `any site in ${protoHomeCompany() || "the portfolio"}`;
   if (!protoReportUtilityAll(def.utility, def.type)) {
-    return `When ${protoReportUtilityNames(def.utility, def.type)} meters at any site in ${home} send no data for ${silence}.`;
+    return `When ${protoReportUtilityNames(def.utility, def.type)} meters at ${where} send no data for ${silence}.`;
   }
-  return `When any site in ${home} sends no data for ${silence}.`;
+  return `When ${where} ${protoReportPicksAny(def) && protoReportScopeSites(def).length > 1 ? "send" : "sends"} no data for ${silence}.`;
 }
 
 function protoReportFlaggedHours(def) {
@@ -10402,7 +10410,7 @@ function protoReportDraftPreview(draft) {
     return `${limit} ${protoReportJoin(hits.map((site) => site.name))} ${hits.length === 1 ? "is" : "are"} ${word} it right now.`;
   }
   const hits = protoReportMissingHits(def);
-  if (!hits.length) return "Every site is sending right now.";
+  if (!hits.length) return protoReportPicksAny(def) ? "Every site you picked is sending right now." : "Every site is sending right now.";
   return `${protoReportJoin(hits.map((site) => site.name))} ${hits.length === 1 ? "is" : "are"} not sending right now.`;
 }
 
@@ -10446,7 +10454,7 @@ function protoReportUnitInput(label, field, value, unit, placeholder = "") {
 // One search for groups, sites and MPANs. MPANs only show once something is typed, as there are hundreds.
 function protoReportSitesSelect(draft) {
   const sites = protoEstateSites();
-  const alert = draft.type === "alert";
+  const alert = draft.type === "alert" || draft.type === "missing";
   const values = [
     ...(draft.groups || []).map((id) => `group:${id}`),
     ...(draft.sites || []).map((id) => `site:${id}`),
@@ -12451,7 +12459,7 @@ function protoReportGroups(draft, opts = {}) {
   return [
     protoReportGroup(
       "details",
-      `<p class="astral-muted">Watches every site in ${escapeHtml(protoHomeCompany() || "the portfolio")}.</p>`
+      `${protoReportSitesSelect(draft)}<p class="astral-muted">Leave it empty to watch every site.</p>`
     ),
     protoReportGroup(
       "trigger",
