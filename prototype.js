@@ -12,7 +12,6 @@ const PROTO_ALERT_FACETS = [
   { id: "gaps", name: "Missing data" },
   { id: "stale", name: "Not sending" },
   { id: "alerts", name: "Odd use" },
-  { id: "resolved", name: "Resolved" },
 ];
 
 const PROTO_TREE_FILTERS = [
@@ -371,7 +370,7 @@ function protoViewName(id) {
     PROTO_LENS_EXTRA[id];
   if (view) return view.name;
   if (id === "downloads") return "Downloads";
-  if (id === PROTO_ALERT_RULES_VIEW) return "Alerts";
+  if (id === PROTO_ALERT_RULES_VIEW || id === PROTO_ALERT_HISTORY_VIEW) return "Alerts";
   return "";
 }
 
@@ -580,8 +579,8 @@ function protoShownViews() {
 }
 
 const PROTO_RESOLVE = [
-  { id: "expected", name: "Expected" },
   { id: "fixed", name: "Fixed" },
+  { id: "expected", name: "Expected" },
   { id: "duplicate", name: "Duplicate" },
 ];
 
@@ -603,6 +602,7 @@ function protoKnownView(id) {
     Boolean(PROTO_LENS_EXTRA[id]) ||
     id === "downloads" ||
     id === PROTO_ALERT_RULES_VIEW ||
+    id === PROTO_ALERT_HISTORY_VIEW ||
     id === "documents"
   );
 }
@@ -612,7 +612,7 @@ function protoViewId(raw) {
   if (!protoKnownView(mapped)) return "home";
   if (mapped === "documents") return "downloads";
   if (mapped === "downloads") return mapped;
-  if (mapped === PROTO_ALERT_RULES_VIEW) return protoLens().nav.includes("alerts") ? mapped : protoLens().nav[0] || "home";
+  if (mapped === PROTO_ALERT_RULES_VIEW || mapped === PROTO_ALERT_HISTORY_VIEW) return protoLens().nav.includes("alerts") ? mapped : protoLens().nav[0] || "home";
   if (mapped === "profile") return mapped;
   if (mapped === "settings") return protoCanOpenSettings() ? mapped : protoLens().nav[0] || "home";
   if (mapped === "users") return protoCanManagePeople() ? mapped : protoLens().nav[0] || "home";
@@ -1385,7 +1385,6 @@ function protoWalkPortfolio() {
       meter: "Reading",
       meterId: "nr-reading-in",
       point: "12.00",
-      summary: "Last actual 3 h ago",
       status: "Active",
     },
     byId("nr-motherwell-depot-in") && {
@@ -1396,7 +1395,6 @@ function protoWalkPortfolio() {
       meter: "Motherwell depot",
       meterId: "nr-motherwell-depot-in",
       point: "11.00",
-      summary: "Last actual 4 h ago",
       status: "Active",
     },
   ].filter(Boolean);
@@ -8607,6 +8605,8 @@ const PROTO_REPORT_TYPES = [
 ];
 
 const PROTO_ALERT_RULES_VIEW = "alert-rules";
+// Resolved flags leave Activity for History. Undo brings one back.
+const PROTO_ALERT_HISTORY_VIEW = "alert-history";
 
 const PROTO_REPORT_DIRECTION = [
   { id: "above", name: "Above" },
@@ -8716,7 +8716,7 @@ const PROTO_REPORT_SILENCE = [24, 48, 72, 168, 336];
 
 const PROTO_REPORT_BASIS = [
   { id: "absolute", name: "Absolute amount", note: "A fixed daily use in kWh" },
-  { id: "average", name: "Own average", note: "Each site against its last 30 days" },
+  { id: "average", name: "Site average", note: "Each site against its last 30 days" },
 ];
 
 const PROTO_REPORT_DELIVERY = [
@@ -9612,7 +9612,7 @@ function protoReportSiteLimit(site, def) {
   return use ? use.average * protoReportAlertFactor(def) : null;
 }
 
-// A total compares with the sites' own averages added together.
+// A total compares with the site averages added together.
 function protoReportAlertLimit(def) {
   if (def.basis === "absolute") return def.amount;
   const use = protoReportAlertTotalUse(def);
@@ -9977,11 +9977,11 @@ function protoReportSummary(def) {
     const days = `the last ${PROTO_REPORT_AVERAGE_DAYS} days`;
     if (totals) {
       const limit = protoReportAlertLimit(def);
-      return `When ${scope} ${uses} ${more} than their own average over ${days}${
+      return `When ${scope} ${uses} ${more} than their site averages over ${days}${
         limit == null ? "" : `, ${protoReportKwh(limit)} a day`
       }.`;
     }
-    return `When ${scope} ${uses} ${more} than its own average over ${days}.`;
+    return `When ${scope} ${uses} ${more} than its site average over ${days}.`;
   }
   const silence = protoReportSilenceName(def.hours);
   const where = protoReportPicksAny(def)
@@ -10312,7 +10312,7 @@ function protoReportAutoName(def) {
     const below = protoReportAlertBelow(def);
     return def.basis === "absolute"
       ? `Daily use ${below ? "under" : "over"} ${protoReportKwh(def.amount)}`
-      : `Use ${def.percent}% ${below ? "below" : "above"} own average`;
+      : `Use ${def.percent}% ${below ? "below" : "above"} site average`;
   }
   return `No data for ${protoReportSilenceName(def.hours)}`;
 }
@@ -10406,7 +10406,7 @@ function protoReportDraftIssueBase(draft) {
     const value = Number(draft.basis === "absolute" ? draft.amount : draft.percent);
     if (!(value > 0)) return "Enter a threshold above zero.";
     if (draft.basis !== "absolute" && draft.direction === "below" && value >= 100) {
-      return "Below own average must be under 100%.";
+      return "Below site average must be under 100%.";
     }
   }
   if (!protoReportIsFile(draft.type) && !(draft.notify || []).length) return "Pick how to tell people.";
@@ -10479,14 +10479,14 @@ function protoReportDraftPreview(draft) {
       return `${limit} ${protoReportJoin(hits.map((site) => site.name))} ${went(hits.length)} ${word} it yesterday.`;
     }
     const more = `${def.percent}% ${protoReportAlertBelow(def) ? "less" : "more"} than`;
-    if (!hits.length) return `No site used ${more} its own average yesterday.`;
+    if (!hits.length) return `No site used ${more} its site average yesterday.`;
     if (hits.length === 1) {
       const use = protoReportSiteUse(hits[0], def);
-      return `${hits[0].name} used ${protoReportKwh(use.day)} yesterday. Its own average is ${protoReportKwh(
+      return `${hits[0].name} used ${protoReportKwh(use.day)} yesterday. Its site average is ${protoReportKwh(
         use.average
       )} a day.`;
     }
-    return `${protoReportJoin(hits.map((site) => site.name))} used ${more} their own average yesterday.`;
+    return `${protoReportJoin(hits.map((site) => site.name))} used ${more} their site averages yesterday.`;
   }
   const hits = protoReportMissingHits(def);
   if (!hits.length) return protoReportPicksAny(def) ? "Every site you picked is sending right now." : "Every site is sending right now.";
@@ -12526,7 +12526,7 @@ function protoReportGroups(draft, opts = {}) {
             ${
               absolute
                 ? protoReportInput(`${protoReportAlertTotals(draft) ? "Total daily use" : "Daily use"} ${below ? "under" : "over"} (kWh)`, "amount", draft.amount, 'inputmode="decimal"')
-                : protoReportInput(`${below ? "Below" : "Above"} own average by (%)`, "percent", draft.percent, 'inputmode="decimal"')
+                : protoReportInput(`${below ? "Below" : "Above"} site average by (%)`, "percent", draft.percent, 'inputmode="decimal"')
             }
           </div>
           <p class="astral-muted">Water is in m³, not kWh, so alerts watch electricity and gas.</p>
@@ -13273,7 +13273,7 @@ function protoNoticeMenu(state) {
             )}">
               <span class="astral-notice-copy">
                 <span>${escapeHtml(title)}</span>
-                <span class="astral-muted">${escapeHtml(item.summary)}</span>
+                ${item.summary ? `<span class="astral-muted">${escapeHtml(item.summary)}</span>` : ""}
               </span>
               <span class="astral-muted">${escapeHtml(item.age || "")}</span>
             </button>
@@ -13363,7 +13363,7 @@ function protoRailIcon(id) {
   if (id === "finance") return "rates";
   if (id === "alerts") return "warning";
   if (id === "queries") return "comment";
-  if (id === PROTO_ALERT_RULES_VIEW) return "warning";
+  if (id === PROTO_ALERT_RULES_VIEW || id === PROTO_ALERT_HISTORY_VIEW) return "warning";
   if (id === "reports" || id === "downloads") return "report";
   if (id === "profile" || id === "settings" || id === "users") return id;
   if (id === "companies") return "companies";
@@ -13553,7 +13553,7 @@ function protoReportsArea(view) {
 }
 
 function protoAlertsArea(view) {
-  return view === "alerts" || view === PROTO_ALERT_RULES_VIEW;
+  return view === "alerts" || view === PROTO_ALERT_HISTORY_VIEW || view === PROTO_ALERT_RULES_VIEW;
 }
 
 function protoAlertsCardTabs(active) {
@@ -13561,10 +13561,11 @@ function protoAlertsCardTabs(active) {
     [
       { id: "alerts", name: "Activity" },
       { id: PROTO_ALERT_RULES_VIEW, name: "Settings" },
+      { id: PROTO_ALERT_HISTORY_VIEW, name: "History" },
     ],
     active,
     "data-proto-view",
-    "Activity or settings"
+    "Activity, settings, or history"
   )}</div>`;
 }
 
@@ -13922,7 +13923,7 @@ function protoHomeEstate(facts) {
           )}">
              <span class="astral-catch-copy">
                <span class="astral-kicker">Astral catch</span>
-               <span><strong>${escapeHtml(catchItem.meter)}</strong> ${escapeHtml(catchItem.summary)}</span>
+               <span><strong>${escapeHtml(catchItem.meter)}</strong> ${escapeHtml(catchItem.summary || protoAlertWord(catchItem.kind))}</span>
              </span>
            </button>`
         : ""
@@ -19852,17 +19853,15 @@ function protoPaneQueryCount(rows) {
   return protoOpenQueries(protoPaneQueries(rows)).length;
 }
 
-function protoAlertMatchesFacet(item, facet) {
-  const resolved = protoAlertResolved(item);
-  if (facet === "resolved") return resolved;
-  if (resolved) return false;
+function protoAlertMatchesFacet(item, facet, resolved = false) {
+  if (protoAlertResolved(item) !== resolved) return false;
   if (facet === "all") return true;
   if (facet === "gaps") return item.kind === "Gap";
   if (facet === "stale") return item.kind === "Stale";
   return item.kind === "Alert";
 }
 
-// Alerts Activity: the cards pick Open or Resolved and a kind. Filter adds Priority and Raised.
+// Alerts Activity and History: the cards pick a kind. Filter adds Priority.
 const PROTO_ALERT_TYPE_IDS = ["gaps", "stale", "alerts"];
 const PROTO_ALERT_FILTERS = [
   {
@@ -19904,7 +19903,7 @@ function protoAlertQuery() {
 }
 
 function protoAlertResolvedView() {
-  return protoAlertFacetId(store.activePrototypeFacet) === "resolved";
+  return protoViewId(store.activePrototypeView) === PROTO_ALERT_HISTORY_VIEW;
 }
 
 // Kind ids picked, from the Filter or an older link that set the kind as the facet.
@@ -20025,7 +20024,7 @@ function protoToggleAlertFilterGroup(groupId) {
   const selectAll = protoFilterGroupTickState(group, "data-proto-alert-filter", picked) !== "on";
   setProto({
     prototypeAlertFilterOpen: true,
-    activePrototypeFacet: protoAlertResolvedView() ? "resolved" : "all",
+    activePrototypeFacet: "all",
     prototypeAlertFilters: protoAlertFilterIds(protoFilterGroupSelectNext(picked, group, !selectAll)),
   });
   protoRestoreFocus(`#astral-alert-filter-menu [data-proto-alert-filter-all="${CSS.escape(groupId)}"]`);
@@ -20054,7 +20053,7 @@ function protoAlertCard(item, title) {
       <div class="astral-alert-body">
         <div class="astral-alert-copy">
           <h3 class="astral-alert-title">${escapeHtml(title)}</h3>
-          <p>${escapeHtml(item.summary)}</p>
+          ${item.summary ? `<p>${escapeHtml(item.summary)}</p>` : ""}
         </div>
         ${protoAlertActions(item)}
       </div>
@@ -22797,7 +22796,7 @@ function protoPinAlertHtml(time) {
               ${done ? "" : protoAckControl("alert", item.id, true)}
             </div>
             <p class="astral-alert-title">${escapeHtml(word)}</p>
-            <p>${escapeHtml(item.summary)}</p>
+            ${item.summary ? `<p>${escapeHtml(item.summary)}</p>` : ""}
             ${reason ? `<p class="astral-muted">${escapeHtml(reason)}</p>` : ""}
           </div>
         </div>
@@ -23036,9 +23035,9 @@ function protoAlerts() {
         "Clear search and filters",
         'data-proto-alert-filter="reset"'
       )}</div>`
-    : `<p class="astral-empty">${resolved ? "No resolved flags yet." : "No open flags. All clear."}</p>`;
+    : `<p class="astral-empty">${resolved ? "No resolved flags yet. Resolve a flag on Activity and it moves here." : "No open flags. All clear."}</p>`;
   return astralShell(`
-    ${protoReportsAreaHead("alerts", protoAlertFacetCards())}
+    ${protoReportsAreaHead(resolved ? PROTO_ALERT_HISTORY_VIEW : "alerts", protoAlertFacetCards())}
     <section class="astral-card astral-reports-sheet astral-alerts-sheet">
       ${protoAlertTools()}
       <div class="astral-stack">${cards || empty}</div>
@@ -23429,7 +23428,7 @@ function protoDownloadTypeCards() {
   ]);
 }
 
-// Alerts Activity: Open flags, one card per kind, and Resolved. A kind card sets the Type filter, so the menu and pills stay in step.
+// Alerts Activity and History: all flags, then one card per kind. A kind card sets the Type filter, so the menu and pills stay in step.
 function protoAlertFacetCards() {
   const all = protoData()?.alerts || [];
   const resolved = protoAlertResolvedView();
@@ -23439,14 +23438,9 @@ function protoAlertFacetCards() {
     "Show flags by kind",
     PROTO_ALERT_FACETS.map((item) => ({
       attr: attr(item.id),
-      n: all.filter((row) => protoAlertMatchesFacet(row, item.id)).length,
-      name: item.id === "all" ? "Open flags" : item.name,
-      on:
-        item.id === "resolved"
-          ? resolved
-          : item.id === "all"
-            ? !resolved && !types.length
-            : !resolved && types.includes(item.id),
+      n: all.filter((row) => protoAlertMatchesFacet(row, item.id, resolved)).length,
+      name: item.id === "all" ? (resolved ? "Resolved flags" : "Open flags") : item.name,
+      on: item.id === "all" ? !types.length : types.includes(item.id),
     }))
   );
 }
@@ -26930,7 +26924,7 @@ function protoApp() {
   const view = protoState().view;
   if (view === "portfolio") return protoPortfolio();
   if (view === "finance") return protoFinance();
-  if (view === "alerts") return protoAlerts();
+  if (view === "alerts" || view === PROTO_ALERT_HISTORY_VIEW) return protoAlerts();
   if (view === "queries") return protoQueries();
   if (view === "reports") return protoReports();
   if (view === "downloads") return protoDownloadsPage();
@@ -30859,14 +30853,10 @@ function onPrototype(event) {
     const id = protoAlertFacetId(facetBtn.dataset.protoFacet);
     const rest = protoAlertFilterIds().filter((item) => !PROTO_ALERT_TYPE_IDS.includes(item));
     const types = protoAlertTypePicks();
-    const resolved = protoAlertResolvedView();
-    let facet = "all";
+    const facet = "all";
     let next = rest;
     let focus = "all";
-    if (id === "resolved") {
-      facet = resolved ? "all" : "resolved";
-      focus = facet;
-    } else if (PROTO_ALERT_TYPE_IDS.includes(id) && !(!resolved && types.length === 1 && types[0] === id)) {
+    if (PROTO_ALERT_TYPE_IDS.includes(id) && !(types.length === 1 && types[0] === id)) {
       next = [...rest, id];
       focus = id;
     }
@@ -31239,7 +31229,7 @@ function onPrototype(event) {
       return;
     }
     const act = alertFilterBtn.dataset.protoAlertFilter;
-    const keepFacet = protoAlertResolvedView() ? "resolved" : "all";
+    const keepFacet = "all";
     if (act === "toggle") {
       setProto({
         prototypeAlertFilterOpen: !store.prototypeAlertFilterOpen,

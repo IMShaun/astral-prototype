@@ -438,16 +438,16 @@
       control: "The Threshold alert in Reports. Pause or edit it there.",
       to: ME,
       subject: "2 sites used more than usual",
-      preheader: "York Traction and Manchester Traction went over their own average on 3 Sep 2026.",
+      preheader: "York Traction and Manchester Traction went over their site averages on 3 Sep 2026.",
       eyebrow: "Threshold alert",
-      title: "2 sites used 50 percent more than their own average",
+      title: "2 sites used 50 percent more than their site averages",
       blocks: [
-        { type: "text", text: "Each site is compared with its own average over the last 30 days. These sites went over it on 3 Sep 2026." },
+        { type: "text", text: "Each site is compared with its site average over the last 30 days. These sites went over it on 3 Sep 2026." },
         {
           type: "items",
           rows: [
-            { title: "York Traction", note: "4,912 kWh. Its own average is 3,149 kWh. 56 percent above", side: "3 Sep 2026" },
-            { title: "Manchester Traction", note: "4,730 kWh. Its own average is 3,132 kWh. 51 percent above", side: "3 Sep 2026" },
+            { title: "York Traction", note: "4,912 kWh. Its site average is 3,149 kWh. 56 percent above", side: "3 Sep 2026" },
+            { title: "Manchester Traction", note: "4,730 kWh. Its site average is 3,132 kWh. 51 percent above", side: "3 Sep 2026" },
           ],
         },
       ],
@@ -702,7 +702,7 @@
           rows: [
             { title: "Manchester Traction", note: "Demand 38 percent above expected", level: "High" },
             { title: "Crewe depot", note: "No readings arriving from 01.00 UTC", level: "High" },
-            { title: "Euston", note: "Last actual 48 min ago", level: "Medium" },
+            { title: "Euston", note: "Not sending", level: "Medium" },
           ],
         },
         {
