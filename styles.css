@@ -12671,7 +12671,8 @@ button.astral-state:focus-visible,
   }
 
   .astral-stage,
-  .astral-stage:has(.astral-split) {
+  .astral-stage:has(.astral-split),
+  .astral-stage:has(.astral-stage-body) {
     overflow: auto;
   }
 
