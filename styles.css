@@ -10899,14 +10899,12 @@ tr.is-off .astral-person-mark {
   margin: 0;
 }
 
-.astral-export-date {
-  display: grid;
-  gap: 4px;
-  align-content: start;
+.astral-day-cal .astral-date-input[aria-invalid="true"] {
+  border-color: var(--color-text-danger);
 }
 
-.astral-export-date .astral-date-input[aria-invalid="true"] {
-  border-color: var(--color-text-danger);
+.astral-day-cal .astral-export-error {
+  margin-top: 4px;
 }
 
 .astral-export-error {

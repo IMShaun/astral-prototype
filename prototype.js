@@ -8739,12 +8739,22 @@ const PROTO_REPORT_RANGE_UNITS = [
 
 const PROTO_REPORT_RANGE_MAX = 365;
 
-// Three date fields share one calendar. store.prototypeReportCalOpen holds the open one.
+// Date fields that share one calendar. store.prototypeReportCalOpen holds the open one.
+// Export's Source data dates reuse it, so picking dates for a data file works the same everywhere.
 const PROTO_REPORT_DATES = {
   start: { name: "proto-report-start", key: "prototypeReportDraftStart" },
   from: { name: "proto-report-from", key: "prototypeReportDraftFrom" },
   to: { name: "proto-report-to", key: "prototypeReportDraftTo" },
+  exportFrom: { name: "proto-export-from", key: "prototypeExportFrom", export: true },
+  exportTo: { name: "proto-export-to", key: "prototypeExportTo", export: true },
 };
+
+// Report dates need report editing. Export dates need someone who can act.
+function protoDayCalAllowed(field) {
+  const spec = PROTO_REPORT_DATES[field];
+  if (!spec) return false;
+  return spec.export ? protoCanAct() : protoCanEditReports();
+}
 
 // Prototype files stop at this many days so a two-year range still downloads.
 const PROTO_REPORT_FILE_DAYS = 62;
@@ -10107,7 +10117,7 @@ function protoReportDateOf(name) {
 
 function protoReportDraftDate(field) {
   const value = protoMaskUkDate(store[PROTO_REPORT_DATES[field].key] || "");
-  if (value) return value;
+  if (value || PROTO_REPORT_DATES[field].export) return value;
   if (field === "start") return protoFormatUkDate(protoToday());
   return protoReportDefaultRange()[field];
 }
@@ -10197,7 +10207,7 @@ function protoReportCalOpen(field) {
 }
 
 function protoOpenReportCal(field = "start") {
-  if (!protoCanEditReports() || !PROTO_REPORT_DATES[field]) return;
+  if (!protoDayCalAllowed(field)) return;
   const picked = protoFromUkDate(protoReportDraftDate(field)) || protoToday();
   if (protoReportCalOpen(field)) {
     const cal = store.prototypeReportCal || protoIso(picked).slice(0, 7);
@@ -10213,12 +10223,14 @@ function protoOpenReportCal(field = "start") {
   protoRestoreFocus(`#astral-fs input[name="${PROTO_REPORT_DATES[field].name}"]`);
 }
 
-function protoReportDayCalHtml(start, label = "First send on", field = "start") {
+// error links an inline message to the input, for fields that check on submit.
+function protoReportDayCalHtml(start, label = "First send on", field = "start", error = "") {
   const open = protoReportCalOpen(field);
   const { year, month } = protoReportCalMonth(field);
   const picked = protoFromUkDate(start);
   const selectedIso = picked ? protoIso(picked) : "";
   const menuId = field === "start" ? "astral-day-cal-menu" : `astral-day-cal-menu-${field}`;
+  const errorId = `astral-day-cal-error-${field}`;
   const monthsView = open && store.prototypeReportCalView === "months";
   const days = protoCalDayCells({
     year,
@@ -10246,8 +10258,10 @@ function protoReportDayCalHtml(start, label = "First send on", field = "start") 
           aria-haspopup="dialog"
           aria-expanded="${open ? "true" : "false"}"
           aria-controls="${menuId}"
+          ${error ? `aria-invalid="true" aria-describedby="${errorId}"` : ""}
         />
       </label>
+      ${error ? `<p class="astral-export-error" id="${errorId}" role="alert">${escapeHtml(error)}</p>` : ""}
       <div
         id="${menuId}"
         class="astral-day-cal-menu${open ? protoMenuEnterClass("report-cal") : ""}"
@@ -17919,15 +17933,15 @@ function protoExportDateErrors() {
   const check = (key, label) => {
     const text = String(store[key === "from" ? "prototypeExportFrom" : "prototypeExportTo"] || "").trim();
     const day = protoFromUkDate(text);
-    if (!text) errors[key] = `Enter the ${label} date.`;
-    else if (!day) errors[key] = `Enter the ${label} date as dd/mm/yyyy.`;
-    else if (protoDayStamp(day) > today) errors[key] = `The ${label} date must be today or earlier.`;
+    if (!text) errors[key] = `Enter a ${label} date.`;
+    else if (!day) errors[key] = `Enter ${label} as dd/mm/yyyy.`;
+    else if (protoDayStamp(day) > today) errors[key] = `${label} must be today or earlier.`;
     return day;
   };
-  const from = check("from", "From");
-  const to = check("to", "To");
+  const from = check("from", "Data from");
+  const to = check("to", "Data to");
   if (!errors.from && !errors.to && protoDayStamp(to) < protoDayStamp(from)) {
-    errors.to = "The To date must be the same as or after the From date.";
+    errors.to = "Data to must be the same as or after Data from.";
   }
   return errors;
 }
@@ -17998,39 +18012,15 @@ function protoExportRadioSet(key, legend, list, value) {
   `;
 }
 
-function protoExportDateInput(key, label, value, error) {
-  const errId = `astral-export-${key}-error`;
-  return `
-    <div class="astral-export-date">
-      <label class="astral-field">
-        <span>${escapeHtml(label)}</span>
-        <input
-          class="astral-date-input"
-          type="text"
-          name="proto-export-${key}"
-          value="${escapeHtml(value)}"
-          inputmode="numeric"
-          autocomplete="off"
-          spellcheck="false"
-          maxlength="10"
-          placeholder="dd/mm/yyyy"
-          ${error ? `aria-invalid="true" aria-describedby="${errId}"` : ""}
-        />
-      </label>
-      ${error ? `<p class="astral-export-error" id="${errId}" role="alert">${escapeHtml(error)}</p>` : ""}
-    </div>
-  `;
-}
-
 function protoExportDatesHtml(state) {
   if (protoExportIsTable(state.file)) return "";
   if (state.what === "source" && state.edit) {
     return `
       <fieldset class="astral-report-split">
         <legend>Dates</legend>
-        <div class="astral-renew-dates">
-          ${protoExportDateInput("from", "From", store.prototypeExportFrom || "", state.errors.from)}
-          ${protoExportDateInput("to", "To", store.prototypeExportTo || "", state.errors.to)}
+        <div class="astral-report-pair">
+          ${protoReportDayCalHtml(protoReportDraftDate("exportFrom"), "Data from", "exportFrom", state.errors.from)}
+          ${protoReportDayCalHtml(protoReportDraftDate("exportTo"), "Data to", "exportTo", state.errors.to)}
         </div>
         <div>${protoTextBtn("Use the graph's dates", 'data-proto-export-dates="graph"')}</div>
       </fieldset>
@@ -18170,7 +18160,7 @@ async function protoExportGo() {
     const errors = protoExportDateErrors();
     if (Object.keys(errors).length) {
       setProto({ prototypeExportModal: { ...store.prototypeExportModal, errors } });
-      protoRestoreFocus(`#astral-fs input[name="proto-export-${errors.from ? "from" : "to"}"]`);
+      protoFocusDayCalInput(`#astral-fs input[name="proto-export-${errors.from ? "from" : "to"}"]`);
       return;
     }
   }
@@ -29971,6 +29961,18 @@ function protoQueryComposerForm(node) {
   return node?.closest?.("[data-proto-query-form], [data-proto-query-reply], [data-proto-query-edit], [data-proto-inbox-reply]") || null;
 }
 
+// Focus the code puts back on a date field (after a pick or a "Change") must not reopen its calendar.
+let protoDayCalQuiet = false;
+
+function protoFocusDayCalInput(selector) {
+  protoDayCalQuiet = true;
+  try {
+    protoRestoreFocus(selector);
+  } finally {
+    protoDayCalQuiet = false;
+  }
+}
+
 function onPrototypeFocus(event) {
   protoGrowComment(event.target);
   if (event.type !== "focusin") return;
@@ -29978,7 +29980,7 @@ function onPrototypeFocus(event) {
   if (!field) return;
   const reportDate = protoReportDateOf(field.name);
   if (reportDate) {
-    protoOpenReportCal(reportDate);
+    if (!protoDayCalQuiet) protoOpenReportCal(reportDate);
     return;
   }
   if (!event.relatedTarget) return;
@@ -30274,7 +30276,7 @@ function onPrototype(event) {
       prototypeReportCalOpen: false,
       prototypeSelectOpen: "",
     });
-    protoRestoreFocus(`#astral-fs input[name="${PROTO_REPORT_DATES[field].name}"]`);
+    protoFocusDayCalInput(`#astral-fs input[name="${PROTO_REPORT_DATES[field].name}"]`);
     return;
   }
   const calDay = event.target.closest("[data-proto-cal-day]");
@@ -32083,7 +32085,7 @@ function onPrototype(event) {
     if (!raw) return;
     if (exportDates.dataset.protoExportDates === "change") {
       setProto({ prototypeExportModal: { ...raw, edit: true, errors: {} } });
-      protoRestoreFocus('#astral-fs input[name="proto-export-from"]');
+      protoFocusDayCalInput('#astral-fs input[name="proto-export-from"]');
       return;
     }
     const graph = protoExportGraphDates();
@@ -32825,7 +32827,7 @@ function onPrototypeInput(event) {
     const key = protoUkDateStoreKey(dateField);
     if (!key) return;
     const reportDate = protoReportDateOf(dateField.name);
-    if (reportDate && !protoCanEditReports()) return;
+    if (reportDate && !protoDayCalAllowed(reportDate)) return;
     if (
       (dateField.name === "proto-renew-from" || dateField.name === "proto-renew-to") &&
       !protoCanAdminCompany()
@@ -33495,7 +33497,7 @@ function onPrototypeKey(event) {
     const modalKind = document.querySelector(
       "#astral-fs .astral-modal-back[data-proto-modal^='report-'], #astral-fs .astral-modal-back[data-proto-modal='alert-info'], #astral-fs .astral-modal-back[data-proto-modal='export']"
     )?.dataset.protoModal;
-    if (modalKind && !store.prototypeSelectOpen) {
+    if (modalKind && !store.prototypeSelectOpen && !store.prototypeReportCalOpen) {
       protoCloseModal(modalKind);
       return;
     }
@@ -33510,7 +33512,7 @@ function onPrototypeKey(event) {
     if (store.prototypeReportCalOpen) {
       const field = protoReportCalField() || "start";
       setProto({ prototypeReportCalOpen: false });
-      protoRestoreFocus(`#astral-fs input[name="${PROTO_REPORT_DATES[field].name}"]`);
+      protoFocusDayCalInput(`#astral-fs input[name="${PROTO_REPORT_DATES[field].name}"]`);
       return;
     }
     if (store.prototypeSelectOpen) {
