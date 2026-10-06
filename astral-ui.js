@@ -64,6 +64,9 @@ const PROTO_ICON_MARKS = {
   list: `<path d="M9.5 6.5h10.5M9.5 12h10.5M9.5 17.5h10.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><circle cx="5" cy="6.5" r="1.4" fill="currentColor" /><circle cx="5" cy="12" r="1.4" fill="currentColor" /><circle cx="5" cy="17.5" r="1.4" fill="currentColor" />`,
   "chart-bar": `<path d="M4 20h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><rect x="5.5" y="11" width="3" height="6" rx="0.75" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><rect x="10.5" y="5" width="3" height="12" rx="0.75" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><rect x="15.5" y="8.5" width="3" height="8.5" rx="0.75" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />`,
   "chart-line": `<path d="M4 20h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M4.5 15.5 9 10l4 3.5 6.5-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
+  threshold: `<path d="M3.5 9h17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="2.2 2.8" /><path d="M3.5 19 8 14.5l3.5 2.5L17 6.5l3.5 3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
+  "missing-data": `<path d="M4 20h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><rect x="5.5" y="10" width="3" height="7" rx="0.75" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><rect x="10.5" y="6" width="3" height="11" rx="0.75" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="1.6 2" /><rect x="15.5" y="8.5" width="3" height="8.5" rx="0.75" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />`,
+  "no-signal": `<path d="M5 19v-2.5M9.67 19v-5.5M14.33 19v-8.5M19 19V7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M4 4l16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />`,
 };
 
 function protoIconNames() {
@@ -147,9 +150,10 @@ function protoTextarea(label, value, rows = 2) {
   )}</textarea></label>`;
 }
 
-function protoTag(label, tip, className) {
-  const cls = className ? ` ${protoEsc(className)}` : "";
-  const tag = `<span class="astral-tag${cls}"${tip ? ' tabindex="0"' : ""}>${protoEsc(label)}</span>`;
+function protoTag(label, tip, className, mark) {
+  const cls = `${className ? ` ${protoEsc(className)}` : ""}${mark ? " has-mark" : ""}`;
+  const icon = mark ? protoIconMark(mark, "astral-type-mark") : "";
+  const tag = `<span class="astral-tag${cls}"${tip ? ' tabindex="0"' : ""}>${icon}${protoEsc(label)}</span>`;
   return tip ? protoIconTip(tag, tip) : tag;
 }
 

@@ -12418,6 +12418,133 @@ tr.is-off .astral-person-mark {
   margin-top: auto;
 }
 
+.astral-alert[data-proto-alert-card] {
+  cursor: pointer;
+  transition: background-color var(--motion-panel) ease, border-color var(--motion-panel) ease;
+}
+
+.astral-alert[data-proto-alert-card]:hover {
+  background: var(--color-background-hover);
+}
+
+.astral-alert-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.astral-alert-open:hover span,
+.astral-alert-open:focus-visible span {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.astral-alert-open:focus-visible {
+  outline: 2px solid var(--color-action-primary);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.astral-alert-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.astral-type-mark {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.astral-tag.has-mark {
+  gap: 6px;
+  padding-left: 8px;
+}
+
+.astral-tag.has-mark .astral-type-mark {
+  width: 14px;
+  height: 14px;
+}
+
+.astral-summary-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.astral-modal.astral-alert-info {
+  width: min(36rem, 100%);
+  max-height: min(44rem, calc(100vh - 48px));
+}
+
+.astral-alert-info .astral-modal-body {
+  display: grid;
+  gap: var(--space-16);
+}
+
+.astral-alert-info-grid,
+.astral-alert-info-why {
+  display: grid;
+  gap: var(--space-16);
+  margin: 0;
+}
+
+.astral-alert-info-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.astral-alert-info-why {
+  padding-top: var(--space-16);
+  border-top: 1px solid var(--color-border-default, #dfdfdf);
+}
+
+.astral-alert-info dl div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.astral-alert-info dt {
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.astral-alert-info dd {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.astral-alert-info-why dd {
+  font-weight: 400;
+}
+
+.astral-alert-info dd .astral-alert-kind {
+  color: inherit;
+  font-size: inherit;
+}
+
+@media (max-width: 480px) {
+  .astral-alert-info-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .astral-link:focus-visible,
 .astral-chip:focus-visible,
 .astral-meter-pill:focus-visible,

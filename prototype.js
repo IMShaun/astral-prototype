@@ -9,9 +9,9 @@ const PROTO_VIEWS = [
 
 const PROTO_ALERT_FACETS = [
   { id: "all", name: "All" },
-  { id: "gaps", name: "Missing data" },
-  { id: "stale", name: "Not sending" },
-  { id: "alerts", name: "Odd use" },
+  { id: "gaps", name: "Missing data", mark: "missing-data" },
+  { id: "stale", name: "Not sending", mark: "no-signal" },
+  { id: "alerts", name: "Odd use", mark: "threshold" },
 ];
 
 const PROTO_TREE_FILTERS = [
@@ -742,6 +742,7 @@ function protoPageFilterReset() {
     prototypeQueryEdit: "",
     prototypeQueryMore: "",
     prototypeAckOpen: "",
+    prototypeAlertInfo: "",
     prototypeTableSort: {},
     prototypeSiteMeters: [],
     prototypeGroupSites: [],
@@ -7695,6 +7696,12 @@ function protoPinClose() {
 }
 
 function protoCloseModal(kind) {
+  if (kind === "alert-info") {
+    const id = store.prototypeAlertInfo;
+    setProto({ prototypeAlertInfo: "" });
+    if (id) protoRestoreFocus(`#astral-fs [data-proto-alert-info="${CSS.escape(id)}"]`);
+    return;
+  }
   if (kind === "report-pick") {
     setProto({ prototypeReportPick: null });
     protoRestoreFocus('#astral-fs [data-proto-report-edit="new"]');
@@ -8594,6 +8601,7 @@ const PROTO_REPORT_TYPES = [
     short: "Threshold alert",
     blurb: "Tell people when a site goes above or below a threshold you set.",
     tab: "alerts",
+    mark: "threshold",
   },
   {
     id: "missing",
@@ -8601,6 +8609,7 @@ const PROTO_REPORT_TYPES = [
     short: "Missing data",
     blurb: "Tell people when a site stops sending data.",
     tab: "alerts",
+    mark: "missing-data",
   },
 ];
 
@@ -12612,7 +12621,7 @@ function protoReportTypePicker(tab, own) {
               tabindex="${item.id === picked ? "0" : "-1"}"
               data-proto-report-type="${escapeHtml(item.id)}"
             >
-              <span class="astral-report-type-head">${protoRadio(on)}<span>${escapeHtml(item.name)}</span></span>
+              <span class="astral-report-type-head">${protoRadio(on)}${item.mark ? protoIconMark(item.mark, "astral-type-mark") : ""}<span>${escapeHtml(item.name)}</span></span>
               <span class="astral-muted">${escapeHtml(item.blurb)}</span>
             </button>
           `;
@@ -13800,6 +13809,7 @@ function astralShell(inner) {
         ${astralWrapStage(inner)}
         ${protoDateModal()}
         ${protoCompareModal()}
+        ${protoAlertInfoModal()}
       </div>
       ${protoQueryPinOverlay()}
     </div>
@@ -15538,7 +15548,7 @@ function protoTemplateSourcePicker(draft) {
             tabindex="${on ? "0" : "-1"}"
             data-proto-template-source="${escapeHtml(item.id)}"
           >
-            <span class="astral-report-type-head">${protoRadio(on)}<span>${escapeHtml(item.name)}</span></span>
+            <span class="astral-report-type-head">${protoRadio(on)}${item.mark ? protoIconMark(item.mark, "astral-type-mark") : ""}<span>${escapeHtml(item.name)}</span></span>
             <span class="astral-muted">${escapeHtml(item.note)}</span>
           </button>
         `;
@@ -17034,6 +17044,10 @@ function protoFilterMeterKind(id) {
   return "";
 }
 
+function protoMarkFace(mark, name) {
+  return `<span class="astral-filter-face">${protoIconMark(mark, "astral-type-mark")}<span>${escapeHtml(name)}</span></span>`;
+}
+
 function protoFilterFace(id, label) {
   const name = label || protoTreeFilterName(id) || id;
   // Only the In and Out ticks are flows. A Data export in Downloads is not.
@@ -17513,7 +17527,7 @@ function protoFilterTickGroups(picked, attr, groups = PROTO_TREE_FILTERS) {
             ${attr}="${escapeHtml(item.id)}"
           >
             <span class="astral-check${on ? " is-on" : ""}" aria-hidden="true"></span>
-            ${protoFilterFace(item.id, item.name)}
+            ${item.mark ? protoMarkFace(item.mark, item.name) : protoFilterFace(item.id, item.name)}
             ${countHtml}
           </button>
         `;
@@ -19875,6 +19889,7 @@ const PROTO_ALERT_FILTERS = [
     items: PROTO_ALERT_FACETS.filter((item) => PROTO_ALERT_TYPE_IDS.includes(item.id)).map((item) => ({
       id: item.id,
       name: item.name,
+      mark: item.mark,
     })),
   },
   {
@@ -20032,9 +20047,10 @@ function protoAlertTools() {
         ${picked
           .map((id) => {
             const name = protoAlertFilterName(id);
+            const mark = PROTO_ALERT_FACETS.find((item) => item.id === id)?.mark;
             return `
               <span class="astral-filter-pill">
-                ${protoFilterFace(id, name)}
+                ${mark ? protoMarkFace(mark, name) : protoFilterFace(id, name)}
                 ${protoClearButton("astral-filter-pill-clear", `data-proto-alert-filter="${escapeHtml(id)}"`, `Clear ${name}`)}
               </span>
             `;
@@ -20104,13 +20120,25 @@ function protoAlertStateWord(item) {
   return protoAlertResolved(item) ? "Resolved" : "Unread";
 }
 
-function protoAlertCard(item, title) {
+function protoAlertKindMark(kind) {
+  if (kind === "Gap") return "missing-data";
+  if (kind === "Stale") return "no-signal";
+  return "threshold";
+}
+
+// The whole card opens the details. The title is the button, so a keyboard reaches it too.
+function protoAlertCard(item, title, opts = {}) {
   const resolved = protoAlertResolved(item);
+  const id = escapeHtml(item.id);
+  const mark = protoIconMark(protoAlertKindMark(item.kind), "astral-type-mark");
   return `
-    <article class="astral-alert${resolved ? " is-resolved" : ""}">
+    <article class="astral-alert${resolved ? " is-resolved" : ""}" data-proto-alert-card="${id}">
       <div class="astral-alert-body">
         <div class="astral-alert-copy">
-          <h3 class="astral-alert-title">${escapeHtml(title)}</h3>
+          ${opts.kind ? `<p class="astral-alert-kind">${mark}<span>${escapeHtml(protoAlertWord(item.kind))}</span></p>` : ""}
+          <h3 class="astral-alert-title"><button type="button" class="astral-alert-open" data-proto-alert-info="${id}" aria-haspopup="dialog">${
+            opts.kind ? "" : mark
+          }<span>${escapeHtml(title)}</span></button></h3>
           ${item.summary ? `<p>${escapeHtml(item.summary)}</p>` : ""}
         </div>
         ${protoAlertActions(item)}
@@ -23016,6 +23044,115 @@ function protoGoToQuery(row) {
   protoRevealPickedHit();
 }
 
+// The rule that flagged this site, if one of theirs did. Otherwise it is Astral's own check.
+function protoAlertRuleFor(item) {
+  const site = protoSiteByMeter(item?.meterId);
+  if (!site) return null;
+  const type = item.kind === "Alert" ? "alert" : "missing";
+  const key = String(protoSiteId(site));
+  return (
+    protoReportDefs().find(
+      (def) =>
+        def.on &&
+        def.type === type &&
+        (type === "alert" ? protoReportAlertHits(def) : protoReportMissingHits(def)).some(
+          (row) => String(protoSiteId(row)) === key
+        )
+    ) || null
+  );
+}
+
+// Only say what the numbers back up. Without a rule, the card's own summary is all we know.
+function protoAlertFound(item, def) {
+  const site = protoSiteByMeter(item.meterId);
+  const meter = protoMeter(item.meterId);
+  if (item.kind === "Gap") {
+    return item.point
+      ? `No readings from ${item.point} UTC. A gap is missing data, not zero use.`
+      : "No readings came in. A gap is missing data, not zero use.";
+  }
+  if (item.kind === "Stale") {
+    if (protoMeterSilentHours(meter) >= 1) return `The last reading came in ${meter.lastReading}.`;
+    return item.point ? `No readings since ${item.point} UTC.` : "Readings stopped coming in.";
+  }
+  const use = def && site ? protoReportSiteUse(site, def) : null;
+  if (use) {
+    if (def.basis === "absolute") {
+      return `Yesterday this site used ${protoReportKwh(use.day)}. Your limit is ${protoReportKwh(def.amount)}.`;
+    }
+    if (use.average) {
+      const pct = Math.round(((use.day - use.average) / use.average) * 100);
+      return `Yesterday this site used ${protoReportKwh(use.day)}. Its site average is ${protoReportKwh(
+        use.average
+      )}, so that is ${Math.abs(pct)}% ${pct < 0 ? "below" : "above"}.`;
+    }
+  }
+  return item.summary ? `${item.summary}.` : "Use was not what this site usually uses.";
+}
+
+function protoAlertInfoModal() {
+  const item = protoAlertById(store.prototypeAlertInfo);
+  if (!item) return "";
+  const site = protoSiteByMeter(item.meterId);
+  const meter = protoMeter(item.meterId);
+  const word = protoAlertWord(item.kind);
+  const resolved = protoAlertResolved(item);
+  const reason = protoResolveName(protoAlertAckRecords().find((row) => row.id === item.id)?.reason);
+  const def = protoAlertRuleFor(item);
+  const row = (label, html) => `<div><dt>${escapeHtml(label)}</dt><dd>${html}</dd></div>`;
+  const text = (value) => escapeHtml(value || "");
+  return `
+    <div class="astral-modal-back" data-proto-modal="alert-info">
+      <div
+        class="astral-modal astral-alert-info"
+        id="astral-alert-info"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="astral-alert-info-title"
+      >
+        ${protoModalHead(
+          "astral-alert-info-title",
+          site ? `${word} at ${site.name}` : `${word} at ${item.meter}`,
+          item.summary ? escapeHtml(item.summary) : "",
+          "alert-info"
+        )}
+        <div class="astral-modal-body">
+          <dl class="astral-alert-info-grid">
+            ${row("Type", `<span class="astral-alert-kind">${protoIconMark(protoAlertKindMark(item.kind), "astral-type-mark")}<span>${text(word)}</span></span>`)}
+            ${row("Priority", text(item.level))}
+            ${row("Raised", text(item.age ? `${item.age} ago` : ""))}
+            ${row("Status", text(resolved ? (reason ? `Resolved as ${reason}` : "Resolved") : protoAlertStateWord(item)))}
+            ${row("Site", text(site?.name || item.meter))}
+            ${row("Meter", text((meter && protoMeterName(meter)) || meter?.name || ""))}
+            ${item.point ? row("Time", text(`${item.point} UTC`)) : ""}
+          </dl>
+          <dl class="astral-alert-info-why">
+            ${row("What it found", text(protoAlertFound(item, def)))}
+            ${row(
+              "Set off by",
+              def
+                ? `<strong>${text(def.name)}</strong><span class="astral-muted">${text(protoReportSummary(def))}</span>`
+                : `<strong>Astral's own checks</strong><span class="astral-muted">None of your alerts flagged this site.</span>`
+            )}
+          </dl>
+        </div>
+        <div class="astral-modal-foot">
+          <div class="astral-actions">
+            ${protoBtn(resolved ? "View alert" : "Investigate", `data-proto-alert="${escapeHtml(item.id)}"`)}
+            ${protoGhost("Close", 'data-proto-modal-close="alert-info"')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function protoAlertInfoOpen(id) {
+  if (!protoAlertById(id)) return;
+  setProto({ prototypeAlertInfo: id, prototypeAckOpen: "" });
+  protoRestoreFocus("#astral-fs #astral-alert-info .astral-modal-head [data-proto-modal-close]");
+}
+
 function protoAlertById(id) {
   const key = String(id || "").trim();
   if (!key) return null;
@@ -23073,6 +23210,7 @@ function protoGoToAlert(item) {
     prototypeQueryForm: Boolean(!found[0] && protoCanAct()),
     prototypeQuerySite: "",
     prototypeQueryCommentOpen: false,
+    prototypeAlertInfo: "",
     activePrototypeView: "portfolio",
     prototypeFullscreen: true,
     ...protoComparePatch("site", item.meterId),
@@ -23088,7 +23226,7 @@ function protoAlerts() {
   const alerts = protoAlertSorted(
     (protoData()?.alerts || []).filter((item) => protoAlertMatches(item, q, picked, types, resolved))
   );
-  const cards = alerts.map((item) => protoAlertCard(item, item.meter)).join("");
+  const cards = alerts.map((item) => protoAlertCard(item, item.meter, { kind: true })).join("");
   const narrowed = Boolean(q.trim() || protoAlertFilterPicks().length);
   const empty = narrowed
     ? `<div class="astral-empty"><h3>No flags match</h3><p class="astral-muted">Try another word or fewer filters.</p>${protoTextBtn(
@@ -23135,7 +23273,7 @@ function protoReportCard(def) {
     <article class="astral-card astral-report-card${def.on ? "" : " is-off"}" data-proto-report-card="${id}">
       <div class="astral-card-head">
         <h3>${escapeHtml(def.name)}</h3>
-        ${protoTag(type.short, type.blurb, `is-${def.type}`)}
+        ${protoTag(type.short, type.blurb, `is-${def.type}`, type.mark)}
       </div>
       <p>${escapeHtml(protoReportSummary(def))}</p>
       <div class="astral-actions"${canEdit ? ` data-proto-report-toggle="${id}"` : ""}>
@@ -23209,7 +23347,7 @@ const PROTO_REPORT_FILTERS = {
     {
       id: "type",
       name: "Type",
-      items: protoReportTypesFor("alerts").map((item) => ({ id: item.id, name: item.short })),
+      items: protoReportTypesFor("alerts").map((item) => ({ id: item.id, name: item.short, mark: item.mark })),
     },
     {
       id: "status",
@@ -23337,9 +23475,10 @@ function protoReportFilterPills(tab) {
   const pills = picked
     .map((id) => {
       const name = protoReportFilterName(id, tab);
+      const mark = tab === "alerts" ? protoReportType(id)?.mark : "";
       return `
         <span class="astral-filter-pill">
-          ${protoFilterFace(id, name)}
+          ${mark ? protoMarkFace(mark, name) : protoFilterFace(id, name)}
           ${protoClearButton("astral-filter-pill-clear", `data-proto-report-filter="${escapeHtml(id)}"`, `Clear ${name}`)}
         </span>
       `;
@@ -23388,7 +23527,7 @@ function protoReportRow(def, canEdit) {
   return `
     <tr class="${[def.on ? "" : "is-off", canEdit ? "is-link" : ""].filter(Boolean).join(" ")}" data-proto-report-row="${id}">
       <th scope="row">${escapeHtml(def.name)}</th>
-      <td>${protoTag(type.short, type.blurb, `is-${def.type}`)}</td>
+      <td>${protoTag(type.short, type.blurb, `is-${def.type}`, type.mark)}</td>
       <td class="astral-muted">${escapeHtml(protoReportSummary(def))}</td>
       <td><span class="astral-report-wait">${protoReportStatusHtml(def)}</span></td>
       ${
@@ -23441,12 +23580,12 @@ function protoReportTypeIds(tab = protoReportSheetTab()) {
 // Summary cards on the page under the tabs: a count per kind that filters the list below.
 function protoSummaryCards(label, cards) {
   // A card with none is disabled, like an empty option in Filter.
-  const card = ({ attr, n, name, on }) => `
+  const card = ({ attr, n, name, on, mark }) => `
     <button type="button" class="astral-stat astral-summary-stat${on ? " is-on" : ""}" aria-pressed="${on ? "true" : "false"}" ${attr}${
       !n && !on ? ' disabled title="None in this view"' : ""
     }>
       <span class="astral-stat-value">${n}</span>
-      <span>${escapeHtml(name)}</span>
+      ${mark ? `<span class="astral-summary-name">${protoIconMark(mark, "astral-type-mark")}<span>${escapeHtml(name)}</span></span>` : `<span>${escapeHtml(name)}</span>`}
     </button>
   `;
   return `<div class="astral-summary-stats" role="group" aria-label="${escapeHtml(label)}">${cards.map(card).join("")}</div>`;
@@ -23465,7 +23604,7 @@ function protoReportTypeCards(tab, defs) {
   const noun = tab === "alerts" ? "alerts" : "reports";
   return protoSummaryCards(`Show ${noun} by type`, [
     { attr: attr("all"), n: defs.length, name: `All ${noun}`, on: !on.length },
-    ...cards.map((item) => ({ attr: attr(item.id), n: item.n, name: item.name, on: on.includes(item.id) })),
+    ...cards.map((item) => ({ attr: attr(item.id), n: item.n, name: item.name, mark: item.mark, on: on.includes(item.id) })),
   ]);
 }
 
@@ -23517,6 +23656,7 @@ function protoAlertFacetCards() {
       attr: attr(item.id),
       n: all.filter((row) => protoAlertMatchesFacet(row, item.id, resolved)).length,
       name: item.id === "all" ? "Open flags" : item.name,
+      mark: item.mark,
       on: item.id === "all" ? !types.length : types.includes(item.id),
     }))
   );
@@ -30386,6 +30526,16 @@ function onPrototype(event) {
     protoGoToAlert(protoAlertById(alertBtn.dataset.protoAlert));
     return;
   }
+  const alertInfo = event.target.closest("[data-proto-alert-info]");
+  if (alertInfo) {
+    protoAlertInfoOpen(alertInfo.dataset.protoAlertInfo);
+    return;
+  }
+  const alertCard = event.target.closest("[data-proto-alert-card]");
+  if (alertCard && !event.target.closest("button, a, input, .astral-ack")) {
+    protoAlertInfoOpen(alertCard.dataset.protoAlertCard);
+    return;
+  }
   const undoBtn = event.target.closest("[data-proto-alert-undo]");
   if (undoBtn) {
     if (!protoCanAct()) return;
@@ -32580,7 +32730,9 @@ function onPrototypeKey(event) {
     return;
   }
   if (event.key === "Escape" && store?.prototypeFullscreen) {
-    const modalKind = document.querySelector("#astral-fs .astral-modal-back[data-proto-modal^='report-']")?.dataset.protoModal;
+    const modalKind = document.querySelector(
+      "#astral-fs .astral-modal-back[data-proto-modal^='report-'], #astral-fs .astral-modal-back[data-proto-modal='alert-info']"
+    )?.dataset.protoModal;
     if (modalKind && !store.prototypeSelectOpen) {
       protoCloseModal(modalKind);
       return;
