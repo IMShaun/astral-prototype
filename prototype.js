@@ -950,7 +950,7 @@ const PROTO_NAMED_METERS = {
     commodity: "Electricity",
     direction: "Import",
     status: "stale",
-    lastReading: "3 h ago",
+    lastReading: "2 days ago",
     use24h: "0.9 MWh",
     hours: "04.00 to 23.00",
     tou: "Night and day",
@@ -1173,7 +1173,7 @@ const PROTO_WALK_GROUPS = [
     name: "Western",
     sites: [
       { name: "Birmingham", keep: ["nr-bham-in"] },
-      { name: "Reading", kind: "station", status: "stale", lastReading: "3 h ago" },
+      { name: "Reading", kind: "station", status: "stale", lastReading: "1 day ago" },
       { name: "Oxford", kind: "station" },
       { name: "Bristol Temple Meads", kind: "station", meters: ["in", "gas"] },
       { name: "Cardiff Central", kind: "station", meters: ["in", "gas"] },
@@ -1200,7 +1200,7 @@ const PROTO_WALK_GROUPS = [
     sites: [
       { name: "Glasgow Central", kind: "station", meters: ["in", "ex"] },
       { name: "Edinburgh Waverley", kind: "station", meters: ["in", "gas"] },
-      { name: "Motherwell depot", kind: "depot", status: "stale", lastReading: "4 h ago" },
+      { name: "Motherwell depot", kind: "depot", status: "stale", lastReading: "3 days ago" },
       { name: "Inverness", kind: "station" },
       { name: "Aberdeen", kind: "station", meters: ["in", "gas"] },
       { name: "Glasgow Queen Street", kind: "station" },
@@ -3279,6 +3279,13 @@ function protoCalDayCells({ year, month, selectedIso, allowFuture, minIso, pickA
   return `${blanks}${days}`;
 }
 
+// A site with an Odd use alert had a spike yesterday. Threshold alerts check the same day.
+function protoMeterSpikeDay(meter, date) {
+  if (protoDaySeed(date) !== protoDaySeed(protoAddDays(protoToday(), -1))) return false;
+  const site = protoSiteByMeter(meter?.id);
+  return protoSiteAlerts(site).some((item) => item.kind === "Alert");
+}
+
 function protoDailySpanSeries(meter, span) {
   const dayKwh = protoDayKwh(meter);
   const unit = protoMeterUseUnit(meter);
@@ -3289,7 +3296,8 @@ function protoDailySpanSeries(meter, span) {
     const date = new Date(stamp);
     const i = points.length;
     const quality = protoSpanQuality(meter, i, count);
-    const wave = 0.86 + Math.sin((i + protoDaySeed(date) + protoMeterSeed(meter)) / 2.4) * 0.12 + (i % 6) * 0.01;
+    const spike = protoMeterSpikeDay(meter, date) ? 1.85 : 1;
+    const wave = (0.86 + Math.sin((i + protoDaySeed(date) + protoMeterSeed(meter)) / 2.4) * 0.12 + (i % 6) * 0.01) * spike;
     points.push(
       quality === "missing"
         ? { label: protoFormatDay(date), value: null, quality, unit }
@@ -8703,11 +8711,12 @@ const PROTO_REPORT_DATES = {
 // Prototype files stop at this many days so a two-year range still downloads.
 const PROTO_REPORT_FILE_DAYS = 62;
 
-const PROTO_REPORT_SILENCE = [1, 3, 6, 12, 24, 48];
+// Data arrives once a day, the day after, so No data for counts whole days. Stored in hours.
+const PROTO_REPORT_SILENCE = [24, 48, 72, 168, 336];
 
 const PROTO_REPORT_BASIS = [
   { id: "absolute", name: "Absolute amount", note: "A fixed daily use in kWh" },
-  { id: "average", name: "Portfolio average", note: "A percentage of the average site" },
+  { id: "average", name: "Own average", note: "Each site against its last 30 days" },
 ];
 
 const PROTO_REPORT_DELIVERY = [
@@ -9340,7 +9349,7 @@ function protoReportNormalize(raw) {
     })(),
     amount: protoReportNumber(raw.amount, 2000, 0, 10000000),
     percent: protoReportNumber(raw.percent, 25, 0, 1000),
-    hours: PROTO_REPORT_SILENCE.includes(Number(raw.hours)) ? Number(raw.hours) : 3,
+    hours: PROTO_REPORT_SILENCE.find((hours) => hours >= Number(raw.hours)) || 24,
     owner: String(raw.owner || protoProfileEmail()),
     template: "",
     step: PROTO_TEMPLATE_STEPS.some((item) => item.id === raw.step) ? String(raw.step) : "",
@@ -9460,7 +9469,7 @@ function protoReportSeed() {
     {
       id: "seed-alert",
       type: "alert",
-      name: "Use above portfolio average",
+      name: "Sites using more than usual",
       sites: [],
       basis: "average",
       percent: 50,
@@ -9521,22 +9530,45 @@ function protoReportJoin(names) {
 }
 
 // A report's utility pick narrows the meters. Without a report it counts electricity and gas.
-function protoReportSiteDayKwh(site, def) {
+function protoReportAlertMeters(site, def) {
   const ids = def ? protoReportUtilityIds(def.utility, "alert") : null;
-  return (site?.meters || [])
-    .filter(
-      (meter) =>
-        meter.direction !== "Export" &&
-        protoMeterKind(meter) !== "water" &&
-        (!ids || ids.includes(protoMeterKind(meter)))
-    )
-    .reduce((n, meter) => n + protoDayKwh(meter), 0);
+  return (site?.meters || []).filter(
+    (meter) =>
+      meter.direction !== "Export" &&
+      protoMeterKind(meter) !== "water" &&
+      (!ids || ids.includes(protoMeterKind(meter)))
+  );
 }
 
-function protoReportPortfolioAverage(def) {
-  const sites = protoEstateSites();
-  if (!sites.length) return 0;
-  return sites.reduce((n, site) => n + protoReportSiteDayKwh(site, def), 0) / sites.length;
+function protoReportSiteDayKwh(site, def) {
+  return protoReportAlertMeters(site, def).reduce((n, meter) => n + protoDayKwh(meter), 0);
+}
+
+const PROTO_REPORT_AVERAGE_DAYS = 30;
+const protoReportSiteUseCache = new Map();
+
+// Data arrives once a day, the day after. An alert checks yesterday against the site's own 30 days before it.
+// A gap is missing data, not zero use, so a site with a gap yesterday is left out.
+function protoReportSiteUse(site, def) {
+  const meters = protoReportAlertMeters(site, def);
+  const key = `${protoSiteId(site)}|${meters.map((meter) => `${meter.id}:${protoDayKwh(meter)}`).join(",")}`;
+  if (protoReportSiteUseCache.has(key)) return protoReportSiteUseCache.get(key);
+  const day = protoAddDays(protoToday(), -1);
+  const span = { from: protoAddDays(day, -PROTO_REPORT_AVERAGE_DAYS), to: day };
+  let use = meters.length ? { day: 0, average: 0 } : null;
+  for (const meter of meters) {
+    const points = protoDailySpanSeries(meter, span);
+    const last = points.pop();
+    const known = points.filter((point) => point.value != null).map((point) => point.value);
+    if (last?.value == null || !known.length) {
+      use = null;
+      break;
+    }
+    use.day += last.value;
+    use.average += known.reduce((n, value) => n + value, 0) / known.length;
+  }
+  protoReportSiteUseCache.set(key, use);
+  return use;
 }
 
 // Alerts no longer ask about site-level data, so an older alert saved with No checks each site too.
@@ -9544,8 +9576,17 @@ function protoReportAlertTotals(def) {
   return def.type === "alert" && protoReportAsksBySite(def) && def.bySite === false;
 }
 
+function protoReportAlertTotalUse(def) {
+  const uses = protoReportScopeSites(def).map((site) => protoReportSiteUse(site, def));
+  if (!uses.length || uses.some((use) => !use)) return null;
+  return uses.reduce((sum, use) => ({ day: sum.day + use.day, average: sum.average + use.average }), {
+    day: 0,
+    average: 0,
+  });
+}
+
 function protoReportAlertTotal(def) {
-  return protoReportScopeSites(def).reduce((n, site) => n + protoReportSiteDayKwh(site, def), 0);
+  return protoReportAlertTotalUse(def)?.day ?? 0;
 }
 
 function protoReportScopeSites(def) {
@@ -9559,21 +9600,39 @@ function protoReportAlertBelow(def) {
   return def.direction === "below";
 }
 
-function protoReportAlertLimit(def) {
+function protoReportAlertFactor(def) {
   const sign = protoReportAlertBelow(def) ? -1 : 1;
+  return Math.max(0, 1 + (sign * def.percent) / 100);
+}
+
+// One site's limit. Against an average, each site is compared with its own.
+function protoReportSiteLimit(site, def) {
   if (def.basis === "absolute") return def.amount;
-  // A total compares with the average for the same number of sites.
-  const sites = protoReportAlertTotals(def) ? protoReportScopeSites(def).length : 1;
-  return protoReportPortfolioAverage(def) * sites * Math.max(0, 1 + (sign * def.percent) / 100);
+  const use = protoReportSiteUse(site, def);
+  return use ? use.average * protoReportAlertFactor(def) : null;
+}
+
+// A total compares with the sites' own averages added together.
+function protoReportAlertLimit(def) {
+  if (def.basis === "absolute") return def.amount;
+  const use = protoReportAlertTotalUse(def);
+  return use ? use.average * protoReportAlertFactor(def) : null;
+}
+
+function protoReportAlertPast(def, kwh, limit) {
+  if (kwh == null || limit == null) return false;
+  return protoReportAlertBelow(def) ? kwh < limit : kwh > limit;
 }
 
 function protoReportAlertHits(def) {
-  const limit = protoReportAlertLimit(def);
-  const below = protoReportAlertBelow(def);
-  const past = (kwh) => (below ? kwh < limit : kwh > limit);
   const sites = protoReportScopeSites(def);
-  if (protoReportAlertTotals(def)) return sites.length && past(protoReportAlertTotal(def)) ? sites : [];
-  return sites.filter((site) => past(protoReportSiteDayKwh(site, def)));
+  if (protoReportAlertTotals(def)) {
+    const use = protoReportAlertTotalUse(def);
+    return use && protoReportAlertPast(def, use.day, protoReportAlertLimit(def)) ? sites : [];
+  }
+  return sites.filter((site) =>
+    protoReportAlertPast(def, protoReportSiteUse(site, def)?.day, protoReportSiteLimit(site, def))
+  );
 }
 
 function protoMeterSilentHours(meter) {
@@ -9914,11 +9973,15 @@ function protoReportSummary(def) {
     if (def.basis === "absolute") {
       return `When ${scope} ${uses} ${below ? "less" : "more"}${util} than ${protoReportKwh(def.amount)} in a day.`;
     }
-    const n = protoReportScopeSites(def).length;
-    const average = totals ? `the portfolio average for ${n} ${n === 1 ? "site" : "sites"}` : "the portfolio average";
-    return `When ${scope} ${uses} ${def.percent}% ${below ? "less" : "more"}${util} than ${average}, ${protoReportKwh(
-      protoReportAlertLimit(def)
-    )} a day.`;
+    const more = `${def.percent}% ${below ? "less" : "more"}${util}`;
+    const days = `the last ${PROTO_REPORT_AVERAGE_DAYS} days`;
+    if (totals) {
+      const limit = protoReportAlertLimit(def);
+      return `When ${scope} ${uses} ${more} than their own average over ${days}${
+        limit == null ? "" : `, ${protoReportKwh(limit)} a day`
+      }.`;
+    }
+    return `When ${scope} ${uses} ${more} than its own average over ${days}.`;
   }
   const silence = protoReportSilenceName(def.hours);
   const where = protoReportPicksAny(def)
@@ -9933,13 +9996,15 @@ function protoReportSummary(def) {
 function protoReportFlaggedHours(def) {
   let since = [];
   if (def.type === "alert") {
-    const limit = protoReportAlertLimit(def);
-    const hours = (kwh) => 24 * (1 - (protoReportAlertBelow(def) ? kwh / limit : limit / kwh));
+    const below = protoReportAlertBelow(def);
+    const hours = (kwh, limit) => 24 * (1 - (below ? kwh / limit : limit / kwh));
     since = protoReportAlertTotals(def)
       ? protoReportAlertHits(def).length
-        ? [hours(protoReportAlertTotal(def))]
+        ? [hours(protoReportAlertTotal(def), protoReportAlertLimit(def))]
         : []
-      : protoReportAlertHits(def).map((site) => hours(protoReportSiteDayKwh(site, def)));
+      : protoReportAlertHits(def).map((site) =>
+          hours(protoReportSiteUse(site, def).day, protoReportSiteLimit(site, def))
+        );
   } else if (def.type === "missing") {
     since = protoReportMissingHits(def).map(
       (site) => Math.max(...(site.meters || []).map((meter) => protoMeterSilentHours(meter))) - def.hours
@@ -10247,7 +10312,7 @@ function protoReportAutoName(def) {
     const below = protoReportAlertBelow(def);
     return def.basis === "absolute"
       ? `Daily use ${below ? "under" : "over"} ${protoReportKwh(def.amount)}`
-      : `Use ${def.percent}% ${below ? "below" : "above"} average`;
+      : `Use ${def.percent}% ${below ? "below" : "above"} own average`;
   }
   return `No data for ${protoReportSilenceName(def.hours)}`;
 }
@@ -10341,7 +10406,7 @@ function protoReportDraftIssueBase(draft) {
     const value = Number(draft.basis === "absolute" ? draft.amount : draft.percent);
     if (!(value > 0)) return "Enter a threshold above zero.";
     if (draft.basis !== "absolute" && draft.direction === "below" && value >= 100) {
-      return "Below the average must be under 100%.";
+      return "Below own average must be under 100%.";
     }
   }
   if (!protoReportIsFile(draft.type) && !(draft.notify || []).length) return "Pick how to tell people.";
@@ -10399,15 +10464,29 @@ function protoReportDraftPreview(draft) {
   }
   if (def.type === "alert") {
     const hits = protoReportAlertHits(def);
-    const limit = `Limit ${protoReportKwh(protoReportAlertLimit(def))} a day.`;
     const word = protoReportAlertBelow(def) ? "under" : "over";
+    const went = (n) => (n === 1 ? "was" : "were");
     if (protoReportAlertTotals(def)) {
-      return `${limit} Together the sites use ${protoReportKwh(protoReportAlertTotal(def))} a day, ${
-        hits.length ? "" : "not "
-      }${word} it right now.`;
+      const limit = protoReportAlertLimit(def);
+      if (limit == null) return "A site has missing data yesterday, so the total is not checked.";
+      return `Limit ${protoReportKwh(limit)} a day. Together the sites used ${protoReportKwh(
+        protoReportAlertTotal(def)
+      )} yesterday, ${hits.length ? "" : "not "}${word} it.`;
     }
-    if (!hits.length) return `${limit} No site is ${word} it right now.`;
-    return `${limit} ${protoReportJoin(hits.map((site) => site.name))} ${hits.length === 1 ? "is" : "are"} ${word} it right now.`;
+    if (def.basis === "absolute") {
+      const limit = `Limit ${protoReportKwh(def.amount)} a day.`;
+      if (!hits.length) return `${limit} No site was ${word} it yesterday.`;
+      return `${limit} ${protoReportJoin(hits.map((site) => site.name))} ${went(hits.length)} ${word} it yesterday.`;
+    }
+    const more = `${def.percent}% ${protoReportAlertBelow(def) ? "less" : "more"} than`;
+    if (!hits.length) return `No site used ${more} its own average yesterday.`;
+    if (hits.length === 1) {
+      const use = protoReportSiteUse(hits[0], def);
+      return `${hits[0].name} used ${protoReportKwh(use.day)} yesterday. Its own average is ${protoReportKwh(
+        use.average
+      )} a day.`;
+    }
+    return `${protoReportJoin(hits.map((site) => site.name))} used ${more} their own average yesterday.`;
   }
   const hits = protoReportMissingHits(def);
   if (!hits.length) return protoReportPicksAny(def) ? "Every site you picked is sending right now." : "Every site is sending right now.";
@@ -12447,7 +12526,7 @@ function protoReportGroups(draft, opts = {}) {
             ${
               absolute
                 ? protoReportInput(`${protoReportAlertTotals(draft) ? "Total daily use" : "Daily use"} ${below ? "under" : "over"} (kWh)`, "amount", draft.amount, 'inputmode="decimal"')
-                : protoReportInput(`${below ? "Below" : "Above"} the average by (%)`, "percent", draft.percent, 'inputmode="decimal"')
+                : protoReportInput(`${below ? "Below" : "Above"} own average by (%)`, "percent", draft.percent, 'inputmode="decimal"')
             }
           </div>
           <p class="astral-muted">Water is in m³, not kWh, so alerts watch electricity and gas.</p>
@@ -12469,7 +12548,7 @@ function protoReportGroups(draft, opts = {}) {
           id: "report-silence",
           label: "No data for",
           wide: true,
-          value: String(draft.hours || 3),
+          value: String(draft.hours || 24),
           options: PROTO_REPORT_SILENCE.map((hours) => ({
             value: String(hours),
             label: protoReportSilenceName(hours),
