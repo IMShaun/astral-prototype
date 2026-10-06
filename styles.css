@@ -4961,8 +4961,9 @@ button.astral-catch {
   align-content: start;
 }
 
+/* Bigger than the largest gap inside the content (24px between sections), so the heading reads as the top level. */
 .astral-settings-main .astral-pane-head {
-  padding-bottom: calc(var(--space-stack-default) - 6px);
+  padding-bottom: calc(var(--space-32) - 6px);
 }
 
 .astral-settings-nav .astral-tree {
