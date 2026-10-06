@@ -1,0 +1,46 @@
+---
+description: When the user says "learn it", record the lesson from the current change as a reusable do or don't in UX writing or UX patterns.
+alwaysApply: true
+---
+
+# Learn it
+
+"Learn it" is a trigger. It means: take what we just changed or agreed, and record it where future work will find it, so the next screen or flow gets it right without being told.
+
+Treat "learn it" as approval to update documentation. It is not approval to change product code.
+
+## What to capture
+
+The lesson behind the most recent change or correction in this conversation. If it is unclear which one, ask before writing.
+
+Write it as a specific rule, not a story.
+
+- **Do**: the behaviour to repeat, with the token, component, or term.
+- **Don't**: the mistake it replaces.
+- **Why**: one line, the user benefit or the consistency it protects.
+- **Applies to**: where it holds, and any known exception.
+
+Keep the user's scope. A one-off preference stays narrow. Do not widen it into a global rule unless the user says so.
+
+## Where it goes
+
+| The lesson is about | Record it in |
+| --- | --- |
+| A product term or name | `.cursor/skills/ux-writing/references/terminology.md` |
+| Tone, grammar, punctuation, or how a message is built | `.cursor/skills/ux-writing/references/style-guide.md` |
+| A repeatable copy shape (error, empty state, modal, email) | `.cursor/skills/ux-writing/references/templates.md` |
+| Layout, spacing, radius, nesting, interaction, or state | `docs/ux/patterns/` and `docs/ux/pattern-inventory.yml` |
+| A keep-or-change choice someone could question again | A UXDR in `docs/ux/decisions/` |
+
+Product memory for patterns lives in `docs/ux/`, not in `.cursor/skills/ux-patterns/references/`. Desk recipes in `data/design-systems.json` Patterns and Language also count. Update them when the lesson changes one.
+
+## How
+
+1. Search the targets above for an existing rule on the same thing.
+2. If one exists, add or sharpen a Do or Don't line in it. Prefer this over a new file.
+3. If none fits, create a pattern from `.cursor/skills/ux-patterns/references/documentation-templates.md` with maturity `emerging`. Add it to the inventory and the folder README.
+4. If the new lesson contradicts a recorded rule, stop and ask which wins. Do not overwrite silently.
+5. Use evidence from this change, such as the selector, token, file, and commit. Do not invent research or usage.
+6. Follow the UX writing skill for the wording of the rule itself.
+7. Commit the documentation on its own, for example "Learn: settings groups use card radius".
+8. Reply with where it was recorded and the rule in one line.
