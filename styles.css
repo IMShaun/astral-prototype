@@ -10951,8 +10951,9 @@ tr.is-off .astral-person-mark {
   font-size: 0.875rem;
 }
 
+/* 16px above the buttons, so the summary does not read as a caption for them. */
 .astral-export-sum {
-  margin: 0;
+  margin: 0 0 8px;
   color: var(--color-text-secondary);
   font-size: 0.875rem;
 }

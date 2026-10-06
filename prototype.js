@@ -17953,28 +17953,38 @@ function protoExportPlural(n, one, many) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-// "3 meter points · 29 Sep to 6 Oct 2026 · CSV, comma · Actual only". Options left at their default stay out.
+const PROTO_EXPORT_SUM_FORMAT = {
+  csv: "CSV with commas",
+  "csv-semicolon": "CSV with semicolons",
+  "csv-tab": "CSV with tabs",
+  xlsx: "XLSX",
+};
+
+// One sentence, for example "Exports 3 meter points for 29 Sep to 6 Oct 2026 as CSV with commas, actual readings only."
+// A sentence avoids clashing separators, because format names such as "CSV, comma" hold a comma. Defaults stay out.
 function protoExportSummary(state) {
   const { file, what, prefs } = state;
-  const parts = [];
-  if (file === "users") parts.push(protoExportPlural(protoUserPeople().length, "person", "people"));
-  else if (file === "usage") parts.push(protoExportPlural(protoUsagePack().rows.length, "row", "rows"));
+  let text = "Exports ";
+  if (file === "users") text += protoExportPlural(protoUserPeople().length, "person", "people");
+  else if (file === "usage") text += protoExportPlural(protoUsagePack().rows.length, "row", "rows");
   else {
-    parts.push(protoExportPlural(protoExportMeters(file).length, "meter point", "meter points"));
+    text += protoExportPlural(protoExportMeters(file).length, "meter point", "meter points");
     const dates = what === "source" ? protoExportSourceDates(state) : protoExportGraphDates();
     if (dates.from && dates.to && protoDayStamp(dates.from) <= protoDayStamp(dates.to)) {
-      parts.push(protoRangeWords(dates.from, dates.to));
+      text += ` for ${protoRangeWords(dates.from, dates.to)}`;
     }
   }
   if (what === "source") {
-    parts.push(protoExportSourceFormat(prefs.format).name);
-    if (prefs.quality === "actual") parts.push("Actual only");
-    if (prefs.time === "uk") parts.push("UK time");
-    if (prefs.ids) parts.push("Source IDs");
+    text += ` as ${PROTO_EXPORT_SUM_FORMAT[protoExportSourceFormat(prefs.format).id]}`;
+    const extras = [];
+    if (prefs.quality === "actual") extras.push("actual readings only");
+    if (prefs.time === "uk") extras.push("in UK time");
+    if (prefs.ids) extras.push("with source IDs");
+    if (extras.length) text += `, ${extras.join(", ")}`;
   } else {
-    parts.push(what === "pdf" ? "PDF" : what === "image" ? "PNG" : "CSV, comma");
+    text += ` as ${what === "pdf" ? "PDF" : what === "image" ? "PNG" : PROTO_EXPORT_SUM_FORMAT.csv}`;
   }
-  return parts.join(" · ");
+  return `${text}.`;
 }
 
 // Export opens one pop-up that holds every export option.
