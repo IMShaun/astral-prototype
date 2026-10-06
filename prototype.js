@@ -2869,6 +2869,8 @@ function protoUkDateField(node) {
 function protoUkDateStoreKey(field) {
   if (field?.name === "proto-renew-from") return "prototypeRenewFrom";
   if (field?.name === "proto-renew-to") return "prototypeRenewTo";
+  if (field?.name === "proto-export-from") return "prototypeExportFrom";
+  if (field?.name === "proto-export-to") return "prototypeExportTo";
   const reportDate = protoReportDateOf(field?.name);
   if (reportDate) return PROTO_REPORT_DATES[reportDate].key;
   return "";
@@ -8132,6 +8134,12 @@ function protoReportAddEmail(raw) {
 }
 
 function protoPickSelect(id, value) {
+  if (id === "export-format") {
+    store.prototypeSelectOpen = "";
+    protoSetExportPrefs({ format: value });
+    protoRestoreFocus('#astral-fs [data-proto-select="export-format"] .astral-select-btn');
+    return;
+  }
   if (String(id).startsWith("tpl-")) {
     protoTemplatePick(id, value);
     return;
@@ -17828,7 +17836,124 @@ function protoSiteButton(site, on) {
   `;
 }
 
-// Export opens a modal like Add a report: pick the format, then Export.
+// What the Export pop-up can make. Image needs a graph on screen.
+const PROTO_EXPORT_WHAT = [
+  { id: "chart", name: "Chart data", note: "What the graph shows now" },
+  { id: "source", name: "Source data", note: "Raw readings for any dates" },
+  { id: "image", name: "Image", note: "The graph as a PNG" },
+  { id: "pdf", name: "PDF", note: "The graph and breakdown" },
+];
+
+// People and Usage are tables, so they have no source data or image.
+const PROTO_EXPORT_TABLE_WHAT = [
+  { id: "chart", name: "Table data", note: "What the table shows now" },
+  { id: "pdf", name: "PDF", note: "The table, to share or print" },
+];
+
+const PROTO_EXPORT_SOURCE_FORMATS = [
+  { id: "csv", name: "CSV, comma", ext: "csv", sep: "," },
+  { id: "csv-semicolon", name: "CSV, semicolon", ext: "csv", sep: ";" },
+  { id: "csv-tab", name: "CSV, tab", ext: "csv", sep: "\t" },
+  { id: "xlsx", name: "XLSX", ext: "xlsx", note: "For a spreadsheet" },
+];
+
+function protoExportIsTable(fileId) {
+  return fileId === "users" || fileId === "usage";
+}
+
+function protoExportChoices(fileId) {
+  if (protoExportIsTable(fileId)) return PROTO_EXPORT_TABLE_WHAT;
+  return PROTO_EXPORT_WHAT.filter((item) => item.id !== "image" || protoPaneIsGraph());
+}
+
+// The last choice and options, kept for the session so a repeat export is the icon, then Export.
+function protoExportPrefs() {
+  const raw = store.prototypeExportPrefs && typeof store.prototypeExportPrefs === "object" ? store.prototypeExportPrefs : {};
+  return {
+    what: PROTO_EXPORT_WHAT.some((item) => item.id === raw.what) ? raw.what : "chart",
+    format: PROTO_EXPORT_SOURCE_FORMATS.some((item) => item.id === raw.format) ? raw.format : "csv",
+    quality: raw.quality === "actual" ? "actual" : "all",
+    time: raw.time === "uk" ? "uk" : "utc",
+    ids: raw.ids === true,
+  };
+}
+
+function protoExportModalState() {
+  const raw = store.prototypeExportModal;
+  if (!raw || typeof raw !== "object" || !raw.file) return null;
+  const file = String(raw.file);
+  const prefs = protoExportPrefs();
+  const what = protoExportChoices(file).some((item) => item.id === prefs.what) ? prefs.what : "chart";
+  const errors = raw.errors && typeof raw.errors === "object" ? raw.errors : {};
+  return { file, what, prefs, more: raw.more === true, edit: raw.edit === true, errors };
+}
+
+function protoExportSourceFormat(id) {
+  return PROTO_EXPORT_SOURCE_FORMATS.find((item) => item.id === id) || PROTO_EXPORT_SOURCE_FORMATS[0];
+}
+
+// Meter points are always the ones on the graph now.
+function protoExportMeters(fileId) {
+  if (fileId === "all" && store.prototypeScope !== "group") {
+    const site = protoSiteByMeter(store.activePrototypeMeter);
+    return site ? protoSiteViewMeters(site) : [];
+  }
+  return protoIntervalCsvMeters(fileId) || [];
+}
+
+function protoExportGraphDates() {
+  const span = protoDateSpan();
+  return { from: span.from, to: span.to };
+}
+
+// Source data uses the graph's dates until someone selects Change.
+function protoExportSourceDates(state) {
+  if (!state?.edit) return protoExportGraphDates();
+  return { from: protoFromUkDate(store.prototypeExportFrom), to: protoFromUkDate(store.prototypeExportTo) };
+}
+
+function protoExportDateErrors() {
+  const errors = {};
+  const from = protoFromUkDate(store.prototypeExportFrom);
+  const to = protoFromUkDate(store.prototypeExportTo);
+  const today = protoDayStamp(protoToday());
+  if (!from) errors.from = "Enter a date as dd/mm/yyyy.";
+  else if (protoDayStamp(from) > today) errors.from = "Dates can't be in the future.";
+  if (!to) errors.to = "Enter a date as dd/mm/yyyy.";
+  else if (protoDayStamp(to) > today) errors.to = "Dates can't be in the future.";
+  if (!errors.from && !errors.to && protoDayStamp(to) < protoDayStamp(from)) errors.to = "'To' must be after 'From'.";
+  return errors;
+}
+
+function protoExportPlural(n, one, many) {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+// "3 meter points · 29 Sep to 6 Oct 2026 · CSV, comma · Actual only". Options left at their default stay out.
+function protoExportSummary(state) {
+  const { file, what, prefs } = state;
+  const parts = [];
+  if (file === "users") parts.push(protoExportPlural(protoUserPeople().length, "person", "people"));
+  else if (file === "usage") parts.push(protoExportPlural(protoUsagePack().rows.length, "row", "rows"));
+  else {
+    parts.push(protoExportPlural(protoExportMeters(file).length, "meter point", "meter points"));
+    const dates = what === "source" ? protoExportSourceDates(state) : protoExportGraphDates();
+    if (dates.from && dates.to && protoDayStamp(dates.from) <= protoDayStamp(dates.to)) {
+      parts.push(protoRangeWords(dates.from, dates.to));
+    }
+  }
+  if (what === "source") {
+    parts.push(protoExportSourceFormat(prefs.format).name);
+    if (prefs.quality === "actual") parts.push("Actual only");
+    if (prefs.time === "uk") parts.push("UK time");
+    if (prefs.ids) parts.push("Source IDs");
+  } else {
+    parts.push(what === "pdf" ? "PDF" : what === "image" ? "PNG" : "CSV, comma");
+  }
+  return parts.join(" · ");
+}
+
+// Export opens one pop-up that holds every export option.
 function protoExportControl(fileId) {
   if (!protoCanAct()) return "";
   const open = protoExportModalState()?.file === String(fileId || "");
@@ -17844,66 +17969,160 @@ function protoExportControl(fileId) {
   `;
 }
 
-const PROTO_EXPORT_FORMATS = [
-  { id: "csv", name: "CSV", blurb: "The data, to open in a spreadsheet or load into another system." },
-  { id: "pdf", name: "PDF", blurb: "What you see now, laid out to share or print." },
-];
-
-function protoExportTitle(fileId) {
-  if (fileId === "users") return "Export people";
-  if (fileId === "usage") return "Export usage";
-  if (fileId === "compare") return "Export this comparison";
-  return "Export this graph";
+function protoExportRadio(attr, on, label) {
+  return `<button type="button" role="radio" class="astral-meter-src-item" aria-checked="${on ? "true" : "false"}" tabindex="${
+    on ? "0" : "-1"
+  }" ${attr}>${protoRadio(on)}<span>${escapeHtml(label)}</span></button>`;
 }
 
-function protoExportLead(fileId) {
-  const uses = fileId === "users" || fileId === "usage" ? "the search and filters" : "the dates and filters";
-  return `Pick a format. It uses ${uses} on screen now. Find the file on Downloads.`;
+function protoExportRadioSet(key, legend, list, value) {
+  const id = `astral-export-${key}-label`;
+  return `
+    <fieldset class="astral-report-split">
+      <legend id="${id}">${escapeHtml(legend)}</legend>
+      <div class="astral-meter-src" role="radiogroup" aria-labelledby="${id}">
+        ${list
+          .map((item) =>
+            protoExportRadio(`data-proto-export-opt="${escapeHtml(`${key}:${item.id}`)}"`, item.id === value, item.name)
+          )
+          .join("")}
+      </div>
+    </fieldset>
+  `;
 }
 
-function protoExportModalState() {
-  const raw = store.prototypeExportModal;
-  if (!raw || typeof raw !== "object" || !raw.file) return null;
-  return { file: String(raw.file), kind: raw.kind === "pdf" ? "pdf" : "csv" };
+function protoExportDateInput(key, label, value, error) {
+  const errId = `astral-export-${key}-error`;
+  return `
+    <div class="astral-export-date">
+      <label class="astral-field">
+        <span>${escapeHtml(label)}</span>
+        <input
+          class="astral-date-input"
+          type="text"
+          name="proto-export-${key}"
+          value="${escapeHtml(value)}"
+          inputmode="numeric"
+          autocomplete="off"
+          spellcheck="false"
+          maxlength="10"
+          placeholder="dd/mm/yyyy"
+          ${error ? `aria-invalid="true" aria-describedby="${errId}"` : ""}
+        />
+      </label>
+      ${error ? `<p class="astral-export-error" id="${errId}" role="alert">${escapeHtml(error)}</p>` : ""}
+    </div>
+  `;
+}
+
+function protoExportDatesHtml(state) {
+  if (protoExportIsTable(state.file)) return "";
+  if (state.what === "source" && state.edit) {
+    return `
+      <fieldset class="astral-report-split">
+        <legend>Dates</legend>
+        <div class="astral-renew-dates">
+          ${protoExportDateInput("from", "From", store.prototypeExportFrom || "", state.errors.from)}
+          ${protoExportDateInput("to", "To", store.prototypeExportTo || "", state.errors.to)}
+        </div>
+        <div>${protoTextBtn("Use the graph's dates", 'data-proto-export-dates="graph"')}</div>
+      </fieldset>
+    `;
+  }
+  const { from, to } = protoExportGraphDates();
+  const change = state.what === "source" ? protoTextBtn("Change", 'data-proto-export-dates="change" aria-label="Change dates"') : "";
+  return `<div><dt>Dates</dt><dd>${escapeHtml(protoRangeWords(from, to))}${change}</dd></div>`;
+}
+
+function protoExportFieldsHtml(state) {
+  const { what, prefs } = state;
+  const dates = protoExportDatesHtml(state);
+  const editing = what === "source" && state.edit;
+  const fixed = what === "pdf" ? "PDF" : what === "image" ? "PNG" : "CSV, comma";
+  const facts = [editing ? "" : dates, what === "source" ? "" : `<div><dt>Format</dt><dd>${escapeHtml(fixed)}</dd></div>`]
+    .filter(Boolean)
+    .join("");
+  const list = facts ? `<dl class="astral-export-facts">${facts}</dl>` : "";
+  if (what !== "source") return list;
+  return `
+    ${list}
+    ${editing ? dates : ""}
+    ${protoReportOptionSelect("export-format", "Format", PROTO_EXPORT_SOURCE_FORMATS, prefs.format)}
+    ${protoAccordion({
+      id: "astral-export-more",
+      open: state.more,
+      name: "More options",
+      attr: "data-proto-export-more",
+      modifier: "astral-export-more",
+      inner: `
+        ${protoExportRadioSet("quality", "Data quality", PROTO_REPORT_QUALITY, prefs.quality)}
+        ${protoExportRadioSet("time", "Time zone", PROTO_REPORT_TIME, prefs.time)}
+        <button
+          type="button"
+          role="checkbox"
+          class="astral-report-consent"
+          aria-checked="${prefs.ids ? "true" : "false"}"
+          data-proto-export-ids
+        >
+          ${protoCheck(prefs.ids)}
+          <span class="astral-report-consent-copy">
+            <span>Include source IDs</span>
+            <span class="astral-muted">Adds the meter point ID and the cumulative data stream, where there is one.</span>
+          </span>
+        </button>
+      `,
+    })}
+  `;
 }
 
 function protoExportModal() {
   const state = protoExportModalState();
   if (!state || !protoCanAct()) return "";
+  const choices = protoExportChoices(state.file);
   return `
     <div class="astral-modal-back" data-proto-modal="export">
       <div
-        class="astral-modal astral-report-pick astral-export-pick"
+        class="astral-modal astral-report-pick astral-export-pick has-menus"
         id="astral-export-pick"
         role="dialog"
         aria-modal="true"
         aria-labelledby="astral-export-pick-title"
       >
-        ${protoModalHead("astral-export-pick-title", protoExportTitle(state.file), escapeHtml(protoExportLead(state.file)), "export")}
+        ${protoModalHead("astral-export-pick-title", "Export", "", "export")}
         <div class="astral-modal-body">
-          <div class="astral-report-type-field">
-            <span class="sr-only" id="astral-export-format-label">Format</span>
-            <div class="astral-report-types" role="radiogroup" aria-labelledby="astral-export-format-label">
-              ${PROTO_EXPORT_FORMATS.map((item) => {
-                const on = state.kind === item.id;
-                return `
-                  <button
-                    type="button"
-                    role="radio"
-                    class="astral-report-type${on ? " is-on" : ""}"
-                    aria-checked="${on ? "true" : "false"}"
-                    tabindex="${on ? "0" : "-1"}"
-                    data-proto-export-kind="${escapeHtml(item.id)}"
-                  >
-                    <span class="astral-report-type-head">${protoRadio(on)}<span>${escapeHtml(item.name)}</span></span>
-                    <span class="astral-muted">${escapeHtml(item.blurb)}</span>
-                  </button>
-                `;
-              }).join("")}
+          <fieldset class="astral-report-split">
+            <legend id="astral-export-what-label">What do you want to export?</legend>
+            <div
+              class="astral-report-types is-pair"
+              role="radiogroup"
+              aria-labelledby="astral-export-what-label"
+              ${state.errors.what ? 'aria-describedby="astral-export-what-error"' : ""}
+            >
+              ${choices
+                .map((item) => {
+                  const on = state.what === item.id;
+                  return `
+                    <button
+                      type="button"
+                      role="radio"
+                      class="astral-report-type${on ? " is-on" : ""}"
+                      aria-checked="${on ? "true" : "false"}"
+                      tabindex="${on ? "0" : "-1"}"
+                      data-proto-export-kind="${escapeHtml(item.id)}"
+                    >
+                      <span class="astral-report-type-head">${protoRadio(on)}<span>${escapeHtml(item.name)}</span></span>
+                      <span class="astral-muted">${escapeHtml(item.note)}</span>
+                    </button>
+                  `;
+                })
+                .join("")}
             </div>
-          </div>
+            ${state.errors.what ? `<p class="astral-export-error" id="astral-export-what-error" role="alert">${escapeHtml(state.errors.what)}</p>` : ""}
+          </fieldset>
+          ${protoExportFieldsHtml(state)}
         </div>
         <div class="astral-modal-foot">
+          <p class="astral-export-sum" aria-live="polite">${escapeHtml(protoExportSummary(state))}</p>
           <div class="astral-actions">
             ${protoBtn("Export", 'data-proto-export="go"')}
             ${protoGhost("Cancel", 'data-proto-modal-close="export"')}
@@ -17912,6 +18131,74 @@ function protoExportModal() {
       </div>
     </div>
   `;
+}
+
+function protoSetExportPrefs(patch) {
+  setProto({ prototypeExportPrefs: { ...protoExportPrefs(), ...patch } });
+}
+
+function protoOpenExport(fileId) {
+  const graph = protoExportGraphDates();
+  setProto({
+    prototypeExportModal: { file: String(fileId || "") },
+    prototypeExportFrom: protoFormatUkDate(graph.from),
+    prototypeExportTo: protoFormatUkDate(graph.to),
+    prototypeExportOpen: false,
+    prototypeDateOpen: false,
+    prototypeTreeFilterOpen: false,
+    prototypePaneFilterOpen: false,
+    prototypeUserRoleFilterOpen: false,
+    prototypeSelectOpen: "",
+    prototypeAckOpen: "",
+  });
+  protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
+}
+
+// Validates Source data dates, queues the file, closes the pop-up and sends focus back to the Export icon.
+async function protoExportGo() {
+  const state = protoExportModalState();
+  if (!state) return;
+  const { file, what, prefs } = state;
+  if (what === "source" && state.edit) {
+    const errors = protoExportDateErrors();
+    if (Object.keys(errors).length) {
+      setProto({ prototypeExportModal: { ...store.prototypeExportModal, errors } });
+      protoRestoreFocus(`#astral-fs input[name="proto-export-${errors.from ? "from" : "to"}"]`);
+      return;
+    }
+  }
+  const back = `#astral-fs [data-proto-export="toggle"][data-proto-file="${CSS.escape(file)}"]`;
+  if (what === "pdf" || what === "chart") {
+    protoQueueExport(what === "pdf" ? "pdf" : "csv", file);
+  } else if (what === "image") {
+    const shot = await protoChartImageShot();
+    if (!shot) {
+      setProto({ prototypeExportModal: { ...store.prototypeExportModal, errors: { what: "The graph is still loading. Try again when it shows." } } });
+      protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
+      return;
+    }
+    const id = protoNewDownloadId();
+    protoExportImageKeep(id, shot);
+    protoQueueExport("png", file, { id, spec: { what: "image" } });
+  } else {
+    const { from, to } = protoExportSourceDates(state);
+    const format = protoExportSourceFormat(prefs.format);
+    const name = `${protoExportSourceName(file)} source data ${protoIso(from)} to ${protoIso(to)}`;
+    protoQueueExport(format.ext === "xlsx" ? "xlsx" : "csv", file, {
+      name,
+      spec: {
+        what: "source",
+        from: protoIso(from),
+        to: protoIso(to),
+        format: format.id,
+        quality: prefs.quality,
+        time: prefs.time,
+        ids: prefs.ids,
+        meters: protoExportMeters(file).map((meter) => meter.id),
+      },
+    });
+  }
+  protoRestoreFocus(back);
 }
 
 function protoKnownPane(raw) {
@@ -19143,16 +19430,73 @@ function protoProfilePane(sites) {
   `;
 }
 
+// A function, not a const, because app.js reads Downloads before this file has finished loading.
+function protoExportKinds() {
+  return ["pdf", "csv", "xlsx", "png"];
+}
+
+// Only the small recipe is stored. An image lives in memory and in sessionStorage.
+function protoExportSpecFrom(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  if (raw.what === "image") return { what: "image" };
+  if (raw.what !== "source") return null;
+  const iso = (value) => (/^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) ? String(value) : "");
+  const from = iso(raw.from);
+  const to = iso(raw.to);
+  if (!from || !to) return null;
+  return {
+    what: "source",
+    from,
+    to,
+    format: ["csv", "csv-semicolon", "csv-tab", "xlsx"].includes(raw.format) ? raw.format : "csv",
+    quality: raw.quality === "actual" ? "actual" : "all",
+    time: raw.time === "uk" ? "uk" : "utc",
+    ids: raw.ids === true,
+    meters: (Array.isArray(raw.meters) ? raw.meters : []).map(String).slice(0, 200),
+  };
+}
+
+function protoExportImageStore() {
+  if (!window.protoExportImageMap) window.protoExportImageMap = new Map();
+  return window.protoExportImageMap;
+}
+
+function protoExportImageKey(id) {
+  return `astral-export-image:${id}`;
+}
+
+function protoExportImageKeep(id, url) {
+  protoExportImageStore().set(id, url);
+  try {
+    window.sessionStorage.setItem(protoExportImageKey(id), url);
+  } catch {
+    // Too big for sessionStorage. It stays in memory until reload.
+  }
+}
+
+function protoExportImageGet(id) {
+  const kept = protoExportImageStore().get(id);
+  if (kept) return kept;
+  try {
+    return window.sessionStorage.getItem(protoExportImageKey(id)) || "";
+  } catch {
+    return "";
+  }
+}
+
 function protoDownloadsFrom(raw) {
   if (!Array.isArray(raw)) return [];
   return raw
     .map((item) => {
       if (!item || typeof item !== "object") return null;
       const raw = item.kind === "xls" ? "xlsx" : item.kind;
-      const kind = ["pdf", "csv", "xlsx"].includes(raw) ? raw : "";
+      const kind = protoExportKinds().includes(raw) ? raw : "";
       const id = String(item.id || "");
       const fileId = String(item.fileId || "");
       if (!kind || !id || !fileId) return null;
+      // An image from an earlier session has gone, so its row goes too.
+      if (kind === "png" && !protoExportImageGet(id)) return null;
+      const spec = protoExportSpecFrom(item.spec);
       const waitMs = Number(item.waitMs) || 0;
       const type =
         item.type === "document" || String(id).startsWith("doc-")
@@ -19169,6 +19513,7 @@ function protoDownloadsFrom(raw) {
         category: PROTO_DOWNLOAD_CATEGORY_IDS.includes(item.category) ? item.category : "",
         added: Number(item.added) || 0,
         waitMs: waitMs > 0 ? waitMs : 0,
+        ...(spec ? { spec } : {}),
       };
     })
     .filter(Boolean)
@@ -19295,6 +19640,7 @@ const PROTO_DOWNLOAD_FILTERS = [
       { id: "csv", name: "CSV" },
       { id: "xlsx", name: "XLSX" },
       { id: "pdf", name: "PDF" },
+      { id: "png", name: "PNG" },
     ],
   },
   {
@@ -19499,7 +19845,7 @@ function protoDownloadFilterPills() {
 
 function protoExportNoticeFrom(raw, downloads) {
   if (!raw || typeof raw !== "object") return null;
-  const kind = raw.kind === "pdf" ? "pdf" : raw.kind === "csv" ? "csv" : "";
+  const kind = protoExportKinds().includes(raw.kind) ? raw.kind : "";
   const id = String(raw.id || "");
   if (!kind || !id) return null;
   const rows = Array.isArray(downloads) ? downloads : [];
@@ -19551,16 +19897,30 @@ function protoExportPlaceName(fileId) {
   return pack?.title || "Interval";
 }
 
-function protoQueueExport(kind, fileId) {
-  const nextKind = kind === "pdf" ? "pdf" : "csv";
-  const id = `dl-${Date.now()}-${protoDownloads().length}`;
+function protoNewDownloadId() {
+  return `dl-${Date.now()}-${protoDownloads().length}`;
+}
+
+// The site, group or comparison names, for a Source data file.
+function protoExportSourceName(fileId) {
+  if (fileId === "compare") return protoIntervalPack("compare")?.title || "Comparison";
+  if (fileId === "group:all") return "All sites";
+  return protoExportPlaceName(fileId);
+}
+
+// opts.spec says how to make a Source data or Image file when it is taken from Downloads.
+function protoQueueExport(kind, fileId, opts = {}) {
+  const nextKind = protoExportKinds().includes(kind) ? kind : "csv";
+  const id = opts.id || protoNewDownloadId();
+  const spec = protoExportSpecFrom(opts.spec);
   const item = {
     id,
     kind: nextKind,
     type: "export",
     fileId: String(fileId || ""),
-    name: protoExportPlaceName(fileId),
+    name: String(opts.name || protoExportPlaceName(fileId)),
     added: Date.now(),
+    ...(spec ? { spec } : {}),
   };
   setProto({
     prototypeExportOpen: false,
@@ -19593,7 +19953,7 @@ function protoExportNotice() {
     return "";
   }
   protoArmExportNoticeTimer(notice);
-  const kind = notice.kind === "pdf" ? "PDF" : "CSV";
+  const kind = notice.kind.toUpperCase();
   return protoBanner(
     `Your ${kind} is processing.`,
     `${protoGhost("View downloads", 'data-proto-downloads="open"')}${protoIconBtn(
@@ -19654,7 +20014,9 @@ function protoFlushDownloadTake() {
   const item = protoDownloads().find((row) => row.id === id);
   if (!item || !protoDownloadReady(item)) return;
   protoDownloadTakeId = "";
-  if (item.kind === "pdf") protoPdf(item.fileId);
+  if (item.spec?.what === "source") protoSourceData(item);
+  else if (item.kind === "png") protoChartImageSave(item);
+  else if (item.kind === "pdf") protoPdf(item.fileId);
   else if (item.kind === "xlsx") protoXlsx(item.fileId);
   else protoCsv(item.fileId);
 }
@@ -28498,6 +28860,211 @@ function protoPdf(id) {
   protoPdfDownload(pack);
 }
 
+// Source data is long: a row per meter point per reading. kWh and m³ share a file because Unit tells them apart.
+function protoSourceRows(fileId, spec) {
+  const listed = (spec.meters || []).map((id) => protoMeter(id)).filter(Boolean);
+  const meters = (listed.length ? listed : protoExportMeters(fileId)).slice().sort(
+    (a, b) => String(a.site || "").localeCompare(String(b.site || "")) || String(a.name || "").localeCompare(String(b.name || ""))
+  );
+  const from = protoFromIso(spec.from);
+  const to = protoFromIso(spec.to);
+  const days = [];
+  for (let day = from; day && to && day <= to && days.length < 800; day = protoAddDays(day, 1)) days.push(day);
+  days.splice(0, Math.max(0, days.length - PROTO_REPORT_FILE_DAYS));
+  const headers = ["Meter point", "Site", "Date", "Time", "Value", "Unit", "Quality"];
+  if (spec.ids) headers.push("Source ID", "Stream");
+  const rows = [];
+  meters.forEach((meter) => {
+    const source = meter.mpan || meter.mprn || meter.serial || "";
+    // Gas and water read from a register that counts up, so they have a cumulative stream.
+    const stream = source && protoMeterKind(meter) !== "electricity" ? `${source}-CUM` : "";
+    days.forEach((day) => {
+      protoSeries(meter, "day", day).forEach((point) => {
+        const reading =
+          point.value == null || point.quality === "missing" ? "missing" : point.quality === "estimated" ? "estimated" : "actual";
+        if (!protoReportQualityOk(spec.quality, reading)) return;
+        const clock = protoReportClock(day, point.label, spec.time);
+        const row = [
+          meter.name || "",
+          meter.site || "",
+          clock.date,
+          clock.time,
+          reading === "missing" ? "" : point.value,
+          point.unit || protoMeterUseUnit(meter),
+          reading === "missing" ? "Missing" : reading === "estimated" ? "Estimated" : "Actual",
+        ];
+        rows.push(spec.ids ? [...row, source, stream] : row);
+      });
+    });
+  });
+  if (!rows.length) rows.push([spec.quality === "actual" ? "No actual readings in these dates." : "No readings in these dates."]);
+  return [headers, ...rows];
+}
+
+function protoSourceData(item) {
+  const spec = item.spec;
+  const format = protoExportSourceFormat(spec.format);
+  const rows = protoSourceRows(item.fileId, spec);
+  const name = `${item.name}.${format.ext}`;
+  if (format.ext === "xlsx") {
+    protoFileDownload(
+      protoXlsxBytes(rows, "Source data"),
+      name,
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    return;
+  }
+  const q = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+  // The byte order mark lets a spreadsheet read m³.
+  protoFileDownload(`\uFEFF${rows.map((row) => row.map(q).join(format.sep)).join("\n")}`, name, "text/csv");
+}
+
+const PROTO_SVG_STYLE = [
+  "fill",
+  "fill-opacity",
+  "stroke",
+  "stroke-width",
+  "stroke-opacity",
+  "stroke-dasharray",
+  "stroke-linecap",
+  "stroke-linejoin",
+  "opacity",
+  "font-family",
+  "font-size",
+  "font-weight",
+  "text-anchor",
+  "dominant-baseline",
+  "visibility",
+  "display",
+];
+
+// The stylesheet does not travel with an SVG, so each part carries its own colours.
+function protoSvgStandalone(svg) {
+  const copy = svg.cloneNode(true);
+  const from = [svg, ...svg.querySelectorAll("*")];
+  const into = [copy, ...copy.querySelectorAll("*")];
+  from.forEach((el, i) => {
+    const css = window.getComputedStyle(el);
+    into[i].setAttribute("style", PROTO_SVG_STYLE.map((key) => `${key}:${css.getPropertyValue(key)}`).join(";"));
+  });
+  const box = svg.getBoundingClientRect();
+  copy.setAttribute("width", String(box.width));
+  copy.setAttribute("height", String(box.height));
+  copy.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  return { text: new XMLSerializer().serializeToString(copy), width: box.width, height: box.height };
+}
+
+function protoSvgImage(text) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(text)}`;
+  });
+}
+
+// The graph on screen as a PNG: its title, dates, key and lines or bars, on white.
+async function protoChartImageShot() {
+  const wraps = [...document.querySelectorAll("#astral-fs .astral-chart-wrap")].filter(
+    (wrap) =>
+      wrap.querySelector("svg.astral-chart") && !wrap.classList.contains("is-loading") && wrap.getBoundingClientRect().width > 0
+  );
+  if (!wraps.length) return "";
+  const pad = 24;
+  const scale = 2;
+  const parts = [];
+  for (const wrap of wraps) {
+    const title = wrap.querySelector(".astral-chart-title")?.textContent.trim() || "";
+    const when = wrap.querySelector(".astral-chart-when")?.textContent.trim() || "";
+    const keys = [...wrap.querySelectorAll(".astral-chart-key [role='listitem'], .astral-chart-key > *")]
+      .map((el) => {
+        const mark = el.querySelector(".astral-chart-key-mark");
+        const color = mark ? window.getComputedStyle(mark).backgroundColor : el.style.getPropertyValue("--slice");
+        return { text: el.textContent.replace(/\s+/g, " ").trim(), color: color.trim() };
+      })
+      .filter((key) => key.text);
+    const svgs = [];
+    for (const svg of wrap.querySelectorAll("svg.astral-chart")) {
+      // A graph still drawing in would be caught half done.
+      svg.getAnimations({ subtree: true }).forEach((anim) => {
+        try {
+          anim.finish();
+        } catch {
+          // A looping animation has no end.
+        }
+      });
+      const out = protoSvgStandalone(svg);
+      const img = await protoSvgImage(out.text);
+      if (img) svgs.push({ img, width: out.width, height: out.height });
+    }
+    if (svgs.length) parts.push({ title, when, keys, svgs });
+  }
+  if (!parts.length) return "";
+  const font = window.getComputedStyle(document.querySelector("#astral-fs") || document.body).fontFamily;
+  const width = Math.max(...parts.flatMap((part) => part.svgs.map((item) => item.width))) + pad * 2;
+  const blockHeight = (part) =>
+    (part.title ? 24 : 0) + (part.when ? 20 : 0) + (part.keys.length ? 28 : 0) + 8 + part.svgs.reduce((n, item) => n + item.height + 8, 0);
+  const height = pad * 2 + parts.reduce((n, part) => n + blockHeight(part) + 16, 0);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(width * scale);
+  canvas.height = Math.round(height * scale);
+  const ctx = canvas.getContext("2d");
+  ctx.scale(scale, scale);
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, width, height);
+  ctx.textBaseline = "top";
+  let y = pad;
+  parts.forEach((part) => {
+    if (part.title) {
+      ctx.fillStyle = "#000";
+      ctx.font = `600 16px ${font}`;
+      ctx.fillText(part.title, pad, y);
+      y += 24;
+    }
+    if (part.when) {
+      ctx.fillStyle = "#525252";
+      ctx.font = `400 13px ${font}`;
+      ctx.fillText(part.when, pad, y);
+      y += 20;
+    }
+    if (part.keys.length) {
+      let x = pad;
+      ctx.font = `400 13px ${font}`;
+      part.keys.forEach((key) => {
+        if (key.color) {
+          ctx.fillStyle = key.color;
+          ctx.fillRect(x, y + 6, 12, 12);
+          x += 18;
+        }
+        ctx.fillStyle = "#000";
+        ctx.fillText(key.text, x, y + 4);
+        x += ctx.measureText(key.text).width + 20;
+      });
+      y += 28;
+    }
+    y += 8;
+    part.svgs.forEach((item) => {
+      ctx.drawImage(item.img, pad, y, item.width, item.height);
+      y += item.height + 8;
+    });
+    y += 16;
+  });
+  try {
+    return canvas.toDataURL("image/png");
+  } catch {
+    return "";
+  }
+}
+
+function protoChartImageSave(item) {
+  const url = protoExportImageGet(item.id);
+  if (!url) return;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${protoFileSlug(item.name)}-graph.png`;
+  a.click();
+}
+
 function hideProtoTips() {
   protoClearIconTipPlace();
   document.querySelectorAll(".astral-chart-wrap > .astral-tip").forEach((tip) => {
@@ -31471,10 +32038,54 @@ function onPrototype(event) {
   }
   const exportKind = event.target.closest("[data-proto-export-kind]");
   if (exportKind) {
-    const state = protoExportModalState();
-    if (!state) return;
-    setProto({ prototypeExportModal: { ...state, kind: exportKind.dataset.protoExportKind } });
+    const raw = store.prototypeExportModal;
+    if (!protoExportModalState()) return;
+    store.prototypeExportModal = { ...raw, errors: {} };
+    protoSetExportPrefs({ what: exportKind.dataset.protoExportKind });
     protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
+    return;
+  }
+  const exportOpt = event.target.closest("[data-proto-export-opt]");
+  if (exportOpt) {
+    const [key, value] = exportOpt.dataset.protoExportOpt.split(":");
+    if (key !== "quality" && key !== "time") return;
+    protoSetExportPrefs({ [key]: value });
+    protoRestoreFocus(`#astral-fs [data-proto-export-opt^="${key}:"][aria-checked="true"]`);
+    return;
+  }
+  const exportIds = event.target.closest("[data-proto-export-ids]");
+  if (exportIds) {
+    protoSetExportPrefs({ ids: !protoExportPrefs().ids });
+    protoRestoreFocus("#astral-fs [data-proto-export-ids]");
+    return;
+  }
+  const exportMore = event.target.closest("[data-proto-export-more]");
+  if (exportMore) {
+    const raw = store.prototypeExportModal;
+    if (!raw) return;
+    const open = raw.more !== true;
+    // Opening in place keeps the slide, as a render would jump.
+    store.prototypeExportModal = { ...raw, more: open };
+    exportMore.setAttribute("aria-expanded", open ? "true" : "false");
+    protoSyncFoldClip(exportMore.closest(".astral-accordion"), open);
+    return;
+  }
+  const exportDates = event.target.closest("[data-proto-export-dates]");
+  if (exportDates) {
+    const raw = store.prototypeExportModal;
+    if (!raw) return;
+    if (exportDates.dataset.protoExportDates === "change") {
+      setProto({ prototypeExportModal: { ...raw, edit: true, errors: {} } });
+      protoRestoreFocus('#astral-fs input[name="proto-export-from"]');
+      return;
+    }
+    const graph = protoExportGraphDates();
+    setProto({
+      prototypeExportModal: { ...raw, edit: false, errors: {} },
+      prototypeExportFrom: protoFormatUkDate(graph.from),
+      prototypeExportTo: protoFormatUkDate(graph.to),
+    });
+    protoRestoreFocus('#astral-fs [data-proto-export-dates="change"]');
     return;
   }
   const exportBtn = event.target.closest("[data-proto-export]");
@@ -31482,23 +32093,11 @@ function onPrototype(event) {
     if (!protoCanAct()) return;
     const act = exportBtn.dataset.protoExport;
     if (act === "toggle") {
-      setProto({
-        prototypeExportModal: { file: String(exportBtn.dataset.protoFile || ""), kind: "csv" },
-        prototypeExportOpen: false,
-        prototypeDateOpen: false,
-        prototypeTreeFilterOpen: false,
-        prototypePaneFilterOpen: false,
-        prototypeUserRoleFilterOpen: false,
-        prototypeSelectOpen: "",
-        prototypeAckOpen: "",
-      });
-      protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
+      protoOpenExport(exportBtn.dataset.protoFile);
       return;
     }
     if (act === "go") {
-      const state = protoExportModalState();
-      if (state) protoQueueExport(state.kind, state.file);
-      protoRestoreFocus("#astral-fs .astral-banner [data-proto-downloads='open']");
+      protoExportGo();
       return;
     }
     const fileId = exportBtn.dataset.protoFile;
@@ -32830,7 +33429,7 @@ function onPrototypeKey(event) {
     return;
   }
   const typeRadio = event.target.closest(
-    ".astral-report-types [role='radio'], .astral-chart-style-switch [role='radio'], [role='radio'][data-proto-report-tenant-pays], [role='radio'][data-proto-report-tax-incl]"
+    ".astral-report-types [role='radio'], .astral-chart-style-switch [role='radio'], [role='radio'][data-proto-report-tenant-pays], [role='radio'][data-proto-report-tax-incl], [role='radio'][data-proto-export-opt]"
   );
   if (typeRadio && ["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) {
     event.preventDefault();

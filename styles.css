@@ -10874,6 +10874,53 @@ tr.is-off .astral-person-mark {
   font-weight: 500;
 }
 
+/* Export pop-up: the fixed dates and format, date errors and the summary above the buttons. */
+.astral-export-facts {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.astral-export-facts > div {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  gap: 16px;
+  align-items: baseline;
+}
+
+.astral-export-facts dt {
+  font-weight: 500;
+}
+
+.astral-export-facts dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+}
+
+.astral-export-date {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+
+.astral-export-date .astral-date-input[aria-invalid="true"] {
+  border-color: var(--color-text-danger);
+}
+
+.astral-export-error {
+  margin: 0;
+  color: var(--color-text-danger);
+  font-size: 0.875rem;
+}
+
+.astral-export-sum {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
 .astral-report-charges {
   display: grid;
   gap: 8px;
