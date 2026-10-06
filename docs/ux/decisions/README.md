@@ -9,3 +9,4 @@ Templates live in `.cursor/skills/ux-patterns/references/documentation-templates
 - [2026-09-18 Library check](2026-09-18-library-check.md)
 - [2026-10-03 Card line](2026-10-03-card-line.md)
 - [2026-10-06 Mixed groups neutral](2026-10-06-mixed-groups-neutral.md)
+- [2026-10-06 Viewport targets](2026-10-06-viewport-targets.md) (proposed)

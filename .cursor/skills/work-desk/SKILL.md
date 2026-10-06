@@ -126,7 +126,7 @@ When a talk names a reusable recipe for the new product, fold it into `patterns.
 
 When reviewing reusable interaction recipes, unexplained divergence, or whether to reuse, improve, adopt, or invent a flow, follow `.cursor/skills/ux-patterns/` (`/ux-patterns`). That skill is read-only until Yes. Product pattern memory lives in `docs/ux/`. Do not invent inventory entries. Desk `patterns.items` stay the named recipes from talks.
 
-Skills for this desk live in `data/skills.json` and show on the Skills page. Fold a new skill into that file when we write one. Do not invent how a skill works. Open a card for when to use it and how it runs. Work Desk loads Shaun writing, UX writing, UX Patterns, UX Research, and Figma. `uses` names sibling skills. `library` names Astral pieces on that page.
+Skills for this desk live in `data/skills.json` and show on the Skills page. Fold a new skill into that file when we write one. Do not invent how a skill works. Open a card for when to use it and how it runs. Work Desk loads Shaun writing, UX writing, UX Patterns, UX Research, Figma, and Responsive design. Responsive design checks a screen at 1440 × 800, 1280 × 640, 1024 × 600, 1920 × 900, and 320 wide. The targets are provisional until we measure real viewports. `uses` names sibling skills. `library` names Astral pieces on that page.
 
 Resources live in `data/resources.json` and show on the Resources page: laws, principles, frameworks, and topics for UX and UI work. Each item has a theme, a one-line summary, three takeaways, origins, a source, an IMSERV review question (`ask`), further reading, and three `related` ids. Write every line in our own words; link the original under further reading. Add a short `card` line when the summary runs over 120 characters.
 
