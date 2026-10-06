@@ -121,3 +121,31 @@ patterns:
     health: healthy
     last_reviewed: "2026-10-06"
     decision_refs: []
+  - id: foundation.heading-spacing
+    name: Heading spacing
+    level: foundation
+    user_goal: See which heading owns which content and which heading is the top level
+    objects: [pane, card, section, heading]
+    actions: [scan]
+    used_in: [Settings]
+    entry_points:
+      - Any heading over content with its own internal gaps
+    structure: Gap under a heading is one step bigger than the largest gap inside its content
+    components: [astral-pane-head, astral-setting-head]
+    states: [default]
+    permissions: all
+    content_terms: []
+    variants: []
+    exceptions:
+      - Desk folds sit flush
+      - Heads with a toolbar or tabs measure from the last item in the head
+    accessibility: Spacing supports, but does not replace, real heading levels.
+    implementation_refs:
+      - styles.css .astral-settings-main .astral-pane-head
+      - styles.css .astral-setting-group
+    evidence:
+      - User correction on 2026-10-06. Settings pane heading went from 16px to 32px above 24px-spaced sections.
+    maturity: emerging
+    health: needs-evidence
+    last_reviewed: "2026-10-06"
+    decision_refs: []
