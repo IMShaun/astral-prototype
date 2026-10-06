@@ -12547,6 +12547,21 @@ tr.is-off .astral-person-mark {
 .astral-type-badge[data-mark="threshold"], .astral-tag[data-mark="threshold"] { --mark-bg: #fef0c7; --mark-ink: #93370d; }
 .astral-type-badge[data-mark="missing-data"], .astral-tag[data-mark="missing-data"] { --mark-bg: #e0eaff; --mark-ink: #2d3282; }
 .astral-type-badge[data-mark="no-signal"], .astral-tag[data-mark="no-signal"] { --mark-bg: #ffe4e8; --mark-ink: #a11043; }
+/* The "all" card on each page, in the brand colour. */
+.astral-type-badge:is([data-mark="all"], [data-mark="open"], [data-mark="resolved"]) { --mark-bg: #d5f3f0; --mark-ink: #02615a; }
+/* Report types. */
+.astral-type-badge[data-mark="extract"], .astral-tag[data-mark="extract"] { --mark-bg: #d1e9ff; --mark-ink: #194185; }
+.astral-type-badge[data-mark="dcda"], .astral-tag[data-mark="dcda"] { --mark-bg: #ece9fe; --mark-ink: #491c96; }
+.astral-type-badge[data-mark="billing"], .astral-tag[data-mark="billing"] { --mark-bg: #dcfae6; --mark-ink: #085d3a; }
+.astral-type-badge[data-mark="template"], .astral-tag[data-mark="template"] { --mark-bg: #eaecf5; --mark-ink: #363f72; }
+/* Download types. A data export is data, like a data extract, so it shares the blue. */
+.astral-type-badge[data-mark="download-report"], .astral-tag[data-mark="download-report"] { --mark-bg: #cff9fe; --mark-ink: #155b75; }
+.astral-type-badge[data-mark="download-export"], .astral-tag[data-mark="download-export"] { --mark-bg: #d1e9ff; --mark-ink: #194185; }
+.astral-type-badge[data-mark="download-document"], .astral-tag[data-mark="download-document"] { --mark-bg: #fdead7; --mark-ink: #932f19; }
+/* Resolved as. */
+.astral-type-badge[data-mark="fixed"], .astral-tag[data-mark="fixed"] { --mark-bg: #dcfae6; --mark-ink: #085d3a; }
+.astral-type-badge[data-mark="expected"], .astral-tag[data-mark="expected"] { --mark-bg: #e0f2fe; --mark-ink: #0b4a6f; }
+.astral-type-badge[data-mark="duplicate"], .astral-tag[data-mark="duplicate"] { --mark-bg: #fbe8ff; --mark-ink: #6f1877; }
 
 /* On a card the type is a boxed icon before the heading, not a pill. The tip names the type. */
 .astral-report-name {

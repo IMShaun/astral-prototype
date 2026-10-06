@@ -8593,21 +8593,21 @@ const PROTO_REPORT_TYPES = [
     name: "Scheduled data extract",
     short: "Data extract",
     blurb: "Interval data, meter reads or missing data, sent on a schedule.",
-    icon: "usage",
+    mark: "extract",
   },
   {
     id: "dcda",
     name: "DC and DA",
     short: "DC/DA",
     blurb: "Reads from your data collector and data aggregator, sent on a schedule.",
-    icon: "meter",
+    mark: "dcda",
   },
   {
     id: "billing",
     name: "Tenant billing",
     short: "Tenant billing",
     blurb: "A site's projected cost and the share one tenant pays.",
-    icon: "rates",
+    mark: "billing",
   },
   {
     id: "alert",
@@ -15908,7 +15908,7 @@ function protoReportTemplateOf(def) {
 // The tag a report carries. Reports from a built template carry the template's name.
 function protoReportTypeFor(def) {
   const tpl = protoReportTemplateOf(def);
-  if (tpl) return { short: protoTemplateTitle(tpl), name: protoTemplateTitle(tpl), blurb: tpl.blurb || protoTemplateSource(tpl.source).note };
+  if (tpl) return { short: protoTemplateTitle(tpl), name: protoTemplateTitle(tpl), blurb: tpl.blurb || protoTemplateSource(tpl.source).note, mark: "template" };
   const type = protoReportType(def.type);
   const own = protoTemplateBuiltIn(def.type);
   return own ? { ...type, name: own.name || type.name, blurb: own.blurb || type.blurb } : type;
@@ -15962,11 +15962,11 @@ function protoTemplateRowsLine(tpl, def) {
 
 // The Type filter lists built-in types and any live template this company can pick.
 function protoReportTypeFilterItems() {
-  const base = protoReportTypesFor("reports").map((item) => ({ id: item.id, name: protoReportTypeFor({ type: item.id }).short }));
+  const base = protoReportTypesFor("reports").map((item) => ({ id: item.id, name: protoReportTypeFor({ type: item.id }).short, mark: item.mark }));
   const own = new Set(protoReportDefs().map((def) => def.template).filter(Boolean));
   const built = protoTemplates()
     .filter((tpl) => !tpl.builtIn && (own.has(tpl.id) || (tpl.state === "live" && protoTemplateOpenTo(tpl, protoHomeCompany()))))
-    .map((tpl) => ({ id: `tpl:${tpl.id}`, name: protoTemplateTitle(tpl) }));
+    .map((tpl) => ({ id: `tpl:${tpl.id}`, name: protoTemplateTitle(tpl), mark: "template" }));
   return [...base, ...built];
 }
 
@@ -16656,7 +16656,7 @@ function protoInboxDetail(ticket) {
   const meter = ticket.meterId ? protoServiceMeterMap().get(ticket.meterId) : null;
   const tools = ticket.resolved
     ? `<div class="astral-ack">
-        ${protoTag(protoResolveName(ticket.reason) || "Resolved")}
+        ${protoTag(protoResolveName(ticket.reason) || "Resolved", "", "", protoResolveName(ticket.reason) ? ticket.reason : "")}
         ${protoIconBtn("undo", "Undo", `data-proto-ticket-undo="${escapeHtml(ticket.ref)}"`, {
           className: "is-plain",
         })}
@@ -19191,7 +19191,7 @@ function protoDownloadTypeName(item) {
 function protoDownloadTypeTag(item) {
   const type = protoDownloadType(item);
   const label = protoDownloadTypeName(item);
-  return `<span class="astral-tag is-${type}">${escapeHtml(label)}</span>`;
+  return protoTag(label, "", "", `download-${type}`);
 }
 
 const PROTO_DOWNLOAD_MS = 90000;
@@ -19301,9 +19301,9 @@ const PROTO_DOWNLOAD_FILTERS = [
     id: "type",
     name: "Type",
     items: [
-      { id: "report", name: "Report" },
-      { id: "export", name: "Data export" },
-      { id: "document", name: "Document" },
+      { id: "report", name: "Report", mark: "download-report" },
+      { id: "export", name: "Data export", mark: "download-export" },
+      { id: "document", name: "Document", mark: "download-document" },
     ],
   },
   {
@@ -19473,9 +19473,10 @@ function protoDownloadFilterPills() {
   const pills = picked
     .map((id) => {
       const name = protoDownloadFilterName(id);
+      const mark = PROTO_DOWNLOAD_TYPE_IDS.includes(id) ? `download-${id}` : "";
       return `
         <span class="astral-filter-pill">
-          ${protoFilterFace(id, name)}
+          ${mark ? protoMarkFace(mark, name) : protoFilterFace(id, name)}
           ${protoClearButton(
             "astral-filter-pill-clear",
             `data-proto-download-filter="${escapeHtml(id)}"`,
@@ -19992,7 +19993,7 @@ const PROTO_ALERT_FILTERS = [
   {
     id: "reason",
     name: "Resolved as",
-    items: PROTO_RESOLVE.map((item) => ({ id: `reason-${item.id}`, name: item.name })),
+    items: PROTO_RESOLVE.map((item) => ({ id: `reason-${item.id}`, name: item.name, mark: item.id })),
   },
 ];
 const PROTO_ALERT_FILTER_IDS = PROTO_ALERT_FILTERS.flatMap((group) => group.items.map((item) => item.id));
@@ -20135,7 +20136,7 @@ function protoAlertTools() {
         ${picked
           .map((id) => {
             const name = protoAlertFilterName(id);
-            const mark = PROTO_ALERT_FACETS.find((item) => item.id === id)?.mark;
+            const mark = PROTO_ALERT_FACETS.find((item) => item.id === id)?.mark || (PROTO_ALERT_REASON_IDS.includes(id) ? id.slice(7) : "");
             return `
               <span class="astral-filter-pill">
                 ${mark ? protoMarkFace(mark, name) : protoFilterFace(id, name)}
@@ -20614,7 +20615,7 @@ function protoQueryTable(rows) {
                   <td class="astral-query-ago">${escapeHtml(protoQueryRaisedAgo(row))}</td>
                   <td>${escapeHtml(row.site)}</td>
                   <td>${protoQueryUserMark(row)}</td>
-                  <td>${escapeHtml(protoQueryStatusLabel(row))}</td>
+                  <td>${protoQueryReason(row) && protoResolveName(protoQueryReason(row)) ? protoTag(protoQueryStatusLabel(row), "", "", protoQueryReason(row)) : escapeHtml(protoQueryStatusLabel(row))}</td>
                   <td class="astral-query-resolve">${
                     protoQueryCanResolve(row) ? protoAckControl("query", row.ref, false) : ""
                   }</td>
@@ -23583,7 +23584,7 @@ function protoReportFilterPills(tab) {
   const pills = picked
     .map((id) => {
       const name = protoReportFilterName(id, tab);
-      const mark = tab === "alerts" ? protoReportType(id)?.mark : "";
+      const mark = protoReportType(id)?.mark || (String(id).startsWith("tpl:") ? "template" : "");
       return `
         <span class="astral-filter-pill">
           ${mark ? protoMarkFace(mark, name) : protoFilterFace(id, name)}
@@ -23693,7 +23694,7 @@ function protoSummaryCards(label, cards) {
     <button type="button" class="astral-stat astral-summary-stat${on ? " is-on" : ""}" aria-pressed="${on ? "true" : "false"}" ${attr}${
       !n && !on ? ' disabled title="None in this view"' : ""
     }>
-      <span class="astral-summary-name">${protoTypeBadge(mark || "grid")}<span>${escapeHtml(name)}</span></span>
+      <span class="astral-summary-name">${protoTypeBadge(mark || "all")}<span>${escapeHtml(name)}</span></span>
       <span class="astral-stat-value">${n}</span>
     </button>
   `;
@@ -23713,7 +23714,7 @@ function protoReportTypeCards(tab, defs) {
   const noun = tab === "alerts" ? "alerts" : "reports";
   return protoSummaryCards(`Show ${noun} by type`, [
     { attr: attr("all"), n: defs.length, name: `All ${noun}`, on: !on.length },
-    ...cards.map((item) => ({ attr: attr(item.id), n: item.n, name: item.name, mark: item.mark || PROTO_REPORT_TYPES.find((type) => type.id === item.id)?.icon || "report", on: on.includes(item.id) })),
+    ...cards.map((item) => ({ attr: attr(item.id), n: item.n, name: item.name, mark: item.mark || "template", on: on.includes(item.id) })),
   ]);
 }
 
@@ -23731,7 +23732,7 @@ function protoDownloadTypeCards() {
       attr: attr(item.id),
       n: all.filter((row) => protoDownloadType(row) === item.id).length,
       name: item.name,
-      mark: { report: "chart-bar", export: "export", document: "report" }[item.id],
+      mark: `download-${item.id}`,
       on: picked.includes(item.id),
     })),
   ]);
@@ -23747,14 +23748,14 @@ function protoAlertFacetCards() {
     const reasons = protoAlertFilterPicks().filter((id) => PROTO_ALERT_REASON_IDS.includes(id));
     const done = all.filter((row) => protoAlertResolved(row));
     return protoSummaryCards("Show resolved flags by what they were resolved as", [
-      { attr: attr("all"), n: done.length, name: "Resolved flags", mark: "resolve", on: !reasons.length },
+      { attr: attr("all"), n: done.length, name: "Resolved flags", mark: "resolved", on: !reasons.length },
       ...PROTO_RESOLVE.map((item) => {
         const id = `reason-${item.id}`;
         return {
           attr: attr(id),
           n: done.filter((row) => protoAlertFacetValue(row, "reason") === id).length,
           name: item.name,
-          mark: item.icon,
+          mark: item.id,
           on: reasons.includes(id),
         };
       }),
@@ -23767,7 +23768,7 @@ function protoAlertFacetCards() {
       attr: attr(item.id),
       n: all.filter((row) => protoAlertMatchesFacet(row, item.id, resolved)).length,
       name: item.id === "all" ? "Open flags" : item.name,
-      mark: item.mark || (item.id === "all" ? "notice" : undefined),
+      mark: item.mark || (item.id === "all" ? "open" : undefined),
       on: item.id === "all" ? !types.length : types.includes(item.id),
     }))
   );

@@ -82,9 +82,24 @@ function protoIconMark(kind, className) {
   return `<svg${cls} viewBox="0 0 24 24" aria-hidden="true" focusable="false">${inner}</svg>`;
 }
 
+// Marks that borrow another icon. A mark names the type (and its colour); the icon is what it draws.
+const PROTO_MARK_ICONS = {
+  all: "grid",
+  open: "notice",
+  resolved: "resolve",
+  fixed: "servicing",
+  extract: "usage",
+  dcda: "meter",
+  billing: "rates",
+  template: "report",
+  "download-report": "chart-bar",
+  "download-export": "export",
+  "download-document": "report",
+};
+
 // A type icon in a light rounded box. Each type keeps one colour wherever it shows.
 function protoTypeBadge(kind) {
-  const svg = protoIconMark(kind, "astral-type-mark");
+  const svg = protoIconMark(PROTO_MARK_ICONS[kind] || kind, "astral-type-mark");
   return svg ? `<span class="astral-type-badge" data-mark="${protoEsc(kind)}" aria-hidden="true">${svg}</span>` : "";
 }
 

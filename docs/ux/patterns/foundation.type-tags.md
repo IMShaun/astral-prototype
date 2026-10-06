@@ -12,7 +12,7 @@ Any `astral-tag` built with a type mark (`protoTag(label, tip, className, mark)`
 
 ## When not to use
 
-- Tags with no mark, such as report or export tags. They keep their own fill.
+- Status tags such as Weekly or Coming soon. They are not types.
 - Filter pills. They show the icon in its dark colour on the pill's neutral fill.
 - The standalone badge in summary cards and alert cards. It is already the light box with the dark icon.
 - Card headings, such as alert cards in Alerts > Settings. Put the boxed badge before the heading instead of a pill. Its tip and accessible name give the type.
@@ -35,6 +35,19 @@ Any `astral-tag` built with a type mark (`protoTag(label, tip, className, mark)`
 | threshold | #fef0c7 | #93370d | about 7:1 |
 | missing-data | #e0eaff | #2d3282 | about 10:1 |
 | no-signal | #ffe4e8 | #a11043 | about 6.5:1 |
+| all, open, resolved (the "all" summary card) | #d5f3f0 | #02615a | about 6.5:1 |
+| extract (Data extract) | #d1e9ff | #194185 | about 9:1 |
+| dcda (DC/DA) | #ece9fe | #491c96 | about 9:1 |
+| billing (Tenant billing) | #dcfae6 | #085d3a | about 7.5:1 |
+| template (a built template) | #eaecf5 | #363f72 | about 8.5:1 |
+| download-report | #cff9fe | #155b75 | about 7:1 |
+| download-export | #d1e9ff | #194185 | about 9:1 |
+| download-document | #fdead7 | #932f19 | about 7.5:1 |
+| fixed | #dcfae6 | #085d3a | about 7.5:1 |
+| expected | #e0f2fe | #0b4a6f | about 8.5:1 |
+| duplicate | #fbe8ff | #6f1877 | about 8.5:1 |
+
+A mark names the type and its colour. When it draws another icon, `PROTO_MARK_ICONS` in `astral-ui.js` maps it, for example `extract` draws `usage`.
 
 ## Canonical behaviour
 
@@ -50,6 +63,7 @@ Any `astral-tag` built with a type mark (`protoTag(label, tip, className, mark)`
 - Use a grey tag with only the icon coloured. The type colour is easy to miss and the tag looks unfinished.
 - Use black text on a coloured fill. Text and icon must share the dark colour.
 - Hard-code the colours on the tag. Add new marks to the shared `data-mark` palette.
+- Give one page's types colours and leave another page's types grey. Every type family (alert types, report types, download types, Resolved as) has a mark, and the "all" card uses the brand mark.
 - Give the inner badge its own fill. It would draw a box inside the tag.
 
 ### Why
@@ -62,11 +76,12 @@ The label names the type, so colour is never the only signal. Text contrast is a
 
 ## Product surfaces using it
 
-Alerts > Settings table (Type column).
+Alerts > Settings table (Type column). Reports table and cards. Downloads table (Type column). Inbox and Queries (Resolved as). Summary cards, filter menus and filter pills on Alerts, History, Reports and Downloads.
 
 ## Evidence
 
 - User correction on 6 October 2026: tag fill should be the light colour of the mark, and text and icon its dark colour (commit `9e18538`).
+- User correction on 6 October 2026: changes made to Alerts must carry to every page with the same elements. Grey icons on Reports were not wanted.
 
 ## Related patterns / decisions
 
