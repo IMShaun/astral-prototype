@@ -18045,7 +18045,10 @@ function protoExportDatesHtml(state) {
       <div class="astral-field">
         <span>Dates</span>
         <div class="astral-export-date-line">
-          <span>${escapeHtml(protoRangeWords(from, to))}</span>
+          <dl class="astral-export-date-pair">
+            <div><dt>From</dt><dd>${escapeHtml(protoDayHeading(from))}</dd></div>
+            <div><dt>To</dt><dd>${escapeHtml(protoDayHeading(to))}</dd></div>
+          </dl>
           ${protoTextBtn("Change", 'data-proto-export-dates="change" aria-label="Change dates"')}
         </div>
       </div>
