@@ -43,6 +43,10 @@ Any `astral-tag` built with a type mark (`protoTag(label, tip, className, mark)`
 | download-report | #cff9fe | #155b75 | about 7:1 |
 | download-export | #d1e9ff | #194185 | about 9:1 |
 | download-document | #fdead7 | #932f19 | about 7.5:1 |
+| export-chart, export-table (Export pop-up, what is on screen) | #ccfbef | #134e48 | about 8.4:1 |
+| export-source (Source data, same as extract) | #d1e9ff | #194185 | about 9:1 |
+| export-image | #fce7f6 | #851651 | about 8:1 |
+| export-pdf (same as download-document) | #fdead7 | #932f19 | about 7.5:1 |
 
 A mark names the type and its colour. When it draws another icon, `PROTO_MARK_ICONS` in `astral-ui.js` maps it, for example `extract` draws `usage`.
 

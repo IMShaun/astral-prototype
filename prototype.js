@@ -17852,16 +17852,16 @@ function protoSiteButton(site, on) {
 
 // What the Export pop-up can make. Image needs a graph on screen.
 const PROTO_EXPORT_WHAT = [
-  { id: "chart", name: "Chart data", note: "What the graph shows now" },
-  { id: "source", name: "Source data", note: "Every reading, for the dates you choose" },
-  { id: "image", name: "Image", note: "The graph as a PNG" },
-  { id: "pdf", name: "PDF", note: "The chart data, to share or print" },
+  { id: "chart", name: "Chart data", note: "What the graph shows now", mark: "export-chart" },
+  { id: "source", name: "Source data", note: "Every reading, for the dates you choose", mark: "export-source" },
+  { id: "image", name: "Image", note: "The graph as a PNG", mark: "export-image" },
+  { id: "pdf", name: "PDF", note: "The chart data, to share or print", mark: "export-pdf" },
 ];
 
 // People and Usage are tables, so they have no source data or image.
 const PROTO_EXPORT_TABLE_WHAT = [
-  { id: "chart", name: "Table data", note: "What the table shows now" },
-  { id: "pdf", name: "PDF", note: "The table, to share or print" },
+  { id: "chart", name: "Table data", note: "What the table shows now", mark: "export-table" },
+  { id: "pdf", name: "PDF", note: "The table, to share or print", mark: "export-pdf" },
 ];
 
 const PROTO_EXPORT_SOURCE_FORMATS = [
@@ -18107,7 +18107,7 @@ function protoExportModal() {
                       tabindex="${on ? "0" : "-1"}"
                       data-proto-export-kind="${escapeHtml(item.id)}"
                     >
-                      <span class="astral-report-type-head">${protoRadio(on)}<span>${escapeHtml(item.name)}</span></span>
+                      <span class="astral-report-type-head">${protoRadio(on)}${protoTypeBadge(item.mark)}<span>${escapeHtml(item.name)}</span></span>
                       <span class="astral-muted">${escapeHtml(item.note)}</span>
                     </button>
                   `;

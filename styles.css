@@ -12605,6 +12605,12 @@ tr.is-off .astral-person-mark {
 .astral-type-badge[data-mark="download-export"], .astral-tag[data-mark="download-export"] { --mark-bg: #d1e9ff; --mark-ink: #194185; }
 .astral-type-badge[data-mark="download-document"], .astral-tag[data-mark="download-document"] { --mark-bg: #fdead7; --mark-ink: #932f19; }
 
+/* Export kinds. Source data matches interval-data extracts, PDF matches Documents. */
+.astral-type-badge:is([data-mark="export-chart"], [data-mark="export-table"]) { --mark-bg: #ccfbef; --mark-ink: #134e48; }
+.astral-type-badge[data-mark="export-source"] { --mark-bg: #d1e9ff; --mark-ink: #194185; }
+.astral-type-badge[data-mark="export-image"] { --mark-bg: #fce7f6; --mark-ink: #851651; }
+.astral-type-badge[data-mark="export-pdf"] { --mark-bg: #fdead7; --mark-ink: #932f19; }
+
 /* On a card the type is a boxed icon before the heading, not a pill. The tip names the type. */
 .astral-report-name {
   display: flex;

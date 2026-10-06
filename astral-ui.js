@@ -69,6 +69,9 @@ const PROTO_ICON_MARKS = {
   threshold: `<path d="M3.5 9h17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="2.2 2.8" /><path d="M3.5 19 8 14.5l3.5 2.5L17 6.5l3.5 3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
   "missing-data": `<ellipse cx="11" cy="5.5" rx="7" ry="2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /><path d="M4 5.5v12c0 1.4 3.1 2.5 7 2.5M18 5.5V10M4 11.5c0 1.4 3.1 2.5 7 2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /><path d="M15.5 15a2.25 2.25 0 1 1 3.2 2c-.7.3-1.2.8-1.2 1.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /><circle cx="17.5" cy="21.3" r="1" fill="currentColor" />`,
   "no-signal": `<path d="M5 19v-2.5M9.67 19v-5.5M14.33 19v-8.5M19 19V7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M4 4l16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />`,
+  database: `<ellipse cx="12" cy="5.5" rx="7.5" ry="2.75" fill="none" stroke="currentColor" stroke-width="2" /><path d="M4.5 5.5v13c0 1.5 3.4 2.75 7.5 2.75s7.5-1.25 7.5-2.75v-13M4.5 12c0 1.5 3.4 2.75 7.5 2.75s7.5-1.25 7.5-2.75" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
+  image: `<rect x="3.75" y="4.75" width="16.5" height="14.5" rx="2" fill="none" stroke="currentColor" stroke-width="2" /><circle cx="9" cy="9.75" r="1.6" fill="none" stroke="currentColor" stroke-width="1.8" /><path d="m4.5 17.5 5-4.75 3.5 3.25 2.75-2.5 4 3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
+  table: `<rect x="3.75" y="4.75" width="16.5" height="14.5" rx="2" fill="none" stroke="currentColor" stroke-width="2" /><path d="M3.75 9.75h16.5M3.75 14.5h16.5M9.5 9.75v9.5" fill="none" stroke="currentColor" stroke-width="2" />`,
 };
 
 function protoIconNames() {
@@ -95,6 +98,11 @@ const PROTO_MARK_ICONS = {
   "download-report": "chart-bar",
   "download-export": "export",
   "download-document": "report",
+  "export-chart": "chart-bar",
+  "export-table": "table",
+  "export-source": "database",
+  "export-image": "image",
+  "export-pdf": "report",
 };
 
 // A type icon in a light rounded box. Each type keeps one colour wherever it shows.
