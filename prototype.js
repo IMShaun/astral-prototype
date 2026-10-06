@@ -18082,7 +18082,6 @@ function protoExportDatesHtml(state) {
           `type="text" name="proto-export-range-count" value="${escapeHtml(prefs.rangeCount)}" inputmode="numeric" placeholder="3" maxlength="3" autocomplete="off" ${countError}`
         ),
       })}
-      <div>${protoTextBtn("Use the graph's dates", 'data-proto-export-dates="graph"')}</div>
     `;
   }
   const { from, to } = protoExportGraphDates();
@@ -32164,21 +32163,7 @@ function onPrototype(event) {
     protoSyncFoldClip(exportMore.closest(".astral-accordion"), open);
     return;
   }
-  const exportDates = event.target.closest("[data-proto-export-dates]");
-  if (exportDates) {
-    const raw = store.prototypeExportModal;
-    if (!raw) return;
-    const graph = protoExportGraphDates();
-    setProto({
-      prototypeExportModal: { ...raw, errors: {} },
-      prototypeExportPrefs: { ...protoExportPrefs(), rangeMode: "dates" },
-      prototypeExportFrom: protoFormatUkDate(graph.from),
-      prototypeExportTo: protoFormatUkDate(graph.to),
-    });
-    protoRestoreFocus('#astral-fs [data-proto-export-dates="graph"]');
-    return;
-  }
-  const exportRangeMode = event.target.closest("[data-proto-export-range-mode]");
+  const exportRangeMode =  event.target.closest("[data-proto-export-range-mode]");
   if (exportRangeMode) {
     const rangeMode = exportRangeMode.dataset.protoExportRangeMode;
     const raw = store.prototypeExportModal;
