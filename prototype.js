@@ -730,6 +730,7 @@ function protoPageFilterReset() {
     prototypeChartPoint: null,
     prototypeChartView: "total",
     prototypeChartStyle: "bar",
+    prototypeChartStyleBefore: "bar",
     prototypeChartShow: [],
     prototypeChartFlows: null,
     prototypeChartSliceOff: [],
@@ -3065,6 +3066,12 @@ function protoChartAtLatest() {
 }
 
 function protoPanChart(dir) {
+  if (protoChartIsCalendar()) {
+    if (dir > 0 && protoChartAtLatest()) return;
+    const at = protoDateSpan().to;
+    setProto(protoCalendarMonthPatch(new Date(at.getFullYear(), at.getMonth() + dir, 1)));
+    return;
+  }
   const homeState = protoDateHomeState();
   const current = protoDateSpan();
   if (dir > 0 && protoChartAtLatest()) return;
@@ -4626,7 +4633,17 @@ function protoChartIsIndividual() {
 }
 
 function protoChartStyle() {
+  if (store.prototypeChartStyle === "calendar") return protoCalendarAllowed() ? "calendar" : "bar";
   return store.prototypeChartStyle === "line" ? "line" : "bar";
+}
+
+// Calendar shows daily use, so it belongs to the Consumption graph only.
+function protoCalendarAllowed() {
+  return store.activePrototypeView === "portfolio" && protoPaneId() === "consumption";
+}
+
+function protoChartIsCalendar() {
+  return protoChartStyle() === "calendar";
 }
 
 function protoChartIsLine() {
@@ -5920,6 +5937,7 @@ function protoChartStyleSwitch(labelledby) {
   const items = [
     { id: "bar", name: "Bar", icon: "chart-bar" },
     { id: "line", name: "Line", icon: "chart-line" },
+    ...(protoCalendarAllowed() ? [{ id: "calendar", name: "Calendar", icon: "calendar" }] : []),
   ];
   return `
     <div class="astral-tabs astral-chart-style-switch" role="radiogroup" aria-labelledby="${escapeHtml(labelledby)}">
@@ -6000,6 +6018,170 @@ function protoTracksToTotalPoints(tracks) {
   }));
 }
 
+// Calendar shows whole months, so it moves the date range to the month it shows.
+function protoCalendarMonthPatch(date) {
+  const today = protoToday();
+  const from = new Date(date.getFullYear(), date.getMonth(), 1);
+  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  const to = protoIso(end) > protoIso(today) ? today : end;
+  return {
+    ...protoDateHomeState(),
+    prototypeDatePreset: "custom",
+    prototypeDateFrom: protoIso(from),
+    prototypeDateTo: protoIso(to),
+    prototypeDateOpen: false,
+    prototypeDateCustomOpen: false,
+    prototypeChartPoint: null,
+  };
+}
+
+function protoCalendarFlows(meters, dual) {
+  const flow = protoMetersFlow(meters);
+  if (dual) {
+    return [
+      { kind: "in", meters: flow.incoming, on: protoChartFlowOn("in") },
+      { kind: "out", meters: flow.outgoing, on: protoChartFlowOn("out") },
+    ];
+  }
+  if (flow.channel === "out") return [{ kind: "out", meters: flow.outgoing, on: true }];
+  return [
+    {
+      kind: flow.incoming.length ? "in" : "out",
+      meters: flow.incoming.length ? flow.incoming : flow.outgoing,
+      on: true,
+    },
+  ];
+}
+
+// Each day's half-hourly shape, sized so its readings add up to that day's total on the graph.
+function protoCalendarDayShape(meters, date, total) {
+  const slots = protoCombineSeries(meters, (meter) => protoSeries(meter, "day", date));
+  const sum = slots.reduce((acc, slot) => acc + (slot.value == null ? 0 : slot.value), 0);
+  if (!sum || total == null) return slots.map(() => null);
+  return slots.map((slot) => (slot.value == null ? null : (slot.value * total) / sum));
+}
+
+// Whole numbers above 100 keep a day's total inside its square. The note under the grid gives the unit.
+function protoCalendarAmount(value) {
+  const n = Number(value) || 0;
+  return n.toLocaleString("en-GB", { maximumFractionDigits: n >= 100 ? 0 : 1 });
+}
+
+function protoCalendarSpark(shape, max, kind) {
+  const n = shape.length;
+  if (!n || !max) return "";
+  const x = (i) => ((i / Math.max(1, n - 1)) * 100).toFixed(2);
+  const y = (v) => (30 - (v / max) * 28).toFixed(2);
+  let d = "";
+  let pen = false;
+  shape.forEach((v, i) => {
+    if (v == null) {
+      pen = false;
+      return;
+    }
+    d += `${pen ? "L" : "M"}${x(i)} ${y(v)}`;
+    pen = true;
+  });
+  return d
+    ? `<path class="astral-calmap-line is-${kind}" d="${d}" style="stroke:${escapeHtml(
+        protoChartFlowFill(kind)
+      )}" />`
+    : "";
+}
+
+function protoCalendarChart(meters, label, dual) {
+  const span = protoDateSpan();
+  const today = protoToday();
+  const anchor = span.to;
+  const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+  const last = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
+  const isoMax = (a, b) => (protoIso(a) >= protoIso(b) ? a : b);
+  const isoMin = (a, b) => (protoIso(a) <= protoIso(b) ? a : b);
+  const from = isoMax(first, span.from);
+  const to = isoMin(isoMin(last, span.to), today);
+  const unit = protoMeasureUnit(meters);
+  const flows = protoCalendarFlows(meters, dual).filter((flow) => flow.meters.length);
+  const inRange = protoIso(from) <= protoIso(to);
+  const days = {};
+  let max = 0;
+  if (inRange) {
+    flows.forEach((flow) => {
+      const daily = protoCombineSeries(flow.meters, (meter) => protoDailySpanSeries(meter, { from, to }));
+      daily.forEach((point, i) => {
+        const date = protoAddDays(from, i);
+        const iso = protoIso(date);
+        const shape = flow.on ? protoCalendarDayShape(flow.meters, date, point.value) : [];
+        shape.forEach((v) => {
+          if (v != null && v > max) max = v;
+        });
+        days[iso] = days[iso] || {};
+        days[iso][flow.kind] = { total: point.value, quality: point.quality, shape, on: flow.on };
+      });
+    });
+  }
+  const top = max ? protoNiceMax(max) : 0;
+  const lead = (first.getDay() + 6) % 7;
+  const cells = [];
+  for (let i = 0; i < lead; i += 1) cells.push(`<div class="astral-calmap-day is-blank" aria-hidden="true"></div>`);
+  for (let d = 1; d <= last.getDate(); d += 1) {
+    const date = new Date(first.getFullYear(), first.getMonth(), d);
+    const iso = protoIso(date);
+    const row = days[iso];
+    const weekend = date.getDay() === 0 || date.getDay() === 6;
+    const cls = `astral-calmap-day${weekend ? " is-weekend" : ""}`;
+    if (!row) {
+      cells.push(
+        `<div class="${cls} is-off" aria-hidden="true"><span class="astral-calmap-date">${d}</span></div>`
+      );
+      continue;
+    }
+    const shown = flows.filter((flow) => row[flow.kind]?.on);
+    const missing = shown.length && shown.every((flow) => row[flow.kind].total == null);
+    const estimated = shown.some((flow) => row[flow.kind].quality === "estimated");
+    const word = (kind) => (kind === "out" ? "Outgoing" : dual ? "Incoming" : "Total use");
+    const totals = shown
+      .map((flow) => {
+        const cell = row[flow.kind];
+        const text = cell.total == null ? "No readings" : protoCalendarAmount(cell.total);
+        return dual
+          ? `<span class="astral-calmap-total"><span class="astral-muted">${flow.kind === "out" ? "Out" : "In"}</span> ${escapeHtml(text)}</span>`
+          : `<span class="astral-calmap-total">${escapeHtml(text)}</span>`;
+      })
+      .join("");
+    const spoken = [
+      protoDayHeading(date),
+      ...shown.map((flow) => {
+        const cell = row[flow.kind];
+        return `${word(flow.kind)} ${cell.total == null ? "no readings" : protoSummaryAmount(cell.total, unit)}`;
+      }),
+      ...(estimated ? ["Includes estimated readings"] : []),
+      "Open this day",
+    ].join(". ");
+    const lines = shown.map((flow) => protoCalendarSpark(row[flow.kind].shape, top, flow.kind)).join("");
+    cells.push(`
+      <button type="button" class="${cls}${missing ? " is-missing" : ""}${estimated ? " is-est" : ""}" data-proto-calendar-day="${iso}" aria-label="${escapeHtml(spoken)}">
+        <span class="astral-calmap-date">${d}</span>
+        <svg class="astral-calmap-spark" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true" focusable="false">${lines}</svg>
+        ${totals || `<span class="astral-calmap-total astral-muted">No readings</span>`}
+      </button>
+    `);
+  }
+  const month = `${PROTO_MONTHS[first.getMonth()]} ${first.getFullYear()}`;
+  const scale = top
+    ? `Each day shows its total in ${unit}. Every day uses the same scale, from 0 to ${protoSummaryAmount(top, unit)} per half hour. Select a day to see its half-hourly graph.`
+    : "No readings this month.";
+  const grid = `
+    <div class="astral-calmap">
+      <div class="astral-calmap-head" aria-hidden="true">${PROTO_WEEKDAYS_SHORT.map(
+        (name) => `<span>${escapeHtml(name)}</span>`
+      ).join("")}</div>
+      <div class="astral-calmap-grid" role="group" aria-label="${escapeHtml(month)}">${cells.join("")}</div>
+      <p class="astral-calmap-note astral-muted">${escapeHtml(scale)}</p>
+    </div>
+  `;
+  return protoChartWrap(grid, label, dual, false, { calendar: true });
+}
+
 function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing }) {
   const list = meters || [];
   const pool = all || list;
@@ -6010,6 +6192,7 @@ function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing }) {
   const breakdown = protoChartIsIndividual();
   const dualTotal = Boolean(dual) && !breakdown;
   const name = protoPaneChartLabel(dualTotal);
+  if (protoChartIsCalendar()) return protoCalendarChart(list, protoPaneChartLabel(Boolean(dual)), Boolean(dual));
   if (protoChartIsLine()) {
     const lineTracks = breakdown
       ? scaledTracks
@@ -6156,13 +6339,28 @@ function protoChartSettings(zoneSet) {
     const id = `astral-chart-setting-${key}`;
     return `<div class="astral-chart-setting"><p id="${id}">${escapeHtml(caption)}</p>${control(id)}</div>`;
   };
+  const calendar = protoChartIsCalendar();
   const fields = open
     ? [
-        field("view", "View", (labelledby) => protoChartViewSelect({ label: "View", labelledby })),
-        field("style", "Chart type", (labelledby) => protoChartStyleSwitch(labelledby)),
-        field("show", "Overlay", (labelledby) => protoChartShowSelect({ labelledby }) + protoChartOverlayNote()),
-        protoChartUtilityField(zoneSet, field),
-        protoChartZoneField(zoneSet, field),
+        field("view", "View", (labelledby) =>
+          protoChartViewSelect({ label: "View", labelledby, ...(calendar ? { disabled: true } : {}) })
+        ),
+        field(
+          "style",
+          "Chart type",
+          (labelledby) =>
+            protoChartStyleSwitch(labelledby) +
+            (calendar
+              ? `<p class="astral-chart-setting-note">Calendar shows the total for each day. View and Overlay apply to Bar and Line.</p>`
+              : "")
+        ),
+        field("show", "Overlay", (labelledby) =>
+          calendar
+            ? protoChartShowSelect({ labelledby, disabled: true })
+            : protoChartShowSelect({ labelledby }) + protoChartOverlayNote()
+        ),
+        calendar ? "" : protoChartUtilityField(zoneSet, field),
+        calendar ? "" : protoChartZoneField(zoneSet, field),
         `<div class="astral-chart-settings-foot">${protoTextBtn("Restore defaults", "data-proto-chart-reset", {
           disabled: protoChartSettingsDefault(),
         })}</div>`,
@@ -6195,11 +6393,14 @@ function protoChartSettings(zoneSet) {
 
 function protoChartNav(pan, zoneSet) {
   const atEnd = protoChartAtLatest();
+  const calendar = protoChartIsCalendar();
+  const prev = calendar ? "Previous month" : "Previous";
+  const next = calendar ? "Next month" : "Next";
   const arrows = pan
-    ? `${protoIconBtn("prev", "Previous", 'data-proto-chart-pan="prev"')}
-      ${protoIconBtn("next", "Next", 'data-proto-chart-pan="next"', {
+    ? `${protoIconBtn("prev", prev, 'data-proto-chart-pan="prev"')}
+      ${protoIconBtn("next", next, 'data-proto-chart-pan="next"', {
         disabled: atEnd,
-        tipLabel: atEnd ? "Latest window" : "Next",
+        tipLabel: atEnd ? (calendar ? "Latest month" : "Latest window") : next,
       })}`
     : "";
   return `
@@ -6318,7 +6519,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
   const titled = protoChartIsGraph(label);
   const bounds = protoChartBoundsWords(extras.zoneSet);
   return `
-    <div class="astral-chart-wrap" data-proto-chart="${escapeHtml(label)}"${extras.still ? " data-proto-chart-still" : ""}${
+    <div class="astral-chart-wrap${extras.calendar ? " is-calendar" : ""}" data-proto-chart="${escapeHtml(label)}"${extras.still ? " data-proto-chart-still" : ""}${
       bounds ? ` data-proto-bounds="${escapeHtml(bounds)}"` : ""
     }>
       ${
@@ -6345,7 +6546,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
           : ""
       }
       ${
-        empty
+        empty || extras.calendar
           ? ""
           : heading
           ? `<p class="sr-only">${escapeHtml(label)}. Hover or focus a bar for the ${extras.still ? "numbers" : "reading"}.</p>`
@@ -6563,6 +6764,7 @@ function protoBarFocusMarkup(point, scale, pad, h, x1, x2, bw, paired) {
 
 let protoChartSize = { w: 720, h: 320 };
 let protoChartWatch = null;
+let protoChartWatched = null;
 let protoChartFitting = false;
 
 function protoReadChartBox(node) {
@@ -6588,15 +6790,20 @@ function protoSyncChartSize() {
       protoChartWatch.disconnect();
       protoChartWatch = null;
     }
+    protoChartWatched = null;
     return;
   }
   const box = protoReadChartBox(svg);
-  if (protoChartWatch) protoChartWatch.disconnect();
-  protoChartWatch = new ResizeObserver(() => {
-    if (protoChartFitting) return;
-    protoSyncChartSize();
-  });
-  protoChartWatch.observe(svg);
+  // Watch each graph once. A new observer reports straight away, so making one per report never settles.
+  if (protoChartWatched !== svg) {
+    if (protoChartWatch) protoChartWatch.disconnect();
+    protoChartWatch = new ResizeObserver(() => {
+      if (protoChartFitting) return;
+      protoSyncChartSize();
+    });
+    protoChartWatch.observe(svg);
+    protoChartWatched = svg;
+  }
   if (!box) return;
   if (Math.abs(box.w - protoChartSize.w) < 2 && Math.abs(box.h - protoChartSize.h) < 2) {
     protoChartSize = box;
@@ -33045,11 +33252,34 @@ function onPrototype(event) {
   }
   const chartStyleBtn = event.target.closest("[data-proto-chart-style]");
   if (chartStyleBtn) {
-    const style = chartStyleBtn.dataset.protoChartStyle === "line" ? "line" : "bar";
-    if (style !== protoChartStyle()) {
-      setProto({ prototypeChartStyle: style, prototypeChartPoint: null, prototypeChartSettingsOpen: true });
+    const pick = chartStyleBtn.dataset.protoChartStyle;
+    const style = pick === "line" ? "line" : pick === "calendar" && protoCalendarAllowed() ? "calendar" : "bar";
+    const was = protoChartStyle();
+    if (style !== was) {
+      setProto({
+        ...(style === "calendar" ? protoCalendarMonthPatch(protoDateSpan().to) : {}),
+        ...(was !== "calendar" ? { prototypeChartStyleBefore: was } : {}),
+        prototypeChartStyle: style,
+        prototypeChartPoint: null,
+        prototypeChartSettingsOpen: true,
+      });
     }
     protoRestoreFocus(`#astral-fs [data-proto-chart-style="${style}"]`);
+    return;
+  }
+  const calendarDay = event.target.closest("[data-proto-calendar-day]");
+  if (calendarDay) {
+    const iso = calendarDay.dataset.protoCalendarDay;
+    setProto({
+      ...protoDateHomeState(),
+      prototypeChartStyle: store.prototypeChartStyleBefore === "line" ? "line" : "bar",
+      prototypeDatePreset: "custom",
+      prototypeDateFrom: iso,
+      prototypeDateTo: iso,
+      prototypeDateOpen: false,
+      prototypeChartPoint: null,
+    });
+    protoRestoreFocus('#astral-fs [data-proto-chart-pan="prev"]');
     return;
   }
   if (event.target.closest("[data-proto-zone-table]")) {

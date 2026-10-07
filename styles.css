@@ -14112,6 +14112,126 @@ html.is-classic-scroll #astral-fs .is-scroll-near {
   font-size: 0.875rem;
 }
 
+/* Calendar chart type. A Monday to Sunday month, each day with its date, a small graph and its total. */
+.astral-pane-body > .astral-chart-wrap.is-calendar {
+  height: auto;
+  max-height: none;
+  grid-template-rows: auto auto auto;
+}
+
+.astral-calmap {
+  display: grid;
+  gap: var(--space-8);
+  padding-top: var(--space-8);
+}
+
+.astral-calmap-head,
+.astral-calmap-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.astral-calmap-head span {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  text-align: left;
+  padding-inline: var(--space-8);
+}
+
+.astral-calmap-day {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: var(--space-4);
+  min-width: 0;
+  min-height: 96px;
+  padding: var(--space-8) 6px;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-control);
+  background: var(--color-background-default, #fff);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.astral-calmap-day.is-weekend {
+  background: var(--color-background-subtle);
+}
+
+.astral-calmap-day.is-blank {
+  border-color: transparent;
+  background: none;
+}
+
+.astral-calmap-day.is-off {
+  color: var(--color-text-secondary);
+  border-style: dashed;
+  background: none;
+}
+
+button.astral-calmap-day {
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+button.astral-calmap-day:hover {
+  border-color: var(--color-text-secondary);
+}
+
+button.astral-calmap-day:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.astral-calmap-day.is-missing {
+  border-style: dashed;
+}
+
+.astral-calmap-date {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.astral-calmap-spark {
+  width: 100%;
+  height: 32px;
+  overflow: visible;
+}
+
+.astral-calmap-line {
+  fill: none;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+}
+
+.astral-calmap-line.is-out {
+  stroke-dasharray: 4 3;
+}
+
+.astral-calmap-total {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.astral-calmap-note {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+@container astral-pane (max-width: 560px) {
+  .astral-calmap-day {
+    min-height: 64px;
+    padding: var(--space-4);
+  }
+
+  .astral-calmap-total {
+    display: none;
+  }
+}
 /* ------------------------------------------------------------------
    Work Desk in Astral.
    The desk uses the prototype's own pieces: a side rail, page heads,
