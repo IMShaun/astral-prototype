@@ -16694,9 +16694,7 @@ function protoInboxDetail(ticket) {
   const tools = ticket.resolved
     ? `<div class="astral-ack">
         ${protoTag(protoResolveName(ticket.reason) || "Resolved", "", "", protoResolveName(ticket.reason) ? ticket.reason : "")}
-        ${protoIconBtn("undo", "Undo", `data-proto-ticket-undo="${escapeHtml(ticket.ref)}"`, {
-          className: "is-plain",
-        })}
+        ${protoIconBtn("undo", "Undo", `data-proto-ticket-undo="${escapeHtml(ticket.ref)}"`)}
       </div>`
     : protoAckControl("ticket", ticket.ref, false);
   const about = meter
@@ -23034,8 +23032,7 @@ function protoAckControl(kind, id, resolved) {
       ${protoIconBtn(
         "undo",
         "Undo",
-        `data-proto-alert-undo="${escapeHtml(id)}"`,
-        { className: "is-plain" }
+        `data-proto-alert-undo="${escapeHtml(id)}"`
       )}
     </div>
     `;
@@ -23064,7 +23061,7 @@ function protoAckControl(kind, id, resolved) {
         )}" aria-haspopup="menu" aria-expanded="${open ? "true" : "false"}" aria-controls="${escapeHtml(
           menuId
         )}"`,
-        { className: "is-plain", on: open }
+        { on: open }
       )}
       <div
         id="${escapeHtml(menuId)}"
