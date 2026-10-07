@@ -18330,12 +18330,12 @@ function protoExportModalState() {
   const file = String(raw.file);
   if (protoExportNeedsSite(file)) return null;
   const prefs = protoExportPrefs();
-  // Too large to graph means there is no table or image to export, so it opens on Source data with no way back.
+  // Too large to graph means Chart data, Image and PDF have nothing to build from, so Source data is picked and the rest are greyed out.
   const limit = raw.limit === true && Boolean(protoGraphLimit(file));
   const what = limit ? "source" : protoExportChoices(file).some((item) => item.id === prefs.what) ? prefs.what : "chart";
   const errors = raw.errors && typeof raw.errors === "object" ? raw.errors : {};
   // Source data needs more fields, so they sit on a second step.
-  const step = limit || (what === "source" && raw.step === 2) ? 2 : 1;
+  const step = what === "source" && raw.step === 2 ? 2 : 1;
   const dir = raw.dir === "next" || raw.dir === "back" ? raw.dir : "";
   // Source data step 2 exists for the dates, so the From and To fields always show.
   return { file, what, prefs, step, dir, limit, more: raw.more === true, edit: what === "source", errors };
@@ -18627,17 +18627,19 @@ function protoExportModal() {
               ${choices
                 .map((item) => {
                   const on = state.what === item.id;
+                  const off = state.limit && item.id !== "source";
                   return `
                     <button
                       type="button"
                       role="radio"
-                      class="astral-report-type${on ? " is-on" : ""}"
+                      class="astral-report-type${on ? " is-on" : ""}${off ? " is-off" : ""}"
                       aria-checked="${on ? "true" : "false"}"
+                      ${off ? 'aria-disabled="true"' : ""}
                       tabindex="${on ? "0" : "-1"}"
                       data-proto-export-kind="${escapeHtml(item.id)}"
                     >
                       <span class="astral-report-type-head">${protoRadio(on)}${protoTypeBadge(item.mark)}<span>${escapeHtml(item.name)}</span></span>
-                      <span class="astral-muted">${escapeHtml(item.note)}</span>
+                      <span class="astral-muted">${escapeHtml(off ? "Not available for this much data" : item.note)}</span>
                     </button>
                   `;
                 })
@@ -18658,9 +18660,7 @@ function protoExportModal() {
         aria-labelledby="astral-export-pick-title"
       >
         ${
-          state.limit
-            ? protoModalHead("astral-export-pick-title", "Export source data", "", "export")
-            : sourceStep
+          sourceStep
             ? protoModalHead("astral-export-pick-title", "Export source data", "", "export", 'data-proto-export-step="back"')
             : protoModalHead("astral-export-pick-title", "Export", "", "export")
         }
@@ -32899,7 +32899,7 @@ function onPrototype(event) {
   const exportKind = event.target.closest("[data-proto-export-kind]");
   if (exportKind) {
     const raw = store.prototypeExportModal;
-    if (!protoExportModalState()) return;
+    if (!protoExportModalState() || exportKind.getAttribute("aria-disabled") === "true") return;
     store.prototypeExportModal = { ...raw, errors: {} };
     protoSetExportPrefs({ what: exportKind.dataset.protoExportKind });
     protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
@@ -34346,7 +34346,7 @@ function onPrototypeKey(event) {
   );
   if (typeRadio && ["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) {
     event.preventDefault();
-    const radios = [...typeRadio.parentElement.querySelectorAll("[role='radio']")];
+    const radios = [...typeRadio.parentElement.querySelectorAll("[role='radio']:not([aria-disabled='true'])")];
     const step = event.key === "ArrowDown" || event.key === "ArrowRight" ? 1 : -1;
     radios[(radios.indexOf(typeRadio) + step + radios.length) % radios.length]?.click();
     return;

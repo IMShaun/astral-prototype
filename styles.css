@@ -10957,6 +10957,20 @@ tr.is-off .astral-person-mark {
   outline-offset: 2px;
 }
 
+/* A type that cannot be picked stays in view, greyed out like a disabled icon button, and says why. */
+.astral-report-type.is-off,
+.astral-report-type.is-off:hover {
+  background: var(--color-background-subtle);
+  border-color: var(--color-border-default);
+  color: var(--color-text-secondary);
+  cursor: default;
+}
+
+.astral-report-type.is-off .astral-type-badge {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+
 .astral-report-pair {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
