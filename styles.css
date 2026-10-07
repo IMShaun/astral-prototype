@@ -3776,6 +3776,19 @@ body.is-proto-fs .stage {
   color: var(--color-text-inverse);
 }
 
+/* A primary button can lead with an icon. */
+.astral-btn:has(> svg) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.astral-btn > svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
 .astral-switch {
   appearance: none;
   position: relative;

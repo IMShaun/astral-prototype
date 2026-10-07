@@ -18487,8 +18487,9 @@ function protoGraphLimitHtml(limit) {
         ${
           act
             ? `<div class="astral-actions">${protoBtn(
-                "Export data",
-                `data-proto-graph-export="${escapeHtml(limit.file)}" aria-haspopup="dialog"`
+                `${protoIconMark("export")}<span>Export data</span>`,
+                `data-proto-graph-export="${escapeHtml(limit.file)}" aria-haspopup="dialog"`,
+                { html: true }
               )}</div>`
             : ""
         }
