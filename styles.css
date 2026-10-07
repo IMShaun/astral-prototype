@@ -1733,7 +1733,8 @@ button.chip {
   min-height: 36px;
   padding: 8px 12px;
   border: 1px solid var(--color-border-control);
-  border-radius: var(--radius-button);
+  /* A pill clips the corners of text past two rows, so boxes that hold several lines use a smaller radius. */
+  border-radius: var(--radius-lg);
   background: #fff;
   color: #000;
   font: inherit;
@@ -4375,6 +4376,7 @@ button.astral-avatar {
   width: 100%;
   min-height: 88px;
   padding: 12px var(--space-16);
+  border-radius: var(--radius-lg);
   resize: vertical;
 }
 
@@ -8512,6 +8514,10 @@ button.astral-state {
   border: 1px solid var(--color-border-control);
   border-radius: 24px;
   background: #fff;
+}
+
+.astral-query-reply label.is-tall {
+  border-radius: var(--radius-lg);
 }
 
 .astral-query-reply label:focus-within {

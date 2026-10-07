@@ -1416,14 +1416,64 @@ function protoWalkPortfolio() {
   return protoWalkPortfolioCache;
 }
 
+// A site's name is an attribute people can change. The Site ID stays the same, so the new name is keyed by it.
+let protoSiteRenameMemo = null;
+
+function protoSiteRenamed(walk) {
+  const profiles = store.prototypeMeterProfiles;
+  if (protoSiteRenameMemo && protoSiteRenameMemo.walk === walk && protoSiteRenameMemo.profiles === profiles) {
+    return protoSiteRenameMemo.value;
+  }
+  const saved = profiles && typeof profiles === "object" && !Array.isArray(profiles) ? profiles : {};
+  const renames = new Map();
+  Object.keys(saved).forEach((key) => {
+    const name = String(saved[key]?.attrs?.name || "").trim();
+    if (key.startsWith("site:") && name) renames.set(key.slice(5), name);
+  });
+  let value = { tree: walk.tree, meters: walk.meters };
+  const bySite = new Map();
+  walk.tree.forEach((group) =>
+    (group.children || []).forEach((node) => {
+      const name = renames.get(node.children?.[0]?.meter || "");
+      if (name && name !== node.name) bySite.set(node, name);
+    })
+  );
+  if (bySite.size) {
+    const meterNames = new Map();
+    const tree = walk.tree.map((group) => ({
+      ...group,
+      children: (group.children || []).map((node) => {
+        const name = bySite.get(node);
+        if (!name) return node;
+        (node.children || []).forEach((child) => meterNames.set(child.meter, name));
+        return { ...node, name, baseName: node.name };
+      }),
+    }));
+    const meters = walk.meters.map((meter) => {
+      const name = meterNames.get(meter.id);
+      if (!name) return meter;
+      return {
+        ...meter,
+        site: name,
+        baseSite: meter.site,
+        path: (meter.path || []).map((part, i, all) => (i === all.length - 1 ? name : part)),
+      };
+    });
+    value = { tree, meters };
+  }
+  protoSiteRenameMemo = { walk, profiles, value };
+  return value;
+}
+
 function protoData() {
   const raw = teamSystem()?.prototype || null;
   if (!raw) return null;
   const walk = protoWalkPortfolio();
+  const named = protoSiteRenamed(walk);
   return {
     ...raw,
-    tree: walk.tree,
-    meters: walk.meters,
+    tree: named.tree,
+    meters: named.meters,
     alerts: [...(raw.alerts || []), ...walk.alerts],
     kpis: { ...raw.kpis, ...walk.kpis },
   };
@@ -1890,6 +1940,7 @@ function protoSiteFromNode(node) {
     : "online";
   return {
     name: node.name,
+    baseName: node.baseName || node.name,
     meters: kids,
     status,
     flag: kids.find((item) => item.status !== "online") || kids[0] || null,
@@ -1930,10 +1981,10 @@ function protoPersonSitesStore() {
 }
 
 function protoPersonSiteNames(personId) {
-  const all = protoEstateSites().map((site) => site.name);
+  const all = protoEstateSites();
   const list = protoPersonSitesStore()[personId];
-  if (!Array.isArray(list)) return all;
-  return all.filter((name) => list.includes(name));
+  if (!Array.isArray(list)) return all.map((site) => site.name);
+  return all.filter((site) => list.includes(site.name) || list.includes(site.baseName)).map((site) => site.name);
 }
 
 function protoSiteGranted(site) {
@@ -2428,7 +2479,7 @@ let protoProfileSiteMemo = null;
 
 function protoProfileSiteMap() {
   const raw = teamSystem()?.prototype || null;
-  const walk = protoWalkPortfolio();
+  const walk = protoData()?.tree || null;
   if (protoProfileSiteMemo && protoProfileSiteMemo.raw === raw && protoProfileSiteMemo.walk === walk) {
     return protoProfileSiteMemo.map;
   }
@@ -2453,7 +2504,11 @@ function protoProfileMeters(id) {
 }
 
 function protoProfileAttrDefaults(id) {
-  return Object.assign({}, ...protoProfileMeters(id).map((meter) => protoMeterAttrDefaults(meter)));
+  const site = protoProfileSiteMap().get(id)?.site;
+  return Object.assign(
+    { name: site?.baseName || site?.name || "", street: "", town: "", postcode: "", country: "United Kingdom" },
+    ...protoProfileMeters(id).map((meter) => protoMeterAttrDefaults(meter))
+  );
 }
 
 function protoSiteProfile(id) {
@@ -18773,9 +18828,9 @@ function protoSiteLatLng(place) {
   return PROTO_SITE_GEO[shortened] || null;
 }
 
-function protoMeterMap(place) {
-  const name = String(place || "Site");
-  const at = protoSiteLatLng(name);
+function protoMeterMap(place, label) {
+  const name = String(label || place || "Site");
+  const at = protoSiteLatLng(place || name);
   if (!at) {
     return `
     <div class="astral-meter-map" role="img" aria-label="${escapeHtml(name)}">
@@ -18835,7 +18890,30 @@ function protoMeterClockField(name, value, label) {
   `;
 }
 
-function protoMeterAttrField(name, label, value, unit) {
+function protoMeterAttrField(name, label, value, unit, opts = {}) {
+  if (opts.text) {
+    const errorId = `astral-meter-attr-error-${name}`;
+    const hintId = `astral-meter-attr-hint-${name}`;
+    const error = opts.error || "";
+    const described = [opts.hint ? hintId : "", error ? errorId : ""].filter(Boolean).join(" ");
+    return `
+    <label class="astral-field astral-meter-attr is-text">
+      <span>${escapeHtml(label)}</span>
+      <input
+        type="text"
+        name="${escapeHtml(name)}"
+        value="${escapeHtml(value || "")}"
+        maxlength="${Number(opts.max) || 120}"
+        autocomplete="off"
+        ${opts.locked ? "disabled" : ""}
+        ${error ? 'aria-invalid="true"' : ""}
+        ${described ? `aria-describedby="${described}"` : ""}
+      />
+      ${opts.hint ? `<small class="astral-muted" id="${hintId}">${escapeHtml(opts.hint)}</small>` : ""}
+      <small class="astral-export-error" id="${errorId}" role="alert"${error ? "" : " hidden"}>${escapeHtml(error)}</small>
+    </label>
+  `;
+  }
   const unitId = `astral-meter-attr-unit-${name}`;
   return `
     <label class="astral-field astral-meter-attr">
@@ -18909,8 +18987,13 @@ function protoMeterAttrFields(meter, attrs) {
 function protoMeterAttrSpec(kind) {
   if (kind === "site") {
     return [
+      { key: "name", label: "Site name", unit: "", text: true, max: 80, admin: true, required: true },
       { key: "area", label: "Floor area", unit: "m²" },
       { key: "employees", label: "Number of employees", unit: "people" },
+      { key: "street", label: "Street name", unit: "", text: true },
+      { key: "town", label: "Town or city", unit: "", text: true },
+      { key: "postcode", label: "Postcode", unit: "", text: true, max: 10 },
+      { key: "country", label: "Country", unit: "", text: true, max: 60 },
     ];
   }
   const key = kind === "water" ? "Water" : kind === "gas" ? "Gas" : "Elec";
@@ -18928,8 +19011,32 @@ function protoMeterAttrSpec(kind) {
   ];
 }
 
+// Only admins rename a site. Its Site ID never changes, so two sites can share a name.
+function protoCanRenameSite() {
+  return protoMeRole() === "admin" || protoMeRole() === "super-admin";
+}
+
+function protoMeterAttrError(item, value) {
+  return item.required && !String(value || "").trim() ? `Enter a ${item.label.toLowerCase()}.` : "";
+}
+
 function protoMeterAttrKindFields(kind, attrs) {
-  return protoMeterAttrSpec(kind).map((item) => protoMeterAttrField(item.key, item.label, attrs[item.key], item.unit));
+  return protoMeterAttrSpec(kind).map((item) => {
+    if (!item.text) return protoMeterAttrField(item.key, item.label, attrs[item.key], item.unit);
+    const locked = item.admin && !protoCanRenameSite();
+    return protoMeterAttrField(item.key, item.label, attrs[item.key], item.unit, {
+      text: true,
+      max: item.max,
+      locked,
+      hint: locked ? "Only admins can change the site name." : "",
+      error: protoMeterAttrError(item, attrs[item.key]),
+    });
+  });
+}
+
+// An empty required attribute, such as the site name, stops the save.
+function protoMeterAttrsBlocked(attrs) {
+  return protoMeterAttrSpec("site").some((item) => protoMeterAttrError(item, attrs?.[item.key]));
 }
 
 function protoMeterAttrKinds(id) {
@@ -19087,7 +19194,12 @@ function protoApplySiteSettingsCsv(meter, text) {
     if (where === "attributes") {
       const kind = kinds.find((item) => norm(protoMeterAttrGroupName(item)) === norm(group));
       const item = kind ? protoMeterAttrSpec(kind).find((spec) => norm(spec.label) === norm(setting)) : null;
-      if (!item || (value && !/^\d+(\.\d+)?$/.test(value))) {
+      const bad = item?.text
+        ? (item.admin && !protoCanRenameSite() && value !== String(draft.attrs[item.key] ?? "")) ||
+          protoMeterAttrError(item, value) ||
+          value.length > (item.max || 120)
+        : value && !/^\d+(\.\d+)?$/.test(value);
+      if (!item || bad) {
         skipped += 1;
         return;
       }
@@ -19245,7 +19357,7 @@ function protoMeterInheritOverview(meter, site) {
   return `
     <div class="astral-site-overview">
       <div class="astral-meter-overview">
-        ${protoMeterMap(siteName)}
+        ${protoMeterMap(site?.baseName || siteName, siteName)}
         <div class="astral-meter-summary">
           <dl class="astral-meter-meta">
             ${row("hours", "hours", facts.hours)}
@@ -19277,7 +19389,7 @@ function protoMeterOverview(meter) {
   const site = protoSiteByMeter(meter?.id);
   return `
     <div class="astral-meter-overview">
-      ${protoMeterMap(site?.name || facts.site)}
+      ${protoMeterMap(site?.baseName || facts.site, site?.name || facts.site)}
       <div class="astral-meter-summary">
         <dl class="astral-meter-meta">
           <div>
@@ -19468,9 +19580,9 @@ function protoMeterProfileForm(meter) {
         )}
       </div>
       <div class="astral-actions">
-        ${protoBtn("Save changes", `${dirty && protoCanAct() ? "" : " disabled"}`, {
+        ${protoBtn("Save changes", "", {
           type: "submit",
-          disabled: !(dirty && protoCanAct()),
+          disabled: !(dirty && protoCanAct() && !protoMeterAttrsBlocked(draft.attrs)),
         })}
       </div>
     </form>
@@ -30248,6 +30360,8 @@ function protoGrowComment(area) {
   const minLines = box.closest("[data-proto-query-reply], [data-proto-query-form], [data-proto-inbox-reply]") ? 1 : protoCommentOpen(box) ? 2 : 1;
   box.style.height = "auto";
   box.style.height = `${Math.max(minLines * line + chrome, box.scrollHeight)}px`;
+  const reply = box.closest(".astral-query-reply label");
+  if (reply) reply.classList.toggle("is-tall", box.scrollHeight - chrome > line * 2.5);
   if (box.closest(".astral-query-pin")) protoPlaceQueryPin();
 }
 
@@ -33228,8 +33342,22 @@ function onPrototypeInput(event) {
     const draft = protoReadMeterProfileForm(form, meter);
     store.prototypeMeterDrafts = { ...protoMeterDrafts(), [protoProfileKey(meter.id)]: draft };
     persistChrome();
+    protoMeterAttrSpec("site").forEach((item) => {
+      const input = form.querySelector(`.astral-meter-attrs input[name='${item.key}']`);
+      const note = form.querySelector(`#astral-meter-attr-error-${item.key}`);
+      if (!input || !note || !item.required) return;
+      const error = protoMeterAttrError(item, input.value);
+      note.textContent = error;
+      note.hidden = !error;
+      if (error) input.setAttribute("aria-invalid", "true");
+      else input.removeAttribute("aria-invalid");
+      const ids = (input.getAttribute("aria-describedby") || "").split(" ").filter((part) => part && part !== note.id);
+      if (error) ids.push(note.id);
+      if (ids.length) input.setAttribute("aria-describedby", ids.join(" "));
+      else input.removeAttribute("aria-describedby");
+    });
     const btn = form.querySelector("button[type='submit']");
-    if (btn) btn.disabled = !protoMeterDirty(meter.id);
+    if (btn) btn.disabled = !protoMeterDirty(meter.id) || protoMeterAttrsBlocked(draft.attrs);
     return;
   }
   const profileName = event.target.closest("input[name='proto-profile-name']");
@@ -33526,7 +33654,7 @@ function onPrototypeSubmit(event) {
     if (!meter) return;
     const draft = protoReadMeterProfileForm(meterProfileForm, meter);
     store.prototypeMeterDrafts = { ...protoMeterDrafts(), [protoProfileKey(meter.id)]: draft };
-    if (!protoMeterDirty(meter.id)) return;
+    if (!protoMeterDirty(meter.id) || protoMeterAttrsBlocked(draft.attrs)) return;
     protoSaveMeterProfile(meter, draft);
     return;
   }
