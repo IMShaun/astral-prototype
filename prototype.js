@@ -717,6 +717,7 @@ function protoPageFilterReset() {
     prototypeColourOpen: "",
     prototypeDateOpen: false,
     prototypeDateCustomOpen: false,
+    prototypeDateCompare: "",
     prototypeMeterOpen: "none",
     prototypeMeterSettings: "",
     prototypeMeterOwn: "",
@@ -3007,7 +3008,11 @@ function protoNamedSpan(id) {
   return null;
 }
 
+// Set while Compare dates builds the second period, so the usual series builders read that range.
+let protoSpanOverride = null;
+
 function protoDateSpan() {
+  if (protoSpanOverride) return protoSpanOverride;
   const today = protoToday();
   const named = protoNamedSpan(protoDatePreset());
   if (named) return named;
@@ -3132,6 +3137,208 @@ function protoChartWhen() {
 
 function protoChartZone() {
   return "UTC";
+}
+
+// Compare dates draws a second period on the same graph. It is separate from Compare, which adds sites.
+const PROTO_DATE_COMPARE = [
+  { id: "previous", name: "Previous period" },
+  { id: "year", name: "Same period last year" },
+];
+
+function protoDateCompareId() {
+  const id = String(store.prototypeDateCompare || "");
+  return PROTO_DATE_COMPARE.some((item) => item.id === id) ? id : "";
+}
+
+function protoCompareSpanFor(id, span) {
+  if (id === "year") {
+    return { from: protoAddMonths(span.from, -12), to: protoAddMonths(span.to, -12), kind: span.kind };
+  }
+  if (span.kind === "month") {
+    const months =
+      (span.to.getFullYear() - span.from.getFullYear()) * 12 + span.to.getMonth() - span.from.getMonth() + 1;
+    return { from: protoAddMonths(span.from, -months), to: protoAddMonths(span.to, -months), kind: "month" };
+  }
+  const days = Math.round((span.to - span.from) / 86400000) + 1;
+  return { from: protoAddDays(span.from, -days), to: protoAddDays(span.to, -days), kind: span.kind };
+}
+
+function protoDateCompareSpan() {
+  const id = protoDateCompareId();
+  if (!id || protoChartIsCalendar()) return null;
+  return protoCompareSpanFor(id, protoDateSpan());
+}
+
+function protoWithSpan(span, build) {
+  const was = protoSpanOverride;
+  protoSpanOverride = span;
+  try {
+    return build();
+  } finally {
+    protoSpanOverride = was;
+  }
+}
+
+function protoSpanWords(span) {
+  return protoRangeWords(span.from, span.to);
+}
+
+// What each point is called in the hover. A year apart, a day needs its year to tell the two apart.
+function protoSpanPointNames(span, labels, withYear) {
+  return labels.map((label, i) => {
+    if (span.kind === "interval") return withYear ? protoFormatFullDay(span.from) : protoFormatDay(span.from);
+    if (span.kind === "day") {
+      const day = protoAddDays(span.from, i);
+      return withYear ? protoFormatFullDay(day) : protoFormatDay(day);
+    }
+    return label;
+  });
+}
+
+function protoDateCompareControl() {
+  const id = protoDateCompareId();
+  const calendar = protoChartIsCalendar();
+  const span = protoDateSpan();
+  const on = Boolean(id) && !calendar;
+  const words = on ? protoSpanWords(protoCompareSpanFor(id, span)) : "";
+  const select = protoSelect({
+    id: "date-compare",
+    label: on ? `Compare dates, ${words}` : "Compare dates",
+    value: on ? id : "",
+    text: on ? words : "Compare dates",
+    kind: "tool",
+    disabled: calendar,
+    tip: calendar ? "Compare dates works with Bar and Line." : "",
+    options: PROTO_DATE_COMPARE.map((item) => ({
+      value: item.id,
+      label: item.name,
+      note: protoSpanWords(protoCompareSpanFor(item.id, span)),
+    })),
+  });
+  const clear = on
+    ? protoClearButton("astral-compare-clear", `data-proto-date-compare="clear"`, "Remove date comparison")
+    : "";
+  return `<div class="astral-date-compare${on ? " is-on" : ""}">${select}${clear}</div>`;
+}
+
+// One reference series per line, aligned to the graph's points by position.
+function protoDateCompareRefs(remake, build) {
+  const cmp = remake ? protoDateCompareSpan() : null;
+  if (!cmp) return [];
+  const span = protoDateSpan();
+  const withYear = protoDateCompareId() === "year";
+  const keyName = protoSpanWords(cmp);
+  const lines = protoWithSpan(cmp, () => build(remake()));
+  return lines.map((line) => {
+    const labels = line.points.map((p) => p.label);
+    return {
+      key: `dates-${line.id}`,
+      kind: "dates",
+      track: line.track || "",
+      style: line.style || "dash",
+      color: line.color || "",
+      flow: line.flow || "",
+      values: line.points.map((p) => (p.value == null ? null : p.value)),
+      qualities: line.points.map((p) => p.quality || ""),
+      names: protoSpanPointNames(cmp, labels, withYear),
+      nowNames: protoSpanPointNames(span, labels, withYear),
+      keyName: line.flow ? `${keyName}, ${line.flow}` : keyName,
+      nowKey: protoSpanWords(span),
+    };
+  });
+}
+
+function protoRefRowsAt(refs, i, track) {
+  return (refs || [])
+    .filter((ref) => !track || !ref.track || ref.track === track)
+    .map((ref) => ({
+      n: ref.flow ? `${ref.names[i] || ""}, ${ref.flow}` : ref.names[i] || "",
+      v: ref.values[i] == null ? "" : protoFormatAmount(ref.values[i]),
+      q: ref.qualities[i] || "",
+      s: ref.style,
+      c: ref.color,
+      now: ref.nowNames[i] || "",
+    }))
+    .filter((row) => row.n);
+}
+
+function protoRefWords(rows, unit) {
+  return rows
+    .map((row) => `. ${row.n}, ${row.v === "" ? "no reading" : `${row.v} ${unit}`}`)
+    .join("");
+}
+
+function protoRefLines(refs, scale, xAt, count) {
+  const list = refs || [];
+  if (!list.length) return "";
+  const dots = count <= 62;
+  const body = list
+    .map((ref) => {
+      const runs = [];
+      let cur = null;
+      ref.values.slice(0, count).forEach((value, i) => {
+        if (value == null) {
+          cur = null;
+          return;
+        }
+        if (!cur) {
+          cur = [];
+          runs.push(cur);
+        }
+        cur.push([i, xAt(i), scale.y(value)]);
+      });
+      const key = escapeHtml(ref.key);
+      const lines = runs
+        .filter((run) => run.length > 1)
+        .map(
+          (run, k) =>
+            `<polyline class="astral-ref-halo" data-m="refh|${key}|${k}" points="${run
+              .map(([, x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`)
+              .join(" ")}" /><polyline class="astral-ref-line" data-m="ref|${key}|${k}" points="${run
+              .map(([, x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`)
+              .join(" ")}" />`
+        )
+        .join("");
+      const marks = runs
+        .flatMap((run) => (dots || run.length === 1 ? run : []))
+        .map(
+          ([i, x, y]) =>
+            `<circle class="astral-ref-dot" data-m="refd|${key}|${i}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" />`
+        )
+        .join("");
+      const ink = ref.color ? ` style="--ref-ink:${escapeHtml(ref.color)}"` : "";
+      return `<g class="astral-ref is-${escapeHtml(ref.style)}"${ink}>${lines}${marks}</g>`;
+    })
+    .join("");
+  return `<g class="astral-ref-lines" aria-hidden="true">${body}</g>`;
+}
+
+function protoRefKeyMark(style, color) {
+  const ink = color ? ` style="--ref-ink:${escapeHtml(color)}"` : "";
+  return `<span class="astral-ref-mark is-${escapeHtml(style)}"${ink} aria-hidden="true"></span>`;
+}
+
+// Names both periods under the graph. The solid mark is the date range picked, the broken marks are the comparison.
+function protoRefKey(refs, bars) {
+  const list = refs || [];
+  if (!list.length) return "";
+  const seen = new Set();
+  const items = [
+    `<span class="astral-ref-key-item" role="listitem">${protoRefKeyMark(bars ? "bar" : "solid")}<span>${escapeHtml(
+      list[0].nowKey
+    )}</span></span>`,
+  ];
+  list.forEach((ref) => {
+    const id = `${ref.style}|${ref.keyName}`;
+    if (seen.has(id)) return;
+    seen.add(id);
+    items.push(
+      `<span class="astral-ref-key-item" role="listitem">${protoRefKeyMark(ref.style)}<span>${escapeHtml(
+        ref.keyName
+      )}</span></span>`
+    );
+  });
+  return `<div class="astral-ref-key" role="list" aria-label="Date ranges">${items.join("")}</div>`;
 }
 
 function protoChartTimeLabel(time) {
@@ -5051,11 +5258,12 @@ function protoHitAttrs(point) {
   const lastStackAttrs = lastStacks.length
     ? ` data-tip-last-stacks="${escapeHtml(JSON.stringify(lastStacks))}"`
     : "";
+  const refAttrs = point.refs?.length ? ` data-tip-refs="${escapeHtml(JSON.stringify(point.refs))}"` : "";
   return `data-tip-time="${escapeHtml(point.label)}" data-tip-value="${escapeHtml(
     value
   )}" data-tip-last="${escapeHtml(last)}" data-tip-unit="${escapeHtml(unit)}" data-tip-note="${escapeHtml(
     note
-  )}"${compareAttrs}${qualityAttrs}${meterAttrs}${stackAttrs}${lastStackAttrs}`;
+  )}"${compareAttrs}${qualityAttrs}${meterAttrs}${stackAttrs}${lastStackAttrs}${refAttrs}`;
 }
 
 function protoPointFromHit(hit, chart) {
@@ -5081,7 +5289,45 @@ function protoPointFromHit(hit, chart) {
     lastStacks: protoReadStacks(hit.getAttribute("data-tip-last-stacks")),
     zone: hit.getAttribute("data-tip-zone") || "",
     zones: protoReadZones(hit.getAttribute("data-tip-zones")),
+    refs: protoReadRefs(hit.getAttribute("data-tip-refs")),
   };
+}
+
+function protoReadRefs(raw) {
+  if (!raw) return [];
+  try {
+    const list = JSON.parse(raw);
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+// The comparison's readings sit under the picked range's own, each named by its date.
+function protoRefTipHtml(point, baseHtml) {
+  const rows = point?.refs || [];
+  if (!rows.length) return baseHtml;
+  const unit = point.unit || "kWh";
+  const now = protoPointSliceRows(point).length
+    ? baseHtml
+    : protoChartPointReading(rows[0].now, point.value, unit, "", point.quality).replace(
+        '<p class="astral-query-pin-reading">',
+        `<p class="astral-query-pin-reading is-ref">${protoRefKeyMark(point.meterId ? "solid" : "bar", point.meterColor)}`
+      );
+  const refs = rows
+    .map((row) => {
+      let shown = "No reading";
+      if (row.v !== "") {
+        const plain = escapeHtml(row.v);
+        const amount = row.q === "estimated" ? protoEstAmount(plain) : plain;
+        shown = unit === "£" ? `£${amount}` : `${amount} ${escapeHtml(unit)}`;
+      }
+      return `<p class="astral-query-pin-reading is-ref">${protoRefKeyMark(row.s, row.c)}<span class="astral-query-pin-series">${escapeHtml(
+        row.n
+      )}</span><span class="astral-query-pin-kwh">${shown}</span></p>`;
+    })
+    .join("");
+  return `${now}${refs}`;
 }
 
 // The time, then the zone it sits in when Show is on.
@@ -6182,7 +6428,7 @@ function protoCalendarChart(meters, label, dual) {
   return protoChartWrap(grid, label, dual, false, { calendar: true });
 }
 
-function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing }) {
+function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing, remake }) {
   const list = meters || [];
   const pool = all || list;
   if (!list.length) return protoChartEmpty(pool);
@@ -6194,19 +6440,47 @@ function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing }) {
   const name = protoPaneChartLabel(dualTotal);
   if (protoChartIsCalendar()) return protoCalendarChart(list, protoPaneChartLabel(Boolean(dual)), Boolean(dual));
   if (protoChartIsLine()) {
-    const lineTracks = breakdown
-      ? scaledTracks
-      : dualTotal
-        ? protoDualLineTracks(scaledPoints)
-        : protoCombinedLineTracks(scaledPoints);
+    const lineFor = (again) =>
+      breakdown
+        ? protoScaleTracks(again.tracks || [], list)
+        : dualTotal
+          ? protoDualLineTracks(protoScalePoints(again.points || [], list))
+          : protoCombinedLineTracks(protoScalePoints(again.points || [], list));
+    const lineTracks = lineFor({ tracks, points });
+    const refs = protoDateCompareRefs(remake, (again) =>
+      lineFor(again).map((track) => ({
+        id: track.id,
+        track: track.id,
+        color: track.color,
+        points: track.points || [],
+      }))
+    );
     return lineTracks.length
-      ? protoLineChart(lineTracks, name, { dual: dualTotal, zoneMeters: list })
+      ? protoLineChart(lineTracks, name, { dual: dualTotal, zoneMeters: list, refs })
       : protoChartEmpty(pool);
   }
+  // Bars keep their colour, so a comparison line is dark. Outgoing is dotted so it does not rely on colour.
+  const barRefs = (again) => {
+    const rows = protoScalePoints(again.points || [], list);
+    if (!dualTotal) return [{ id: "total", points: rows }];
+    const lines = [];
+    if (protoChartFlowOn("in")) lines.push({ id: "in", flow: "incoming", points: rows });
+    if (protoChartFlowOn("out")) {
+      lines.push({
+        id: "out",
+        flow: "outgoing",
+        style: "dot",
+        points: rows.map((p) => ({ ...p, value: p.last, quality: p.lastQuality })),
+      });
+    }
+    return lines;
+  };
+  const refs = protoDateCompareRefs(remake, barRefs);
   if (breakdown && scaledTracks.length && !dualTotal) {
     return protoBarChart(protoTracksToStackPoints(scaledTracks), name, {
       seriesStack: true,
       zoneMeters: list,
+      refs,
     });
   }
   if (!scaledPoints.length) return protoChartEmpty(pool);
@@ -6214,6 +6488,7 @@ function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing }) {
     dual: dualTotal,
     outgoing: Boolean(outgoing),
     zoneMeters: list,
+    refs,
   });
 }
 
@@ -6537,6 +6812,11 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
             ? `<div class="astral-chart-heading">
           <p class="astral-chart-title">${escapeHtml(label)}</p>
           <p class="astral-chart-when">${escapeHtml(protoChartWhen())} ${escapeHtml(protoChartZone())}</p>
+          ${
+            extras.refs?.length
+              ? `<p class="astral-chart-when">Compared with ${escapeHtml(protoSpanWords(protoDateCompareSpan()))}</p>`
+              : ""
+          }
           ${protoChartOverlayHeld() ? protoChartLimitNote() : ""}
         </div>`
             : ""
@@ -6555,6 +6835,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
       ${svg}
       <div class="astral-chart-keys">
         ${dual ? protoChartKey(true, extras.keyNames) : ""}
+        ${protoRefKey(extras.refs, extras.bars)}
       </div>
       <div class="astral-tip" hidden>
         <div class="astral-tip-head">
@@ -6611,14 +6892,18 @@ function protoXTickIndexes(points) {
   return indexes;
 }
 
-function protoChartScale(points, w, h, pad) {
+function protoRefValues(refs) {
+  return (refs || []).flatMap((ref) => ref.values.filter((v) => v != null));
+}
+
+function protoChartScale(points, w, h, pad, extra = []) {
   const nums = points.flatMap((p) => {
     if (p.stacks?.length || p.lastStacks?.length) {
       return [protoStacksSum(p.stacks), protoStacksSum(p.lastStacks)].filter((v) => v);
     }
     return [p.value, p.last].filter((v) => v != null);
   });
-  const max = protoNiceMax(Math.max(0, ...nums));
+  const max = protoNiceMax(Math.max(0, ...nums, ...extra));
   const innerW = w - pad.l - pad.r;
   const innerH = h - pad.t - pad.b;
   return {
@@ -6631,10 +6916,10 @@ function protoChartScale(points, w, h, pad) {
   };
 }
 
-function protoTracksScale(tracks, w, h, pad) {
+function protoTracksScale(tracks, w, h, pad, extra = []) {
   const points = tracks[0]?.points || [];
   const nums = tracks.flatMap((track) => (track.points || []).map((p) => p.value).filter((v) => v != null));
-  const max = protoNiceMax(Math.max(0, ...nums));
+  const max = protoNiceMax(Math.max(0, ...nums, ...extra));
   const innerW = w - pad.l - pad.r;
   const innerH = h - pad.t - pad.b;
   return {
@@ -7372,7 +7657,7 @@ function protoBarChart(points, label, options = {}) {
   const buckets = zoneSet ? zoneSet.buckets : [];
   const hourly = buckets.some(Boolean);
   const pad = { l: 52, r: 16, t: 32, b: 36 + (hourly && zones.showTou ? 20 : 0) };
-  const scale = protoChartScale(rows, w, h, pad);
+  const scale = protoChartScale(rows, w, h, pad, protoRefValues(options.refs));
   const gap = scale.innerW / Math.max(1, rows.length);
   const layer = protoZoneLayer(buckets, zones, pad, w, h, (i) => [pad.l + i * gap, pad.l + (i + 1) * gap]);
   const paired = view.paired;
@@ -7493,6 +7778,7 @@ function protoBarChart(points, label, options = {}) {
           const outCap = paired ? protoBarCap(x2 + bw / 2, p.last, scale, pad, h) : null;
           const tall = [inCap, outCap].filter(Boolean).sort((a, b) => a.y - b.y)[0];
           const glyphs = tall && (mark || flag) ? protoCapGlyphs(tall.x, tall.y, mark, flag) : "";
+          const refRows = protoRefRowsAt(options.refs, i);
           return `
         <g class="astral-hit-group${on ? " is-picked" : ""}${mark ? " is-query" : ""}${
             flag ? " is-alert" : ""
@@ -7516,11 +7802,11 @@ function protoBarChart(points, label, options = {}) {
                 paired && p.lastQuality === "estimated" && p.last != null ? ", outgoing estimated" : ""
               }${
                 p.note && options.seriesStack ? `. ${protoHoverAriaNote(p)}` : ""
-              }${protoZoneWords(buckets[i], zones)}${mark ? ". Query" : ""}${flag ? ". Alert" : ""}`
+              }${protoZoneWords(buckets[i], zones)}${protoRefWords(refRows, p.unit || "kWh")}${mark ? ". Query" : ""}${flag ? ". Alert" : ""}`
             )}"
             data-proto-hit
             ${protoZoneTipAttrs(buckets[i], zones)}
-            ${protoHitAttrs(p)}
+            ${protoHitAttrs(refRows.length ? { ...p, refs: refRows } : p)}
           />
           ${protoBarFocusMarkup(p, scale, pad, h, x1, x2, bw, paired)}
         </g>
@@ -7535,6 +7821,7 @@ function protoBarChart(points, label, options = {}) {
       ${protoChartAxes(rows, scale, w, h, pad, scale.xBar)}
       ${layer.strip}
       ${bars}
+      ${protoRefLines(options.refs, scale, scale.xBar, rows.length)}
     </svg>
   `;
   return protoChartWrap(svg, label, dual && !options.seriesStack, view.empty, {
@@ -7542,6 +7829,8 @@ function protoBarChart(points, label, options = {}) {
     keyNames: options.keyNames,
     still: options.still,
     zoneSet,
+    refs: options.refs,
+    bars: true,
   });
 }
 
@@ -7673,7 +7962,7 @@ function protoLineChartBuild(tracks, label, options) {
   const finger = list.flatMap((track) =>
     (track.points || []).map((p) => ({ ...p, label: `${track.id || ""}:${p.label}` }))
   );
-  const scale = protoTracksScale(list, w, h, pad);
+  const scale = protoTracksScale(list, w, h, pad, protoRefValues(options.refs));
   const step = scale.innerW / Math.max(1, points.length - 1);
   const layer = protoZoneLayer(buckets, zones, pad, w, h, (i) => [scale.x(i) - step / 2, scale.x(i) + step / 2]);
   const picked = protoChartPoint();
@@ -7700,6 +7989,8 @@ function protoLineChartBuild(tracks, label, options) {
             meterRef: track.ref,
             meterColor: track.color,
           };
+          const refRows = protoRefRowsAt(options.refs, i, track.id);
+          if (refRows.length) hit.refs = refRows;
           const paint = escapeHtml(track.color || "#000");
           const est = p.quality === "estimated" && !mark && !flag;
           const point = flag
@@ -7725,7 +8016,7 @@ function protoLineChartBuild(tracks, label, options) {
                 aria-label="${escapeHtml(
                   `${p.label}, ${track.ref}, ${protoFormatReading(p.value, p.unit || "kWh")}${
                     p.quality === "estimated" ? ", estimated" : ""
-                  }${protoZoneWords(buckets[i], zones)}${mark ? ". Query" : ""}${flag ? ". Alert" : ""}`
+                  }${protoZoneWords(buckets[i], zones)}${protoRefWords(refRows, p.unit || "kWh")}${mark ? ". Query" : ""}${flag ? ". Alert" : ""}`
                 )}"
                 data-proto-hit
                 ${protoZoneTipAttrs(buckets[i], zones)}
@@ -7744,13 +8035,14 @@ function protoLineChartBuild(tracks, label, options) {
       ${layer.back}
       ${protoChartAxes(points, scale, w, h, pad, scale.x)}
       ${layer.strip}
+      ${protoRefLines(options.refs, scale, scale.x, points.length)}
       <g class="astral-chart-grow">
       ${lines}
       ${hits}
       </g>
     </svg>
   `;
-  return protoChartWrap(svg, label, Boolean(options.dual), false, { zoneSet });
+  return protoChartWrap(svg, label, Boolean(options.dual), false, { zoneSet, refs: options.refs });
 }
 
 function protoChartEmpty(seedMeters) {
@@ -7792,6 +8084,7 @@ function protoPaneChart(meters, all) {
     all,
     dual,
     outgoing: !dual && dualFlow.channel === "out",
+    remake: () => ({ tracks: protoMeterTracks(list, all), points: protoMetersSeries(list, dualFlow.channel) }),
   });
 }
 
@@ -8436,6 +8729,11 @@ function protoPickSelect(id, value) {
     if (id === "usage-type") patch.prototypeUsageCompany = "";
     setProto(patch);
     protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
+    return;
+  }
+  if (id === "date-compare") {
+    setProto({ prototypeSelectOpen: "", prototypeDateCompare: String(value || ""), prototypeChartPoint: null });
+    protoRestoreFocus(`#astral-fs [data-proto-select="date-compare"] .astral-select-btn`);
     return;
   }
   if (id === "chart-view") {
@@ -22153,6 +22451,7 @@ function protoDetailTools(csvId) {
   return `
     <div class="astral-detail-tools">
       ${protoDateControl()}
+      ${protoDateCompareControl()}
       ${protoCompareControl()}
       ${protoPaneFilterControl()}
       ${protoExportControl(csvId)}
@@ -22248,6 +22547,7 @@ function protoGroupDetail(group) {
           all: paneSites.flatMap((site) => site.meters || []),
           dual,
           outgoing: !dual && channel === "out",
+          remake: () => ({ tracks: protoSiteTracks(viewSites, paneSites), points: protoGroupSeries(group, channel) }),
         })
       }
       ${
@@ -22426,6 +22726,13 @@ function protoCompareDetail() {
         meters,
         all: allMeters,
         dual: false,
+        remake: () => {
+          const again =
+            bundle.level === "group"
+              ? protoCompareGroupTracks(bundle.groups, viewSites)
+              : protoMeterTracks(meters, allMeters);
+          return { tracks: again, points: protoTracksToTotalPoints(again) };
+        },
       })}
       ${
         !protoConsumptionUnitsMixed(meters) && missing
@@ -30626,8 +30933,9 @@ function fillProtoTip(hit) {
   }
   const sliceEl = tip.querySelector(".astral-tip-slices");
   if (sliceEl) {
-    sliceEl.innerHTML = slicesHtml.html;
-    sliceEl.hidden = !slicesHtml.html;
+    const html = protoRefTipHtml(point, slicesHtml.html);
+    sliceEl.innerHTML = html;
+    sliceEl.hidden = !html;
   }
   protoPaintHoverMore(tip.querySelector("[data-proto-hover-more]"), slicesHtml.rest, open, point);
   const noteEl = tip.querySelector(".astral-tip-note");
@@ -32755,6 +33063,12 @@ function onPrototype(event) {
       prototypeFullscreen: true,
     });
     protoRestoreFocus(`#astral-fs [data-proto-compare-id="${CSS.escape(id)}"]`);
+    return;
+  }
+  const dateCompareClear = event.target.closest('[data-proto-date-compare="clear"]');
+  if (dateCompareClear) {
+    setProto({ prototypeDateCompare: "", prototypeChartPoint: null });
+    protoRestoreFocus(`#astral-fs [data-proto-select="date-compare"] .astral-select-btn`);
     return;
   }
   const compareBtn = event.target.closest("[data-proto-compare]");

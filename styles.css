@@ -5675,9 +5675,20 @@ button.astral-catch {
 
 .astral-detail-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-stack-tight);
+}
+
+/* The title keeps a readable width. When the tools no longer fit beside it, they move to their own row on the right. */
+.astral-detail-head > :first-child {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.astral-detail-head > .astral-detail-tools {
+  margin-left: auto;
 }
 
 .astral-detail-lead {
@@ -9169,10 +9180,138 @@ button.astral-state {
   pointer-events: none;
 }
 
+/* Compare dates. The comparison is a broken line over the picked range, never another bar. */
+.astral-ref-lines {
+  pointer-events: none;
+}
+
+.astral-ref-line,
+.astral-ref-halo {
+  fill: none;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.astral-ref-halo {
+  stroke: #fff;
+  stroke-width: 4.5;
+  stroke-opacity: 0.9;
+}
+
+.astral-ref-line {
+  stroke: var(--ref-ink, #1b1b1f);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+.astral-ref.is-dot .astral-ref-line {
+  stroke-dasharray: 0.5 4.5;
+  stroke-linecap: round;
+  stroke-width: 2.5;
+}
+
+.astral-ref-dot {
+  fill: #fff;
+  stroke: var(--ref-ink, #1b1b1f);
+  stroke-width: 1.5;
+}
+
+.astral-chart.is-draw .astral-ref-lines {
+  animation: astral-ref-wipe 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+
+@keyframes astral-ref-wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.astral-ref-key {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 4px;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+/* With dates compared the key may need a second row. The graph gives up the height, not the key. */
+.astral-pane-body > .astral-chart-wrap:has(.astral-ref-key),
+.astral-home-chart > .astral-chart-wrap:has(.astral-ref-key) {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.astral-chart-wrap:has(.astral-ref-key) > .astral-chart-keys {
+  flex-wrap: wrap;
+  row-gap: 4px;
+  height: auto;
+  overflow: visible;
+}
+
+.astral-ref-key-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.astral-ref-mark {
+  display: inline-block;
+  flex: none;
+  width: 18px;
+  height: 0;
+  border-top: 2px solid var(--ref-ink, #1b1b1f);
+}
+
+.astral-ref-mark.is-bar {
+  width: 10px;
+  height: 10px;
+  border: 0;
+  border-radius: 2px;
+  background: var(--color-flow-in);
+}
+
+.astral-ref-mark.is-dash {
+  border-top-style: dashed;
+}
+
+.astral-ref-mark.is-dot {
+  border-top-style: dotted;
+  border-top-width: 3px;
+}
+
+.astral-query-pin-reading.is-ref .astral-ref-mark {
+  margin-right: 6px;
+}
+
+.astral-date-compare {
+  display: inline-flex;
+  align-items: center;
+}
+
+.astral-date-compare.is-on {
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-button);
+  padding-right: 4px;
+  gap: 2px;
+  background: var(--color-background-surface);
+}
+
+.astral-date-compare.is-on .astral-select-btn {
+  border: 0;
+  background: transparent;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .astral-chart.is-draw .astral-bar,
   .astral-chart.is-draw .astral-bar-out,
   .astral-chart.is-draw .astral-bar-stack,
+  .astral-chart.is-draw .astral-ref-lines,
   .astral-chart.is-draw .astral-chart-grow,
   .astral-chart.is-draw .astral-query-mark,
   .astral-chart.is-draw .astral-alert-mark,
