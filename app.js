@@ -1281,6 +1281,7 @@ function normalize(data) {
     data.prototypePointTagQuery = "";
     data.prototypeAlertAck = Array.isArray(data.prototypeAlertAck) ? data.prototypeAlertAck : [];
     data.prototypeAlertUndo = Array.isArray(data.prototypeAlertUndo) ? data.prototypeAlertUndo : [];
+    data.prototypeAlertRead = Array.isArray(data.prototypeAlertRead) ? data.prototypeAlertRead : [];
     data.prototypeQueryResolve =
       data.prototypeQueryResolve &&
       typeof data.prototypeQueryResolve === "object" &&
@@ -5283,6 +5284,7 @@ const CHROME_FIELDS = [
   "prototypeRaisedQueries",
   "prototypeAlertAck",
   "prototypeAlertUndo",
+  "prototypeAlertRead",
   "prototypeQueryResolve",
   "prototypeReportRun",
   "prototypeBrandLogo",
@@ -5656,6 +5658,7 @@ function applyChrome() {
   store.prototypePointTagQuery = String(store.prototypePointTagQuery || "").slice(0, 32);
   store.prototypeAlertAck = Array.isArray(store.prototypeAlertAck) ? store.prototypeAlertAck : [];
   store.prototypeAlertUndo = Array.isArray(store.prototypeAlertUndo) ? store.prototypeAlertUndo : [];
+  store.prototypeAlertRead = Array.isArray(store.prototypeAlertRead) ? store.prototypeAlertRead : [];
   store.prototypeQueryResolve =
     store.prototypeQueryResolve &&
     typeof store.prototypeQueryResolve === "object" &&

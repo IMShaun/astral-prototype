@@ -20672,8 +20672,19 @@ function protoAlertResolved(item) {
   return Boolean(record) || item.status === "Acknowledged";
 }
 
+function protoAlertReadIds() {
+  const raw = Array.isArray(store.prototypeAlertRead) ? store.prototypeAlertRead : [];
+  return [...new Set(raw.map((id) => String(id || "").trim()).filter(Boolean))];
+}
+
+// Opening the details reads an alert. It stays open until someone resolves it.
+function protoAlertIsRead(item) {
+  return Boolean(item) && protoAlertReadIds().includes(item.id);
+}
+
 function protoAlertStateWord(item) {
-  return protoAlertResolved(item) ? "Resolved" : "Unread";
+  if (protoAlertResolved(item)) return "Resolved";
+  return protoAlertIsRead(item) ? "Read" : "Unread";
 }
 
 function protoAlertKindMark(kind) {
@@ -20688,7 +20699,7 @@ function protoAlertCard(item, title, opts = {}) {
   const mark = protoTypeBadge(protoAlertKindMark(item.kind));
   const kindWord = opts.kind ? `<span class="sr-only">${escapeHtml(protoAlertWord(item.kind))}. </span>` : "";
   return `
-    <article class="astral-alert${resolved ? " is-resolved" : ""}" data-proto-alert-card="${id}">
+    <article class="astral-alert${resolved ? " is-resolved" : protoAlertIsRead(item) ? " is-read" : " is-unread"}" data-proto-alert-card="${id}">
       <div class="astral-alert-body">
         <div class="astral-alert-copy">
           <h3 class="astral-alert-title"><button type="button" class="astral-alert-open" data-proto-alert-info="${id}" aria-haspopup="dialog">${mark}${kindWord}<span>${escapeHtml(title)}</span></button></h3>
@@ -23667,7 +23678,6 @@ function protoAlertInfoModal() {
   const meter = protoMeter(item.meterId);
   const word = protoAlertWord(item.kind);
   const resolved = protoAlertResolved(item);
-  const reason = protoResolveName(protoAlertAckRecords().find((row) => row.id === item.id)?.reason);
   const def = protoAlertRuleFor(item);
   const row = (label, html) => `<div><dt>${escapeHtml(label)}</dt><dd>${html}</dd></div>`;
   const text = (value) => escapeHtml(value || "");
@@ -23691,7 +23701,6 @@ function protoAlertInfoModal() {
             ${row("Type", `<span class="astral-alert-kind">${protoTypeBadge(protoAlertKindMark(item.kind))}<span>${text(word)}</span></span>`)}
             ${row("Priority", text(protoAlertLevel(item)))}
             ${row("Raised", text(item.age ? `${item.age} ago` : ""))}
-            ${row("Status", text(resolved ? (reason ? `Resolved as ${reason}` : "Resolved") : protoAlertStateWord(item)))}
             ${row("Site", text(site?.name || item.meter))}
             ${row("Meter", text((meter && protoMeterName(meter)) || meter?.name || ""))}
             ${item.point ? row("Time", text(`${item.point} UTC`)) : ""}
@@ -23719,7 +23728,11 @@ function protoAlertInfoModal() {
 
 function protoAlertInfoOpen(id) {
   if (!protoAlertById(id)) return;
-  setProto({ prototypeAlertInfo: id, prototypeAckOpen: "" });
+  setProto({
+    prototypeAlertInfo: id,
+    prototypeAckOpen: "",
+    prototypeAlertRead: [...new Set([...protoAlertReadIds(), String(id)])],
+  });
   protoRestoreFocus("#astral-fs #astral-alert-info .astral-modal-head [data-proto-modal-close]");
 }
 

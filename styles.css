@@ -12614,6 +12614,24 @@ tr.is-off .astral-person-mark {
   border-radius: 4px;
 }
 
+/* Read works like the Inbox. An unread alert has a dot and a bold title. Once opened, both go. */
+.astral-alert.is-unread .astral-alert-open::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-brand-primary);
+}
+
+.astral-alert:is(.is-read, .is-resolved) .astral-alert-title {
+  font-weight: 500;
+}
+
+.astral-alert.is-read .astral-alert-copy p {
+  color: var(--color-text-secondary);
+}
+
 .astral-alert-kind {
   display: inline-flex;
   align-items: center;
