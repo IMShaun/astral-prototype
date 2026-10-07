@@ -18685,9 +18685,12 @@ function protoExportStep(step) {
   if (!raw || !protoExportModalState()) return;
   setProto({ prototypeExportModal: { ...raw, step, dir: step === 2 ? "next" : "back", errors: {} } });
   store.prototypeExportModal = { ...store.prototypeExportModal, dir: "" };
-  if (step === 2) protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
+  if (step === 2) protoRestoreFocus('#astral-fs #astral-export-pick [data-proto-export-step="back"]');
   else protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
 }
+
+// True while an arrow key moves a radio pick, so a pick that opens the next step waits for a click, Enter or Space.
+let protoRadioByArrow = false;
 
 function protoSetExportPrefs(patch) {
   setProto({ prototypeExportPrefs: { ...protoExportPrefs(), ...patch } });
@@ -32900,8 +32903,16 @@ function onPrototype(event) {
   if (exportKind) {
     const raw = store.prototypeExportModal;
     if (!protoExportModalState() || exportKind.getAttribute("aria-disabled") === "true") return;
+    const kind = exportKind.dataset.protoExportKind;
+    // Source data has a second step, so picking it goes straight there. Arrow keys only move the pick.
+    if (kind === "source" && !protoRadioByArrow) {
+      store.prototypeExportPrefs = { ...protoExportPrefs(), what: "source" };
+      store.prototypeExportModal = { ...raw, errors: {} };
+      protoExportStep(2);
+      return;
+    }
     store.prototypeExportModal = { ...raw, errors: {} };
-    protoSetExportPrefs({ what: exportKind.dataset.protoExportKind });
+    protoSetExportPrefs({ what: kind });
     protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
     return;
   }
@@ -34348,7 +34359,12 @@ function onPrototypeKey(event) {
     event.preventDefault();
     const radios = [...typeRadio.parentElement.querySelectorAll("[role='radio']:not([aria-disabled='true'])")];
     const step = event.key === "ArrowDown" || event.key === "ArrowRight" ? 1 : -1;
-    radios[(radios.indexOf(typeRadio) + step + radios.length) % radios.length]?.click();
+    protoRadioByArrow = true;
+    try {
+      radios[(radios.indexOf(typeRadio) + step + radios.length) % radios.length]?.click();
+    } finally {
+      protoRadioByArrow = false;
+    }
     return;
   }
   const breakdownHit = event.target.closest("tr[data-proto-hit]");
