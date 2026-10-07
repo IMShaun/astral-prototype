@@ -17917,6 +17917,7 @@ function protoExportModalState() {
   const raw = store.prototypeExportModal;
   if (!raw || typeof raw !== "object" || !raw.file) return null;
   const file = String(raw.file);
+  if (protoExportNeedsSite(file)) return null;
   const prefs = protoExportPrefs();
   const what = protoExportChoices(file).some((item) => item.id === prefs.what) ? prefs.what : "chart";
   const errors = raw.errors && typeof raw.errors === "object" ? raw.errors : {};
@@ -18027,9 +18028,26 @@ function protoExportSummary(state) {
   return `${text}.`;
 }
 
+// Graph exports work for one site at a time. On All, a group or a compare of several sites, Export stays in place but greyed out and says why.
+function protoExportNeedsSite(fileId) {
+  const id = String(fileId || "");
+  if (id.startsWith("group:")) return true;
+  if (id === "compare") return (protoCompareBundle().sites || []).length > 1;
+  return false;
+}
+
 // Export opens one pop-up that holds every export option.
 function protoExportControl(fileId) {
   if (!protoCanAct()) return "";
+  if (protoExportNeedsSite(fileId)) {
+    return `
+      <div class="astral-export">
+        ${protoIconBtn("export", "Export, choose a site first", 'data-proto-export="toggle" aria-disabled="true"', {
+          tipLabel: "Choose a site to export",
+        })}
+      </div>
+    `;
+  }
   const open = protoExportModalState()?.file === String(fileId || "");
   return `
     <div class="astral-export">
@@ -32180,6 +32198,7 @@ function onPrototype(event) {
   if (exportBtn) {
     if (!protoCanAct()) return;
     const act = exportBtn.dataset.protoExport;
+    if (exportBtn.getAttribute("aria-disabled") === "true") return;
     if (act === "toggle") {
       protoOpenExport(exportBtn.dataset.protoFile);
       return;
