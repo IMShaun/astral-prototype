@@ -797,5 +797,5 @@
     },
   ];
 
-  window.AstralEmails = { GROUPS, SCENARIOS, SENDER, render, text, esc };
+  window.AstralEmails = { GROUPS, SCENARIOS, SENDER, render, text, esc, level };
 })();

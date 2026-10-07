@@ -12952,16 +12952,92 @@ function protoReportEmailFields(draft) {
   `;
 }
 
+// The alert's email, built with the same template as the emails library. Nothing flagged yesterday
+// shows example rows, so people still see what arrives.
+function protoReportAlertEmail(def) {
+  const copy = protoReportEmailCopy(def);
+  const day = protoFormatFullDay(protoAddDays(protoToday(), -1));
+  const pct = (n) => `${Math.round(n)} percent`;
+  const below = protoReportAlertBelow(def);
+  let rows = [];
+  let title = "";
+  let example = false;
+  if (def.type === "missing") {
+    let sites = protoReportMissingHits(def);
+    if (!sites.length) {
+      example = true;
+      sites = protoReportScopeSites(def).slice(0, 2);
+    }
+    const ids = protoReportUtilityIds(def.utility, def.type);
+    rows = sites.map((site) => {
+      const meters = (site.meters || []).filter((meter) => ids.includes(protoMeterKind(meter)));
+      const hours = Math.max(def.hours, ...meters.map((meter) => protoMeterSilentHours(meter)));
+      return { title: site.name, note: `No readings for ${protoReportSilenceName(hours)}`, side: day };
+    });
+    title = rows.length === 1 ? `${rows[0].title} is not sending data` : `${rows.length} sites are not sending data`;
+  } else {
+    const level = protoReportLevel((def.levels || ["site"])[0]);
+    let items = protoReportAlertHitItems(def);
+    if (!items.length) {
+      example = true;
+      const nudge = (i) => (below ? 0.88 + i * 0.04 : 1.12 - i * 0.04);
+      items = protoReportAlertItems(def)
+        .slice(0, 2)
+        .map((item, i) => ({ ...item, day: item.limit * nudge(i) }));
+    }
+    const average = protoReportAverageWord(def);
+    rows = items.map((item) => {
+      const gap = item.average ? (Math.abs(item.day - item.average) / item.average) * 100 : 0;
+      const note =
+        def.basis === "absolute"
+          ? `${protoReportKwh(item.day)}. The limit is ${protoReportKwh(item.limit)}`
+          : `${protoReportKwh(item.day)}. Its ${average} is ${protoReportKwh(item.average)}. ${pct(gap)} ${below ? "below" : "above"}`;
+      return { title: item.name, note, side: day };
+    });
+    const who = rows.length === 1 ? rows[0].title : `${rows.length} ${level.many}`;
+    const one = rows.length === 1;
+    title =
+      def.basis === "absolute"
+        ? `${who} used ${below ? "less" : "more"} than ${protoReportKwh(def.amount)}`
+        : `${who} used ${pct(def.percent)} ${below ? "less" : "more"} than ${one ? "its" : "their"} ${average}${one ? "" : "s"}`;
+  }
+  const level = window.AstralEmails?.level;
+  const priority = protoReportOptionName(PROTO_REPORT_PRIORITY, def.priority);
+  const kind = protoReportDefaultName(def.type);
+  return {
+    example,
+    scenario: {
+      subject: copy.subject,
+      preheader: copy.preview,
+      eyebrow: kind,
+      title,
+      blocks: [
+        ...copy.body
+          .split(/\n{2,}/)
+          .map((text) => text.trim())
+          .filter(Boolean)
+          .map((text) => ({ type: "text", text })),
+        { type: "facts", rows: [["Priority", level ? level(priority) : priority, Boolean(level)]] },
+        { type: "items", rows },
+        ...(def.type === "missing" ? [{ type: "muted", text: "A gap is missing data, not zero use." }] : []),
+      ],
+      cta: "Open Alerts",
+      reason: `You got this because you are on the ${kind} ${def.name}.`,
+    },
+  };
+}
+
 function protoReportEmailPreviewModal(draft) {
   if (!store.prototypeReportEmailPreview || !draft || !(draft.notify || []).includes("email")) return "";
   const def = protoReportDraftDef(draft);
-  const copy = protoReportEmailCopy(def);
-  const found = protoReportDraftPreview(draft);
-  const paras = copy.body
-    .split(/\n{2,}/)
-    .map((para) => `<p>${escapeHtml(para).replace(/\n/g, "<br>")}</p>`)
-    .join("");
-  const row = (label, text) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(text)}</dd></div>`;
+  const { example, scenario } = protoReportAlertEmail(def);
+  const lib = window.AstralEmails;
+  const logo = new URL("assets/brand/logo/wordmark-cyan-on-black.svg", location.href).href;
+  const frame = lib
+    ? `<iframe class="astral-email-frame" title="${escapeHtml(scenario.subject)}" sandbox="allow-same-origin" srcdoc="${escapeHtml(
+        lib.render(scenario, logo)
+      )}"></iframe>`
+    : `<p class="astral-muted">The email could not load. Refresh the page and try again.</p>`;
   return `
     <div class="astral-modal-back" data-proto-modal="report-email">
       <div class="astral-modal astral-report-email-check" role="dialog" aria-modal="true" aria-labelledby="astral-report-email-check-title">
@@ -12973,22 +13049,13 @@ function protoReportEmailPreviewModal(draft) {
         )}
         <div class="astral-modal-body">
           <section class="astral-email-inbox" aria-label="In their inbox">
-            <span class="astral-email-from">Astral</span>
-            <span class="astral-email-line"><strong>${escapeHtml(copy.subject)}</strong> <span class="astral-muted">${escapeHtml(
-              copy.preview
+            <span class="astral-email-from">${escapeHtml(lib?.SENDER.name || "Astral")}</span>
+            <span class="astral-email-line"><strong>${escapeHtml(scenario.subject)}</strong> <span class="astral-muted">${escapeHtml(
+              scenario.preheader
             )}</span></span>
           </section>
-          <article class="astral-email-open" aria-label="Opened">
-            <h4>${escapeHtml(copy.subject)}</h4>
-            ${paras}
-            <dl class="astral-export-facts">
-              ${row("Alert", def.name)}
-              ${row("Priority", protoReportOptionName(PROTO_REPORT_PRIORITY, def.priority))}
-              ${found ? row("Latest check", found) : ""}
-            </dl>
-            <span class="astral-email-cta" aria-hidden="true">Open in Astral</span>
-            <p class="astral-muted">You get this email because you are on the list for ${escapeHtml(def.name)}.</p>
-          </article>
+          ${example ? '<p class="astral-muted">Nothing was flagged yesterday, so the rows are examples.</p>' : ""}
+          ${frame}
         </div>
         <div class="astral-modal-foot">
           <div class="astral-actions">
@@ -12999,6 +13066,18 @@ function protoReportEmailPreviewModal(draft) {
     </div>
   `;
 }
+
+// The email frame grows to fit, so the modal scrolls instead of the frame.
+document.addEventListener(
+  "load",
+  (event) => {
+    const frame = event.target;
+    if (!(frame instanceof HTMLIFrameElement) || !frame.classList.contains("astral-email-frame")) return;
+    const height = frame.contentDocument?.documentElement?.scrollHeight;
+    if (height) frame.style.height = `${height}px`;
+  },
+  true
+);
 
 // Radio cards. One tab stop. Arrow keys move the pick, like native radios.
 function protoReportTypePicker(tab, own) {
