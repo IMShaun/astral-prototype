@@ -28913,9 +28913,9 @@ function protoSkelPaint(app) {
   }
 }
 
-// Big requests. All, a large group, or a long date range fakes a longer fetch: a progress ring
-// counts the interval records in, with a tip, then the graph grows in. A smaller or repeat
-// request skips it, as the data is already here.
+// Big requests the graph can still draw fake a longer fetch: a progress ring counts the interval
+// records in, with a tip, then the graph grows in. A smaller or repeat request skips it, as the
+// data is already here. A request over the graph limit skips it too and shows the limit message.
 const PROTO_LOAD_MIN_RECORDS = 5000;
 const PROTO_LOAD_DONE_MS = 420;
 // All pulls every site, so it runs long enough for two tips.
@@ -28971,15 +28971,21 @@ function protoLoadViewKey() {
   ].join("|");
 }
 
+// A selection over the graph limit shows the limit message straight away, never the loader.
+function protoGraphLimitShown() {
+  return Boolean(document.querySelector("#astral-fs .astral-pane .astral-graph-limit"));
+}
+
 function protoLoadCheck() {
   const key = protoLoadViewKey();
+  if (protoLoad && protoGraphLimitShown()) protoLoad = null;
   if (key === protoLoadKey) return;
   protoLoadKey = key;
   if (protoLoad && protoLoad.key !== key) protoLoad = null;
   if (!key || protoLoaded.has(key)) return;
   const records = protoLoadRecords();
   protoLoaded.add(key);
-  if (records < PROTO_LOAD_MIN_RECORDS) return;
+  if (records < PROTO_LOAD_MIN_RECORDS || protoGraphLimitShown()) return;
   if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
   const all = store.prototypeScope === "group" && protoIsAllGroup(store.prototypeGroup);
   const ms = all ? PROTO_LOAD_ALL_MS : Math.round(Math.min(5200, Math.max(1800, 1500 + Math.sqrt(records) * 3.2)));
