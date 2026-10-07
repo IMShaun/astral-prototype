@@ -18478,23 +18478,20 @@ function protoGraphLimitHtml(limit) {
     limit.scope === "site" ? "" : limit.scope === "meter" ? "fewer meter points or " : "fewer sites or ";
   const maxDays = Math.floor(PROTO_GRAPH_MAX / limit.meters);
   const maxMeters = Math.floor(PROTO_GRAPH_MAX / limit.days);
-  const these = `these ${protoExportPlural(limit.meters, "meter point", "meter points")}`;
+  const meters = protoExportPlural(limit.meters, "meter point", "meter points");
+  const days = protoExportPlural(limit.days, "day", "days");
+  const byMeters = `For ${meters}, the graph can show up to ${protoExportPlural(maxDays, "day", "days")}.`;
   const fit =
     limit.scope !== "site" && maxMeters >= 1
-      ? `The graph can show ${these} for up to ${protoExportPlural(maxDays, "day", "days")}, or up to ${protoExportPlural(
-          maxMeters,
-          "meter point",
-          "meter points"
-        )} for these ${limit.days} days.`
-      : `The graph can show ${these} for up to ${protoExportPlural(maxDays, "day", "days")}.`;
+      ? `${byMeters} For ${days}, it can show up to ${protoExportPlural(maxMeters, "meter point", "meter points")}.`
+      : byMeters;
   const act = protoCanAct();
-  const body = act
-    ? `Export the full data, or choose ${fewer}a shorter date range.`
-    : `Choose ${fewer}a shorter date range.`;
+  const narrow = `To see a graph, choose ${fewer}a shorter date range.`;
+  const body = act ? `${narrow} To get every reading, export the data.` : narrow;
   return protoChartWrap(
     `
       <div class="astral-chart-mix astral-graph-limit" role="status">
-        <h3>This selection is too large to show on the graph</h3>
+        <h3>Too much data to show on the graph</h3>
         <p>${escapeHtml(body)}</p>
         <p class="astral-muted">${escapeHtml(fit)}</p>
         ${
