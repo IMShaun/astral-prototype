@@ -18330,9 +18330,9 @@ function protoExportModalState() {
   const file = String(raw.file);
   if (protoExportNeedsSite(file)) return null;
   const prefs = protoExportPrefs();
-  // Too large to graph means Chart data, Image and PDF have nothing to build from, so Source data is picked and the rest are greyed out.
+  // Too large to graph opens on Source data. Chart data, Image and PDF are still built from the same data in the background.
   const limit = raw.limit === true && Boolean(protoGraphLimit(file));
-  const what = limit ? "source" : protoExportChoices(file).some((item) => item.id === prefs.what) ? prefs.what : "chart";
+  const what = protoExportChoices(file).some((item) => item.id === prefs.what) ? prefs.what : "chart";
   const errors = raw.errors && typeof raw.errors === "object" ? raw.errors : {};
   // Source data needs more fields, so they sit on a second step.
   const step = what === "source" && raw.step === 2 ? 2 : 1;
@@ -18627,19 +18627,24 @@ function protoExportModal() {
               ${choices
                 .map((item) => {
                   const on = state.what === item.id;
-                  const off = state.limit && item.id !== "source";
+                  const note = !state.limit
+                    ? item.note
+                    : item.id === "chart"
+                      ? "Totals for your selection"
+                      : item.id === "image"
+                        ? "A chart of the totals, as a PNG"
+                        : item.note;
                   return `
                     <button
                       type="button"
                       role="radio"
-                      class="astral-report-type${on ? " is-on" : ""}${off ? " is-off" : ""}"
+                      class="astral-report-type${on ? " is-on" : ""}"
                       aria-checked="${on ? "true" : "false"}"
-                      ${off ? 'aria-disabled="true"' : ""}
                       tabindex="${on ? "0" : "-1"}"
                       data-proto-export-kind="${escapeHtml(item.id)}"
                     >
                       <span class="astral-report-type-head">${protoRadio(on)}${protoTypeBadge(item.mark)}<span>${escapeHtml(item.name)}</span></span>
-                      <span class="astral-muted">${escapeHtml(off ? "Not available for this much data" : item.note)}</span>
+                      <span class="astral-muted">${escapeHtml(note)}</span>
                     </button>
                   `;
                 })
@@ -18701,8 +18706,8 @@ function protoOpenExport(fileId, from = "") {
   const limit = Boolean(protoGraphLimit(fileId));
   setProto({
     prototypeExportModal: { file: String(fileId || ""), ...(limit ? { limit: true, from } : {}) },
-    // The full data starts as exactly what they asked the graph for.
-    ...(limit ? { prototypeExportPrefs: { ...protoExportPrefs(), rangeMode: "dates" } } : {}),
+    // The full data starts as exactly what they asked the graph for, on Source data.
+    ...(limit ? { prototypeExportPrefs: { ...protoExportPrefs(), what: "source", rangeMode: "dates" } } : {}),
     prototypeExportFrom: protoFormatUkDate(graph.from),
     prototypeExportTo: protoFormatUkDate(graph.to),
     prototypeExportOpen: false,
@@ -18747,7 +18752,8 @@ async function protoExportGo() {
   if (what === "pdf" || what === "chart") {
     protoQueueExport(what === "pdf" ? "pdf" : "csv", file);
   } else if (what === "image") {
-    const shot = await protoChartImageShot();
+    // Too large to graph has nothing on screen to capture, so the image is drawn from the data instead.
+    const shot = state.limit ? protoPackImageShot(file) : await protoChartImageShot();
     if (!shot) {
       setProto({ prototypeExportModal: { ...store.prototypeExportModal, errors: { what: "The graph is still loading. Try again when it shows." } } });
       protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
@@ -29879,6 +29885,64 @@ async function protoChartImageShot() {
       y += item.height + 8;
     });
     y += 16;
+  });
+  try {
+    return canvas.toDataURL("image/png");
+  } catch {
+    return "";
+  }
+}
+
+// A selection too large to graph has no graph on screen, so its image is drawn from the totals: title, dates and bars, on white.
+function protoPackImageShot(fileId) {
+  const pack = protoIntervalPack(fileId);
+  if (!pack?.rows?.length) return "";
+  const raw = pack.rows.map((row) => Number(String(row[1] ?? "").replace(/[^0-9.-]/g, "")) || 0);
+  const most = 365;
+  const size = Math.max(1, Math.ceil(raw.length / most));
+  const values = [];
+  for (let i = 0; i < raw.length; i += size) values.push(raw.slice(i, i + size).reduce((sum, n) => sum + n, 0));
+  const top = Math.max(1, ...values);
+  const fs = document.querySelector("#astral-fs") || document.body;
+  const font = window.getComputedStyle(fs).fontFamily;
+  const ink = window.getComputedStyle(fs).getPropertyValue("--color-brand-primary").trim() || "#028178";
+  const { from, to } = protoExportGraphDates();
+  const pad = 24;
+  const scale = 2;
+  const width = 960;
+  const plot = 320;
+  const height = pad * 2 + 24 + 20 + 16 + plot + 24;
+  const canvas = document.createElement("canvas");
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(scale, scale);
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, width, height);
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#000";
+  ctx.font = `600 16px ${font}`;
+  ctx.fillText(pack.title || "Consumption", pad, pad);
+  ctx.fillStyle = "#525252";
+  ctx.font = `400 13px ${font}`;
+  ctx.fillText(protoRangeWords(from, to), pad, pad + 24);
+  const base = pad + 24 + 20 + 16 + plot;
+  const topText = `${protoFormatAmount(top)} ${/m3/.test(pack.headers?.[1] || "") ? "m³" : "kWh"}`;
+  const left = pad + Math.ceil(ctx.measureText(topText).width) + 12;
+  const span = width - left - pad;
+  ctx.fillText(topText, pad, base - plot);
+  ctx.fillText("0", pad, base - 8);
+  ctx.strokeStyle = "#d4d4d4";
+  ctx.beginPath();
+  ctx.moveTo(left, base + 0.5);
+  ctx.lineTo(width - pad, base + 0.5);
+  ctx.stroke();
+  const step = span / values.length;
+  const bar = Math.max(1, step * 0.7);
+  ctx.fillStyle = ink;
+  values.forEach((n, i) => {
+    const h = (Math.max(0, n) / top) * plot;
+    ctx.fillRect(left + i * step + (step - bar) / 2, base - h, bar, h);
   });
   try {
     return canvas.toDataURL("image/png");
