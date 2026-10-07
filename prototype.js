@@ -8834,10 +8834,11 @@ function protoReportLevel(id) {
   return item;
 }
 
+// An alert checks one level. Older alerts with several keep the first.
 function protoReportLevelIds(raw) {
   const asked = Array.isArray(raw) ? raw.map(String) : [];
   const list = PROTO_REPORT_LEVELS.map((level) => level.id).filter((id) => asked.includes(id));
-  return Array.isArray(raw) ? list : ["site"];
+  return [list[0] || "site"];
 }
 
 function protoReportSiteOnly(def) {
@@ -9204,13 +9205,21 @@ function protoReportGroupById(id) {
 }
 
 function protoReportMpans() {
-  return protoEstateSites().flatMap((site) =>
-    (site.meters || []).filter((meter) => meter.mpan).map((meter) => ({ site, meter }))
-  );
+  return protoReportMeterList().filter(({ meter }) => meter.mpan);
 }
 
+function protoReportMeterList() {
+  return protoEstateSites().flatMap((site) => (site.meters || []).map((meter) => ({ site, meter })));
+}
+
+// Any meter, with or without an MPAN. Alerts pick gas sub meters too.
 function protoReportMpanById(id) {
-  return protoReportMpans().find((item) => item.meter.id === id) || null;
+  return protoReportMeterList().find((item) => item.meter.id === id) || null;
+}
+
+// Alerts name a sub meter by site. Other reports name it by MPAN.
+function protoReportMeterWords(hit, draft) {
+  return draft?.type === "alert" || !hit.meter.mpan ? `${hit.site.name} · ${hit.meter.name}` : `MPAN ${hit.meter.mpan}`;
 }
 
 function protoReportPicksAny(def) {
@@ -9245,7 +9254,11 @@ function protoReportScopeWords(draft) {
   const siteWords = `${n} ${n === 1 ? "site" : "sites"}`;
   if (picks === 1 && groups.length) return `${groups[0].name} (${siteWords})`;
   if (picks === 1 && sites.length) return protoReportSiteById(sites[0])?.name || siteWords;
-  if (!groups.length && !sites.length) return meters.length === 1 ? `MPAN ${protoReportMpanById(meters[0])?.meter.mpan || ""}` : `${meters.length} MPANs`;
+  if (!groups.length && !sites.length) {
+    const hit = meters.length === 1 ? protoReportMpanById(meters[0]) : null;
+    if (hit) return protoReportMeterWords(hit, draft);
+    return `${meters.length} ${draft.type === "alert" ? "sub meters" : "MPANs"}`;
+  }
   return siteWords;
 }
 
@@ -9439,7 +9452,7 @@ function protoReportNormalize(raw) {
   );
   const groupIds = new Set(protoReportGroupList().map((group) => group.id));
   const groups = [...new Set((Array.isArray(raw.groups) ? raw.groups : []).map(String))].filter((id) => groupIds.has(id));
-  const meterIds = new Set(protoReportMpans().map((item) => item.meter.id));
+  const meterIds = new Set(protoReportMeterList().map((item) => item.meter.id));
   const meters = [...new Set((Array.isArray(raw.meters) ? raw.meters : []).map(String))].filter((id) => meterIds.has(id));
   const start = protoMaskUkDate(raw.start || "");
   const range = protoReportDefaultRange();
@@ -9768,12 +9781,22 @@ function protoReportAlertPast(def, kwh, limit) {
   return protoReportAlertBelow(def) ? kwh < limit : kwh > limit;
 }
 
-// Companies, or groups where there are none, with the alert's sites in them.
-function protoReportLevelUnits(sites) {
-  const ids = new Set(sites.map((site) => String(protoSiteId(site))));
+// Companies, or groups where there are none.
+function protoReportLevelGroups() {
   const companies = new Set(PROTO_TREE_COMPANIES.map((item) => item.id));
-  return protoReportGroupList()
-    .filter((group) => group.id !== "all" && companies.has(group.id) === protoCompaniesOn())
+  return protoReportGroupList().filter((group) => group.id !== "all" && companies.has(group.id) === protoCompaniesOn());
+}
+
+// The groups an alert checks: the ones picked, or every one with the alert's sites in it.
+function protoReportLevelUnits(sites, def) {
+  if ((def?.groups || []).length) {
+    return def.groups
+      .map(protoReportGroupById)
+      .filter((group) => group && group.sites.length)
+      .map((group) => ({ name: group.name, sites: group.sites }));
+  }
+  const ids = new Set(sites.map((site) => String(protoSiteId(site))));
+  return protoReportLevelGroups()
     .map((group) => ({ name: group.name, sites: group.sites.filter((site) => ids.has(String(protoSiteId(site)))) }))
     .filter((group) => group.sites.length);
 }
@@ -9799,7 +9822,7 @@ function protoReportAlertItems(def) {
     add("portfolio", "The portfolio", sites, protoReportUseSum(sites.map((site) => protoReportSiteUse(site, def))));
   }
   if (levels.includes("company")) {
-    protoReportLevelUnits(sites).forEach((unit) =>
+    protoReportLevelUnits(sites, def).forEach((unit) =>
       add("company", unit.name, unit.sites, protoReportUseSum(unit.sites.map((site) => protoReportSiteUse(site, def))))
     );
   }
@@ -10150,18 +10173,22 @@ function protoReportSummary(def) {
     } pays ${protoSpendMoney(bill.due)}${bill.taxes.length ? `, including ${protoReportTaxRates(bill)}` : ""}.`;
   }
   if (def.type === "alert") {
-    const siteOnly = protoReportSiteOnly(def);
-    const names = protoReportJoin(protoReportScopeSites(def).map((site) => site.name));
+    const level = (def.levels || ["site"])[0];
     const picks = protoReportPicksAny(def);
-    const scope = siteOnly && picks ? names : protoReportLevelWho(def);
-    const where = picks && !siteOnly ? ` Covers ${names}.` : "";
+    const picked =
+      level === "company"
+        ? (def.groups || []).map(protoReportGroupById).filter(Boolean).map((group) => group.name)
+        : level === "meter"
+          ? (def.meters || []).map(protoReportMpanById).filter(Boolean).map((hit) => `${hit.site.name} ${hit.meter.name}`)
+          : protoReportScopeSites(def).map((site) => site.name);
+    const scope = picks && level !== "portfolio" ? protoReportJoin(picked) : protoReportLevelWho(def);
     const util = protoReportUtilityAll(def.utility, def.type) ? "" : ` ${protoReportUtilityNames(def.utility, def.type)}`;
     const below = protoReportAlertBelow(def);
     if (def.basis === "absolute") {
-      return `When ${scope} uses ${below ? "less" : "more"}${util} than ${protoReportKwh(def.amount)} in a day.${where}`;
+      return `When ${scope} uses ${below ? "less" : "more"}${util} than ${protoReportKwh(def.amount)} in a day.`;
     }
     const more = `${def.percent}% ${below ? "less" : "more"}${util}`;
-    return `When ${scope} uses ${more} than its ${protoReportAverageWord(def)} over the last ${PROTO_REPORT_AVERAGE_DAYS} days.${where}`;
+    return `When ${scope} uses ${more} than its ${protoReportAverageWord(def)} over the last ${PROTO_REPORT_AVERAGE_DAYS} days.`;
   }
   const silence = protoReportSilenceName(def.hours);
   const where = protoReportPicksAny(def)
@@ -10776,6 +10803,63 @@ function protoReportSitesSelect(draft) {
   return protoReportField("Sites", `${select}${protoReportScopeChips(draft)}`);
 }
 
+// An alert's dropdown lists only things at the level it checks. The portfolio is one thing, so it has none.
+function protoReportAlertScopeField(draft) {
+  const level = protoReportLevel((draft.levels || ["site"])[0]);
+  if (level.id === "portfolio") {
+    return '<p class="astral-muted">Adds up use across every site and checks the total.</p>';
+  }
+  const words = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const many = level.many;
+  const label = `${many.charAt(0).toUpperCase()}${many.slice(1)}`;
+  let options = [];
+  let values = [];
+  if (level.id === "company") {
+    values = (draft.groups || []).map((id) => `group:${id}`);
+    options = protoReportLevelGroups().map((group) => ({
+      value: `group:${group.id}`,
+      label: group.name,
+      count: group.sites.length,
+      countLabel: words(group.sites.length, "site", "sites"),
+    }));
+  } else if (level.id === "site") {
+    values = (draft.sites || []).map((id) => `site:${id}`);
+    options = protoEstateSites().map((site) => {
+      const n = protoReportAlertMeters(site, draft).length;
+      return { value: `site:${protoSiteId(site)}`, label: site.name, count: n, countLabel: words(n, "meter", "meters") };
+    });
+  } else {
+    values = (draft.meters || []).map((id) => `meter:${id}`);
+    options = protoEstateSites().flatMap((site) =>
+      protoReportAlertMeters(site, draft).map((meter) => ({
+        value: `meter:${meter.id}`,
+        label: site.name,
+        note: meter.mpan ? `${meter.name} · MPAN ${meter.mpan}` : meter.name,
+      }))
+    );
+  }
+  const select = protoSelect({
+    id: "report-sites",
+    label,
+    multi: true,
+    wide: true,
+    values,
+    text: protoReportScopeWords(draft),
+    placeholder: `All ${many}`,
+    empty: options.length ? "Nothing matches." : `No ${many} in this company.`,
+    search: options.length
+      ? {
+          name: "proto-report-site-query",
+          value: String(store.prototypeReportSiteQuery || ""),
+          placeholder: `Search ${many}`,
+          label: `Search ${many}`,
+        }
+      : null,
+    options,
+  });
+  return `${protoReportField(label, `${select}${protoReportScopeChips(draft)}`)}<p class="astral-muted">Leave it empty to watch every ${level.one}.</p>`;
+}
+
 // What the report covers, as chips. A group chip opens to list its sites today.
 function protoReportScopeChips(draft) {
   const open = String(store.prototypeReportScopeOpen || "");
@@ -10817,13 +10901,15 @@ function protoReportScopeChips(draft) {
         )
         .join("")}
       ${mpans
-        .map(({ site, meter }) =>
-          chip(
-            `meter:${meter.id}`,
-            `MPAN ${meter.mpan}`,
-            `<span class="astral-report-scope-name" title="${escapeHtml(`${site.name} · ${meter.name}`)}">MPAN ${escapeHtml(meter.mpan)}</span>`
-          )
-        )
+        .map((hit) => {
+          const words = protoReportMeterWords(hit, draft);
+          const title = words.startsWith("MPAN") ? ` title="${escapeHtml(`${hit.site.name} · ${hit.meter.name}`)}"` : "";
+          return chip(
+            `meter:${hit.meter.id}`,
+            words,
+            `<span class="astral-report-scope-name"${title}>${escapeHtml(words)}</span>`
+          );
+        })
         .join("")}
     </ul>
     ${
@@ -11110,24 +11196,25 @@ function protoReportAsksBySite(draft) {
   return draft.type === "extract" && !draft.template && draft.content === "interval";
 }
 
-// Tick cards. Each is its own checkbox, so several can be on.
+// Radio cards. An alert checks one level, and the dropdown below lists things at that level.
 function protoReportLevelField(draft) {
-  const levels = draft.levels || [];
+  const level = (draft.levels || ["site"])[0];
   return `
     <div class="astral-report-type-field">
       <span class="astral-report-type-label" id="astral-report-levels-label">What to check</span>
-      <div class="astral-report-types is-four" role="group" aria-labelledby="astral-report-levels-label">
+      <div class="astral-report-types is-four" role="radiogroup" aria-labelledby="astral-report-levels-label">
         ${PROTO_REPORT_LEVELS.map(({ id }) => {
-          const on = levels.includes(id);
+          const on = level === id;
           return `
             <button
               type="button"
-              role="checkbox"
+              role="radio"
               class="astral-report-type${on ? " is-on" : ""}"
               aria-checked="${on ? "true" : "false"}"
+              tabindex="${on ? "0" : "-1"}"
               data-proto-report-level="${id}"
             >
-              <span class="astral-report-type-head">${protoCheck(on)}<span>${escapeHtml(protoReportLevel(id).name)}</span></span>
+              <span class="astral-report-type-head">${protoRadio(on)}<span>${escapeHtml(protoReportLevel(id).name)}</span></span>
             </button>
           `;
         }).join("")}
@@ -12726,12 +12813,7 @@ function protoReportGroups(draft, opts = {}) {
     const absolute = draft.basis === "absolute";
     const below = draft.direction === "below";
     return [
-      protoReportGroup(
-        "details",
-        `${protoReportSitesSelect(draft)}<p class="astral-muted">Leave it empty to watch every site.</p>${protoReportLevelField(
-          draft
-        )}<p class="astral-muted">Each level is checked on its own, against its own use.</p>`
-      ),
+      protoReportGroup("details", `${protoReportLevelField(draft)}${protoReportAlertScopeField(draft)}`),
       protoReportGroup(
         "trigger",
         `
@@ -12763,11 +12845,6 @@ function protoReportGroups(draft, opts = {}) {
           <div class="astral-report-pair">
             ${protoReportOptionSelect("report-priority", "Priority", PROTO_REPORT_PRIORITY, draft.priority)}
           </div>
-          ${
-            absolute && (draft.levels || []).length > 1
-              ? '<p class="astral-muted">The same limit applies at every level you ticked.</p>'
-              : ""
-          }
           <p class="astral-muted">Water is in m³, not kWh, so alerts watch electricity and gas.</p>
         `
       ),
@@ -31151,10 +31228,11 @@ function onPrototype(event) {
   if (levelBtn) {
     const id = levelBtn.dataset.protoReportLevel;
     const draft = protoReportDraft();
-    if (draft) {
-      const had = draft.levels || [];
-      const next = had.includes(id) ? had.filter((item) => item !== id) : [...had, id];
-      protoReportPatchDraft({ levels: PROTO_REPORT_LEVELS.map((level) => level.id).filter((item) => next.includes(item)) });
+    // Picks belong to a level, so a new level starts with none.
+    if (draft && (draft.levels || ["site"])[0] !== id) {
+      store.prototypeReportSiteQuery = "";
+      store.prototypeReportScopeOpen = "";
+      protoReportPatchDraft({ levels: [id], groups: [], sites: [], meters: [] });
     }
     protoRestoreFocus(`#astral-fs [data-proto-report-level="${id}"]`);
     return;
