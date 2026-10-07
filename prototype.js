@@ -8395,7 +8395,6 @@ function protoPickSelect(id, value) {
     "report-basis": "basis",
     "report-direction": "direction",
     "report-priority": "priority",
-    "report-silence": "hours",
     "report-content": "content",
     "report-channel": "channel",
     "report-quality": "quality",
@@ -8413,7 +8412,7 @@ function protoPickSelect(id, value) {
   };
   if (PROTO_REPORT_SELECT_KEYS[id]) {
     const key = PROTO_REPORT_SELECT_KEYS[id];
-    const numeric = id === "report-silence" || id === "report-send-day" || (id === "report-send-date" && value !== "last");
+    const numeric = id === "report-send-day" || (id === "report-send-date" && value !== "last");
     protoReportPatchDraft({ [key]: numeric ? Number(value) : value });
     protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
     return;
@@ -8760,7 +8759,23 @@ function protoDayCalAllowed(field) {
 const PROTO_REPORT_FILE_DAYS = 62;
 
 // Data arrives once a day, the day after, so No data for counts whole days. Stored in hours.
-const PROTO_REPORT_SILENCE = [24, 48, 72];
+const PROTO_REPORT_SILENCE_MAX = 30;
+
+function protoReportSilenceDaysOk(raw) {
+  const n = Number(String(raw ?? "").trim());
+  return Number.isInteger(n) && n >= 1 && n <= PROTO_REPORT_SILENCE_MAX;
+}
+
+function protoReportDaysUnit(value) {
+  return String(value ?? "").trim() === "1" ? "day" : "days";
+}
+
+// A missing data alert waits whole days. Typed days win. A bad entry keeps the last good value.
+function protoReportSilenceHours(raw) {
+  if (raw.days !== undefined && protoReportSilenceDaysOk(raw.days)) return Number(String(raw.days).trim()) * 24;
+  const days = Math.round(Number(raw.hours) / 24);
+  return Math.min(PROTO_REPORT_SILENCE_MAX, Math.max(1, Number.isFinite(days) ? days : 1)) * 24;
+}
 
 const PROTO_REPORT_BASIS = [
   { id: "absolute", name: "Absolute amount", note: "A fixed daily use in kWh" },
@@ -9398,7 +9413,7 @@ function protoReportNormalize(raw) {
     })(),
     amount: protoReportNumber(raw.amount, 2000, 0, 10000000),
     percent: protoReportNumber(raw.percent, 25, 0, 1000),
-    hours: PROTO_REPORT_SILENCE.find((hours) => hours >= Number(raw.hours)) || (Number(raw.hours) > 72 ? 72 : 24),
+    hours: protoReportSilenceHours(raw),
     owner: String(raw.owner || protoProfileEmail()),
     template: "",
     step: PROTO_TEMPLATE_STEPS.some((item) => item.id === raw.step) ? String(raw.step) : "",
@@ -10299,6 +10314,7 @@ function protoReportDraftFrom(def) {
     rangeCount: String(def.rangeCount),
     amount: String(def.amount),
     percent: String(def.percent),
+    days: String(Math.round(def.hours / 24)),
   };
 }
 
@@ -10463,6 +10479,9 @@ function protoReportDraftIssueBase(draft) {
     if (draft.basis !== "absolute" && draft.direction === "below" && value >= 100) {
       return "Below site average must be under 100%.";
     }
+  }
+  if (draft.type === "missing" && !protoReportSilenceDaysOk(draft.days)) {
+    return `Enter how many days, a whole number from 1 to ${PROTO_REPORT_SILENCE_MAX}.`;
   }
   if (!protoReportIsFile(draft.type) && !(draft.notify || []).length) return "Pick how to tell people.";
   if (!people) return "Add at least one person or email.";
@@ -12615,18 +12634,12 @@ function protoReportGroups(draft, opts = {}) {
     ),
     protoReportGroup(
       "trigger",
-      `<div class="astral-report-pair">${protoReportField(
+      `<div class="astral-report-pair">${protoReportUnitInput(
         "No data for",
-        protoSelect({
-          id: "report-silence",
-          label: "No data for",
-          wide: true,
-          value: String(draft.hours || 24),
-          options: PROTO_REPORT_SILENCE.map((hours) => ({
-            value: String(hours),
-            label: protoReportSilenceName(hours),
-          })),
-        })
+        "days",
+        draft.days ?? String(Math.round((draft.hours || 24) / 24)),
+        protoReportDaysUnit(draft.days ?? Math.round((draft.hours || 24) / 24)),
+        "1"
       )}${protoReportUtilitySelect(draft)}</div><div class="astral-report-pair">${protoReportOptionSelect(
         "report-priority",
         "Priority",
@@ -12822,6 +12835,8 @@ function protoReportRefreshForm() {
     issueEl.textContent = issue;
     issueEl.hidden = !issue;
   }
+  const daysUnit = modal.querySelector("#astral-report-unit-days");
+  if (daysUnit) daysUnit.textContent = protoReportDaysUnit(draft.days);
   const previewEl = modal.querySelector("[data-proto-report-preview]");
   if (previewEl) {
     const preview = protoReportDraftPreview(draft);
