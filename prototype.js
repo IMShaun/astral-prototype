@@ -7724,6 +7724,11 @@ function protoCloseModal(kind) {
     protoRestoreFocus('#astral-fs .astral-report-page-foot button[type="submit"]');
     return;
   }
+  if (kind === "report-email") {
+    setProto({ prototypeReportEmailPreview: false });
+    protoRestoreFocus("#astral-fs [data-proto-report-email-preview]");
+    return;
+  }
   if (kind === "report") {
     protoReportLeave();
     return;
@@ -8796,6 +8801,8 @@ function protoReportAverageWord(def) {
   return protoReportSiteOnly(def) ? "site average" : "own average";
 }
 
+const PROTO_REPORT_EMAIL_MAX = { subject: 120, preview: 150, body: 1000 };
+
 const PROTO_REPORT_SILENCE_MAX = 30;
 
 function protoReportSilenceDaysOk(raw) {
@@ -9443,6 +9450,9 @@ function protoReportNormalize(raw) {
     direction: raw.direction === "below" ? "below" : "above",
     priority: protoReportPick(PROTO_REPORT_PRIORITY, raw.priority || "medium"),
     levels: protoReportLevelIds(raw.levels),
+    emailSubject: String(raw.emailSubject || "").replace(/\s+/g, " ").trim().slice(0, PROTO_REPORT_EMAIL_MAX.subject),
+    emailPreview: String(raw.emailPreview || "").replace(/\s+/g, " ").trim().slice(0, PROTO_REPORT_EMAIL_MAX.preview),
+    emailBody: String(raw.emailBody || "").replace(/\r\n?/g, "\n").trim().slice(0, PROTO_REPORT_EMAIL_MAX.body),
     notify: (() => {
       const list = PROTO_REPORT_NOTIFY.map((item) => item.id).filter((id) =>
         (Array.isArray(raw.notify) ? raw.notify : ["astral", "email"]).includes(id)
@@ -11818,6 +11828,7 @@ function protoReportPage() {
       </div>
     </form>
     ${protoReportRateCheckModal(draft)}
+    ${protoReportEmailPreviewModal(draft)}
   `);
 }
 
@@ -12760,7 +12771,100 @@ function protoReportNotifyFields(draft, opts = {}) {
       })
     )}
     <p class="astral-muted">In Astral shows it on Alerts for everyone on the list. Email sends it to them too.</p>
+    ${protoReportEmailFields(draft)}
     ${opts.page ? "" : protoReportRecipientsHtml(draft)}
+  `;
+}
+
+// The wording Astral writes. It follows the alert, so a renamed alert renames its emails.
+function protoReportEmailDefault(def) {
+  return {
+    subject: def.name,
+    preview: protoReportSummary(def),
+    body: "This alert flagged something. Open Alerts in Astral to see what happened and resolve it.",
+  };
+}
+
+// An empty field sends the wording Astral writes.
+function protoReportEmailCopy(def) {
+  const auto = protoReportEmailDefault(def);
+  return {
+    subject: def.emailSubject || auto.subject,
+    preview: def.emailPreview || auto.preview,
+    body: def.emailBody || auto.body,
+  };
+}
+
+function protoReportEmailFields(draft) {
+  if (!(draft.notify || []).includes("email")) return "";
+  const auto = protoReportEmailDefault(protoReportDraftDef(draft));
+  const value = (key, fallback) => (draft[key] ? draft[key] : fallback);
+  return `
+    <div class="astral-report-email" role="group" aria-labelledby="astral-report-email-title">
+      <h4 class="astral-report-email-title" id="astral-report-email-title">Email</h4>
+      ${protoReportInput("Subject line", "emailSubject", value("emailSubject", auto.subject), `maxlength="${PROTO_REPORT_EMAIL_MAX.subject}"`)}
+      ${protoReportInput("Preview text", "emailPreview", value("emailPreview", auto.preview), `maxlength="${PROTO_REPORT_EMAIL_MAX.preview}" aria-describedby="astral-report-email-preview-note"`)}
+      <p class="astral-muted" id="astral-report-email-preview-note">Most inboxes show this after the subject line.</p>
+      <label class="astral-field">
+        <span>Message</span>
+        <textarea
+          name="proto-report-emailBody"
+          data-proto-report-field="emailBody"
+          rows="4"
+          maxlength="${PROTO_REPORT_EMAIL_MAX.body}"
+        >${escapeHtml(value("emailBody", auto.body))}</textarea>
+      </label>
+      <p class="astral-muted">Astral adds what was flagged and a link to it below your message. Clear a field to go back to the wording Astral writes.</p>
+      <div class="astral-actions">${protoGhost("Preview email", "data-proto-report-email-preview")}</div>
+    </div>
+  `;
+}
+
+function protoReportEmailPreviewModal(draft) {
+  if (!store.prototypeReportEmailPreview || !draft || !(draft.notify || []).includes("email")) return "";
+  const def = protoReportDraftDef(draft);
+  const copy = protoReportEmailCopy(def);
+  const found = protoReportDraftPreview(draft);
+  const paras = copy.body
+    .split(/\n{2,}/)
+    .map((para) => `<p>${escapeHtml(para).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+  const row = (label, text) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(text)}</dd></div>`;
+  return `
+    <div class="astral-modal-back" data-proto-modal="report-email">
+      <div class="astral-modal astral-report-email-check" role="dialog" aria-modal="true" aria-labelledby="astral-report-email-check-title">
+        ${protoModalHead(
+          "astral-report-email-check-title",
+          "Email preview",
+          "What everyone on the list gets when this alert flags something.",
+          "report-email"
+        )}
+        <div class="astral-modal-body">
+          <section class="astral-email-inbox" aria-label="In their inbox">
+            <span class="astral-email-from">Astral</span>
+            <span class="astral-email-line"><strong>${escapeHtml(copy.subject)}</strong> <span class="astral-muted">${escapeHtml(
+              copy.preview
+            )}</span></span>
+          </section>
+          <article class="astral-email-open" aria-label="Opened">
+            <h4>${escapeHtml(copy.subject)}</h4>
+            ${paras}
+            <dl class="astral-export-facts">
+              ${row("Alert", def.name)}
+              ${row("Priority", protoReportOptionName(PROTO_REPORT_PRIORITY, def.priority))}
+              ${found ? row("Latest check", found) : ""}
+            </dl>
+            <span class="astral-email-cta" aria-hidden="true">Open in Astral</span>
+            <p class="astral-muted">You get this email because you are on the list for ${escapeHtml(def.name)}.</p>
+          </article>
+        </div>
+        <div class="astral-modal-foot">
+          <div class="astral-actions">
+            ${protoGhost("Close", 'data-proto-modal-close="report-email"')}
+          </div>
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -13051,6 +13155,7 @@ function protoPageSlide(dir) {
 function protoReportEditClear() {
   return {
     prototypeReportRateCheck: false,
+    prototypeReportEmailPreview: false,
     prototypeReportRatesOpen: [],
     prototypeReportEdit: "",
     prototypeReportDraft: null,
@@ -30923,6 +31028,11 @@ function onPrototype(event) {
     protoRestoreFocus("#astral-fs [data-proto-report-range-current]");
     return;
   }
+  if (event.target.closest("[data-proto-report-email-preview]")) {
+    setProto({ prototypeReportEmailPreview: true });
+    protoRestoreFocus('#astral-fs .astral-report-email-check [data-proto-modal-close="report-email"]');
+    return;
+  }
   const levelBtn = event.target.closest("[data-proto-report-level]");
   if (levelBtn) {
     const id = levelBtn.dataset.protoReportLevel;
@@ -32924,12 +33034,12 @@ function onPrototypeInput(event) {
     protoTemplateRefresh();
     return;
   }
-  const reportField = event.target.closest("input[data-proto-report-field]");
+  const reportField = event.target.closest("input[data-proto-report-field], textarea[data-proto-report-field]");
   if (reportField) {
     const draft = protoReportDraft();
     if (!draft || !protoCanEditReports()) return;
     const key = reportField.dataset.protoReportField;
-    const value = reportField.value.slice(0, 400);
+    const value = reportField.value.slice(0, key === "emailBody" ? PROTO_REPORT_EMAIL_MAX.body : 400);
     const bits = key.startsWith("tenant:") ? key.split(":") : null;
     const rate = key.startsWith("rate:") ? key.split(":") : null;
     if (rate) {
