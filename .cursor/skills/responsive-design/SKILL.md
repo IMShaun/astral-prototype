@@ -3,9 +3,11 @@ name: responsive-design
 description: >-
   Design and check Astral screens against real browser viewports, not monitor
   sizes. 1440 × 800 is the main canvas. 1280 × 640 is the small-desktop
-  baseline. Use when the user invokes /responsive-design, or asks about screen
-  size, viewport, laptop, display scaling, zoom, reflow, breakpoints, a
-  squeezed graph, a clipped modal, or whether a screen works on a small window.
+  baseline. Design responsive behaviours, not smaller desktops. Use when the
+  user invokes /responsive-design, or asks about screen size, viewport, laptop,
+  display scaling, zoom, reflow, breakpoints, container queries, panels or
+  drawers, a squeezed graph, a crushed table, a clipped modal, a short window,
+  or whether a screen works on a small window.
 ---
 
 # Responsive design
@@ -27,6 +29,22 @@ This is a **provisional design target**, not an industry minimum. No one has mea
 - Do not block a smaller window. Below 1280, collapse or stack. Do not show a "screen too small" wall.
 - Do not invent audience device numbers. Statcounter is general UK web traffic, not Astral users.
 
+## Behaviour, not a smaller desktop
+
+Keep the main task readable. Change how navigation, panels, controls, charts, and tables are shown as space runs out. Full rules, sources, and what Astral already has: [references/responsive-behaviour.md](references/responsive-behaviour.md).
+
+- **Shell first.** Fix the shell and split-pane transitions before fonts, spacing, or control sizes.
+- **Breakpoints come from content.** Set a minimum working size per piece. Transition when the main task would drop below it. The chart's available width matters, not the monitor.
+- **Two levels.** Viewport queries for the shell. Intrinsic layout and container queries for pieces.
+- **Panels follow the task.** Inline if needed side by side. Collapsible if occasional. Overlay for a short pick. A focused page for longer work.
+- **Keep context.** Scope, date range, active filters, the main action, and data-quality warnings stay visible.
+- **Charts keep meaning.** Fewer labels is fine. Never quietly change the range, drop peaks, hide gaps, or remove series.
+- **Tables stay tables.** Do not turn comparison tables into cards. Sideways scroll stays inside the table.
+- **Short windows count.** Not everything sticky. Sticky content never hides the focused control.
+- **Resizing never restarts the task.** Keep selection, filters, open branches, inputs, table setup, chart state, and focus.
+
+The research behind this has not been reproduced in a live viewport audit yet. Check before you claim a break.
+
 ## The five sizes
 
 | Browser viewport | Role | What must hold |
@@ -36,6 +54,8 @@ This is a **provisional design target**, not an industry minimum. No one has mea
 | **1024 × 600** | Compact window | Panels collapse or stack. Filters and actions stay reachable |
 | **1920 × 900** | Larger workspace | More chart or table space. Text does not stretch into long lines |
 | **320 CSS px wide** | Accessibility reflow | Content reflows without losing information or functionality (WCAG 1.4.10) |
+
+These are **test scenarios, not proven breakpoints or hardware requirements**. Also resize continuously and check just above and below each transition.
 
 Also check browser zoom at 200% and text spacing. Details and the scaling table: [references/viewport-targets.md](references/viewport-targets.md).
 
@@ -55,12 +75,13 @@ Also load this skill when painting a new Astral screen, panel, table, or modal. 
 ## How it runs
 
 1. **Name the task.** Which screen, which core task, which audience. Mark unknowns as unknown.
-2. **Read the screen.** `prototype.js`, `styles.css`, and `astral-ui.js`. Find the layout owner, sidebars, fixed heights, `min-width`, media queries, and the scroll owner. Overflow follows `.cursor/skills/ux-patterns/references/scrollbars.md`.
-3. **Check each size in the browser.** Set the viewport, not the window. Do the core task at each size. Do not claim a size was checked unless it was.
-4. **Report per size.** What holds, what breaks, and where. Use the area rules in [references/screen-priorities.md](references/screen-priorities.md).
-5. **Recommend one fix first.** Order: core task blocked, then clipped control or footer, then page-wide sideways scroll, then squeezed main analysis, then spacing. One at a time, like `/ux-patterns`.
-6. **Wait for Yes before editing.** Then change only that, reuse Astral pieces and tokens, and re-check all five sizes.
-7. **Record it.** A reusable rule goes in `docs/ux/patterns/foundation.responsive-viewport.md`. A keep-or-change choice gets a UXDR in `docs/ux/decisions/`.
+2. **Write the responsive contract.** Task, essential information, minimum working size, adaptations, allowed overflow, state to keep, acceptance. Template in [references/responsive-behaviour.md](references/responsive-behaviour.md).
+3. **Read the screen.** `prototype.js`, `styles.css`, and `astral-ui.js`. Find the layout owner, sidebars, fixed heights, `min-width`, media and container queries, `ResizeObserver` fits, and the scroll owner. Overflow follows `.cursor/skills/ux-patterns/references/scrollbars.md`.
+4. **Check each size in the browser.** Set the viewport, not the window. Do the core task at each size. Then resize slowly through each transition, with panels open and long names. Do not claim a size was checked unless it was.
+5. **Report per size.** What holds, what breaks, and where. Note any state lost on resize. Use the area rules in [references/screen-priorities.md](references/screen-priorities.md).
+6. **Recommend one fix first.** Order: core task blocked, then state or focus lost on resize, then clipped control or footer, then page-wide sideways scroll, then squeezed main analysis, then spacing. Prefer a structural change (panel presentation, shell transition) over shrinking. One at a time, like `/ux-patterns`.
+7. **Wait for Yes before editing.** Then change only that, reuse Astral pieces and tokens, and re-check all five sizes.
+8. **Record it.** A reusable rule goes in `docs/ux/patterns/foundation.responsive-viewport.md`. A keep-or-change choice gets a UXDR in `docs/ux/decisions/`.
 
 ## Report shape
 
@@ -76,6 +97,10 @@ Screen and task
 320 wide
 
 [Holds / Breaks, and where. One line each.]
+
+Transitions
+
+[Where it changes, and what is kept or lost.]
 
 Fix first
 

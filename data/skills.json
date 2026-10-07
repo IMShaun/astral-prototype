@@ -105,14 +105,15 @@
           "name": "Responsive design",
           "status": "draft",
           "invoke": "/responsive-design",
-          "summary": "Checks Astral at real browser sizes. 1440 × 800 is the canvas. 1280 × 640 is the baseline.",
-          "when": "Screen size, viewport, laptop, display scaling, zoom, reflow, a squeezed graph, a clipped modal, or a small window.",
+          "summary": "Designs responsive behaviours, not smaller desktops. 1440 × 800 is the canvas. 1280 × 640 is the baseline.",
+          "when": "Screen size, viewport, laptop, display scaling, zoom, reflow, breakpoints, panels or drawers, a squeezed graph, a crushed table, a clipped modal, a short window, or a small window.",
           "how": [
             "Design against the browser viewport, not the monitor.",
-            "Read the screen. Find sidebars, fixed heights, and the scroll owner.",
-            "Check 1440 × 800, 1280 × 640, 1024 × 600, 1920 × 900, and 320 wide.",
-            "Report what holds and what breaks at each size.",
-            "Recommend one fix. Wait for Yes. Then re-check all five."
+            "Write the responsive contract. Task, essentials, minimum working size, state to keep.",
+            "Read the screen. Find sidebars, fixed heights, transitions, and the scroll owner.",
+            "Check 1440 × 800, 1280 × 640, 1024 × 600, 1920 × 900, and 320 wide. Resize through each transition.",
+            "Report what holds, what breaks, and what state is lost at each size.",
+            "Recommend one fix. Shell and panels before shrinking. Wait for Yes. Then re-check all five."
           ],
           "uses": ["ux-patterns", "ux-research", "ux-writing"],
           "library": ["modal", "table", "filter", "tabs"],

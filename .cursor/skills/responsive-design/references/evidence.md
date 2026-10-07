@@ -4,6 +4,8 @@ The 1280 × 640 baseline and 1440 × 800 canvas are a **provisional design recom
 
 There is no screen-size dataset for energy managers, brokers, utility analysts, or finance users. Astral research names those audiences and their tasks. It does not record their devices or browser sizes.
 
+Behaviour guidance (breakpoints, container queries, panels, charts, tables, short windows) and its sources live in [responsive-behaviour.md](responsive-behaviour.md).
+
 ## 1. Smaller desktop resolutions still matter
 
 Statcounter, UK desktop screen resolution, September 2026:
