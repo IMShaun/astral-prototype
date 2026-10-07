@@ -735,6 +735,7 @@ function protoPageFilterReset() {
     prototypeChartShow: [],
     prototypeChartProfile: "",
     prototypeChartWeekends: false,
+    prototypeWeatherMeasure: "temperature",
     prototypeChartFlows: null,
     prototypeChartSliceOff: [],
     prototypePaneMeterKinds: null,
@@ -19538,14 +19539,22 @@ async function protoExportGo() {
 }
 
 function protoKnownPane(raw) {
-  if (raw === "alerts" || raw === "profile" || raw === "queries" || raw === "cost" || raw === "carbon") {
+  if (
+    raw === "alerts" ||
+    raw === "profile" ||
+    raw === "queries" ||
+    raw === "cost" ||
+    raw === "carbon" ||
+    raw === "weather"
+  ) {
     return raw;
   }
   return "consumption";
 }
 
 function protoPaneId() {
-  return protoKnownPane(store.prototypePane);
+  const pane = protoKnownPane(store.prototypePane);
+  return pane === "weather" && !protoWeatherAllowed() ? "consumption" : pane;
 }
 
 function protoPaneIsGraph() {
@@ -19651,7 +19660,7 @@ function protoPaneShell(headHtml, bodyHtml) {
   `;
 }
 
-function protoPaneTabs(alertCount, queryCount) {
+function protoPaneTabs(alertCount, queryCount, options = {}) {
   const active = protoPaneId();
   const alertsName = alertCount ? `Alerts · ${alertCount}` : "Alerts";
   const queriesName = queryCount ? `Queries · ${queryCount}` : "Queries";
@@ -19659,6 +19668,7 @@ function protoPaneTabs(alertCount, queryCount) {
     { id: "consumption", name: "Consumption" },
     { id: "cost", name: "Cost" },
     { id: "carbon", name: "Carbon" },
+    ...(options.weather ? [{ id: "weather", name: "Weather" }] : []),
     { id: "profile", name: "Site profile" },
     { id: "alerts", name: alertsName },
     { id: "queries", name: queriesName },
@@ -19667,8 +19677,321 @@ function protoPaneTabs(alertCount, queryCount) {
     items,
     active,
     "data-proto-pane",
-    "Consumption, Cost, Carbon, Site profile, Alerts, and Queries"
+    options.weather
+      ? "Consumption, Cost, Carbon, Weather, Site profile, Alerts, and Queries"
+      : "Consumption, Cost, Carbon, Site profile, Alerts, and Queries"
   );
+}
+
+// Weather belongs to one place, so the tab is on a site only. Groups and Compare fall back to Consumption.
+function protoWeatherAllowed() {
+  return store.prototypeScope !== "group" && !protoCompareOn();
+}
+
+const PROTO_WEATHER_MEASURES = [
+  { id: "temperature", name: "Temperature" },
+  { id: "degree", name: "Degree days" },
+  { id: "rain", name: "Rainfall" },
+];
+
+const PROTO_DEGREE_BASE = 15.5;
+
+// Met Office stations the prototype reads from. Each site uses the nearest one.
+const PROTO_WEATHER_STATIONS = [
+  { name: "Heathrow", at: [51.479, -0.449] },
+  { name: "Manchester Airport", at: [53.354, -2.275] },
+  { name: "Edinburgh Gogarbank", at: [55.928, -3.343] },
+  { name: "Bishopton", at: [55.907, -4.531] },
+  { name: "Aberdeen Dyce", at: [57.206, -2.202] },
+  { name: "Aviemore", at: [57.206, -3.827] },
+  { name: "Leuchars", at: [56.377, -2.861] },
+  { name: "Eskdalemuir", at: [55.312, -3.206] },
+  { name: "Newcastle Albemarle", at: [55.02, -1.88] },
+  { name: "Leeming", at: [54.296, -1.533] },
+  { name: "Sheffield", at: [53.381, -1.49] },
+  { name: "Crosby", at: [53.497, -3.056] },
+  { name: "Watnall", at: [53.005, -1.251] },
+  { name: "Coleshill", at: [52.48, -1.689] },
+  { name: "Cambridge NIAB", at: [52.245, 0.102] },
+  { name: "Oxford", at: [51.761, -1.262] },
+  { name: "Bristol Airport", at: [51.382, -2.719] },
+  { name: "Cardiff Bute Park", at: [51.488, -3.187] },
+  { name: "Hurn", at: [50.779, -1.835] },
+  { name: "Herstmonceux", at: [50.89, 0.318] },
+  { name: "Exeter Airport", at: [50.737, -3.405] },
+  { name: "Mount Batten", at: [50.355, -4.121] },
+];
+
+function protoWeatherMeasure() {
+  const id = String(store.prototypeWeatherMeasure || "");
+  return PROTO_WEATHER_MEASURES.some((item) => item.id === id) ? id : "temperature";
+}
+
+function protoKmBetween(a, b) {
+  const rad = (d) => (d * Math.PI) / 180;
+  const dLat = rad(b[0] - a[0]);
+  const dLon = rad(b[1] - a[1]);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLon / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(h));
+}
+
+function protoWeatherStation(site) {
+  const at = PROTO_SITE_GEO[site?.name] || PROTO_WEATHER_STATIONS[0].at;
+  const near = PROTO_WEATHER_STATIONS.map((station) => ({ ...station, km: protoKmBetween(at, station.at) })).sort(
+    (a, b) => a.km - b.km
+  )[0];
+  return { ...near, km: Math.max(1, Math.round(near.km)) };
+}
+
+function protoWeatherRand(seed) {
+  let h = 2166136261;
+  const text = String(seed);
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 100000) / 100000;
+}
+
+// A plain seasonal model: cooler and wetter to the north and west, warmest in late July.
+function protoWeatherDay(station, day) {
+  const [lat, lon] = station.at;
+  const start = new Date(day.getFullYear(), 0, 1);
+  const doy = Math.round((day - start) / 86400000);
+  const key = `${station.name}|${protoIso(day)}`;
+  const base = 10.6 - (lat - 51) * 0.42;
+  const swing = 6.4 - Math.max(0, -lon - 3) * 0.6;
+  const noise = (protoWeatherRand(`${key}|t`) - 0.5) * 5;
+  // The bar graph starts at zero, so a day's average stays just above freezing.
+  const temp = Math.max(0.5, base + swing * Math.cos((2 * Math.PI * (doy - 201)) / 365) + noise);
+  const wet = 0.42 + Math.max(0, -lon - 1) * 0.04 + (lat - 51) * 0.015;
+  const rains = protoWeatherRand(`${key}|r`) < wet;
+  const rain = rains ? -Math.log(1 - protoWeatherRand(`${key}|a`) * 0.97) * (3.1 + Math.max(0, -lon - 2) * 0.7) : 0;
+  return {
+    temp,
+    heat: Math.max(0, PROTO_DEGREE_BASE - temp),
+    cool: Math.max(0, temp - PROTO_DEGREE_BASE),
+    rain,
+  };
+}
+
+function protoRound(value, places = 1) {
+  const f = 10 ** places;
+  return Math.round(value * f) / f;
+}
+
+// One bucket per step of the date control: hours for a day, days for up to 62 days, months beyond.
+function protoWeatherRows(station) {
+  const span = protoDateSpan();
+  if (span.kind === "interval") {
+    const day = protoWeatherDay(station, span.from);
+    const wetHours = Array.from({ length: 24 }, (_, h) => protoWeatherRand(`${station.name}|${protoIso(span.from)}|${h}`));
+    const wetSum = wetHours.filter((n) => n > 0.6).reduce((n, v) => n + v, 0) || 1;
+    return wetHours.map((n, h) => ({
+      label: `${String(h).padStart(2, "0")}.00`,
+      name: `${String(h).padStart(2, "0")}.00 ${protoChartZone()}`,
+      temp: protoRound(Math.max(0.5, day.temp + 3.6 * Math.cos((2 * Math.PI * (h - 15)) / 24))),
+      rain: protoRound(n > 0.6 ? (day.rain * n) / wetSum : 0),
+      heat: null,
+      cool: null,
+    }));
+  }
+  const days = Math.round((span.to - span.from) / 86400000) + 1;
+  const list = Array.from({ length: days }, (_, i) => {
+    const date = protoAddDays(span.from, i);
+    return { date, ...protoWeatherDay(station, date) };
+  });
+  if (span.kind === "day") {
+    return list.map((row) => ({
+      label: protoFormatDay(row.date),
+      name: protoFormatFullDay(row.date),
+      temp: protoRound(row.temp),
+      rain: protoRound(row.rain),
+      heat: protoRound(row.heat),
+      cool: protoRound(row.cool),
+    }));
+  }
+  const months = new Map();
+  list.forEach((row) => {
+    const key = `${row.date.getFullYear()}-${row.date.getMonth()}`;
+    if (!months.has(key)) months.set(key, { date: row.date, rows: [] });
+    months.get(key).rows.push(row);
+  });
+  return [...months.values()].map(({ date, rows }) => {
+    const sum = (key) => rows.reduce((n, row) => n + row[key], 0);
+    const yy = String(date.getFullYear()).slice(2);
+    return {
+      label: `${PROTO_MONTHS[date.getMonth()]} ${yy}`,
+      name: `${PROTO_MONTHS_LONG[date.getMonth()]} ${date.getFullYear()}`,
+      temp: protoRound(sum("temp") / rows.length),
+      rain: protoRound(sum("rain")),
+      heat: protoRound(sum("heat")),
+      cool: protoRound(sum("cool")),
+    };
+  });
+}
+
+const PROTO_WEATHER_GRAIN = {
+  interval: { adj: "hourly", one: "hour", many: "hours" },
+  day: { adj: "daily", one: "day", many: "days" },
+  month: { adj: "monthly", one: "month", many: "months" },
+};
+
+function protoWeatherAmount(value, unit) {
+  const n = Number(value) || 0;
+  const text = n.toLocaleString("en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  return unit === "°C" ? `${text} °C` : `${text} ${unit}`;
+}
+
+// Lowest, highest and average for one measure, with when each fell. Totals only where adding up makes sense.
+function protoWeatherFigures(rows, key, { noun, unit, total }) {
+  const grain = PROTO_WEATHER_GRAIN[protoDateSpan().kind] || PROTO_WEATHER_GRAIN.day;
+  const have = rows.filter((row) => row[key] != null);
+  if (!have.length) return [];
+  const sum = have.reduce((n, row) => n + row[key], 0);
+  const high = have.reduce((best, row) => (row[key] > best[key] ? row : best));
+  const low = have.reduce((best, row) => (row[key] < best[key] ? row : best));
+  const across = `Across ${have.length} ${have.length === 1 ? grain.one : grain.many}`;
+  const at = (row) => (grain.one === "hour" ? `At ${row.name}` : grain.one === "day" ? `On ${row.name}` : `In ${row.name}`);
+  return [
+    ...(total ? [{ name: `Total ${noun}`, value: protoWeatherAmount(sum, unit), note: across }] : []),
+    { name: `Highest ${grain.adj} ${noun}`, value: protoWeatherAmount(high[key], unit), note: at(high) },
+    { name: `Lowest ${grain.adj} ${noun}`, value: protoWeatherAmount(low[key], unit), note: at(low) },
+    {
+      name: `Average ${grain.adj} ${noun}`,
+      value: protoWeatherAmount(sum / have.length, unit),
+      note: total ? `Total divided by ${have.length} ${have.length === 1 ? grain.one : grain.many}` : across,
+    },
+  ];
+}
+
+function protoWeatherFigureGroup(name, figures) {
+  if (!figures.length) return "";
+  return `
+    <section class="astral-figures-group"${name ? ` aria-label="${escapeHtml(name)}"` : ""}>
+      ${name ? `<h4 class="astral-figures-head">${escapeHtml(name)}</h4>` : ""}
+      <dl class="astral-figures">
+        ${figures
+          .map(
+            (item) => `
+          <div class="astral-figure">
+            <dt>${escapeHtml(item.name)}</dt>
+            <dd class="astral-figure-value">${escapeHtml(item.value)}</dd>
+            <dd class="astral-figure-note">${escapeHtml(item.note)}</dd>
+          </div>`
+          )
+          .join("")}
+      </dl>
+    </section>
+  `;
+}
+
+function protoWeatherMeasureSwitch(measure) {
+  return `
+    <div class="astral-weather-measure">
+      <p id="astral-weather-measure-name" class="sr-only">Measure</p>
+      <div class="astral-tabs astral-weather-measures" role="radiogroup" aria-labelledby="astral-weather-measure-name">
+        ${PROTO_WEATHER_MEASURES.map((item) => {
+          const on = item.id === measure;
+          return `<button type="button" role="radio" class="${on ? "is-on" : ""}" aria-checked="${on ? "true" : "false"}" tabindex="${
+            on ? "0" : "-1"
+          }" data-proto-weather-measure="${item.id}">${escapeHtml(item.name)}</button>`;
+        }).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function protoWeatherChart(rows, measure) {
+  const unit = measure === "temperature" ? "°C" : measure === "rain" ? "mm" : "°C days";
+  const title =
+    measure === "temperature" ? "Average temperature" : measure === "rain" ? "Rainfall" : "Heating and cooling degree days";
+  const points = rows.map((row) => {
+    const base = { label: row.label, quality: "actual", unit };
+    if (measure === "degree") {
+      return {
+        ...base,
+        value: row.heat,
+        last: row.cool,
+        lastQuality: "actual",
+        nowLabel: "Heating degree days",
+        lastLabel: "Cooling degree days",
+        spoken: `${row.name}. Heating degree days ${protoWeatherAmount(row.heat, unit)}. Cooling degree days ${protoWeatherAmount(row.cool, unit)}.`,
+      };
+    }
+    const value = measure === "rain" ? row.rain : row.temp;
+    return { ...base, value, spoken: `${row.name}. ${protoWeatherAmount(value, unit)}.` };
+  });
+  const dual = measure === "degree";
+  return protoWithStore(
+    {
+      prototypePane: "consumption",
+      prototypePaneFilters: [],
+      prototypeChartSliceOff: [],
+      prototypeChartFlows: ["in", "out"],
+      prototypeChartPoint: null,
+    },
+    () =>
+      protoBarChart(points, `Weather, ${title}`, {
+        dual,
+        still: true,
+        ...(dual ? { keyNames: { in: "Heating degree days", out: "Cooling degree days" } } : {}),
+        heading: { title, when: `${protoChartWhen()} ${protoChartZone()}` },
+      })
+  );
+}
+
+// One measure at a time: its graph, then its figures. Units, the source and its distance are always said.
+function protoWeatherPane(site) {
+  const measure = protoWeatherMeasure();
+  const station = protoWeatherStation(site);
+  const kind = protoDateSpan().kind;
+  const rows = protoWeatherRows(station);
+  const source = `
+    <p class="astral-weather-source">Met Office readings from ${escapeHtml(station.name)} weather station, ${station.km} km from ${escapeHtml(site.name)}</p>
+  `;
+  const degreeNote = `<p class="astral-weather-note">Degree days measure weather, not energy use. They count how far each day's average temperature fell below or rose above ${PROTO_DEGREE_BASE} °C.</p>`;
+  if (measure === "degree" && kind === "interval") {
+    return `
+      ${protoWeatherMeasureSwitch(measure)}
+      ${source}
+      <p class="astral-banner">Degree days are counted for whole days. Choose a date range of 2 days or more.</p>
+    `;
+  }
+  const groups =
+    measure === "degree"
+      ? [
+          protoWeatherFigureGroup(
+            "Heating degree days",
+            protoWeatherFigures(rows, "heat", { noun: "heating degree days", unit: "°C days", total: true })
+          ),
+          protoWeatherFigureGroup(
+            "Cooling degree days",
+            protoWeatherFigures(rows, "cool", { noun: "cooling degree days", unit: "°C days", total: true })
+          ),
+        ]
+      : measure === "rain"
+        ? [protoWeatherFigureGroup("", protoWeatherFigures(rows, "rain", { noun: "rainfall", unit: "mm", total: true }))]
+        : [protoWeatherFigureGroup("", protoWeatherFigures(rows, "temp", { noun: "temperature", unit: "°C", total: false }))];
+  const span = protoDateSpan();
+  const spec = PROTO_BREAKDOWN_FOLDS.summary;
+  const summary = protoAccordion({
+    id: spec.id,
+    open: Boolean(store[spec.field]),
+    name: "Summary",
+    note: protoRangeWords(span.from, span.to),
+    attr: 'data-proto-breakdown="summary"',
+    modifier: "astral-breakdown",
+    clipClass: "astral-breakdown-clip",
+    inner: `<div class="astral-pane-summary">${groups.join("")}</div>`,
+  });
+  return `
+    ${protoWeatherMeasureSwitch(measure)}
+    ${source}
+    ${measure === "degree" ? degreeNote : ""}
+    ${protoWeatherChart(rows, measure)}
+    ${summary}
+  `;
 }
 
 function protoMeterFacts(meter, profile = protoMeterProfile(meter?.id)) {
@@ -23599,7 +23922,7 @@ function protoPortfolioDetail() {
         </div>
         ${protoPaneFilterPills()}
         ${protoSiteStatus(currentSite)}
-        ${protoPaneTabs(protoPaneAlertCount(alerts), protoPaneQueryCount(queries))}
+        ${protoPaneTabs(protoPaneAlertCount(alerts), protoPaneQueryCount(queries), { weather: true })}
           `,
           pane === "alerts"
             ? protoAlertPane(alerts, "site")
@@ -23607,6 +23930,8 @@ function protoPortfolioDetail() {
               ? protoProfilePane([currentSite])
               : pane === "queries"
                 ? protoQueryPane([currentSite], "site", null, viewMeters)
+                : pane === "weather"
+                ? protoWeatherPane(currentSite)
                 : limit
                 ? protoGraphLimitHtml(limit)
                 : `
@@ -31353,6 +31678,7 @@ function protoSlideNavPills(options) {
     "chartStyle",
     snap
   );
+  protoSlideHost(root.querySelector(".astral-weather-measures"), "button.is-on", "weatherMeasure", snap);
 }
 
 function protoPickMeterAttrTab(id) {
@@ -33812,6 +34138,14 @@ function onPrototype(event) {
     );
     return;
   }
+  const weatherBtn = event.target.closest("[data-proto-weather-measure]");
+  if (weatherBtn) {
+    const pick = weatherBtn.dataset.protoWeatherMeasure;
+    const measure = PROTO_WEATHER_MEASURES.some((item) => item.id === pick) ? pick : "temperature";
+    if (measure !== protoWeatherMeasure()) setProto({ prototypeWeatherMeasure: measure, prototypeChartPoint: null });
+    protoRestoreFocus(`[data-proto-weather-measure="${measure}"]`);
+    return;
+  }
   const chartStyleBtn = event.target.closest("[data-proto-chart-style]");
   if (chartStyleBtn) {
     const pick = chartStyleBtn.dataset.protoChartStyle;
@@ -35345,7 +35679,7 @@ function onPrototypeKey(event) {
     return;
   }
   const typeRadio = event.target.closest(
-    ".astral-report-types [role='radio'], .astral-chart-style-switch [role='radio'], [role='radio'][data-proto-report-tenant-pays], [role='radio'][data-proto-report-tax-incl], [role='radio'][data-proto-export-opt]"
+    ".astral-report-types [role='radio'], .astral-chart-style-switch [role='radio'], .astral-weather-measures [role='radio'], [role='radio'][data-proto-report-tenant-pays], [role='radio'][data-proto-report-tax-incl], [role='radio'][data-proto-export-opt]"
   );
   if (typeRadio && ["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) {
     event.preventDefault();

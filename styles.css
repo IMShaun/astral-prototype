@@ -14349,6 +14349,19 @@ html.is-classic-scroll #astral-fs .is-scroll-near {
   font-size: 0.875rem;
 }
 
+/* Weather tab. One measure at a time, with its source and units said in words. */
+.astral-weather-measures {
+  align-self: start;
+  justify-self: start;
+}
+
+.astral-weather-source,
+.astral-weather-note {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
 /* Calendar chart type. A Monday to Sunday month, each day with its date, a small graph and its total. */
 .astral-pane-body > .astral-chart-wrap.is-calendar {
   height: auto;
