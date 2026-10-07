@@ -733,6 +733,7 @@ function protoPageFilterReset() {
     prototypeChartStyle: "bar",
     prototypeChartStyleBefore: "bar",
     prototypeChartShow: [],
+    prototypeChartProfile: "",
     prototypeChartFlows: null,
     prototypeChartSliceOff: [],
     prototypePaneMeterKinds: null,
@@ -3248,6 +3249,124 @@ function protoDateCompareRefs(remake, build) {
   });
 }
 
+// Average profile: the usual pattern, from the 4 weeks before the dates shown. Not the Summary's single average.
+const PROTO_PROFILE = [
+  {
+    id: "weekday",
+    name: "Same weekday",
+    note: "Each day against the same day of the week, from the 4 weeks before",
+  },
+  {
+    id: "daytype",
+    name: "Weekday or weekend",
+    note: "Each day against all weekdays or all weekend days, from the 4 weeks before",
+  },
+];
+const PROTO_PROFILE_DAYS = 28;
+
+function protoProfileId() {
+  const id = String(store.prototypeChartProfile || "");
+  return PROTO_PROFILE.some((item) => item.id === id) ? id : "";
+}
+
+// Months are too coarse for a weekly pattern, and Calendar has no line to add.
+function protoProfileBlocked() {
+  if (protoChartIsCalendar()) return "Average profile works with Bar and Line.";
+  if (protoDateSpan().kind === "month") return "Average profile works with up to 62 days.";
+  return "";
+}
+
+function protoProfileWindow(span) {
+  return { from: protoAddDays(span.from, -PROTO_PROFILE_DAYS), to: protoAddDays(span.from, -1) };
+}
+
+function protoDayIsWeekend(day) {
+  const n = day.getDay();
+  return n === 0 || n === 6;
+}
+
+function protoProfileMatch(id, a, b) {
+  return id === "weekday" ? a.getDay() === b.getDay() : protoDayIsWeekend(a) === protoDayIsWeekend(b);
+}
+
+const PROTO_WEEKDAY_PLURAL = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
+
+// Names the days the profile is made from, so it can be checked.
+function protoProfileKeyName(id, span, win) {
+  const range = protoSpanWords({ ...win, kind: "day" });
+  if (span.kind === "interval") {
+    const day = span.from;
+    if (id === "weekday") return `Average profile, ${PROTO_WEEKDAY_PLURAL[day.getDay()]}, ${range}`;
+    const count = Array.from({ length: PROTO_PROFILE_DAYS }, (_, j) => protoAddDays(win.from, j)).filter((d) =>
+      protoProfileMatch(id, d, day)
+    ).length;
+    return `Average profile, ${count} ${protoDayIsWeekend(day) ? "weekend days" : "weekdays"}, ${range}`;
+  }
+  return `Average profile, ${id === "weekday" ? "same weekday" : "weekday or weekend"}, ${range}`;
+}
+
+function protoMean(list) {
+  const nums = list.filter((v) => v != null && Number.isFinite(Number(v))).map(Number);
+  return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
+}
+
+// Each line of the graph gets its own profile. Half-hours average across matching days; days average across matching dates.
+function protoProfileRefs(remake, build) {
+  const id = protoProfileId();
+  if (!id || !remake || protoProfileBlocked()) return [];
+  const span = protoDateSpan();
+  const win = protoProfileWindow(span);
+  const keyName = protoProfileKeyName(id, span, win);
+  const nowLines = build(remake());
+  const days = Array.from({ length: PROTO_PROFILE_DAYS }, (_, j) => protoAddDays(win.from, j));
+  let valuesFor;
+  if (span.kind === "interval") {
+    const used = days.filter((d) => protoProfileMatch(id, d, span.from));
+    const builds = used.map((d) => protoWithSpan({ from: d, to: d, kind: "interval" }, () => build(remake())));
+    valuesFor = (line, k) =>
+      line.points.map((_, i) => protoMean(builds.map((lines) => lines[k]?.points[i]?.value)));
+  } else {
+    const past = protoWithSpan({ ...win, kind: "day" }, () => build(remake()));
+    valuesFor = (line, k) =>
+      line.points.map((_, i) => {
+        const day = protoAddDays(span.from, i);
+        return protoMean(
+          days.map((d, j) => (protoProfileMatch(id, d, day) ? past[k]?.points[j]?.value : null))
+        );
+      });
+  }
+  const labels = (line) => line.points.map((p) => p.label);
+  return nowLines.map((line, k) => ({
+    key: `profile-${line.id}`,
+    kind: "profile",
+    track: line.track || "",
+    style: line.style === "dot" ? "band-dot" : "band",
+    color: line.color || "",
+    flow: line.flow || "",
+    values: valuesFor(line, k),
+    qualities: [],
+    names: line.points.map(() => "Average profile"),
+    nowNames: protoSpanPointNames(span, labels(line), false),
+    keyName: line.flow ? `${keyName}, ${line.flow}` : keyName,
+    nowKey: protoSpanWords(span),
+  }));
+}
+
+function protoProfileSelect(more = {}) {
+  const blocked = protoProfileBlocked();
+  return protoSelect({
+    id: "chart-profile",
+    label: "Average profile",
+    value: blocked ? "none" : protoProfileId() || "none",
+    disabled: Boolean(blocked),
+    options: [
+      { value: "none", label: "No profile" },
+      ...PROTO_PROFILE.map((item) => ({ value: item.id, label: item.name, note: item.note })),
+    ],
+    ...more,
+  });
+}
+
 function protoRefRowsAt(refs, i, track) {
   return (refs || [])
     .filter((ref) => !track || !ref.track || ref.track === track)
@@ -3272,7 +3391,8 @@ function protoRefLines(refs, scale, xAt, count) {
   const list = refs || [];
   if (!list.length) return "";
   const dots = count <= 62;
-  const body = list
+  const body = [...list]
+    .sort((a, b) => Number(String(b.style).startsWith("band")) - Number(String(a.style).startsWith("band")))
     .map((ref) => {
       const runs = [];
       let cur = null;
@@ -3288,19 +3408,17 @@ function protoRefLines(refs, scale, xAt, count) {
         cur.push([i, xAt(i), scale.y(value)]);
       });
       const key = escapeHtml(ref.key);
+      const band = String(ref.style).startsWith("band");
       const lines = runs
         .filter((run) => run.length > 1)
-        .map(
-          (run, k) =>
-            `<polyline class="astral-ref-halo" data-m="refh|${key}|${k}" points="${run
-              .map(([, x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`)
-              .join(" ")}" /><polyline class="astral-ref-line" data-m="ref|${key}|${k}" points="${run
-              .map(([, x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`)
-              .join(" ")}" />`
-        )
+        .map((run, k) => {
+          const pts = run.map(([, x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+          const halo = band ? "" : `<polyline class="astral-ref-halo" data-m="refh|${key}|${k}" points="${pts}" />`;
+          return `${halo}<polyline class="astral-ref-line" data-m="ref|${key}|${k}" points="${pts}" />`;
+        })
         .join("");
       const marks = runs
-        .flatMap((run) => (dots || run.length === 1 ? run : []))
+        .flatMap((run) => (run.length === 1 || (dots && !band) ? run : []))
         .map(
           ([i, x, y]) =>
             `<circle class="astral-ref-dot" data-m="refd|${key}|${i}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" />`
@@ -6447,14 +6565,14 @@ function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing, rema
           ? protoDualLineTracks(protoScalePoints(again.points || [], list))
           : protoCombinedLineTracks(protoScalePoints(again.points || [], list));
     const lineTracks = lineFor({ tracks, points });
-    const refs = protoDateCompareRefs(remake, (again) =>
+    const lineRefs = (again) =>
       lineFor(again).map((track) => ({
         id: track.id,
         track: track.id,
         color: track.color,
         points: track.points || [],
-      }))
-    );
+      }));
+    const refs = [...protoDateCompareRefs(remake, lineRefs), ...protoProfileRefs(remake, lineRefs)];
     return lineTracks.length
       ? protoLineChart(lineTracks, name, { dual: dualTotal, zoneMeters: list, refs })
       : protoChartEmpty(pool);
@@ -6475,7 +6593,7 @@ function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing, rema
     }
     return lines;
   };
-  const refs = protoDateCompareRefs(remake, barRefs);
+  const refs = [...protoDateCompareRefs(remake, barRefs), ...protoProfileRefs(remake, barRefs)];
   if (breakdown && scaledTracks.length && !dualTotal) {
     return protoBarChart(protoTracksToStackPoints(scaledTracks), name, {
       seriesStack: true,
@@ -6603,9 +6721,11 @@ function protoChartOverlayNote() {
   return `<p class="astral-chart-setting-note">${escapeHtml(text)}</p>`;
 }
 
-// Defaults: Total consumption, Bar, and no overlay.
+// Defaults: Total consumption, Bar, no overlay and no average profile.
 function protoChartSettingsDefault() {
-  return protoChartView() === "total" && protoChartStyle() === "bar" && !protoChartPicked().length;
+  return (
+    protoChartView() === "total" && protoChartStyle() === "bar" && !protoChartPicked().length && !protoProfileId()
+  );
 }
 
 function protoChartSettings(zoneSet) {
@@ -6634,6 +6754,13 @@ function protoChartSettings(zoneSet) {
             ? protoChartShowSelect({ labelledby, disabled: true })
             : protoChartShowSelect({ labelledby }) + protoChartOverlayNote()
         ),
+        field("profile", "Average profile", (labelledby) => {
+          const blocked = protoProfileBlocked();
+          return (
+            protoProfileSelect({ labelledby }) +
+            (blocked ? `<p class="astral-chart-setting-note">${escapeHtml(blocked)}</p>` : "")
+          );
+        }),
         calendar ? "" : protoChartUtilityField(zoneSet, field),
         calendar ? "" : protoChartZoneField(zoneSet, field),
         `<div class="astral-chart-settings-foot">${protoTextBtn("Restore defaults", "data-proto-chart-reset", {
@@ -6813,7 +6940,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
           <p class="astral-chart-title">${escapeHtml(label)}</p>
           <p class="astral-chart-when">${escapeHtml(protoChartWhen())} ${escapeHtml(protoChartZone())}</p>
           ${
-            extras.refs?.length
+            extras.refs?.some((ref) => ref.kind === "dates")
               ? `<p class="astral-chart-when">Compared with ${escapeHtml(protoSpanWords(protoDateCompareSpan()))}</p>`
               : ""
           }
@@ -8729,6 +8856,15 @@ function protoPickSelect(id, value) {
     if (id === "usage-type") patch.prototypeUsageCompany = "";
     setProto(patch);
     protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
+    return;
+  }
+  if (id === "chart-profile") {
+    setProto({
+      prototypeSelectOpen: "",
+      prototypeChartProfile: value === "none" ? "" : String(value || ""),
+      prototypeChartPoint: null,
+    });
+    protoRestoreFocus(`#astral-chart-settings-menu [data-proto-select="chart-profile"] .astral-select-btn`);
     return;
   }
   if (id === "date-compare") {
@@ -33613,6 +33749,7 @@ function onPrototype(event) {
       prototypeChartView: "total",
       prototypeChartStyle: "bar",
       prototypeChartShow: [],
+      prototypeChartProfile: "",
       prototypeChartSliceOff: [],
       prototypeChartPoint: null,
       prototypeSelectOpen: "",

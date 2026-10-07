@@ -9216,6 +9216,28 @@ button.astral-state {
   stroke-width: 1.5;
 }
 
+/* Average profile is a wide soft band behind the readings, so it never reads as another dashed period. */
+.astral-ref.is-band .astral-ref-line,
+.astral-ref.is-band-dot .astral-ref-line {
+  stroke: var(--ref-ink, #1b1b1f);
+  stroke-width: 7;
+  stroke-opacity: 0.22;
+  stroke-dasharray: none;
+  stroke-linecap: round;
+}
+
+.astral-ref.is-band-dot .astral-ref-line {
+  stroke-dasharray: 0.1 11;
+  stroke-opacity: 0.32;
+}
+
+.astral-ref.is-band .astral-ref-dot,
+.astral-ref.is-band-dot .astral-ref-dot {
+  fill: var(--ref-ink, #1b1b1f);
+  fill-opacity: 0.22;
+  stroke: none;
+}
+
 .astral-chart.is-draw .astral-ref-lines {
   animation: astral-ref-wipe 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
 }
@@ -9283,6 +9305,21 @@ button.astral-state {
 .astral-ref-mark.is-dot {
   border-top-style: dotted;
   border-top-width: 3px;
+}
+
+.astral-ref-mark.is-band,
+.astral-ref-mark.is-band-dot {
+  width: 20px;
+  height: 7px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--ref-ink, #1b1b1f);
+  opacity: 0.22;
+}
+
+.astral-ref-mark.is-band-dot {
+  background: radial-gradient(circle, var(--ref-ink, #1b1b1f) 3.5px, transparent 4px) 0 50% / 10px 7px repeat-x;
+  opacity: 0.32;
 }
 
 .astral-query-pin-reading.is-ref .astral-ref-mark {
