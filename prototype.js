@@ -723,6 +723,7 @@ function protoPageFilterReset() {
     prototypeMeterFold: "",
     prototypeMeterAttrTab: "",
     prototypeMeterUpload: null,
+    prototypeSummaryOpen: true,
     prototypeBreakdownOpen: false,
     prototypeMeterBreakdownOpen: false,
     prototypeListOpen: false,
@@ -22047,6 +22048,7 @@ function protoGroupDetail(group) {
           ? `<p class="astral-banner">No reading in ${missing} intervals. That is missing data, not zero use.</p>`
           : ""
       }
+      ${protoPaneSummary({ points, meters: viewMeters, dual })}
       ${protoPaneBreakdown({ tracks: siteTracks, points, meters: viewMeters, dual, by: "site", name: "Site breakdown" })}
       ${
         viewMeters.length && !protoConsumptionUnitsMixed(viewMeters)
@@ -22223,6 +22225,14 @@ function protoCompareDetail() {
           ? `<p class="astral-banner">No reading in ${missing} intervals. That is missing data, not zero use.</p>`
           : ""
       }
+      ${(() => {
+        const sumFlow = protoMetersFlow(meters);
+        return protoPaneSummary({
+          points: protoMetersSeries(meters, sumFlow.channel),
+          meters,
+          dual: sumFlow.channel === "all" && sumFlow.both,
+        });
+      })()}
       ${
         bundle.level !== "group" && meters.length > 1
           ? protoChartIsIndividual()
@@ -22844,6 +22854,11 @@ function protoPortfolioDetail() {
             ? `<p class="astral-banner">No reading in ${missing} intervals. That is missing data, not zero use.</p>`
             : ""
         }
+        ${protoPaneSummary({
+          points: protoMetersSeries(viewMeters, protoMetersFlow(viewMeters).channel),
+          meters: viewMeters,
+          dual: flow.channel === "all" && flow.both,
+        })}
         ${protoPaneBreakdown({
           tracks: protoMeterTracks(viewMeters, protoMetersForPane(currentSite.meters)),
           points: protoMetersSeries(viewMeters, protoMetersFlow(viewMeters).channel),
@@ -22880,6 +22895,7 @@ function protoBreakdownOpen() {
 
 // The pane body can hold the interval Breakdown, a Meter point breakdown on a group, and the list (Sites, Groups, Meter points).
 const PROTO_BREAKDOWN_FOLDS = {
+  summary: { field: "prototypeSummaryOpen", id: "astral-summary-panel" },
   toggle: { field: "prototypeBreakdownOpen", id: "astral-breakdown-panel", rows: true },
   meters: { field: "prototypeMeterBreakdownOpen", id: "astral-meter-breakdown-panel", rows: true },
   list: { field: "prototypeListOpen", id: "astral-list-panel" },
@@ -23487,6 +23503,119 @@ function protoTotalBreakdownTracks(points, meters, dual) {
 }
 
 // The Breakdown follows the graph: Total gives its total (or In and Out), Individual gives a column per series.
+// The graph's own step: half-hours for one day, days for a week or month, months for a year.
+const PROTO_SUMMARY_GRAIN = {
+  interval: { adj: "half-hourly", one: "half-hour", many: "half-hours" },
+  day: { adj: "daily", one: "day", many: "days" },
+  month: { adj: "monthly", one: "month", many: "months" },
+};
+
+function protoSummaryGrain() {
+  return PROTO_SUMMARY_GRAIN[protoDateSpan().kind] || PROTO_SUMMARY_GRAIN.day;
+}
+
+function protoSummaryAmount(value, unit) {
+  const n = Number(value) || 0;
+  return `${n.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 1 })} ${unit}`;
+}
+
+// Says when the highest or lowest reading fell, in the graph's own words.
+function protoSummaryWhen(label) {
+  const kind = protoDateSpan().kind;
+  const text = String(label || "").trim();
+  if (kind === "interval") return `At ${protoChartTimeLabel(text)}`;
+  if (kind === "month") {
+    const [mon, yy] = text.split(" ");
+    return `In ${mon} ${yy && yy.length === 2 ? `20${yy}` : yy || ""}`.trim();
+  }
+  return `On ${text}`;
+}
+
+// Total, highest, lowest and average for one flow. Missing readings are left out, never counted as zero.
+function protoSummaryFigures(points, key, flow, unit) {
+  const grain = protoSummaryGrain();
+  const all = points || [];
+  const have = all.filter((point) => point && point[key] != null);
+  if (!have.length) return null;
+  const qualityKey = key === "last" ? "lastQuality" : "quality";
+  const total = have.reduce((sum, point) => sum + Number(point[key]), 0);
+  const high = have.reduce((best, point) => (Number(point[key]) > Number(best[key]) ? point : best));
+  const low = have.reduce((best, point) => (Number(point[key]) < Number(best[key]) ? point : best));
+  const estimated = have.some((point) => point[qualityKey] === "estimated");
+  const word = flow === "out" ? "outgoing" : "use";
+  const counted =
+    have.length === all.length
+      ? `Across ${have.length} ${have.length === 1 ? grain.one : grain.many}`
+      : `${have.length} of ${all.length} ${grain.many} have readings`;
+  return [
+    {
+      name: flow === "out" ? "Total outgoing" : "Total use",
+      value: protoSummaryAmount(total, unit),
+      note: estimated ? `${counted}. Includes estimated readings` : counted,
+    },
+    { name: `Highest ${grain.adj} ${word}`, value: protoSummaryAmount(high[key], unit), note: protoSummaryWhen(high.label) },
+    { name: `Lowest ${grain.adj} ${word}`, value: protoSummaryAmount(low[key], unit), note: protoSummaryWhen(low.label) },
+    {
+      name: `Average ${grain.adj} ${word}`,
+      value: protoSummaryAmount(total / have.length, unit),
+      note: `Total divided by ${have.length} ${have.length === 1 ? grain.one : grain.many}`,
+    },
+  ];
+}
+
+// Overview first: the figures for exactly what the graph shows. Incoming and outgoing never share a figure.
+function protoPaneSummary({ points, meters, dual }) {
+  const list = meters || [];
+  if (protoPaneId() !== "consumption" || !list.length || protoConsumptionUnitsMixed(list)) return "";
+  const scaled = protoScalePoints(points, list);
+  if (!scaled.length) return "";
+  const unit = scaled.find((point) => point?.unit)?.unit || protoMeasureUnit(list);
+  const flow = protoMetersFlow(list);
+  const groups = dual
+    ? [
+        { flow: "in", key: "value", name: "Incoming" },
+        { flow: "out", key: "last", name: "Outgoing" },
+      ].filter((group) => protoChartFlowOn(group.flow))
+    : [{ flow: flow.channel === "out" ? "out" : "in", key: "value", name: "" }];
+  const blocks = groups
+    .map((group) => {
+      const figures = protoSummaryFigures(scaled, group.key, group.flow, unit);
+      if (!figures) return "";
+      const head = group.name ? `<h4 class="astral-figures-head">${escapeHtml(group.name)}</h4>` : "";
+      return `
+        <section class="astral-figures-group"${group.name ? ` aria-label="${escapeHtml(group.name)}"` : ""}>
+          ${head}
+          <dl class="astral-figures">
+            ${figures
+              .map(
+                (item) => `
+              <div class="astral-figure">
+                <dt>${escapeHtml(item.name)}</dt>
+                <dd class="astral-figure-value">${escapeHtml(item.value)}</dd>
+                <dd class="astral-figure-note">${escapeHtml(item.note)}</dd>
+              </div>`
+              )
+              .join("")}
+          </dl>
+        </section>
+      `;
+    })
+    .join("");
+  if (!blocks.trim()) return "";
+  const { from, to } = protoExportGraphDates();
+  const spec = PROTO_BREAKDOWN_FOLDS.summary;
+  return protoAccordion({
+    id: spec.id,
+    open: Boolean(store[spec.field]),
+    name: "Summary",
+    note: from && to ? protoRangeWords(from, to) : protoChartWhen(),
+    attr: 'data-proto-breakdown="summary"',
+    modifier: "astral-breakdown",
+    clipClass: "astral-breakdown-clip",
+    inner: `<div class="astral-pane-summary">${blocks}</div>`,
+  });
+}
+
 function protoPaneBreakdown({ tracks, points, meters, dual, by, name }) {
   const list = meters || [];
   if (!list.length || protoConsumptionUnitsMixed(list)) return "";
