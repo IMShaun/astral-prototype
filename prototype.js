@@ -7759,8 +7759,9 @@ function protoPinClose() {
 function protoCloseModal(kind) {
   if (kind === "export") {
     const file = protoExportModalState()?.file || "";
+    const back = protoExportBackSelector(file);
     setProto({ prototypeExportModal: null });
-    protoRestoreFocus(`#astral-fs [data-proto-export="toggle"][data-proto-file="${CSS.escape(file)}"]`);
+    protoRestoreFocus(back);
     return;
   }
   if (kind === "alert-info") {
@@ -18329,13 +18330,15 @@ function protoExportModalState() {
   const file = String(raw.file);
   if (protoExportNeedsSite(file)) return null;
   const prefs = protoExportPrefs();
-  const what = protoExportChoices(file).some((item) => item.id === prefs.what) ? prefs.what : "chart";
+  // Too large to graph means there is no table or image to export, so it opens on Source data with no way back.
+  const limit = raw.limit === true && Boolean(protoGraphLimit(file));
+  const what = limit ? "source" : protoExportChoices(file).some((item) => item.id === prefs.what) ? prefs.what : "chart";
   const errors = raw.errors && typeof raw.errors === "object" ? raw.errors : {};
   // Source data needs more fields, so they sit on a second step.
-  const step = what === "source" && raw.step === 2 ? 2 : 1;
+  const step = limit || (what === "source" && raw.step === 2) ? 2 : 1;
   const dir = raw.dir === "next" || raw.dir === "back" ? raw.dir : "";
   // Source data step 2 exists for the dates, so the From and To fields always show.
-  return { file, what, prefs, step, dir, more: raw.more === true, edit: what === "source", errors };
+  return { file, what, prefs, step, dir, limit, more: raw.more === true, edit: what === "source", errors };
 }
 
 function protoExportSourceFormat(id) {
@@ -18439,11 +18442,75 @@ function protoExportSummary(state) {
 }
 
 // Graph exports work for one site at a time. On All, a group or a compare of several sites, Export stays in place but greyed out and says why.
+// A selection too large to graph is the exception. Its only export is the full Source data.
 function protoExportNeedsSite(fileId) {
   const id = String(fileId || "");
+  if (protoGraphLimit(id)) return false;
   if (id.startsWith("group:")) return true;
   if (id === "compare") return (protoCompareBundle().sites || []).length > 1;
   return false;
+}
+
+// The graph draws up to this many meter point days. 125 meter points for 8 days, or 31 for a month.
+const PROTO_GRAPH_MAX = 1000;
+
+function protoGraphDays() {
+  const { from, to } = protoDateSpan();
+  return Math.round((protoDayStamp(to) - protoDayStamp(from)) / 86400000) + 1;
+}
+
+// Null while the graph can show the selection. Mixed units ask for a unit first, so they never reach the limit.
+// It counts the same meter points the export would, so the message and the export agree.
+function protoGraphLimit(fileId) {
+  if (!protoPaneIsGraph()) return null;
+  const id = String(fileId || "");
+  const meters = protoExportMeters(id);
+  if (!meters.length || protoConsumptionUnitsMixed(meters)) return null;
+  const days = protoGraphDays();
+  if (meters.length * days <= PROTO_GRAPH_MAX) return null;
+  const scope = id === "compare" ? protoCompareLevel() : id.startsWith("group:") ? "group" : "site";
+  return { file: id, meters: meters.length, days, scope };
+}
+
+// In the graph area, in place of the graph and its breakdowns. The date and Compare controls stay above it.
+function protoGraphLimitHtml(limit) {
+  const fewer =
+    limit.scope === "site" ? "" : limit.scope === "meter" ? "fewer meter points or " : "fewer sites or ";
+  const maxDays = Math.floor(PROTO_GRAPH_MAX / limit.meters);
+  const maxMeters = Math.floor(PROTO_GRAPH_MAX / limit.days);
+  const these = `these ${protoExportPlural(limit.meters, "meter point", "meter points")}`;
+  const fit =
+    limit.scope !== "site" && maxMeters >= 1
+      ? `The graph can show ${these} for up to ${protoExportPlural(maxDays, "day", "days")}, or up to ${protoExportPlural(
+          maxMeters,
+          "meter point",
+          "meter points"
+        )} for these ${limit.days} days.`
+      : `The graph can show ${these} for up to ${protoExportPlural(maxDays, "day", "days")}.`;
+  const act = protoCanAct();
+  const body = act
+    ? `Export the full data, or choose ${fewer}a shorter date range.`
+    : `Choose ${fewer}a shorter date range.`;
+  return protoChartWrap(
+    `
+      <div class="astral-chart-mix astral-graph-limit" role="status">
+        <h3>This selection is too large to show on the graph</h3>
+        <p>${escapeHtml(body)}</p>
+        <p class="astral-muted">${escapeHtml(fit)}</p>
+        ${
+          act
+            ? `<div class="astral-actions">${protoBtn(
+                "Export data",
+                `data-proto-graph-export="${escapeHtml(limit.file)}" aria-haspopup="dialog"`
+              )}</div>`
+            : ""
+        }
+      </div>
+    `,
+    protoPaneChartLabel(false),
+    false,
+    true
+  );
 }
 
 // Export opens one pop-up that holds every export option.
@@ -18603,7 +18670,9 @@ function protoExportModal() {
         aria-labelledby="astral-export-pick-title"
       >
         ${
-          sourceStep
+          state.limit
+            ? protoModalHead("astral-export-pick-title", "Export source data", "", "export")
+            : sourceStep
             ? protoModalHead("astral-export-pick-title", "Export source data", "", "export", 'data-proto-export-step="back"')
             : protoModalHead("astral-export-pick-title", "Export", "", "export")
         }
@@ -18628,7 +18697,7 @@ function protoExportStep(step) {
   if (!raw || !protoExportModalState()) return;
   setProto({ prototypeExportModal: { ...raw, step, dir: step === 2 ? "next" : "back", errors: {} } });
   store.prototypeExportModal = { ...store.prototypeExportModal, dir: "" };
-  if (step === 2) protoRestoreFocus("#astral-fs #astral-export-pick-title");
+  if (step === 2) protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
   else protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
 }
 
@@ -18636,10 +18705,13 @@ function protoSetExportPrefs(patch) {
   setProto({ prototypeExportPrefs: { ...protoExportPrefs(), ...patch } });
 }
 
-function protoOpenExport(fileId) {
+function protoOpenExport(fileId, from = "") {
   const graph = protoExportGraphDates();
+  const limit = Boolean(protoGraphLimit(fileId));
   setProto({
-    prototypeExportModal: { file: String(fileId || "") },
+    prototypeExportModal: { file: String(fileId || ""), ...(limit ? { limit: true, from } : {}) },
+    // The full data starts as exactly what they asked the graph for.
+    ...(limit ? { prototypeExportPrefs: { ...protoExportPrefs(), rangeMode: "dates" } } : {}),
     prototypeExportFrom: protoFormatUkDate(graph.from),
     prototypeExportTo: protoFormatUkDate(graph.to),
     prototypeExportOpen: false,
@@ -18651,6 +18723,15 @@ function protoOpenExport(fileId) {
     prototypeAckOpen: "",
   });
   protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
+
+}
+
+// Focus goes back to whichever button opened the pop-up.
+function protoExportBackSelector(file) {
+  const id = CSS.escape(String(file || ""));
+  return store.prototypeExportModal?.from === "graph"
+    ? `#astral-fs [data-proto-graph-export="${id}"]`
+    : `#astral-fs [data-proto-export="toggle"][data-proto-file="${id}"]`;
 }
 
 // Validates Source data dates, queues the file, closes the pop-up and sends focus back to the Export icon.
@@ -18671,7 +18752,7 @@ async function protoExportGo() {
       return;
     }
   }
-  const back = `#astral-fs [data-proto-export="toggle"][data-proto-file="${CSS.escape(file)}"]`;
+  const back = protoExportBackSelector(file);
   if (what === "pdf" || what === "chart") {
     protoQueueExport(what === "pdf" ? "pdf" : "csv", file);
   } else if (what === "image") {
@@ -20074,6 +20155,7 @@ function protoDownloadsFrom(raw) {
         category: PROTO_DOWNLOAD_CATEGORY_IDS.includes(item.category) ? item.category : "",
         added: Number(item.added) || 0,
         waitMs: waitMs > 0 ? waitMs : 0,
+        ...(item.fail === true ? { fail: true } : {}),
         ...(spec ? { spec } : {}),
       };
     })
@@ -20117,24 +20199,18 @@ function protoDownloadLeftMs(item) {
   return Math.max(0, protoDownloadWaitMs(item) - protoDownloadElapsedMs(item));
 }
 
-function protoDownloadPct(item) {
-  const wait = protoDownloadWaitMs(item);
-  if (wait <= 0) return 100;
-  return Math.min(100, Math.round((protoDownloadElapsedMs(item) / wait) * 100));
-}
-
-function protoDownloadLeftCopy(ms) {
-  const sec = Math.max(0, Math.ceil(ms / 1000));
-  if (sec >= 60) {
-    const mins = Math.max(1, Math.round(sec / 60));
-    return mins === 1 ? "1 minute left" : `${mins} minutes left`;
-  }
-  if (sec <= 0) return "";
-  return sec === 1 ? "1 second left" : `${sec} seconds left`;
-}
-
 function protoDownloadReady(item) {
-  return protoDownloadLeftMs(item) <= 0;
+  return protoDownloadState(item) === "complete";
+}
+
+// Waiting until the queue picks it up, then Processing. The time is not known, so there is no countdown or percentage.
+const PROTO_DOWNLOAD_QUEUE_MS = 4000;
+
+function protoDownloadState(item) {
+  const elapsed = protoDownloadElapsedMs(item);
+  if (item?.fail && elapsed >= Math.min(protoDownloadWaitMs(item), PROTO_DOWNLOAD_QUEUE_MS * 3)) return "failed";
+  if (protoDownloadLeftMs(item) <= 0) return "complete";
+  return elapsed < PROTO_DOWNLOAD_QUEUE_MS ? "waiting" : "processing";
 }
 
 function protoDownloadMadeAt(item) {
@@ -20219,6 +20295,7 @@ const PROTO_DOWNLOAD_FILTERS = [
     items: [
       { id: "ready", name: "Ready" },
       { id: "processing", name: "Processing" },
+      { id: "failed", name: "Failed" },
     ],
   },
 ];
@@ -20345,8 +20422,12 @@ function protoDownloadMatches(item, q, picked) {
   if (types.length && !types.includes(protoDownloadType(item))) return false;
   const categories = ids.filter((id) => PROTO_DOWNLOAD_CATEGORY_IDS.includes(id));
   if (categories.length && !categories.includes(protoDownloadCategoryId(item))) return false;
-  const waits = ids.filter((id) => id === "ready" || id === "processing");
-  if (waits.length && !waits.includes(protoDownloadReady(item) ? "ready" : "processing")) return false;
+  const waits = ids.filter((id) => id === "ready" || id === "processing" || id === "failed");
+  if (waits.length) {
+    const state = protoDownloadState(item);
+    const wait = state === "complete" ? "ready" : state === "failed" ? "failed" : "processing";
+    if (!waits.includes(wait)) return false;
+  }
   return true;
 }
 
@@ -20469,6 +20550,15 @@ function protoExportSourceName(fileId) {
   return protoExportPlaceName(fileId);
 }
 
+// Prototype only. A first try at a very large Source data file fails, so the Failed state and Try again can be seen.
+const PROTO_EXPORT_DEMO_FAIL = 20000;
+
+function protoExportDemoFails(spec) {
+  if (spec?.what !== "source") return false;
+  const days = Math.round((protoDayStamp(new Date(`${spec.to}T12:00:00`)) - protoDayStamp(new Date(`${spec.from}T12:00:00`))) / 86400000) + 1;
+  return spec.meters.length * days > PROTO_EXPORT_DEMO_FAIL;
+}
+
 // opts.spec says how to make a Source data or Image file when it is taken from Downloads.
 function protoQueueExport(kind, fileId, opts = {}) {
   const nextKind = protoExportKinds().includes(kind) ? kind : "csv";
@@ -20482,6 +20572,7 @@ function protoQueueExport(kind, fileId, opts = {}) {
     name: String(opts.name || protoExportPlaceName(fileId)),
     added: Date.now(),
     ...(spec ? { spec } : {}),
+    ...(protoExportDemoFails(spec) ? { fail: true } : {}),
   };
   setProto({
     prototypeExportOpen: false,
@@ -20503,8 +20594,20 @@ function protoClearExportNoticeTimer() {
 }
 
 // The banner stays until Hide. A timed hide fails WCAG 2.2.1, and the file is on Downloads.
-function protoArmExportNoticeTimer() {
+// It re-renders once when the file is ready or fails, so the message says so.
+function protoArmExportNoticeTimer(notice) {
+  if (notice && protoExportNoticeArmedId === `${notice.id}:${notice.shownAt}`) return;
   protoClearExportNoticeTimer();
+  const item = notice ? protoDownloads().find((row) => row.id === notice.id) : null;
+  if (!item || !protoDownloadPending(item)) return;
+  const failAt = item.fail ? Math.min(protoDownloadWaitMs(item), PROTO_DOWNLOAD_QUEUE_MS * 3) : Infinity;
+  const at = Math.min(failAt, protoDownloadWaitMs(item)) - protoDownloadElapsedMs(item);
+  protoExportNoticeArmedId = `${notice.id}:${notice.shownAt}`;
+  protoExportNoticeTimer = window.setTimeout(() => {
+    protoExportNoticeTimer = 0;
+    protoExportNoticeArmedId = "";
+    if (store.prototypeExportNotice?.id === notice.id) render();
+  }, Math.max(50, at + 50));
 }
 
 function protoExportNotice() {
@@ -20514,15 +20617,41 @@ function protoExportNotice() {
     return "";
   }
   protoArmExportNoticeTimer(notice);
-  const kind = notice.kind.toUpperCase();
+  const item = protoDownloads().find((row) => row.id === notice.id);
+  const state = protoDownloadState(item);
+  const name = item?.name ? ` ${item.name}.` : "";
+  const hide = protoIconBtn("close", "Hide", 'data-proto-downloads="hide"');
+  const view = protoGhost("View downloads", `data-proto-downloads="open" data-proto-download-focus="${escapeHtml(notice.id)}"`);
+  if (state === "failed") {
+    return protoBanner(
+      `Your export could not be prepared.${name}`,
+      `${protoGhost("Try again", `data-proto-download-retry="${escapeHtml(notice.id)}"`)}${view}${hide}`
+    );
+  }
+  if (state === "complete") {
+    return protoBanner(`Your export is ready to download.${name}`, `${view}${hide}`);
+  }
   return protoBanner(
-    `Your ${kind} is processing.`,
-    `${protoGhost("View downloads", 'data-proto-downloads="open"')}${protoIconBtn(
-      "close",
-      "Hide",
-      'data-proto-downloads="hide"'
-    )}`
+    "We are preparing your export. You can keep working and find it in Downloads when it is ready.",
+    `${view}${hide}`
   );
+}
+
+// Opening Downloads from the notice scrolls to that file, highlights it briefly and moves focus to it.
+let protoDownloadFocusId = "";
+let protoDownloadFocusTimer = 0;
+
+function protoShowDownloadRow(id) {
+  const row = document.querySelector(`#astral-fs [data-proto-download-row="${CSS.escape(id)}"]`);
+  if (row) {
+    row.scrollIntoView({ block: "center", behavior: protoDownloadMotionOk() ? "smooth" : "auto" });
+    row.querySelector("th")?.focus({ preventScroll: true });
+  }
+  window.clearTimeout(protoDownloadFocusTimer);
+  protoDownloadFocusTimer = window.setTimeout(() => {
+    protoDownloadFocusId = "";
+    document.querySelectorAll("#astral-fs tr.is-found").forEach((el) => el.classList.remove("is-found"));
+  }, 4000);
 }
 
 let protoDownloadTick = 0;
@@ -20539,33 +20668,14 @@ function protoDownloadMotionOk() {
   return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+// True when a row has moved on, from Waiting to Processing or to Complete or Failed, so the table repaints.
 function protoPaintDownloadProgress() {
   const host = document.querySelector("#astral-fs .astral-downloads");
   if (!host) return false;
-  let done = false;
-  const motion = protoDownloadMotionOk();
-  host.querySelectorAll("[data-proto-download-wait]").forEach((el) => {
+  return [...host.querySelectorAll("[data-proto-download-wait]")].some((el) => {
     const item = protoDownloads().find((row) => row.id === el.dataset.protoDownloadWait);
-    if (!item) return;
-    const left = protoDownloadLeftMs(item);
-    if (left <= 0) {
-      done = true;
-      return;
-    }
-    const pct = protoDownloadPct(item);
-    const copy = protoDownloadLeftCopy(left);
-    const bar = el.querySelector(".astral-progress > span");
-    const progress = el.querySelector(".astral-progress");
-    const label = el.querySelector(".astral-download-left");
-    if (bar && !motion) bar.style.setProperty("--astral-progress-pct", `${pct}%`);
-    if (progress) {
-      progress.setAttribute("aria-valuenow", String(pct));
-      progress.setAttribute("aria-valuetext", copy);
-      progress.setAttribute("aria-label", copy);
-    }
-    if (label) label.textContent = copy;
+    return item ? protoDownloadState(item) !== el.dataset.protoDownloadState : false;
   });
-  return done;
 }
 
 function protoFlushDownloadTake() {
@@ -20593,9 +20703,14 @@ function protoStartDownloadDemo(item) {
   });
 }
 
+function protoDownloadPending(item) {
+  const state = protoDownloadState(item);
+  return state === "waiting" || state === "processing";
+}
+
 function protoArmDownloadTick() {
   const onPage = protoViewId(store.activePrototypeView) === "downloads";
-  const pending = protoDownloads().some((item) => !protoDownloadReady(item));
+  const pending = protoDownloads().some(protoDownloadPending);
   if (!onPage || !store.prototypeFullscreen) {
     protoClearDownloadTick();
     return;
@@ -20608,7 +20723,7 @@ function protoArmDownloadTick() {
   if (protoDownloadTick) return;
   protoDownloadTick = window.setInterval(() => {
     const stillOn = protoViewId(store.activePrototypeView) === "downloads";
-    const stillPending = protoDownloads().some((item) => !protoDownloadReady(item));
+    const stillPending = protoDownloads().some(protoDownloadPending);
     if (!stillOn || !store.prototypeFullscreen) {
       protoClearDownloadTick();
       return;
@@ -20621,28 +20736,34 @@ function protoArmDownloadTick() {
   }, PROTO_DOWNLOAD_TICK_MS);
 }
 
+// Waiting and Processing say what is happening, not how long is left. Failed offers Try again.
 function protoDownloadWaitCell(item) {
-  const left = protoDownloadLeftMs(item);
-  const copy = protoDownloadLeftCopy(left);
-  const pct = protoDownloadPct(item);
-  const wait = protoDownloadWaitMs(item);
-  const elapsed = protoDownloadElapsedMs(item);
-  return `
-    <div class="astral-download-wait" data-proto-download-wait="${escapeHtml(item.id)}">
-      <div
-        class="astral-progress"
-        role="progressbar"
-        aria-valuemin="0"
-        aria-valuemax="100"
-        aria-valuenow="${pct}"
-        aria-valuetext="${escapeHtml(copy)}"
-        aria-label="${escapeHtml(copy)}"
-      >
-        <span style="--astral-progress-pct: ${pct}%; animation-duration: ${wait}ms; animation-delay: -${elapsed}ms;"></span>
+  const state = protoDownloadState(item);
+  if (state === "failed") {
+    return `
+      <div class="astral-download-wait is-failed" data-proto-download-wait="${escapeHtml(item.id)}" data-proto-download-state="failed">
+        <span class="astral-tag is-failed">Failed</span>
       </div>
+    `;
+  }
+  const copy = state === "waiting" ? "Waiting" : "Processing";
+  return `
+    <div class="astral-download-wait" data-proto-download-wait="${escapeHtml(item.id)}" data-proto-download-state="${state}">
+      <div class="astral-progress is-busy${state === "waiting" ? " is-waiting" : ""}" role="progressbar" aria-label="${escapeHtml(copy)}"><span></span></div>
       <p class="astral-download-left">${escapeHtml(copy)}</p>
     </div>
   `;
+}
+
+// Try again starts the same file afresh. The prototype lets the second go work.
+function protoRetryDownload(id) {
+  setProto({
+    prototypeDownloads: protoDownloads().map((row) =>
+      row.id === id ? { ...row, added: Date.now(), fail: false, retried: true } : row
+    ),
+    prototypeExportNotice:
+      store.prototypeExportNotice?.id === id ? { ...store.prototypeExportNotice, shownAt: Date.now() } : store.prototypeExportNotice,
+  });
 }
 
 function protoDownloadsSection() {
@@ -20658,7 +20779,10 @@ function protoDownloadsSection() {
       if (key === "category") return protoDownloadCategoryName(item);
       if (key === "kind") return item.kind.toUpperCase();
       if (key === "made") return protoDownloadMadeAt(item);
-      if (key === "status") return protoDownloadReady(item) ? 0 : protoDownloadLeftMs(item);
+      if (key === "status") {
+        const state = protoDownloadState(item);
+        return state === "complete" ? 0 : state === "failed" ? 1 : 2 + protoDownloadLeftMs(item);
+      }
       return "";
     }
   );
@@ -20688,12 +20812,16 @@ function protoDownloadsSection() {
             ready && protoCanAct()
               ? protoIconBtn("export", "Download", `data-proto-download="${escapeHtml(item.id)}"`)
               : "";
-          const acts = settings || get
-            ? `<div class="astral-downloads-acts">${settings}${get}</div>`
+          const retry =
+            protoDownloadState(item) === "failed"
+              ? protoIconBtn("retry", "Try again", `data-proto-download-retry="${escapeHtml(item.id)}"`)
+              : "";
+          const acts = settings || get || retry
+            ? `<div class="astral-downloads-acts">${settings}${retry}${get}</div>`
             : "";
           return `
-            <tr>
-              <th scope="row">${escapeHtml(item.name)}</th>
+            <tr data-proto-download-row="${escapeHtml(item.id)}"${item.id === protoDownloadFocusId ? ' class="is-found"' : ""}>
+              <th scope="row" tabindex="-1">${escapeHtml(item.name)}</th>
               <td>${protoDownloadTypeTag(item)}</td>
               <td>${escapeHtml(protoDownloadCategoryName(item))}</td>
               <td><span class="astral-tag">${kind}</span></td>
@@ -21871,6 +21999,7 @@ function protoGroupDetail(group) {
     paneSites.length === 1 ? "site" : "sites"
   }. ${meterCount} ${meterCount === 1 ? "meter point" : "meter points"}.`;
   const pane = protoPaneId();
+  const limit = protoGraphLimit(`group:${group.id}`);
   const rows = viewSites
     .map((site) => {
       const words = protoSiteFlagWords(site);
@@ -21903,6 +22032,8 @@ function protoGroupDetail(group) {
         ? protoProfilePane(viewSites)
         : pane === "queries"
           ? protoQueryPane(viewSites, "group", queryGroups, viewMeters)
+          : limit
+          ? `${protoGraphLimitHtml(limit)}${rows ? protoPaneListTable(["Site", protoBelowSiteHeading(2), "State"], rows, "Sites") : ""}`
           : `
       ${
         protoPaintPaneChart({
@@ -22041,6 +22172,18 @@ function protoCompareDetail() {
           name: `${protoBelowSiteHeading(1)} breakdown`,
         })
       : "";
+  const limit = protoGraphLimit("compare");
+  const limitList = rows
+    ? protoPaneListTable(
+        [
+          bundle.level === "group" ? "Group" : bundle.level === "meter" ? protoBelowSiteHeading(1) : "Site",
+          bundle.level === "group" ? "Sites" : bundle.level === "meter" ? "Site" : protoBelowSiteHeading(2),
+          "State",
+        ],
+        rows,
+        bundle.level === "group" ? "Groups" : bundle.level === "meter" ? protoBelowSiteHeading(2) : "Sites"
+      )
+    : "";
   return protoPaneShell(
     `
       <div class="astral-detail-head">
@@ -22068,6 +22211,8 @@ function protoCompareDetail() {
           : protoProfilePane(profileSites)
         : pane === "queries"
           ? protoQueryPane(profileSites, noun, null, meters)
+          : limit
+          ? `${protoGraphLimitHtml(limit)}${limitList}`
           : `
       ${protoPaintPaneChart({
         tracks,
@@ -22418,6 +22563,115 @@ function protoCommitPortfolioTree(patch, options) {
   else protoResetPaneScroll();
 }
 
+// The site list loads in batches, as a long list does from the server.
+// The graph, totals and Export always use the full selection, never just the loaded rows.
+const PROTO_TREE_BATCH = 30;
+const PROTO_TREE_FETCH_MS = 700;
+let protoTreeCount = PROTO_TREE_BATCH;
+let protoTreeKey = "";
+let protoTreeStatus = "";
+let protoTreeTarget = "";
+let protoTreeTimer = 0;
+let protoTreeObserver = null;
+
+function protoTreeLoad(groups, currentSite) {
+  const key = `${protoCompanyId()}|${protoState().query.trim().toLowerCase()}|${protoTreeFilterIds().join(",")}`;
+  if (key !== protoTreeKey) {
+    protoTreeKey = key;
+    protoTreeCount = PROTO_TREE_BATCH;
+    protoTreeStatus = "";
+    window.clearTimeout(protoTreeTimer);
+  }
+  const order = [];
+  const seen = new Set();
+  groups.forEach((group) =>
+    group.sites.forEach((site) => {
+      if (seen.has(site.name)) return;
+      seen.add(site.name);
+      order.push(site.name);
+    })
+  );
+  const names = new Set(order.slice(0, protoTreeCount));
+  // The selected site always shows, so the tree never hides what the pane is about.
+  if (currentSite) names.add(currentSite.name);
+  return { names, order, total: order.length, shown: order.filter((name) => names.has(name)).length };
+}
+
+function protoTreeLoadState(target, idle) {
+  if (String(target) !== String(protoTreeTarget)) return `<span>${escapeHtml(idle)}</span>`;
+  if (protoTreeStatus === "failed") {
+    return `<span>Could not load more sites.</span> ${protoTextBtn("Try again", `data-proto-tree-retry="${target}"`)}`;
+  }
+  if (protoTreeStatus === "loading") {
+    return `<span class="astral-tree-spin" aria-hidden="true"></span><span>Loading more sites</span>`;
+  }
+  return `<span>${escapeHtml(idle)}</span>`;
+}
+
+// Inside an open group, the rows still to come. Scrolling to it loads the rest of that group.
+function protoTreeMoreRow(group, left, load) {
+  if (left <= 0) return "";
+  const last = Math.max(...group.sites.map((site) => load.order.indexOf(site.name)));
+  return `
+    <li class="astral-tree-more" data-proto-tree-more="${last + 1}">
+      ${protoTreeLoadState(last + 1, `${left} more ${left === 1 ? "site" : "sites"}`)}
+    </li>
+  `;
+}
+
+// Loaded rows, kept apart from the totals on All, each group and the pane heading.
+function protoTreeLoadFoot(load) {
+  if (load.shown >= load.total) return "";
+  return `
+    <li class="astral-tree-load">
+      <p role="status">${load.shown} of ${load.total} sites loaded</p>
+    </li>
+  `;
+}
+
+function protoTreeRepaint() {
+  const active = document.activeElement;
+  const name = active?.matches?.("input[name]") ? active.getAttribute("name") : "";
+  const caret = name ? active.selectionStart : null;
+  render();
+  if (name) protoRestoreFocus(`#astral-fs input[name="${CSS.escape(name)}"]`, caret);
+}
+
+function protoTreeFetch(target) {
+  if (protoTreeStatus === "loading") return;
+  protoTreeStatus = "loading";
+  protoTreeTarget = String(target);
+  protoTreeRepaint();
+  window.clearTimeout(protoTreeTimer);
+  protoTreeTimer = window.setTimeout(() => {
+    if (navigator.onLine === false) {
+      protoTreeStatus = "failed";
+    } else {
+      protoTreeStatus = "";
+      protoTreeCount = Math.max(protoTreeCount + PROTO_TREE_BATCH, Number(target) || 0);
+    }
+    if (protoViewId(store.activePrototypeView) === "portfolio") protoTreeRepaint();
+  }, PROTO_TREE_FETCH_MS);
+}
+
+function protoBindTreeLoad() {
+  protoTreeObserver?.disconnect();
+  protoTreeObserver = null;
+  const tree = document.querySelector("#astral-fs .astral-list > .astral-tree");
+  const marks = tree ? [...tree.querySelectorAll("[data-proto-tree-more]")] : [];
+  if (!marks.length || protoTreeStatus || !("IntersectionObserver" in window)) return;
+  protoTreeObserver = new IntersectionObserver(
+    (entries) => {
+      const hit = entries.find((entry) => entry.isIntersecting && !entry.target.closest("[inert]"));
+      if (!hit || protoTreeStatus) return;
+      protoTreeObserver?.disconnect();
+      protoTreeFetch(hit.target.dataset.protoTreeMore);
+    },
+    { root: tree, rootMargin: "0px 0px 80px 0px" }
+  );
+  marks.forEach((el) => protoTreeObserver.observe(el));
+}
+
 function protoPortfolio() {
   const state = protoState();
   const q = state.query.trim().toLowerCase();
@@ -22428,16 +22682,20 @@ function protoPortfolio() {
   const closed = protoGroupClosed();
   const groups = protoVisibleGroups();
   const forceOpen = Boolean(q) || protoTreeFilterOn();
+  const companies = protoCompaniesFrom(groups);
+  const load = protoTreeLoad(companies.length ? companies.flatMap((company) => company.groups) : groups, currentSite);
   const groupRow = (group) => {
       const on = Boolean(currentGroup && group.id === currentGroup.id);
       const shut = !forceOpen && closed.includes(group.id);
       const count = `${group.sites.length} ${group.sites.length === 1 ? "site" : "sites"}`;
-      const kids = group.sites
+      const shown = group.sites.filter((site) => load.names.has(site.name));
+      const kids = shown
         .map((site) => {
           const siteOn = state.scope !== "group" && currentSite && site.name === currentSite.name;
           return `<li>${protoSiteButton(site, siteOn)}</li>`;
         })
         .join("");
+      const more = protoTreeMoreRow(group, group.sites.length - shown.length, load);
       return `
         <li class="astral-tree-group${shut ? "" : " is-open"}">
           <button
@@ -22458,12 +22716,11 @@ function protoPortfolio() {
             aria-hidden="${shut ? "true" : "false"}"
             ${shut ? "inert" : ""}
           >
-            <ul class="astral-tree-sites">${kids}</ul>
+            <ul class="astral-tree-sites">${kids}${more}</ul>
           </div>
         </li>
       `;
   };
-  const companies = protoCompaniesFrom(groups);
   const openCompany = protoCompanyOpenId();
   const groupRows = companies.length
     ? companies
@@ -22500,7 +22757,7 @@ function protoPortfolio() {
         .join("")
     : groups.map(groupRow).join("");
   const empty = groups.length ? "" : `<li class="astral-muted">No sites match.</li>`;
-  const list = `${protoAllTreeRow(currentGroup)}${groupRows}${empty}`;
+  const list = `${protoAllTreeRow(currentGroup)}${groupRows}${empty}${protoTreeLoadFoot(load)}`;
 
   return astralShell(`
     ${astralPageHead(
@@ -22559,6 +22816,7 @@ function protoPortfolioDetail() {
     const alerts = protoAlertsForMeters(viewMeters);
     const queries = protoQueriesForMeters(viewMeters, [currentSite]);
     const pane = protoPaneId();
+    const limit = protoGraphLimit(csvId);
     return protoCompareOn()
       ? protoCompareDetail()
       : protoPaneShell(
@@ -22580,6 +22838,8 @@ function protoPortfolioDetail() {
               ? protoProfilePane([currentSite])
               : pane === "queries"
                 ? protoQueryPane([currentSite], "site", null, viewMeters)
+                : limit
+                ? protoGraphLimitHtml(limit)
                 : `
         ${protoPaneChart(viewMeters, protoMetersForPane(currentSite.meters))}
         ${
@@ -29006,6 +29266,7 @@ function renderPrototype() {
   protoEqualReportCardsSoon();
   protoBindScrollRegions();
   requestAnimationFrame(protoBindScrollRegions);
+  protoBindTreeLoad();
   protoBindFloatMenus();
   protoPlaceFloatMenusSoon();
   protoFitChartSoon();
@@ -32693,6 +32954,17 @@ function onPrototype(event) {
     protoRestoreFocus("#astral-fs [data-proto-export-range-current]");
     return;
   }
+  const treeRetryBtn = event.target.closest("[data-proto-tree-retry]");
+  if (treeRetryBtn) {
+    protoTreeStatus = "";
+    protoTreeFetch(treeRetryBtn.dataset.protoTreeRetry);
+    return;
+  }
+  const graphExportBtn = event.target.closest("[data-proto-graph-export]");
+  if (graphExportBtn) {
+    if (protoCanAct()) protoOpenExport(graphExportBtn.dataset.protoGraphExport, "graph");
+    return;
+  }
   const exportBtn = event.target.closest("[data-proto-export]");
   if (exportBtn) {
     if (!protoCanAct()) return;
@@ -32965,13 +33237,29 @@ function onPrototype(event) {
     }
     if (act === "open") {
       protoClearExportNoticeTimer();
+      const focusId = downloadsBtn.dataset.protoDownloadFocus || "";
+      const item = focusId ? protoDownloads().find((row) => row.id === focusId) : null;
+      // Their search or filters must not hide the file they came to find.
+      const hidden = item && !protoDownloadMatches(item, protoDownloadQuery(), protoDownloadPicked());
+      protoDownloadFocusId = item ? item.id : "";
       setProto({
         activePrototypeView: "downloads",
         prototypeFullscreen: true,
         prototypeExportNotice: null,
+        ...(hidden ? { prototypeDownloadQuery: "", prototypeDownloadFilters: [] } : {}),
       });
+      if (item) protoShowDownloadRow(item.id);
       return;
     }
+    return;
+  }
+  const retryBtn = event.target.closest("[data-proto-download-retry]");
+  if (retryBtn) {
+    const id = retryBtn.dataset.protoDownloadRetry;
+    const inTable = Boolean(retryBtn.closest(".astral-downloads"));
+    protoRetryDownload(id);
+    if (inTable) protoRestoreFocus(`#astral-fs [data-proto-download-row="${CSS.escape(id)}"] th`);
+    else protoRestoreFocus(`#astral-fs [data-proto-download-focus="${CSS.escape(id)}"]`);
     return;
   }
   const downloadBtn = event.target.closest("[data-proto-download]");

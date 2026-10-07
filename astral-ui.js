@@ -15,6 +15,7 @@ const PROTO_ICON_MARKS = {
   close: `<path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />`,
   resolve: `<path d="M4 12.2 10.2 18.5 20 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />`,
   undo: `<path d="M8 14.5 3.5 10 8 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /><path d="M3.5 10H14a5.5 5.5 0 0 1 0 11H11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />`,
+  retry: `<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M19.5 4v4h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
   comment: `<path d="M5 7h14a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 19 17h-7l-4 3v-3H5A1.5 1.5 0 0 1 3.5 15.5v-7A1.5 1.5 0 0 1 5 7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />`,
   more: `<circle cx="6" cy="12" r="1.6" fill="currentColor" /><circle cx="12" cy="12" r="1.6" fill="currentColor" /><circle cx="18" cy="12" r="1.6" fill="currentColor" />`,
   send: `<path d="M12 19V6M6 12l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
