@@ -9326,6 +9326,67 @@ button.astral-state {
   margin-right: 6px;
 }
 
+/* Highlight weekends: dotted shading, a bar on top and Sat or Sun under the axis, so colour is never the only cue. */
+.astral-weekend-band {
+  fill: url(#astral-weekend-dots);
+}
+
+.astral-weekend-top {
+  fill: var(--color-text-secondary);
+  opacity: 0.55;
+}
+
+.astral-chart .astral-weekend-day {
+  fill: var(--color-text-primary);
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+}
+
+.astral-weekend-mark {
+  display: inline-block;
+  flex: none;
+  width: 18px;
+  height: 12px;
+  border-top: 3px solid var(--color-text-secondary);
+  border-radius: 2px;
+  background: radial-gradient(circle, #c4c4cc 1.1px, transparent 1.4px) 0 0 / 5px 5px, #f3f3f6;
+}
+
+.astral-chart-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.astral-chart-switch .astral-switch {
+  pointer-events: none;
+}
+
+.astral-chart-switch:disabled {
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.astral-chart-switch:disabled .astral-switch {
+  opacity: 0.5;
+}
+
+.astral-chart-switch:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .astral-date-compare {
   display: inline-flex;
   align-items: center;

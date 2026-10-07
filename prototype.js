@@ -734,6 +734,7 @@ function protoPageFilterReset() {
     prototypeChartStyleBefore: "bar",
     prototypeChartShow: [],
     prototypeChartProfile: "",
+    prototypeChartWeekends: false,
     prototypeChartFlows: null,
     prototypeChartSliceOff: [],
     prototypePaneMeterKinds: null,
@@ -3365,6 +3366,88 @@ function protoProfileSelect(more = {}) {
     ],
     ...more,
   });
+}
+
+// Highlight weekends marks Saturday and Sunday behind the readings. It is an annotation, never a filter.
+function protoWeekendBlocked() {
+  if (protoChartIsCalendar()) return "Highlight weekends works with Bar and Line.";
+  if (protoDateSpan().kind !== "day") return "Highlight weekends works when the graph shows days.";
+  return "";
+}
+
+function protoWeekendOn() {
+  return Boolean(store.prototypeChartWeekends) && !protoWeekendBlocked();
+}
+
+function protoWeekendSwitch() {
+  const blocked = protoWeekendBlocked();
+  const on = Boolean(store.prototypeChartWeekends) && !blocked;
+  return `
+    <button
+      type="button"
+      class="astral-chart-switch"
+      role="switch"
+      aria-checked="${on ? "true" : "false"}"
+      aria-labelledby="astral-chart-weekends-name"
+      data-proto-chart-weekends
+      ${blocked ? "disabled" : ""}
+    >
+      <span id="astral-chart-weekends-name">Highlight weekends</span>
+      <span class="astral-switch${on ? " is-on" : ""}" aria-hidden="true"></span>
+    </button>
+    ${blocked ? `<p class="astral-chart-setting-note">${escapeHtml(blocked)}</p>` : ""}
+  `;
+}
+
+// Shading with a dotted pattern, a bar along the top and Sat or Sun under the axis, so it never relies on colour.
+function protoWeekendLayer(count, pad, w, h, spanOf) {
+  const out = { back: "", axis: "", flags: [] };
+  if (!count || !protoWeekendOn()) return out;
+  const span = protoDateSpan();
+  const days = Array.from({ length: count }, (_, i) => protoAddDays(span.from, i));
+  out.flags = days.map((day) => (protoDayIsWeekend(day) ? (day.getDay() === 6 ? "Saturday" : "Sunday") : ""));
+  const runs = [];
+  out.flags.forEach((on, i) => {
+    if (!on) return;
+    const last = runs[runs.length - 1];
+    if (last && last.end === i) last.end = i + 1;
+    else runs.push({ start: i, end: i + 1 });
+  });
+  if (!runs.length) return out;
+  const bottom = h - pad.b;
+  const bands = runs
+    .map((run, n) => {
+      const x0 = Math.max(pad.l, spanOf(run.start)[0]);
+      const x1 = Math.min(w - pad.r, spanOf(run.end - 1)[1]);
+      const width = Math.max(0, x1 - x0).toFixed(1);
+      return `<rect class="astral-weekend-band" data-m="wk|${n}" x="${x0.toFixed(1)}" y="${pad.t}" width="${width}" height="${(
+        bottom - pad.t
+      ).toFixed(1)}" /><rect class="astral-weekend-top" data-m="wkt|${n}" x="${x0.toFixed(1)}" y="${pad.t - 5}" width="${width}" height="3" rx="1.5" />`;
+    })
+    .join("");
+  const colW = (() => {
+    const [a, b] = spanOf(0);
+    return b - a;
+  })();
+  const labels =
+    colW >= 22
+      ? days
+          .map((day, i) => {
+            if (!out.flags[i]) return "";
+            const [a, b] = spanOf(i);
+            return `<text class="astral-weekend-day" data-m="wkd|${i}" x="${((a + b) / 2).toFixed(1)}" y="${bottom + 13}" text-anchor="middle">${
+              day.getDay() === 6 ? "Sat" : "Sun"
+            }</text>`;
+          })
+          .join("")
+      : "";
+  out.back = `<g class="astral-weekend" aria-hidden="true"><defs><pattern id="astral-weekend-dots" width="7" height="7" patternUnits="userSpaceOnUse"><rect width="7" height="7" fill="#f3f3f6" /><circle cx="3.5" cy="3.5" r="1.1" fill="#c4c4cc" /></pattern></defs>${bands}</g>`;
+  out.axis = labels ? `<g class="astral-weekend-days" aria-hidden="true">${labels}</g>` : "";
+  return out;
+}
+
+function protoWeekendKey() {
+  return `<div class="astral-ref-key" role="list" aria-label="Highlights"><span class="astral-ref-key-item" role="listitem"><span class="astral-weekend-mark" aria-hidden="true"></span><span>Weekend, Saturday and Sunday</span></span></div>`;
 }
 
 function protoRefRowsAt(refs, i, track) {
@@ -6574,7 +6657,7 @@ function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing, rema
       }));
     const refs = [...protoDateCompareRefs(remake, lineRefs), ...protoProfileRefs(remake, lineRefs)];
     return lineTracks.length
-      ? protoLineChart(lineTracks, name, { dual: dualTotal, zoneMeters: list, refs })
+      ? protoLineChart(lineTracks, name, { dual: dualTotal, zoneMeters: list, refs, weekends: true })
       : protoChartEmpty(pool);
   }
   // Bars keep their colour, so a comparison line is dark. Outgoing is dotted so it does not rely on colour.
@@ -6599,6 +6682,7 @@ function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing, rema
       seriesStack: true,
       zoneMeters: list,
       refs,
+      weekends: true,
     });
   }
   if (!scaledPoints.length) return protoChartEmpty(pool);
@@ -6607,6 +6691,7 @@ function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing, rema
     outgoing: Boolean(outgoing),
     zoneMeters: list,
     refs,
+    weekends: true,
   });
 }
 
@@ -6721,10 +6806,14 @@ function protoChartOverlayNote() {
   return `<p class="astral-chart-setting-note">${escapeHtml(text)}</p>`;
 }
 
-// Defaults: Total consumption, Bar, no overlay and no average profile.
+// Defaults: Total consumption, Bar, no overlay, no average profile and no highlight.
 function protoChartSettingsDefault() {
   return (
-    protoChartView() === "total" && protoChartStyle() === "bar" && !protoChartPicked().length && !protoProfileId()
+    protoChartView() === "total" &&
+    protoChartStyle() === "bar" &&
+    !protoChartPicked().length &&
+    !protoProfileId() &&
+    !store.prototypeChartWeekends
   );
 }
 
@@ -6761,6 +6850,7 @@ function protoChartSettings(zoneSet) {
             (blocked ? `<p class="astral-chart-setting-note">${escapeHtml(blocked)}</p>` : "")
           );
         }),
+        field("weekends", "Weekends", () => protoWeekendSwitch()),
         calendar ? "" : protoChartUtilityField(zoneSet, field),
         calendar ? "" : protoChartZoneField(zoneSet, field),
         `<div class="astral-chart-settings-foot">${protoTextBtn("Restore defaults", "data-proto-chart-reset", {
@@ -6963,6 +7053,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
       <div class="astral-chart-keys">
         ${dual ? protoChartKey(true, extras.keyNames) : ""}
         ${protoRefKey(extras.refs, extras.bars)}
+        ${extras.weekends ? protoWeekendKey() : ""}
       </div>
       <div class="astral-tip" hidden>
         <div class="astral-tip-head">
@@ -7787,6 +7878,9 @@ function protoBarChart(points, label, options = {}) {
   const scale = protoChartScale(rows, w, h, pad, protoRefValues(options.refs));
   const gap = scale.innerW / Math.max(1, rows.length);
   const layer = protoZoneLayer(buckets, zones, pad, w, h, (i) => [pad.l + i * gap, pad.l + (i + 1) * gap]);
+  const weekend = options.weekends
+    ? protoWeekendLayer(rows.length, pad, w, h, (i) => [pad.l + i * gap, pad.l + (i + 1) * gap])
+    : { back: "", axis: "", flags: [] };
   const paired = view.paired;
   const barClass = view.outgoing || options.outgoing ? "astral-bar-out" : "astral-bar";
   const picked = protoChartPoint();
@@ -7929,9 +8023,12 @@ function protoBarChart(points, label, options = {}) {
                 paired && p.lastQuality === "estimated" && p.last != null ? ", outgoing estimated" : ""
               }${
                 p.note && options.seriesStack ? `. ${protoHoverAriaNote(p)}` : ""
-              }${protoZoneWords(buckets[i], zones)}${protoRefWords(refRows, p.unit || "kWh")}${mark ? ". Query" : ""}${flag ? ". Alert" : ""}`
+              }${protoZoneWords(buckets[i], zones)}${protoRefWords(refRows, p.unit || "kWh")}${weekend.flags[i] ? ". Weekend" : ""}${
+                mark ? ". Query" : ""
+              }${flag ? ". Alert" : ""}`
             )}"
             data-proto-hit
+            ${weekend.flags[i] ? `data-weekend="${weekend.flags[i]}"` : ""}
             ${protoZoneTipAttrs(buckets[i], zones)}
             ${protoHitAttrs(refRows.length ? { ...p, refs: refRows } : p)}
           />
@@ -7945,7 +8042,9 @@ function protoBarChart(points, label, options = {}) {
     <svg class="astral-chart${protoChartDrawClass(label, rows)}" style="--bar-step:${barStep}ms" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMinYMin meet">
       ${protoEstDefs()}
       ${layer.back}
+      ${weekend.back}
       ${protoChartAxes(rows, scale, w, h, pad, scale.xBar)}
+      ${weekend.axis}
       ${layer.strip}
       ${bars}
       ${protoRefLines(options.refs, scale, scale.xBar, rows.length)}
@@ -7958,6 +8057,7 @@ function protoBarChart(points, label, options = {}) {
     zoneSet,
     refs: options.refs,
     bars: true,
+    weekends: Boolean(weekend.back),
   });
 }
 
@@ -8092,6 +8192,9 @@ function protoLineChartBuild(tracks, label, options) {
   const scale = protoTracksScale(list, w, h, pad, protoRefValues(options.refs));
   const step = scale.innerW / Math.max(1, points.length - 1);
   const layer = protoZoneLayer(buckets, zones, pad, w, h, (i) => [scale.x(i) - step / 2, scale.x(i) + step / 2]);
+  const weekend = options.weekends
+    ? protoWeekendLayer(points.length, pad, w, h, (i) => [scale.x(i) - step / 2, scale.x(i) + step / 2])
+    : { back: "", axis: "", flags: [] };
   const picked = protoChartPoint();
   const lines = list.map((track) => protoLinePath(track, scale)).join("");
   const hits = list
@@ -8143,9 +8246,12 @@ function protoLineChartBuild(tracks, label, options) {
                 aria-label="${escapeHtml(
                   `${p.label}, ${track.ref}, ${protoFormatReading(p.value, p.unit || "kWh")}${
                     p.quality === "estimated" ? ", estimated" : ""
-                  }${protoZoneWords(buckets[i], zones)}${protoRefWords(refRows, p.unit || "kWh")}${mark ? ". Query" : ""}${flag ? ". Alert" : ""}`
+                  }${protoZoneWords(buckets[i], zones)}${protoRefWords(refRows, p.unit || "kWh")}${
+                    weekend.flags[i] ? ". Weekend" : ""
+                  }${mark ? ". Query" : ""}${flag ? ". Alert" : ""}`
                 )}"
                 data-proto-hit
+                ${weekend.flags[i] ? `data-weekend="${weekend.flags[i]}"` : ""}
                 ${protoZoneTipAttrs(buckets[i], zones)}
                 ${protoHitAttrs(hit)}
               />
@@ -8160,7 +8266,9 @@ function protoLineChartBuild(tracks, label, options) {
     <svg class="astral-chart${protoChartDrawClass(label, finger)}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMinYMin meet">
       ${protoEstDefs()}
       ${layer.back}
+      ${weekend.back}
       ${protoChartAxes(points, scale, w, h, pad, scale.x)}
+      ${weekend.axis}
       ${layer.strip}
       ${protoRefLines(options.refs, scale, scale.x, points.length)}
       <g class="astral-chart-grow">
@@ -8169,7 +8277,11 @@ function protoLineChartBuild(tracks, label, options) {
       </g>
     </svg>
   `;
-  return protoChartWrap(svg, label, Boolean(options.dual), false, { zoneSet, refs: options.refs });
+  return protoChartWrap(svg, label, Boolean(options.dual), false, {
+    zoneSet,
+    refs: options.refs,
+    weekends: Boolean(weekend.back),
+  });
 }
 
 function protoChartEmpty(seedMeters) {
@@ -31053,7 +31165,7 @@ function fillProtoTip(hit) {
   if (timeEl) {
     timeEl.textContent = wrap.hasAttribute("data-proto-chart-still")
       ? protoChartTimeLabel(point.time)
-      : protoChartAtZone(point);
+      : `${hit.dataset.weekend ? `${hit.dataset.weekend} ` : ""}${protoChartAtZone(point)}`;
   }
   const zonesEl = tip.querySelector(".astral-tip-zones");
   if (zonesEl) {
@@ -33750,12 +33862,18 @@ function onPrototype(event) {
       prototypeChartStyle: "bar",
       prototypeChartShow: [],
       prototypeChartProfile: "",
+      prototypeChartWeekends: false,
       prototypeChartSliceOff: [],
       prototypeChartPoint: null,
       prototypeSelectOpen: "",
       prototypeChartSettingsOpen: true,
     });
     protoRestoreFocus("#astral-chart-settings-menu [data-proto-select='chart-view'] .astral-select-btn");
+    return;
+  }
+  if (event.target.closest("[data-proto-chart-weekends]")) {
+    setProto({ prototypeChartWeekends: !store.prototypeChartWeekends, prototypeChartSettingsOpen: true });
+    protoRestoreFocus("#astral-chart-settings-menu [data-proto-chart-weekends]");
     return;
   }
   const chartSettingsBtn = event.target.closest("[data-proto-chart-settings]");
