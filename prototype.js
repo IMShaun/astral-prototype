@@ -721,6 +721,7 @@ function protoPageFilterReset() {
     prototypeDateCompareOpen: false,
     prototypeDateCompareDraftBase: "",
     prototypeDateCompareDraftWith: "",
+    prototypeDateCompareDraftFlow: "",
     prototypeMeterOpen: "none",
     prototypeMeterSettings: "",
     prototypeMeterOwn: "",
@@ -3293,23 +3294,31 @@ function protoDateCompareDraft() {
     : protoDatePreset();
   const withId = protoDateCompareFit(base, String(store.prototypeDateCompareDraftWith || "")) ||
     protoDateCompareChoices(base)[0].id;
-  return { base, withId };
+  const flow = store.prototypeDateCompareDraftFlow === "out" ? "out" : "in";
+  return { base, withId, flow };
+}
+
+// Incoming and outgoing are offered only when the graph has both.
+function protoDateCompareHasFlows() {
+  return protoMetersFlow(protoPanePoolMeters()).both;
 }
 
 function protoOpenDateCompare() {
   const base = protoDatePreset();
+  const ids = protoChartFlowIds();
   setProto({
     prototypeDateOpen: false,
     prototypeDateCompareOpen: true,
     prototypeDateCompareDraftBase: base,
     prototypeDateCompareDraftWith: protoDateCompareId() || protoDateCompareChoices(base)[0].id,
+    prototypeDateCompareDraftFlow: ids.length === 1 ? ids[0] : "in",
   });
   protoRestoreFocus('#astral-fs [data-proto-select="date-compare-base"] .astral-select-btn');
 }
 
 function protoDateCompareModal() {
   if (!store.prototypeDateCompareOpen) return "";
-  const { base, withId } = protoDateCompareDraft();
+  const { base, withId, flow } = protoDateCompareDraft();
   const span = protoDateBaseSpan(base);
   const withOptions = protoDateCompareChoices(base).map((item) => ({
     value: item.id,
@@ -3350,6 +3359,23 @@ function protoDateCompareModal() {
               protoSpanWords(protoCompareSpanFor(withId, span))
             )}</p>
           </div>
+          ${
+            protoDateCompareHasFlows()
+              ? `<div class="astral-field">
+            <span id="astral-date-compare-flow-label">Show</span>
+            ${protoSelect({
+              id: "date-compare-flow",
+              label: "Show",
+              wide: true,
+              value: flow,
+              options: [
+                { value: "in", label: "Incoming" },
+                { value: "out", label: "Outgoing" },
+              ],
+            })}
+          </div>`
+              : ""
+          }
         </div>
         <div class="astral-modal-foot">
           <div class="astral-actions">
@@ -3387,6 +3413,70 @@ function protoDateCompareRefs(remake, build) {
       nowKey: protoSpanWords(span),
     };
   });
+}
+
+// The comparison's bar colour, apart from both flow colours.
+function protoDateCompareInk() {
+  const taken = [protoIncomingInk(), protoOutgoingInk()].map((hex) => String(hex).toLowerCase());
+  return PROTO_LINE_CAT.find((hex) => !taken.includes(hex.toLowerCase())) || PROTO_LINE_CAT[0];
+}
+
+// A year apart, months need their year to tell the two bars apart.
+function protoDateComparePointNames(span, count, withYear) {
+  if (span.kind === "month") {
+    return Array.from({ length: count }, (_, i) => {
+      const day = protoAddMonths(span.from, i);
+      return `${PROTO_MONTHS[day.getMonth()]} ${day.getFullYear()}`;
+    });
+  }
+  return protoSpanPointNames(span, Array.from({ length: count }), withYear);
+}
+
+// Bars compare dates for one flow at a time: each bar has the comparison beside it, in its own colour.
+function protoDateCompareBars(rows, remake, scale, flow, fromLast) {
+  const cmp = protoDateCompareSpan();
+  if (!cmp || !remake || !flow) return null;
+  const span = protoDateSpan();
+  const withYear = protoDateCompareId() === "year";
+  const again = protoWithSpan(cmp, () => scale(remake().points || []));
+  const read = (p) =>
+    !p
+      ? { value: null, quality: "missing" }
+      : fromLast
+        ? { value: p.last ?? null, quality: p.lastQuality || "" }
+        : { value: p.value ?? null, quality: p.quality || "" };
+  const nowNames = protoDateComparePointNames(span, rows.length, withYear);
+  const cmpNames = protoDateComparePointNames(cmp, rows.length, withYear);
+  const nowColor = protoChartFlowFill(flow);
+  const lastColor = protoDateCompareInk();
+  const points = rows.map((p, i) => {
+    const now = read(p);
+    const then = read(again[i]);
+    return {
+      ...p,
+      value: now.value,
+      quality: now.quality,
+      last: then.value,
+      lastQuality: then.quality,
+      nowLabel: nowNames[i],
+      lastLabel: cmpNames[i],
+      nowColor,
+      lastColor,
+      stacks: [],
+      lastStacks: [],
+    };
+  });
+  const both = protoMetersFlow(protoPanePoolMeters()).both;
+  const flowWord = flow === "out" ? "Outgoing" : "Incoming";
+  const keyName = (words) => (both ? `${flowWord}, ${words}` : words);
+  return {
+    points,
+    keyNames: {
+      in: keyName(protoSpanWords(span)),
+      out: keyName(protoSpanWords(cmp)),
+      fills: { in: nowColor, out: lastColor },
+    },
+  };
 }
 
 // Average profile: the usual pattern, from the 4 weeks before the dates shown. Not the Summary's single average.
@@ -5577,7 +5667,11 @@ function protoHitAttrs(point) {
   const compareAttrs = compare
     ? ` data-tip-compare="1" data-tip-now-label="${escapeHtml(nowLabel)}" data-tip-last-label="${escapeHtml(
         lastLabel
-      )}"`
+      )}"${
+        point.nowColor
+          ? ` data-tip-now-color="${escapeHtml(point.nowColor)}" data-tip-last-color="${escapeHtml(point.lastColor || "")}"`
+          : ""
+      }`
     : "";
   const meter = point.meterRef || "";
   const meterId = point.meterId || "";
@@ -5620,6 +5714,8 @@ function protoPointFromHit(hit, chart) {
     compare: hit.getAttribute("data-tip-compare") === "1",
     nowLabel: hit.getAttribute("data-tip-now-label") || "",
     lastLabel: hit.getAttribute("data-tip-last-label") || "",
+    nowColor: hit.getAttribute("data-tip-now-color") || "",
+    lastColor: hit.getAttribute("data-tip-last-color") || "",
     meterId: hit.getAttribute("data-tip-meter-id") || "",
     meterRef: hit.getAttribute("data-tip-meter") || "",
     meterColor: hit.getAttribute("data-tip-meter-color") || "",
@@ -5854,13 +5950,14 @@ function protoPointSliceRows(point) {
   if (point.compare) {
     const rows = [];
     if (point.value !== "" && point.value != null) {
-      rows.push({ name: point.nowLabel || "In", value: point.value, quality: point.quality });
+      rows.push({ name: point.nowLabel || "In", value: point.value, quality: point.quality, color: point.nowColor || "" });
     }
     if (point.last !== "" && point.last != null) {
       rows.push({
         name: point.lastLabel || "Out",
         value: point.last,
         quality: point.lastQuality,
+        color: point.lastColor || "",
       });
     }
     return rows;
@@ -6815,7 +6912,28 @@ function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing, rema
     }
     return lines;
   };
-  const refs = [...protoDateCompareRefs(remake, barRefs), ...protoProfileRefs(remake, barRefs)];
+  const profileRefs = protoProfileRefs(remake, barRefs);
+  if (!breakdown && scaledPoints.length && protoDateCompareSpan()) {
+    const ids = protoChartFlowIds();
+    const flow = dualTotal ? (ids.length === 1 ? ids[0] : "") : outgoing ? "out" : "in";
+    const pair = protoDateCompareBars(
+      scaledPoints,
+      remake,
+      (rows) => protoScalePoints(rows, list),
+      flow,
+      dualTotal && flow === "out"
+    );
+    if (pair) {
+      return protoBarChart(pair.points, name, {
+        datePair: flow,
+        zoneMeters: list,
+        refs: profileRefs,
+        keyNames: pair.keyNames,
+        weekends: true,
+      });
+    }
+  }
+  const refs = [...protoDateCompareRefs(remake, barRefs), ...profileRefs];
   if (breakdown && scaledTracks.length && !dualTotal) {
     return protoBarChart(protoTracksToStackPoints(scaledTracks), name, {
       seriesStack: true,
@@ -7072,7 +7190,7 @@ function protoChartKey(dual, names) {
   if (!dual) return "";
   if (names) {
     const still = (kind) => {
-      const fill = protoChartFlowFill(kind);
+      const fill = names.fills?.[kind] || protoChartFlowFill(kind);
       return `<span class="astral-meter-pill is-on is-still" role="listitem" style="--slice:${escapeHtml(
         fill
       )};--slice-ink:${escapeHtml(protoSliceInk(fill))}"><span class="astral-meter-pill-label">${escapeHtml(
@@ -7170,7 +7288,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
           <p class="astral-chart-title">${escapeHtml(label)}</p>
           <p class="astral-chart-when">${escapeHtml(protoChartWhen())} ${escapeHtml(protoChartZone())}</p>
           ${
-            extras.refs?.some((ref) => ref.kind === "dates")
+            extras.datePair || extras.refs?.some((ref) => ref.kind === "dates")
               ? `<p class="astral-chart-when">Compared with ${escapeHtml(protoSpanWords(protoDateCompareSpan()))}</p>`
               : ""
           }
@@ -8004,10 +8122,14 @@ function protoBarPath(x, y, w, h) {
 
 function protoBarChart(points, label, options = {}) {
   const source = points || [];
+  const datePair = Boolean(options.datePair);
   const dual = Boolean(options.seriesStack)
     ? false
-    : Boolean(options.dual) || source.some((p) => p.last != null || p.lastLabel);
-  const view = protoBarFlowView(source, dual);
+    : datePair || Boolean(options.dual) || source.some((p) => p.last != null || p.lastLabel);
+  // Two date ranges sit side by side for one flow, so the flow filter does not split them.
+  const view = datePair
+    ? { points: source, paired: true, outgoing: options.datePair === "out", empty: false }
+    : protoBarFlowView(source, dual);
   const rows = view.points;
   const { w, h } = protoChartBox();
   const zones = options.zoneMeters ? protoChartZones() : { on: false, narrow: false };
@@ -8023,6 +8145,7 @@ function protoBarChart(points, label, options = {}) {
     : { back: "", axis: "", flags: [] };
   const paired = view.paired;
   const barClass = view.outgoing || options.outgoing ? "astral-bar-out" : "astral-bar";
+  const pairClass = datePair ? "astral-bar is-cmp" : "astral-bar-out";
   const picked = protoChartPoint();
   const queried = protoChartQueryTimes(label);
   const alerted = protoChartAlertTimes(label);
@@ -8133,7 +8256,7 @@ function protoBarChart(points, label, options = {}) {
               ? p.last == null
                 ? bar(null, p.lastQuality, "astral-bar-out", x2)
                 : `<g class="astral-bar-stack">${stackBar(p.lastStacks, "astral-bar-out", x2, true)}</g>`
-              : zoneBar(p.last, p.lastQuality, "astral-bar-out", x2)
+              : zoneBar(p.last, p.lastQuality, pairClass, x2)
             : "";
           const inCap = protoBarCap(x1 + bw / 2, p.value, scale, pad, h);
           const outCap = paired ? protoBarCap(x2 + bw / 2, p.last, scale, pad, h) : null;
@@ -8160,7 +8283,13 @@ function protoBarChart(points, label, options = {}) {
               `${p.label}, ${p.value == null ? "no reading" : protoFormatReading(p.value, p.unit || "kWh")}${
                 p.quality === "estimated" && p.value != null ? ", estimated" : ""
               }${
-                paired && p.lastQuality === "estimated" && p.last != null ? ", outgoing estimated" : ""
+                paired && p.lastQuality === "estimated" && p.last != null
+                  ? datePair
+                    ? `. ${p.lastLabel}, ${protoFormatReading(p.last, p.unit || "kWh")}, estimated`
+                    : ", outgoing estimated"
+                  : paired && datePair
+                    ? `. ${p.lastLabel}, ${p.last == null ? "no reading" : protoFormatReading(p.last, p.unit || "kWh")}`
+                    : ""
               }${
                 p.note && options.seriesStack ? `. ${protoHoverAriaNote(p)}` : ""
               }${protoZoneWords(buckets[i], zones)}${protoRefWords(refRows, p.unit || "kWh")}${weekend.flags[i] ? ". Weekend" : ""}${
@@ -8179,7 +8308,9 @@ function protoBarChart(points, label, options = {}) {
         .join("");
   const barStep = Math.min(28, Math.round(PROTO_DRAW_SPREAD_MS / Math.max(1, rows.length - 1)));
   const svg = `
-    <svg class="astral-chart${protoChartDrawClass(label, rows)}" style="--bar-step:${barStep}ms" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMinYMin meet">
+    <svg class="astral-chart${protoChartDrawClass(label, rows)}" style="--bar-step:${barStep}ms${
+      datePair ? `;--bar-cmp:${protoDateCompareInk()}` : ""
+    }" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMinYMin meet">
       ${protoEstDefs()}
       ${layer.back}
       ${weekend.back}
@@ -8197,6 +8328,7 @@ function protoBarChart(points, label, options = {}) {
     zoneSet,
     refs: options.refs,
     bars: true,
+    datePair,
     weekends: Boolean(weekend.back),
   });
 }
@@ -9128,6 +9260,11 @@ function protoPickSelect(id, value) {
   if (id === "date-compare-with") {
     setProto({ prototypeSelectOpen: "", prototypeDateCompareDraftWith: String(value || "") });
     protoRestoreFocus(`#astral-fs [data-proto-select="date-compare-with"] .astral-select-btn`);
+    return;
+  }
+  if (id === "date-compare-flow") {
+    setProto({ prototypeSelectOpen: "", prototypeDateCompareDraftFlow: value === "out" ? "out" : "in" });
+    protoRestoreFocus(`#astral-fs [data-proto-select="date-compare-flow"] .astral-select-btn`);
     return;
   }
   if (id === "weather-measure") {
@@ -32623,7 +32760,7 @@ function onPrototype(event) {
       return;
     }
     if (act === "compare-save") {
-      const { base, withId } = protoDateCompareDraft();
+      const { base, withId, flow } = protoDateCompareDraft();
       const patch = {
         prototypeDatePreset: base,
         prototypeDateCompare: withId,
@@ -32631,6 +32768,7 @@ function onPrototype(event) {
         prototypeDateOpen: false,
         prototypeChartPoint: null,
       };
+      if (protoDateCompareHasFlows()) patch.prototypeChartFlows = [flow];
       if (base !== "custom") Object.assign(patch, protoRememberDateHome(base));
       else Object.assign(patch, protoRememberDateHome("custom", store.prototypeDateFrom, store.prototypeDateTo));
       setProto(patch);

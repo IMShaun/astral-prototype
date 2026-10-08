@@ -9429,6 +9429,20 @@ button.astral-state {
   font-size: 0.8125rem;
 }
 
+.astral-modal.astral-date-compare-modal {
+  width: min(34rem, 100%);
+}
+
+/* The comparison bar keeps the base bar's shape and states, in its own colour. */
+.astral-bar.is-cmp {
+  fill: var(--bar-cmp, #6929c4);
+}
+
+.astral-bar.is-cmp.is-est {
+  fill: var(--bar-cmp, #6929c4);
+  stroke: var(--bar-cmp, #6929c4);
+}
+
 .astral-date-menu .astral-select-heading:first-child {
   padding-top: 4px;
 }
