@@ -5438,12 +5438,16 @@ button.astral-catch {
   box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000;
 }
 
+/* Every empty state sits in an outlined box, so it reads as one section. Inside a card, the card is the outline. */
 .astral-empty {
   min-height: 18rem;
   display: grid;
   place-content: center;
   text-align: center;
   gap: 8px;
+  padding: var(--space-24);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-card);
 }
 
 .astral-detail,
@@ -6758,6 +6762,10 @@ button.astral-state {
 
 .astral-meter-list-empty {
   margin: 0;
+  padding: var(--space-24);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-card);
+  text-align: center;
 }
 
 .astral-meter-row.is-open > .astral-meter-row-head {
@@ -8323,7 +8331,9 @@ button.astral-state {
   justify-items: center;
   gap: var(--space-16);
   text-align: center;
-  padding: var(--space-16);
+  padding: var(--space-24);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-card);
 }
 
 .astral-chart-mix h3,

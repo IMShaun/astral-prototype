@@ -20872,7 +20872,6 @@ function protoWeatherPane(sites) {
   const measure = protoWeatherMeasure();
   const kind = protoDateSpan().kind;
   const rows = protoWeatherRowsFor(Array.isArray(sites) ? sites : [sites]);
-  const degreeNote = `<p class="astral-weather-note">Degree days measure weather, not energy use. They count how far each day's average temperature fell below or rose above ${PROTO_DEGREE_BASE} °C.</p>`;
   if (measure === "degree" && kind === "interval") {
     const span = protoDateSpan();
     const custom = protoDatePreset() === "custom";
@@ -20933,7 +20932,6 @@ function protoWeatherPane(sites) {
   });
   return `
     ${protoWeatherChart(rows, measure)}
-    ${measure === "degree" ? degreeNote : ""}
     ${summary}
   `;
 }
@@ -22246,7 +22244,6 @@ function protoMeterOverview(meter) {
             <dd>${escapeHtml(protoSiteAttrSummary(meter))}</dd>
           </div>
         </dl>
-        <p class="astral-muted">${escapeHtml(protoSiteFollowNote(site))}</p>
       </div>
       ${protoMeterSettingsBtn(meter)}
     </div>
