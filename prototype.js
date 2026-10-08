@@ -1134,6 +1134,8 @@ const PROTO_WALK_GROUPS = [
     name: "London North Western",
     sites: [
       { name: "Crewe depot", keep: ["nr-crewe-in"], kind: "depot" },
+      // Disconnected in August. Nothing after 14 August, so recent dates have no data to show or export.
+      { name: "Northampton depot", kind: "depot", status: "stale", lastReading: "21 days ago", readingsTo: "2026-08-14" },
       { name: "Euston", keep: ["nr-euston-in"] },
       { name: "Manchester Traction", keep: ["nr-man-in", "nr-man-ex"], kind: "traction" },
       { name: "Stafford", kind: "station", meters: ["in", "gas"] },
@@ -1327,7 +1329,9 @@ function protoWalkMakeMeter(group, site, kind, index, extra) {
     direction: exp ? "Export" : "Import",
     status,
     lastReading: extra.lastReading || site.lastReading || "4 min ago",
-    use24h: water
+    use24h: site.readingsTo
+      ? "No data"
+      : water
       ? `${Math.max(4, Math.round(profile.base * 1.8 * protoWalkSiteSpread(site.name)))} m³`
       : extra.use24h || site.use24h || (status === "gaps" ? "Partial" : `${((profile.base * protoWalkSiteSpread(site.name)) / 4).toFixed(1)} MWh`),
     hours: profile.hours,
@@ -1351,6 +1355,7 @@ function protoWalkMakeMeter(group, site, kind, index, extra) {
   } else if (gas) meter.mprn = String(2100000000 + index);
   else meter.mpan = String(1600009000000 + index);
   if (extra.owned || site.owned) meter.owned = extra.owned || site.owned;
+  if (site.readingsTo) meter.readingsTo = site.readingsTo;
   return meter;
 }
 
@@ -4244,9 +4249,60 @@ function protoMonthSpanSeries(meter, span) {
 function protoSiteSeries(meter) {
   if (!meter) return [];
   const span = protoDateSpan();
-  if (span.kind === "month") return protoMonthSpanSeries(meter, span);
-  if (span.kind === "interval") return protoSeries(meter, "day", span.from);
-  return protoDailySpanSeries(meter, span);
+  let points;
+  if (span.kind === "month") points = protoMonthSpanSeries(meter, span);
+  else if (span.kind === "interval") points = protoSeries(meter, "day", span.from);
+  else points = protoDailySpanSeries(meter, span);
+  return protoCutAfterReadings(meter, span, points);
+}
+
+// A meter cut off on readingsTo sends nothing after that day, so later points are gaps.
+function protoCutAfterReadings(meter, span, points) {
+  if (!meter?.readingsTo) return points;
+  const end = protoDayStamp(meter.readingsTo);
+  const from = protoDayStamp(span.from);
+  const startOf = (i) =>
+    span.kind === "interval"
+      ? from
+      : span.kind === "month"
+        ? Date.UTC(span.from.getFullYear(), span.from.getMonth() + i, 1)
+        : from + i * 86400000;
+  return points.map((p, i) => (startOf(i) > end ? { ...p, value: null, quality: "missing" } : p));
+}
+
+function protoMeterHasReadings(meter, span = protoDateSpan()) {
+  if (!meter?.readingsTo) return true;
+  return protoDayStamp(span.from) <= protoDayStamp(meter.readingsTo);
+}
+
+// True when there are meter points in view and none of them has a reading in the dates picked.
+function protoNoReadings(meters, span = protoDateSpan()) {
+  const list = (meters || []).filter(Boolean);
+  return list.length > 0 && !list.some((meter) => protoMeterHasReadings(meter, span));
+}
+
+// In place of the graph and its breakdowns, like Too much data. The date control stays above it.
+function protoNoReadingsHtml(meters) {
+  const ends = [...new Set((meters || []).map((meter) => meter?.readingsTo).filter(Boolean))];
+  const day = ends.length === 1 ? protoFromIso(ends[0]) : null;
+  const last = day ? `${day.getDate()} ${PROTO_MONTHS_LONG[day.getMonth()]} ${day.getFullYear()}` : "";
+  const body = last
+    ? `The last reading came in on ${last}. Choose dates on or before then.`
+    : "None of these meter points has readings in these dates. Choose a different date range.";
+  return protoChartWrap(
+    `
+      <div class="astral-chart-mix astral-graph-limit" role="status">
+        <h3>No readings in these dates</h3>
+        <p>${escapeHtml(body)}</p>
+        <div class="astral-actions">
+          ${protoGhost("Choose dates", "data-proto-date='toggle'")}
+        </div>
+      </div>
+    `,
+    protoPaneChartLabel(false),
+    false,
+    true
+  );
 }
 
 function protoDayKwh(meter) {
@@ -19723,7 +19779,7 @@ function protoExportModalState() {
   const raw = store.prototypeExportModal;
   if (!raw || typeof raw !== "object" || !raw.file) return null;
   const file = String(raw.file);
-  if (protoExportNeedsSite(file)) return null;
+  if (protoExportNeedsSite(file) || protoExportNoData(file)) return null;
   const prefs = protoExportPrefs();
   // Too large to graph opens on Source data. Chart data, Image and PDF are still built from the same data in the background.
   const limit = raw.limit === true && Boolean(protoGraphLimit(file));
@@ -19846,6 +19902,11 @@ function protoExportNeedsSite(fileId) {
   return false;
 }
 
+// Every meter point in view has stopped sending readings before the dates picked, so Export is greyed out.
+function protoExportNoData(fileId) {
+  return protoNoReadings(protoExportMeters(String(fileId || "")));
+}
+
 // The graph draws up to this many meter point days. 125 meter points for 8 days, or 31 for a month.
 const PROTO_GRAPH_MAX = 1000;
 
@@ -19909,6 +19970,15 @@ function protoExportControl(fileId) {
     `;
   }
   const open = protoExportModalState()?.file === String(fileId || "");
+  if (protoExportNoData(fileId)) {
+    return `
+      <div class="astral-export">
+        ${protoIconBtn("export", "Export, no data in these dates", 'data-proto-export="toggle" aria-disabled="true"', {
+          tipLabel: "There is no data to export in these dates. Choose a different date range.",
+        })}
+      </div>
+    `;
+  }
   return `
     <div class="astral-export">
       ${protoIconBtn(
@@ -20747,6 +20817,8 @@ function protoPowerChart(rows) {
 
 // The graph against the 0.95 target, then the figures a bill would use.
 function protoPowerPane(meters) {
+  const incoming = protoPowerMeters(meters);
+  if (protoNoReadings(incoming)) return protoNoReadingsHtml(incoming);
   const rows = protoPowerRows(meters);
   const have = rows.filter((row) => row.pf != null);
   if (!have.length) {
@@ -23927,6 +23999,8 @@ function protoGroupDetail(group) {
         ? protoProfilePane(viewSites)
         : pane === "queries"
           ? protoQueryPane(viewSites, "group", queryGroups, viewMeters)
+          : protoNoReadings(viewMeters)
+          ? `${protoNoReadingsHtml(viewMeters)}${rows ? protoPaneListTable(["Site", protoBelowSiteHeading(2), "State"], rows, "Sites") : ""}`
           : limit
           ? `${protoGraphLimitHtml(limit)}${rows ? protoPaneListTable(["Site", protoBelowSiteHeading(2), "State"], rows, "Sites") : ""}`
           : `
@@ -23943,7 +24017,7 @@ function protoGroupDetail(group) {
       }
       ${
         !protoConsumptionUnitsMixed(viewMeters) && missing
-          ? `<p class="astral-banner">No reading in ${missing} intervals. That is missing data, not zero use.</p>`
+          ? `<p class="astral-banner">No reading in ${missing} ${missing === 1 ? "interval" : "intervals"}. That is missing data, not zero use.</p>`
           : ""
       }
       ${protoPaneSummary({ points, meters: viewMeters, dual })}
@@ -24112,6 +24186,8 @@ function protoCompareDetail() {
           : protoProfilePane(profileSites)
         : pane === "queries"
           ? protoQueryPane(profileSites, noun, null, meters)
+          : protoNoReadings(meters)
+          ? protoNoReadingsHtml(meters)
           : limit
           ? `${protoGraphLimitHtml(limit)}${limitList}`
           : `
@@ -24131,7 +24207,7 @@ function protoCompareDetail() {
       })}
       ${
         !protoConsumptionUnitsMixed(meters) && missing
-          ? `<p class="astral-banner">No reading in ${missing} intervals. That is missing data, not zero use.</p>`
+          ? `<p class="astral-banner">No reading in ${missing} ${missing === 1 ? "interval" : "intervals"}. That is missing data, not zero use.</p>`
           : ""
       }
       ${(() => {
@@ -24758,13 +24834,15 @@ function protoPortfolioDetail() {
                 ? protoWeatherPane([currentSite])
                 : pane === "power"
                 ? protoPowerPane(viewMeters)
+                : protoNoReadings(viewMeters)
+                ? protoNoReadingsHtml(viewMeters)
                 : limit
                 ? protoGraphLimitHtml(limit)
                 : `
         ${protoPaneChart(viewMeters, protoMetersForPane(currentSite.meters))}
         ${
           viewMeters.length && missing && !protoConsumptionUnitsMixed(viewMeters)
-            ? `<p class="astral-banner">No reading in ${missing} intervals. That is missing data, not zero use.</p>`
+            ? `<p class="astral-banner">No reading in ${missing} ${missing === 1 ? "interval" : "intervals"}. That is missing data, not zero use.</p>`
             : ""
         }
         ${protoPaneSummary({
