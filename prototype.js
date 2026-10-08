@@ -22134,7 +22134,7 @@ function protoMeterOwnWords(parts) {
 }
 
 function protoMeterSourceTag(own) {
-  return own ? protoTag("Set on this meter", "", "is-own") : protoTag("From site", "", "is-quiet");
+  return own ? protoTag("Own settings", "", "is-own") : protoTag("From site", "", "is-quiet");
 }
 
 function protoSiteOwnMeters(site) {
@@ -22672,7 +22672,7 @@ function protoMeterRow(meter) {
   const title = [facts.refName, facts.ref].filter(Boolean).join(" ");
   const parts = protoMeterOwnParts(meter.id);
   const source = parts.length
-    ? protoTag(`Own ${protoMeterOwnWords(parts)}`, "", "is-own")
+    ? protoTag("Own settings", "", "is-own")
     : `<span class="astral-muted">From site</span>`;
   const cells = `
         <span class="astral-meter-ref">${protoMeterMark(meter.commodity)}<span>${escapeHtml(title)}</span></span>
