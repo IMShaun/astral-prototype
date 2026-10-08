@@ -11213,9 +11213,24 @@ tr.is-off .astral-person-mark {
   max-width: 40rem;
 }
 
-/* Three cards at the same width as two in the pair, so a card keeps its size in every view. */
-.astral-meter-src-cards.is-three {
-  max-width: 60rem;
+/* The times panel heading, with the preset button top right. */
+.astral-times-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+
+.astral-times-title {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 24px;
+  font-weight: 500;
+}
+
+.astral-modal.astral-preset-pick {
+  width: min(36rem, 100%);
 }
 
 .astral-meter-src-cards .astral-report-type:disabled {
