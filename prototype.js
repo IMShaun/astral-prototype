@@ -3734,7 +3734,7 @@ function protoRefRowsAt(refs, i, track) {
     .filter((ref) => !track || !ref.track || ref.track === track)
     .map((ref) => ({
       n: ref.flow ? `${ref.names[i] || ""}, ${ref.flow}` : ref.names[i] || "",
-      v: ref.values[i] == null ? "" : protoFormatAmount(ref.values[i]),
+      v: ref.values[i] == null ? "" : protoFormatAmount(ref.values[i], ref.places || 1),
       q: ref.qualities[i] || "",
       s: ref.style,
       c: ref.color,
@@ -3745,7 +3745,7 @@ function protoRefRowsAt(refs, i, track) {
 
 function protoRefWords(rows, unit) {
   return rows
-    .map((row) => `. ${row.n}, ${row.v === "" ? "no reading" : `${row.v} ${unit}`}`)
+    .map((row) => `. ${row.n}, ${row.v === "" ? "no reading" : unit === "PF" ? row.v : `${row.v} ${unit}`}`)
     .join("");
 }
 
@@ -3780,7 +3780,7 @@ function protoRefLines(refs, scale, xAt, count) {
         })
         .join("");
       const marks = runs
-        .flatMap((run) => (run.length === 1 || (dots && !band) ? run : []))
+        .flatMap((run) => (run.length === 1 || (dots && !band && !ref.flat) ? run : []))
         .map(
           ([i, x, y]) =>
             `<circle class="astral-ref-dot" data-m="refd|${key}|${i}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" />`
@@ -4877,11 +4877,16 @@ function protoRoundReading(value, places = 1) {
   return Number(n.toFixed(places));
 }
 
-function protoFormatAmount(value) {
+function protoFormatAmount(value, places = 1) {
   if (value == null || value === "") return "";
-  const n = protoRoundReading(value, 1);
+  const n = protoRoundReading(value, places);
   if (typeof n !== "number" || !Number.isFinite(n)) return String(value);
-  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+  return Number.isInteger(n) ? String(n) : n.toFixed(places);
+}
+
+// Power factor is a ratio from 0 to 1, so it reads to 2 places and has no unit after it.
+function protoUnitPlaces(unit) {
+  return unit === "PF" ? 2 : 1;
 }
 
 function protoPointStacks(point, meter, slices, key) {
@@ -5739,9 +5744,10 @@ function protoTipQuality(quality) {
 }
 
 function protoHitAttrs(point) {
-  const value = point.value == null ? "" : protoFormatAmount(point.value);
-  const last = point.last == null ? "" : protoFormatAmount(point.last);
   const unit = point.unit || "kWh";
+  const places = protoUnitPlaces(unit);
+  const value = point.value == null ? "" : protoFormatAmount(point.value, places);
+  const last = point.last == null ? "" : protoFormatAmount(point.last, places);
   const stacks = protoPackStacks(point.stacks || []);
   const lastStacks = protoPackStacks(point.lastStacks, true);
   const note = point.quality === "missing" ? protoTipQuality("missing") : "";
@@ -5840,7 +5846,7 @@ function protoRefTipHtml(point, baseHtml) {
       if (row.v !== "") {
         const plain = escapeHtml(row.v);
         const amount = row.q === "estimated" ? protoEstAmount(plain) : plain;
-        shown = unit === "£" ? `£${amount}` : `${amount} ${escapeHtml(unit)}`;
+        shown = unit === "£" ? `£${amount}` : unit === "PF" ? amount : `${amount} ${escapeHtml(unit)}`;
       }
       return `<p class="astral-query-pin-reading is-ref">${protoRefKeyMark(row.s, row.c)}<span class="astral-query-pin-series">${escapeHtml(
         row.n
@@ -5886,8 +5892,9 @@ function protoChartPoint() {
 
 function protoFormatReading(value, unit) {
   if (value == null || value === "") return "No reading";
-  const amount = protoFormatAmount(value);
   const u = String(unit || "").trim();
+  const amount = protoFormatAmount(value, protoUnitPlaces(u));
+  if (u === "PF") return amount;
   if (u === "£") return `£${amount}`;
   if (u === "people" && amount === "1") return "1 person";
   return u ? `${amount} ${u}` : amount;
@@ -5953,7 +5960,7 @@ function protoChartPointSeriesMark(label, color) {
 function protoChartPointReading(label, value, unit, color, quality, cls = "", drill = "") {
   const amount = escapeHtml(protoFormatReading(value, unit));
   const series = protoChartPointSeriesMark(label, color);
-  const plain = escapeHtml(protoFormatAmount(value));
+  const plain = escapeHtml(protoFormatAmount(value, protoUnitPlaces(unit)));
   const shown = quality === "estimated" && value != null ? amount.replace(plain, protoEstAmount(plain)) : amount;
   const inner = `${series}<span class="astral-query-pin-kwh">${shown}</span>`;
   if (drill) {
@@ -7487,6 +7494,7 @@ function protoNiceMax(raw) {
 function protoAxisNumber(value, max) {
   if (value === 0) return "0";
   if (max >= 100) return String(Math.round(value));
+  if (max === 1) return String(Math.round(value * 100) / 100);
   const rounded = Math.round(value * 10) / 10;
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
 }
@@ -7525,7 +7533,7 @@ function protoChartScale(points, w, h, pad, extra = []) {
     }
     return [p.value, p.last].filter((v) => v != null);
   });
-  const max = protoNiceMax(Math.max(0, ...nums, ...extra));
+  const max = points[0]?.unit === "PF" ? 1 : protoNiceMax(Math.max(0, ...nums, ...extra));
   const innerW = w - pad.l - pad.r;
   const innerH = h - pad.t - pad.b;
   return {
@@ -7541,7 +7549,7 @@ function protoChartScale(points, w, h, pad, extra = []) {
 function protoTracksScale(tracks, w, h, pad, extra = []) {
   const points = tracks[0]?.points || [];
   const nums = tracks.flatMap((track) => (track.points || []).map((p) => p.value).filter((v) => v != null));
-  const max = protoNiceMax(Math.max(0, ...nums, ...extra));
+  const max = points[0]?.unit === "PF" ? 1 : protoNiceMax(Math.max(0, ...nums, ...extra));
   const innerW = w - pad.l - pad.r;
   const innerH = h - pad.t - pad.b;
   return {
@@ -20049,6 +20057,7 @@ function protoKnownPane(raw) {
     raw === "queries" ||
     raw === "cost" ||
     raw === "carbon" ||
+    raw === "power" ||
     raw === "weather"
   ) {
     return raw;
@@ -20057,8 +20066,7 @@ function protoKnownPane(raw) {
 }
 
 function protoPaneId() {
-  const pane = protoKnownPane(store.prototypePane);
-  return pane === "weather" && !protoWeatherAllowed() ? "consumption" : pane;
+  return protoKnownPane(store.prototypePane);
 }
 
 function protoPaneIsGraph() {
@@ -20164,7 +20172,7 @@ function protoPaneShell(headHtml, bodyHtml) {
   `;
 }
 
-function protoPaneTabs(alertCount, queryCount, options = {}) {
+function protoPaneTabs(alertCount, queryCount) {
   const active = protoPaneId();
   const alertsName = alertCount ? `Alerts · ${alertCount}` : "Alerts";
   const queriesName = queryCount ? `Queries · ${queryCount}` : "Queries";
@@ -20172,7 +20180,8 @@ function protoPaneTabs(alertCount, queryCount, options = {}) {
     { id: "consumption", name: "Consumption" },
     { id: "cost", name: "Cost" },
     { id: "carbon", name: "Carbon" },
-    ...(options.weather ? [{ id: "weather", name: "Weather" }] : []),
+    { id: "power", name: "Power factor" },
+    { id: "weather", name: "Weather" },
     { id: "profile", name: "Site profile" },
     { id: "alerts", name: alertsName },
     { id: "queries", name: queriesName },
@@ -20181,15 +20190,8 @@ function protoPaneTabs(alertCount, queryCount, options = {}) {
     items,
     active,
     "data-proto-pane",
-    options.weather
-      ? "Consumption, Cost, Carbon, Weather, Site profile, Alerts, and Queries"
-      : "Consumption, Cost, Carbon, Site profile, Alerts, and Queries"
+    "Consumption, Cost, Carbon, Power factor, Weather, Site profile, Alerts, and Queries"
   );
-}
-
-// Weather belongs to one place, so the tab is on a site only. Groups and Compare fall back to Consumption.
-function protoWeatherAllowed() {
-  return store.prototypeScope !== "group" && !protoCompareOn();
 }
 
 const PROTO_WEATHER_MEASURES = [
@@ -20444,12 +20446,35 @@ function protoWeatherChart(rows, measure) {
   );
 }
 
+// Several sites read the average of their nearest stations, each station counted once.
+function protoWeatherRowsFor(sites) {
+  const seen = new Map();
+  (sites || []).filter(Boolean).forEach((site) => {
+    const station = protoWeatherStation(site);
+    if (!seen.has(station.name)) seen.set(station.name, station);
+  });
+  const stations = [...seen.values()];
+  if (!stations.length) return [];
+  const all = stations.map((station) => protoWeatherRows(station));
+  if (all.length === 1) return all[0];
+  const mean = (key, i) => {
+    const vals = all.map((rows) => rows[i]?.[key]).filter((v) => v != null);
+    return vals.length ? protoRound(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+  };
+  return all[0].map((row, i) => ({
+    ...row,
+    temp: mean("temp", i),
+    rain: mean("rain", i),
+    heat: mean("heat", i),
+    cool: mean("cool", i),
+  }));
+}
+
 // One measure at a time: its graph, then its figures. Units are always said.
-function protoWeatherPane(site) {
+function protoWeatherPane(sites) {
   const measure = protoWeatherMeasure();
-  const station = protoWeatherStation(site);
   const kind = protoDateSpan().kind;
-  const rows = protoWeatherRows(station);
+  const rows = protoWeatherRowsFor(Array.isArray(sites) ? sites : [sites]);
   const degreeNote = `<p class="astral-weather-note">Degree days measure weather, not energy use. They count how far each day's average temperature fell below or rose above ${PROTO_DEGREE_BASE} °C.</p>`;
   if (measure === "degree" && kind === "interval") {
     return `
@@ -20493,6 +20518,152 @@ function protoWeatherPane(site) {
   return `
     ${protoWeatherChart(rows, measure)}
     ${measure === "degree" ? degreeNote : ""}
+    ${summary}
+  `;
+}
+
+const PROTO_PF_TARGET = 0.95;
+
+const PROTO_PF_GRAIN = {
+  interval: { adj: "half-hourly", one: "half hour", many: "half hours" },
+  day: { adj: "daily", one: "day", many: "days" },
+  month: { adj: "monthly", one: "month", many: "months" },
+};
+
+// Power factor is measured on the supply, so it reads incoming electricity meters only.
+function protoPowerMeters(meters) {
+  return (meters || []).filter((meter) => meter.direction !== "Export" && protoMeterKind(meter) === "electricity");
+}
+
+// Each meter has its own usual power factor, which drops when the load is light. Reactive power follows from it.
+function protoPowerRows(meters) {
+  const list = protoPowerMeters(meters);
+  if (!list.length) return [];
+  const span = protoDateSpan();
+  const series = list.map((meter) => {
+    const points = protoSiteSeries(meter);
+    const nums = points.map((p) => p.value).filter((v) => v != null);
+    const mean = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0;
+    const base = 0.86 + protoWeatherRand(`${meter.id}|pf`) * 0.125;
+    return points.map((p, i) => {
+      if (p.value == null) return null;
+      const light = mean ? 1 - Math.min(1, p.value / mean) : 0;
+      const noise = (protoWeatherRand(`${meter.id}|${protoIso(span.from)}|${i}`) - 0.5) * 0.03;
+      const pf = Math.min(0.995, Math.max(0.6, base - 0.06 * light + noise));
+      return { p: p.value, q: p.value * Math.tan(Math.acos(pf)), quality: p.quality };
+    });
+  });
+  const labels = protoSiteSeries(list[0]).map((p) => p.label);
+  const names = protoSpanPointNames(span, labels, false);
+  return labels.map((label, i) => {
+    const have = series.map((s) => s[i]).filter(Boolean);
+    const p = have.reduce((n, row) => n + row.p, 0);
+    const q = have.reduce((n, row) => n + row.q, 0);
+    return {
+      label,
+      name: span.kind === "interval" ? `${label} ${protoChartZone()}` : span.kind === "month" ? label : names[i],
+      p,
+      q,
+      pf: have.length && p ? p / Math.hypot(p, q) : null,
+      quality: have.some((row) => row.quality === "estimated") ? "estimated" : have.length ? "actual" : "missing",
+    };
+  });
+}
+
+function protoPowerChart(rows) {
+  const unit = "PF";
+  const points = rows.map((row) => ({
+    label: row.label,
+    value: row.pf == null ? null : Number(row.pf.toFixed(2)),
+    quality: row.quality,
+    unit,
+  }));
+  const label = "Power factor";
+  const refs = [
+    {
+      key: "pf-target",
+      kind: "target",
+      track: "",
+      style: "dash",
+      color: "",
+      flow: "",
+      flat: true,
+      places: 2,
+      values: points.map(() => PROTO_PF_TARGET),
+      qualities: [],
+      names: points.map(() => "Target"),
+      nowNames: points.map(() => ""),
+      keyName: `Target, ${PROTO_PF_TARGET}`,
+      nowKey: label,
+    },
+  ];
+  const heading = { title: label, when: `${protoChartWhen()} ${protoChartZone()}` };
+  return protoWithStore(
+    {
+      prototypePane: "consumption",
+      prototypePaneFilters: [],
+      prototypeChartSliceOff: [],
+      prototypeChartFlows: ["in", "out"],
+      prototypeChartPoint: null,
+    },
+    () =>
+      protoChartIsLine()
+        ? protoLineChart(
+            [{ id: "pf", ref: label, color: protoIncomingInk(), dash: "", points }],
+            label,
+            { refs, heading, still: true }
+          )
+        : protoBarChart(points, label, { refs, heading, still: true })
+  );
+}
+
+// The graph against the 0.95 target, then the figures a bill would use.
+function protoPowerPane(meters) {
+  const rows = protoPowerRows(meters);
+  const have = rows.filter((row) => row.pf != null);
+  if (!have.length) {
+    return `
+      <div class="astral-chart-head">
+        <div class="astral-chart-heading">
+          <p class="astral-chart-title">Power factor</p>
+          <p class="astral-chart-when">${escapeHtml(`${protoChartWhen()} ${protoChartZone()}`)}</p>
+        </div>
+      </div>
+      <p class="astral-banner">Power factor comes from incoming electricity meters. There are none in this view.</p>
+    `;
+  }
+  const grain = PROTO_PF_GRAIN[protoDateSpan().kind] || PROTO_PF_GRAIN.day;
+  const count = (n) => `${n} ${n === 1 ? grain.one : grain.many}`;
+  const sumP = have.reduce((n, row) => n + row.p, 0);
+  const sumQ = have.reduce((n, row) => n + row.q, 0);
+  const low = have.reduce((best, row) => (row.pf < best.pf ? row : best));
+  const below = have.filter((row) => Number(row.pf.toFixed(2)) < PROTO_PF_TARGET).length;
+  const at = (row) => (grain.one === "half hour" ? `At ${row.name}` : grain.one === "day" ? `On ${row.name}` : `In ${row.name}`);
+  const figures = [
+    { name: "Average power factor", value: (sumP / Math.hypot(sumP, sumQ)).toFixed(2), note: `Across ${count(have.length)}` },
+    { name: `Lowest ${grain.adj} power factor`, value: low.pf.toFixed(2), note: at(low) },
+    { name: `Below ${PROTO_PF_TARGET}`, value: count(below), note: `Out of ${count(have.length)}` },
+    {
+      name: "Reactive energy",
+      value: `${Math.round(sumQ).toLocaleString("en-GB")} kVArh`,
+      note: `Against ${Math.round(sumP).toLocaleString("en-GB")} kWh used`,
+    },
+  ];
+  const span = protoDateSpan();
+  const spec = PROTO_BREAKDOWN_FOLDS.summary;
+  const summary = protoAccordion({
+    id: spec.id,
+    open: Boolean(store[spec.field]),
+    name: "Summary",
+    note: protoRangeWords(span.from, span.to),
+    attr: 'data-proto-breakdown="summary"',
+    modifier: "astral-breakdown",
+    clipClass: "astral-breakdown-clip",
+    inner: `<div class="astral-pane-summary">${protoWeatherFigureGroup("", figures)}</div>`,
+  });
+  return `
+    ${protoPowerChart(rows)}
+    <p class="astral-weather-note">Power factor shows how much of the power drawn does useful work. Below ${PROTO_PF_TARGET}, suppliers may charge for reactive power.</p>
     ${summary}
   `;
 }
@@ -23606,6 +23777,10 @@ function protoGroupDetail(group) {
     `,
     pane === "alerts"
       ? protoAlertPane(alerts, "group")
+      : pane === "power"
+        ? protoPowerPane(viewMeters)
+      : pane === "weather"
+        ? protoWeatherPane(viewSites)
       : pane === "profile"
         ? protoProfilePane(viewSites)
         : pane === "queries"
@@ -23783,6 +23958,10 @@ function protoCompareDetail() {
     `,
     pane === "alerts"
       ? protoAlertPane(alerts, noun)
+      : pane === "power"
+        ? protoPowerPane(meters)
+      : pane === "weather"
+        ? protoWeatherPane(profileSites)
       : pane === "profile"
         ? bundle.level === "meter"
           ? meters.length
@@ -24425,7 +24604,7 @@ function protoPortfolioDetail() {
         </div>
         ${protoPaneFilterPills()}
         ${protoSiteStatus(currentSite)}
-        ${protoPaneTabs(protoPaneAlertCount(alerts), protoPaneQueryCount(queries), { weather: true })}
+        ${protoPaneTabs(protoPaneAlertCount(alerts), protoPaneQueryCount(queries))}
           `,
           pane === "alerts"
             ? protoAlertPane(alerts, "site")
@@ -24434,7 +24613,9 @@ function protoPortfolioDetail() {
               : pane === "queries"
                 ? protoQueryPane([currentSite], "site", null, viewMeters)
                 : pane === "weather"
-                ? protoWeatherPane(currentSite)
+                ? protoWeatherPane([currentSite])
+                : pane === "power"
+                ? protoPowerPane(viewMeters)
                 : limit
                 ? protoGraphLimitHtml(limit)
                 : `
