@@ -22614,17 +22614,23 @@ function protoMeterSiteView(meter, part, site) {
 
 function protoMeterSrcGroup(meter, part, own, siteName) {
   const name = PROTO_METER_PART_NAMES[part];
-  const choice = (isOwn, label) => `
-    <button type="button" role="radio" class="astral-meter-src-item${own === isOwn ? " is-on" : ""}" aria-checked="${
-      own === isOwn ? "true" : "false"
+  const choice = (isOwn, label, note) => {
+    const on = own === isOwn;
+    return `
+    <button type="button" role="radio" class="astral-report-type${on ? " is-on" : ""}" aria-checked="${on ? "true" : "false"}" tabindex="${
+      on ? "0" : "-1"
     }" data-proto-meter-src="${part}" data-proto-meter-src-own="${isOwn ? 1 : 0}" data-proto-meter-src-id="${escapeHtml(meter.id)}"${
       protoCanAct() ? "" : " disabled"
-    }>${protoRadio(own === isOwn)}<span>${escapeHtml(label)}</span></button>
+    }>
+      <span class="astral-report-type-head">${protoRadio(on)}<span>${escapeHtml(label)}</span></span>
+      <span class="astral-muted">${escapeHtml(note)}</span>
+    </button>
   `;
+  };
   return `
-    <div class="astral-meter-src" role="radiogroup" aria-label="${escapeHtml(`Where ${name.toLowerCase()} come from`)}">
-      ${choice(false, `Follow ${siteName}`)}
-      ${choice(true, "Set for this meter")}
+    <div class="astral-report-types is-pair astral-meter-src-cards" role="radiogroup" aria-label="${escapeHtml(`${name} source`)}">
+      ${choice(false, `Follow ${siteName}`, "Updates when the site changes.")}
+      ${choice(true, "Set for this meter", "Only applies to this meter.")}
     </div>
   `;
 }

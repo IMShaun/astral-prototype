@@ -54,6 +54,7 @@ Stacked labels keep the label and the control together when the text is enlarged
 
 - Export pop-up, Source data step: Dates, Format and More options (commit `5c057b4`)
 - Date range choice cards in Reports and Export, name only (commit `44e3e9a`)
+- Follow site or Set for this meter choice cards in Site settings and a meter's own settings, with a short hint
 - Checkbox rows with a hint: "Include source IDs" in Export, the Reports consent row and multi-select options with a note
 
 ## Known limitations

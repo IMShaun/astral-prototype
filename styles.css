@@ -11183,6 +11183,15 @@ tr.is-off .astral-person-mark {
   outline-offset: 2px;
 }
 
+.astral-meter-src-cards {
+  max-width: 40rem;
+}
+
+.astral-meter-src-cards .astral-report-type:disabled {
+  background: #fff;
+  cursor: default;
+}
+
 .astral-meter-rates {
   grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
 }
