@@ -10395,6 +10395,54 @@ button.astral-state {
   white-space: nowrap;
 }
 
+/* Periods: one tbody per day. Rules sit between days, not between a day's periods. */
+.astral-period-table tbody th,
+.astral-period-table tbody td[rowspan] {
+  vertical-align: top;
+}
+
+.astral-period-day tr:not(.astral-period-foot) > td:not([rowspan]) {
+  border-bottom: 0;
+  padding-bottom: 4px;
+}
+
+.astral-period-day tr + tr:not(.astral-period-foot) > td {
+  padding-top: 4px;
+}
+
+.astral-period-foot > td {
+  padding-top: 4px;
+}
+
+.astral-period-act {
+  width: 40px;
+}
+
+.astral-period-act .astral-icon-tip {
+  left: auto;
+  right: 0;
+  transform: none;
+  width: max-content;
+  max-width: 14rem;
+  white-space: normal;
+}
+
+.astral-period-table td > .astral-field {
+  width: 96px;
+}
+
+.astral-period-note {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 20px;
+  white-space: normal;
+}
+
+.astral-period-note.is-error {
+  color: var(--color-text-danger);
+}
+
 /* Column headers: Body S in Infra Grey C on white, sentence case, over an Infra Grey B rule. */
 .astral-table thead th {
   color: var(--color-text-secondary);

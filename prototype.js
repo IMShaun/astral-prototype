@@ -83,6 +83,10 @@ const PROTO_DAY_STATUS = [
   { id: "off", name: "Non-operational" },
   { id: "closed", name: "Closed" },
 ];
+const PROTO_TOU_STATUS = [
+  { id: "on", name: "On peak" },
+  { id: "off", name: "Off peak" },
+];
 const PROTO_WATER_SUPPLY_KG = 0.1913;
 const PROTO_WATER_WASTE_KG = 0.17088;
 const PROTO_WATER_RETURN = 0.95;
@@ -2396,7 +2400,144 @@ function protoSplitHours(value) {
   return { from: match[1], to: match[2] };
 }
 
+// A day is a list of periods, each with a start, an end and a status.
+// Time that no period covers counts as closed for hours and off peak for time of use.
+function protoHoursPeriodsFrom(status, from, to) {
+  if (status === "closed" || status === "off") return [{ status, from: "00.00", to: "24.00" }];
+  const start = protoParseClock(from) ?? 0;
+  let end = protoParseClock(to) ?? 24;
+  if (end <= start) end = 24;
+  const open = start > 0 ? from : "00.00";
+  const shut = end < 24 ? to : "24.00";
+  return [
+    start > 0 && { status: "off", from: "00.00", to: open },
+    { status: "operational", from: open, to: shut },
+    end < 24 && { status: "off", from: shut, to: "24.00" },
+  ].filter(Boolean);
+}
+
+function protoTouPeriodsFrom(onFrom, onTo) {
+  const start = protoParseClock(onFrom);
+  const end = protoParseClock(onTo);
+  if (start == null || end == null || start === end) return [{ status: "off", from: "00.00", to: "24.00" }];
+  if (start < end) {
+    return [
+      start > 0 && { status: "off", from: "00.00", to: onFrom },
+      { status: "on", from: onFrom, to: onTo },
+      end < 24 && { status: "off", from: onTo, to: "24.00" },
+    ].filter(Boolean);
+  }
+  return [
+    end > 0 && { status: "on", from: "00.00", to: onTo },
+    { status: "off", from: onTo, to: onFrom },
+    { status: "on", from: onFrom, to: "24.00" },
+  ].filter(Boolean);
+}
+
+const PROTO_PERIOD_SPEC = {
+  hours: {
+    statuses: PROTO_DAY_STATUS,
+    presets: PROTO_HOUR_PROFILES,
+    presetPeriods: (preset) => protoHoursPeriodsFrom(preset.status, preset.from, preset.to),
+    gap: "closed",
+    noun: "hours",
+  },
+  tou: {
+    statuses: PROTO_TOU_STATUS,
+    presets: PROTO_TOU_PROFILES,
+    presetPeriods: (preset) => protoTouPeriodsFrom(preset.onFrom, preset.onTo),
+    gap: "off peak",
+    noun: "time of use",
+  },
+};
+
+function protoDayPeriods(row, part) {
+  if (Array.isArray(row?.periods)) return row.periods;
+  if (!row) return [];
+  return part === "tou" ? protoTouPeriodsFrom(row.onFrom, row.onTo) : protoHoursPeriodsFrom(row.status, row.from, row.to);
+}
+
+// The profile a day's periods match exactly, if any.
+function protoPeriodProfile(part, periods) {
+  const spec = PROTO_PERIOD_SPEC[part];
+  const key = JSON.stringify(periods);
+  return spec.presets.find((preset) => JSON.stringify(spec.presetPeriods(preset)) === key)?.id || "";
+}
+
+// Settings saved before periods held one block a day. Turn them into periods.
+function protoProfileDays(rows, part) {
+  if (!Array.isArray(rows)) return rows;
+  if (rows.every((row) => Array.isArray(row?.periods))) return rows;
+  return rows.map((row) => {
+    const periods = protoDayPeriods(row, part).map((p) => ({ status: p.status, from: p.from, to: p.to }));
+    return { day: row.day, profile: protoPeriodProfile(part, periods), periods };
+  });
+}
+
+function protoNormalProfile(profile) {
+  if (!profile || typeof profile !== "object") return profile;
+  if (Array.isArray(profile.hours)) profile.hours = protoProfileDays(profile.hours, "hours");
+  if (Array.isArray(profile.tou)) profile.tou = protoProfileDays(profile.tou, "tou");
+  return profile;
+}
+
+function protoPeriodAt(row, hour, part) {
+  return (
+    protoDayPeriods(row, part).find((p) => {
+      const start = protoParseClock(p.from);
+      const end = protoParseClock(p.to);
+      return start != null && end != null && hour >= start && hour < end;
+    }) || null
+  );
+}
+
+function protoClockOf(hours) {
+  const minutes = Math.round(hours * 60);
+  return protoClockShow(`${String(Math.floor(minutes / 60)).padStart(2, "0")}.${String(minutes % 60).padStart(2, "0")}`);
+}
+
+// What is wrong with a day's periods. An error blocks Save. A note says what the gaps count as.
+function protoPeriodIssues(periods, part) {
+  const list = (periods || []).map((p) => ({ start: protoParseClock(p.from), end: protoParseClock(p.to) }));
+  if (list.some((p) => p.start == null || p.end == null)) return { error: "Enter a start and end time for every period." };
+  if (list.some((p) => p.end <= p.start || p.end > 24)) {
+    return { error: "Each period must end after it starts. Use 24:00 for midnight at the end of the day." };
+  }
+  const sorted = [...list].sort((a, b) => a.start - b.start);
+  for (let i = 1; i < sorted.length; i += 1) {
+    if (sorted[i].start < sorted[i - 1].end) {
+      return {
+        error: `Periods overlap from ${protoClockOf(sorted[i].start)} to ${protoClockOf(
+          Math.min(sorted[i].end, sorted[i - 1].end)
+        )}. Change one so each time sits in only one period.`,
+      };
+    }
+  }
+  const gaps = [];
+  let at = 0;
+  sorted.forEach((p) => {
+    if (p.start > at) gaps.push(`${protoClockOf(at)} to ${protoClockOf(p.start)}`);
+    at = Math.max(at, p.end);
+  });
+  if (at < 24) gaps.push(`${protoClockOf(at)} to 24:00`);
+  if (!gaps.length) return {};
+  const words = gaps.length > 1 ? `${gaps.slice(0, -1).join(", ")} and ${gaps[gaps.length - 1]}` : gaps[0];
+  return {
+    note: `No period covers ${words}, so ${gaps.length > 1 ? "they count" : "it counts"} as ${PROTO_PERIOD_SPEC[part].gap}.`,
+  };
+}
+
+function protoPeriodsBlocked(draft) {
+  return ["hours", "tou"].some((part) =>
+    (Array.isArray(draft?.[part]) ? draft[part] : []).some((row) => protoPeriodIssues(protoDayPeriods(row, part), part).error)
+  );
+}
+
 function protoMeterProfileDefault(meter) {
+  return protoNormalProfile(protoMeterProfileLegacy(meter));
+}
+
+function protoMeterProfileLegacy(meter) {
   const hours = protoSplitHours(meter?.hours);
   const tou = String(meter?.tou || "On peak and off peak");
   const touPreset =
@@ -2526,7 +2667,7 @@ function protoSiteProfile(id) {
   const meters = protoProfileMeters(id);
   const saved = protoMeterProfiles();
   const found = saved[protoProfileKey(id)] || meters.map((meter) => saved[meter.id]).find(Boolean);
-  const profile = protoCloneProfile(found || protoMeterProfileDefault(meters[0] || protoMeter(id)));
+  const profile = protoNormalProfile(protoCloneProfile(found || protoMeterProfileDefault(meters[0] || protoMeter(id))));
   profile.attrs = { ...protoProfileAttrDefaults(id), ...(profile.attrs || {}) };
   return profile;
 }
@@ -2582,7 +2723,7 @@ function protoMeterOverrideSeed() {
 
 function protoMeterOverride(id) {
   const own = protoMeterOverridesAll()[id];
-  return own && typeof own === "object" ? own : {};
+  return own && typeof own === "object" ? protoNormalProfile({ ...own }) : {};
 }
 
 function protoMeterOwnClean(own) {
@@ -2616,31 +2757,30 @@ function protoMeterOwnDrafts() {
 }
 
 function protoMeterOwnDraft(id) {
-  return protoMeterOwnClean(protoCloneProfile(protoMeterOwnDrafts()[id] || protoMeterOverride(id)));
+  return protoMeterOwnClean(protoNormalProfile(protoCloneProfile(protoMeterOwnDrafts()[id] || protoMeterOverride(id))));
 }
 
 function protoMeterOwnDirty(id) {
   return JSON.stringify(protoMeterOwnDraft(id)) !== JSON.stringify(protoMeterOwnClean(protoMeterOverride(id)));
 }
 
+function protoReadPeriodRows(form, rows, part) {
+  return rows.map((row, d) => {
+    const periods = protoDayPeriods(row, part).map((p, i) => {
+      const read = (edge) => {
+        const input = form.querySelector(`[name='${part}-${edge}-${d}-${i}']`);
+        return input ? protoClockSave(input.value) : p[edge];
+      };
+      return { status: p.status, from: read("from"), to: read("to") };
+    });
+    return { day: row.day, profile: protoPeriodProfile(part, periods), periods };
+  });
+}
+
 function protoReadMeterOwnForm(form, meter) {
   const draft = protoMeterOwnDraft(meter.id);
-  if (draft.hours) {
-    draft.hours = draft.hours.map((row, i) => ({
-      ...row,
-      from: protoClockSave(form.querySelector(`[name='hours-from-${i}']`)?.value || row.from),
-      to: protoClockSave(form.querySelector(`[name='hours-to-${i}']`)?.value || row.to),
-    }));
-  }
-  if (draft.tou) {
-    draft.tou = draft.tou.map((row, i) => ({
-      ...row,
-      onFrom: protoClockSave(form.querySelector(`[name='tou-on-from-${i}']`)?.value || row.onFrom),
-      onTo: protoClockSave(form.querySelector(`[name='tou-on-to-${i}']`)?.value || row.onTo),
-      offFrom: protoClockSave(form.querySelector(`[name='tou-off-from-${i}']`)?.value || row.offFrom),
-      offTo: protoClockSave(form.querySelector(`[name='tou-off-to-${i}']`)?.value || row.offTo),
-    }));
-  }
+  if (draft.hours) draft.hours = protoReadPeriodRows(form, draft.hours, "hours");
+  if (draft.tou) draft.tou = protoReadPeriodRows(form, draft.tou, "tou");
   if (draft.rates) {
     const rates = { ...draft.rates };
     form.querySelectorAll(".astral-meter-attrs input[name]").forEach((input) => {
@@ -2687,7 +2827,7 @@ function protoSaveMeterOwn(meter, draft) {
 function protoMeterDraft(id) {
   const draft = protoMeterDrafts()[protoProfileKey(id)];
   if (!draft) return protoSiteProfile(id);
-  const next = protoCloneProfile(draft);
+  const next = protoNormalProfile(protoCloneProfile(draft));
   next.attrs = { ...protoProfileAttrDefaults(id), ...(next.attrs || {}) };
   return next;
 }
@@ -2732,13 +2872,16 @@ function protoApplyClockInput(raw, caret) {
 
 function protoHoursSummary(profile) {
   const rows = profile?.hours || [];
-  const open = rows.filter((row) => row.status === "operational" && row.from && row.to);
-  if (open.length) {
-    const first = `${open[0].from} to ${open[0].to}`;
-    const same = open.every((row) => `${row.from} to ${row.to}` === first);
-    return same ? protoClockShow(first) : "Varies by day";
-  }
-  if (rows.some((row) => row.status === "off")) return "Non-operational";
+  const open = rows
+    .map((row) =>
+      protoDayPeriods(row, "hours")
+        .filter((p) => p.status === "operational" && p.from && p.to)
+        .map((p) => `${p.from} to ${p.to}`)
+        .join(", ")
+    )
+    .filter(Boolean);
+  if (open.length) return open.every((item) => item === open[0]) ? protoClockShow(open[0]) : "Varies by day";
+  if (rows.some((row) => protoDayPeriods(row, "hours").some((p) => p.status === "off"))) return "Non-operational";
   return "Closed";
 }
 
@@ -2769,75 +2912,71 @@ function protoPatchMeterDraft(id, patch) {
 }
 
 function protoPickMeterProfileSelect(id, value) {
-  const hoursStatus = String(id).match(/^meter-hours-status-(.+)-(\d+)$/);
-  if (hoursStatus) {
-    const meterId = hoursStatus[1];
-    const index = Number(hoursStatus[2]);
-    protoPatchMeterDraft(meterId, (draft) => {
-      const row = draft.hours[index];
-      if (!row) return;
-      row.status = PROTO_DAY_STATUS.some((item) => item.id === value) ? value : row.status;
-      if (row.status !== "operational") {
-        row.from = "";
-        row.to = "";
-      } else if (!row.from || !row.to) {
-        row.from = "00.00";
-        row.to = "24.00";
-      }
+  const status = String(id).match(/^meter-(hours|tou)-status-(.+)-(\d+)-(\d+)$/);
+  if (status) {
+    const [, part, owner, d, i] = status;
+    if (!PROTO_PERIOD_SPEC[part].statuses.some((item) => item.id === value)) return;
+    protoPatchMeterDraft(owner, (draft) => {
+      const row = draft[part]?.[Number(d)];
+      const period = row?.periods?.[Number(i)];
+      if (!period) return;
+      period.status = value;
+      row.profile = protoPeriodProfile(part, row.periods);
     });
     protoRestoreFocus(`#astral-fs [data-proto-select="${CSS.escape(id)}"] .astral-select-btn`);
     return;
   }
-  const hoursProfile = String(id).match(/^meter-hours-profile-(.+)-(\d+)$/);
-  if (hoursProfile) {
-    const meterId = hoursProfile[1];
-    const index = Number(hoursProfile[2]);
-    const preset = PROTO_HOUR_PROFILES.find((item) => item.id === value);
+  const profile = String(id).match(/^meter-(hours|tou)-profile-(.+)-(\d+)$/);
+  if (profile) {
+    const [, part, owner, d] = profile;
+    const spec = PROTO_PERIOD_SPEC[part];
+    const preset = spec.presets.find((item) => item.id === value);
     if (!preset) return;
-    protoPatchMeterDraft(meterId, (draft) => {
-      const row = draft.hours[index];
+    protoPatchMeterDraft(owner, (draft) => {
+      const row = draft[part]?.[Number(d)];
       if (!row) return;
       row.profile = preset.id;
-      row.status = preset.status;
-      row.from = preset.from;
-      row.to = preset.to;
-    });
-    protoRestoreFocus(`#astral-fs [data-proto-select="${CSS.escape(id)}"] .astral-select-btn`);
-    return;
-  }
-  const touProfile = String(id).match(/^meter-tou-profile-(.+)-(\d+)$/);
-  if (touProfile) {
-    const meterId = touProfile[1];
-    const index = Number(touProfile[2]);
-    const preset = PROTO_TOU_PROFILES.find((item) => item.id === value);
-    if (!preset) return;
-    protoPatchMeterDraft(meterId, (draft) => {
-      const row = draft.tou[index];
-      if (!row) return;
-      row.profile = preset.id;
-      row.onFrom = preset.onFrom;
-      row.onTo = preset.onTo;
-      row.offFrom = preset.offFrom;
-      row.offTo = preset.offTo;
+      row.periods = spec.presetPeriods(preset);
     });
     protoRestoreFocus(`#astral-fs [data-proto-select="${CSS.escape(id)}"] .astral-select-btn`);
   }
 }
 
+// Add a period to the end of a day, or take one out.
+function protoEditPeriods(data) {
+  if (!protoCanAct()) return;
+  const owner = String(data.protoPeriodOwner || "");
+  const part = data.protoPeriodAdd || data.protoPeriodRemove;
+  const spec = PROTO_PERIOD_SPEC[part];
+  const d = Number(data.protoPeriodDay);
+  const i = Number(data.protoPeriodIndex);
+  if (!owner || !spec || !Number.isInteger(d)) return;
+  let focus = `[data-proto-period-add="${part}"][data-proto-period-day="${d}"]`;
+  protoPatchMeterDraft(owner, (draft) => {
+    const row = draft[part]?.[d];
+    if (!row) return;
+    const periods = protoDayPeriods(row, part).map((p) => ({ status: p.status, from: p.from, to: p.to }));
+    if (data.protoPeriodAdd) {
+      const last = periods[periods.length - 1];
+      const end = protoParseClock(last?.to);
+      const from = !last ? "00.00" : end != null && end < 24 ? last.to : "";
+      const next = spec.statuses.find((item) => item.id !== last?.status) || spec.statuses[0];
+      periods.push({ status: next.id, from, to: from ? "24.00" : "" });
+      focus = `[name='${part}-from-${d}-${periods.length - 1}']`;
+    } else {
+      if (!Number.isInteger(i) || periods.length < 2) return;
+      periods.splice(i, 1);
+    }
+    row.periods = periods;
+    row.profile = protoPeriodProfile(part, periods);
+  });
+  protoRestoreFocus(`#astral-fs ${focus}`);
+}
+
 function protoReadMeterProfileForm(form, meter) {
   const draft = protoMeterDraft(meter.id);
-  draft.hours = draft.hours.map((row, i) => ({
-    ...row,
-    from: protoClockSave(form.querySelector(`[name='hours-from-${i}']`)?.value || row.from),
-    to: protoClockSave(form.querySelector(`[name='hours-to-${i}']`)?.value || row.to),
-  }));
-  draft.tou = draft.tou.map((row, i) => ({
-    ...row,
-    onFrom: protoClockSave(form.querySelector(`[name='tou-on-from-${i}']`)?.value || row.onFrom),
-    onTo: protoClockSave(form.querySelector(`[name='tou-on-to-${i}']`)?.value || row.onTo),
-    offFrom: protoClockSave(form.querySelector(`[name='tou-off-from-${i}']`)?.value || row.offFrom),
-    offTo: protoClockSave(form.querySelector(`[name='tou-off-to-${i}']`)?.value || row.offTo),
-  }));
+  draft.hours = protoReadPeriodRows(form, draft.hours, "hours");
+  draft.tou = protoReadPeriodRows(form, draft.tou, "tou");
   const attrs = { ...draft.attrs };
   form.querySelectorAll(".astral-meter-attrs input[name]").forEach((input) => {
     attrs[input.name] = String(input.value || "").trim();
@@ -4161,21 +4300,16 @@ function protoHoursDay(meter, at) {
 
 function protoSiteHours(meter, day) {
   const row = day || protoHoursDay(meter);
-  if (row && (row.status === "closed" || row.status === "off")) return { start: 0, end: 0 };
-  const from = row?.from || meter?.hours || "00.00 to 24.00";
-  const match = String(row ? `${row.from} to ${row.to}` : from).match(
-    /(\d{1,2})\.(\d{2})\s+to\s+(\d{1,2})\.(\d{2})/i
-  );
-  if (!match) {
-    const fallback = String(meter?.hours || "00.00 to 24.00").match(
-      /(\d{1,2})\.(\d{2})\s+to\s+(\d{1,2})\.(\d{2})/i
-    );
-    if (!fallback) return { start: 0, end: 24 };
-    const start = Number(fallback[1]) + Number(fallback[2]) / 60;
-    let end = Number(fallback[3]) + Number(fallback[4]) / 60;
-    if (end <= start) end = 24;
-    return { start, end };
+  if (row) {
+    const open = protoDayPeriods(row, "hours")
+      .filter((p) => p.status === "operational")
+      .map((p) => [protoParseClock(p.from), protoParseClock(p.to)])
+      .filter(([start, end]) => start != null && end != null && end > start);
+    if (!open.length) return { start: 0, end: 0 };
+    return { start: Math.min(...open.map((p) => p[0])), end: Math.max(...open.map((p) => p[1])) };
   }
+  const match = String(meter?.hours || "00.00 to 24.00").match(/(\d{1,2})\.(\d{2})\s+to\s+(\d{1,2})\.(\d{2})/i);
+  if (!match) return { start: 0, end: 24 };
   const start = Number(match[1]) + Number(match[2]) / 60;
   let end = Number(match[3]) + Number(match[4]) / 60;
   if (end <= start) end = 24;
@@ -4210,17 +4344,13 @@ function protoMeterTouDay(meter, at) {
 function protoPointInHours(point, meter) {
   const hour = protoPointHour(point);
   if (hour == null) return true;
-  const range = protoSiteHours(meter);
-  if (range.end <= range.start) return false;
-  return hour >= range.start && hour < range.end;
+  return protoHourKind(meter, hour, protoHoursDay(meter, protoPointDate(point))) === "on";
 }
 
 function protoPointOnPeak(point, meter) {
   const hour = protoPointHour(point);
   if (hour == null) return true;
-  const day = protoMeterTouDay(meter, protoPointDate(point));
-  if (!day) return hour >= 7 && hour < 19;
-  return protoHourInRange(hour, day.onFrom, day.onTo);
+  return protoHourIsPeak(meter, hour, protoPointDate(point));
 }
 
 function protoHourIsOpen(meter, hour) {
@@ -4229,18 +4359,19 @@ function protoHourIsOpen(meter, hour) {
 
 function protoHourKind(meter, hour, day) {
   const row = day || protoHoursDay(meter);
-  if (row?.status === "closed") return "closed";
-  if (row?.status === "off") return "non";
-  const range = protoSiteHours(meter, row);
-  if (range.end <= range.start) return "non";
-  if (hour >= range.start && hour < range.end) return "on";
-  return "non";
+  if (!row) {
+    const range = protoSiteHours(meter);
+    return hour >= range.start && hour < range.end ? "on" : "non";
+  }
+  const period = protoPeriodAt(row, hour, "hours");
+  if (!period) return "closed";
+  return period.status === "operational" ? "on" : period.status === "off" ? "non" : "closed";
 }
 
 function protoHourIsPeak(meter, hour, at) {
   const day = protoMeterTouDay(meter, at);
   if (!day) return hour >= 7 && hour < 19;
-  return protoHourInRange(hour, day.onFrom, day.onTo);
+  return protoPeriodAt(day, hour, "tou")?.status === "on";
 }
 
 // Show puts Hours or Time of use over the graph. It is not a filter. Every reading stays.
@@ -4520,13 +4651,10 @@ function protoZoneKey(meter, zones) {
   const profile = protoMeterProfile(meter?.id);
   const bits = [];
   if (zones.showHours) {
-    bits.push(
-      (profile.hours || []).map((row) => `${row.day}:${row.status || ""}:${row.from || ""}-${row.to || ""}`).join(",") ||
-        String(meter?.hours || "")
-    );
+    bits.push(JSON.stringify(profile.hours || []) || String(meter?.hours || ""));
   }
   if (zones.showTou) {
-    bits.push((profile.tou || []).map((row) => `${row.day}:${row.onFrom || ""}-${row.onTo || ""}`).join(",") || "default");
+    bits.push(JSON.stringify(profile.tou || []) || "default");
   }
   return bits.join("|");
 }
@@ -9391,7 +9519,7 @@ function protoPickSelect(id, value) {
     protoReportPatchDraft({ [id.slice("report-tpl:".length)]: value });
     return;
   }
-  if (String(id).startsWith("meter-hours-status-") || String(id).startsWith("meter-hours-profile-") || String(id).startsWith("meter-tou-profile-")) {
+  if (String(id).startsWith("meter-hours-") || String(id).startsWith("meter-tou-")) {
     protoPickMeterProfileSelect(id, value);
     return;
   }
@@ -21045,17 +21173,18 @@ function protoCsvCellOut(value) {
 function protoSiteSettingsCsv(meter) {
   const draft = protoMeterDraft(meter.id);
   const rows = [PROTO_SITE_CSV_HEAD];
-  const statusName = (id) => PROTO_DAY_STATUS.find((item) => item.id === id)?.name || id;
-  draft.hours.forEach((row) => {
-    rows.push(["Operational hours", row.day, "Status", statusName(row.status), ""]);
-    rows.push(["Operational hours", row.day, "From", protoClockShow(row.from), "HH:MM"]);
-    rows.push(["Operational hours", row.day, "To", protoClockShow(row.to), "HH:MM"]);
-  });
-  draft.tou.forEach((row) => {
-    rows.push(["Time of use", row.day, "On peak from", protoClockShow(row.onFrom), "HH:MM"]);
-    rows.push(["Time of use", row.day, "On peak to", protoClockShow(row.onTo), "HH:MM"]);
-    rows.push(["Time of use", row.day, "Off peak from", protoClockShow(row.offFrom), "HH:MM"]);
-    rows.push(["Time of use", row.day, "Off peak to", protoClockShow(row.offTo), "HH:MM"]);
+  const statusName = (part, id) => PROTO_PERIOD_SPEC[part].statuses.find((item) => item.id === id)?.name || id;
+  [
+    ["Operational hours", "hours"],
+    ["Time of use", "tou"],
+  ].forEach(([section, part]) => {
+    draft[part].forEach((row) => {
+      protoDayPeriods(row, part).forEach((p, i) => {
+        rows.push([section, row.day, `Period ${i + 1} from`, protoClockShow(p.from), "HH:MM"]);
+        rows.push([section, row.day, `Period ${i + 1} to`, protoClockShow(p.to), "HH:MM"]);
+        rows.push([section, row.day, `Period ${i + 1} status`, statusName(part, p.status), ""]);
+      });
+    });
   });
   ["site", ...protoMeterAttrKinds(meter.id)].forEach((kind) => {
     protoMeterAttrSpec(kind).forEach((item) => {
@@ -21127,8 +21256,7 @@ function protoApplySiteSettingsCsv(meter, text) {
   if (!rows.length) return { changed: 0, skipped: 0, read: 0 };
   const draft = protoMeterDraft(meter.id);
   const kinds = ["site", ...protoMeterAttrKinds(meter.id)];
-  const hourFields = { status: "status", from: "from", to: "to" };
-  const touFields = { "on peak from": "onFrom", "on peak to": "onTo", "off peak from": "offFrom", "off peak to": "offTo" };
+  const imported = new Map();
   let changed = 0;
   let skipped = 0;
   rows.forEach((cells) => {
@@ -21136,44 +21264,28 @@ function protoApplySiteSettingsCsv(meter, text) {
     const value = String(rawValue ?? "").trim();
     const where = norm(section);
     if (where === "operational hours" || where === "time of use") {
-      const list = where === "time of use" ? draft.tou : draft.hours;
-      const row = list.find((item) => norm(item.day) === norm(group));
-      const field = (where === "time of use" ? touFields : hourFields)[norm(setting)];
-      if (!row || !field) {
+      const part = where === "time of use" ? "tou" : "hours";
+      const d = draft[part].findIndex((item) => norm(item.day) === norm(group));
+      const field = norm(setting).match(/^period (\d+) (from|to|status)$/);
+      const n = field ? Number(field[1]) : 0;
+      if (d < 0 || !field || n < 1 || n > 48) {
         skipped += 1;
         return;
       }
-      if (field === "status") {
-        const status = PROTO_DAY_STATUS.find((item) => norm(item.name) === norm(value) || item.id === norm(value));
-        if (!status) {
-          skipped += 1;
-          return;
-        }
-        if (row.status !== status.id) {
-          row.status = status.id;
-          row.profile = "";
-          if (status.id !== "operational") {
-            row.from = "";
-            row.to = "";
-          }
-          changed += 1;
-        }
-        return;
+      let next;
+      if (field[2] === "status") {
+        next = PROTO_PERIOD_SPEC[part].statuses.find((item) => norm(item.name) === norm(value) || item.id === norm(value))?.id;
+      } else {
+        next = protoCsvClock(value);
       }
-      if (where === "operational hours" && row.status !== "operational") {
-        if (value) skipped += 1;
-        return;
-      }
-      const clock = protoCsvClock(value);
-      if (!clock) {
+      if (!next) {
         skipped += 1;
         return;
       }
-      if (row[field] !== clock) {
-        row[field] = clock;
-        row.profile = "";
-        changed += 1;
-      }
+      const key = `${part}|${d}`;
+      if (!imported.has(key)) imported.set(key, { part, d, periods: [] });
+      const list = imported.get(key).periods;
+      list[n - 1] = { ...(list[n - 1] || {}), [field[2]]: next };
       return;
     }
     if (where === "attributes") {
@@ -21195,6 +21307,23 @@ function protoApplySiteSettingsCsv(meter, text) {
       return;
     }
     skipped += 1;
+  });
+  // A day in the file replaces that day's periods. Days the file leaves out stay as they were.
+  imported.forEach(({ part, d, periods }) => {
+    const row = draft[part][d];
+    const old = protoDayPeriods(row, part);
+    const fallback = PROTO_PERIOD_SPEC[part].statuses[0].id;
+    const next = periods
+      .map((p, i) => (p ? { status: p.status || old[i]?.status || fallback, from: p.from || old[i]?.from || "", to: p.to || old[i]?.to || "" } : null))
+      .filter(Boolean);
+    next.forEach((p, i) => {
+      ["status", "from", "to"].forEach((field) => {
+        if (old[i]?.[field] !== p[field]) changed += 1;
+      });
+    });
+    if (old.length > next.length) changed += old.length - next.length;
+    row.periods = next;
+    row.profile = protoPeriodProfile(part, next);
   });
   if (changed) {
     store.prototypeMeterDrafts = { ...protoMeterDrafts(), [protoProfileKey(meter.id)]: draft };
@@ -21438,93 +21567,117 @@ function protoMeterSectionFold(id, name, kind, inner, noteHtml = "") {
 }
 
 function protoMeterHoursTable(id, rows) {
-  const hourRows = rows
-    .map((row, i) => {
-      const closed = row.status !== "operational";
-      return `
-        <tr>
-          <th scope="row">${escapeHtml(row.day)}</th>
-          <td>
-            ${protoSelect({
-              id: `meter-hours-status-${id}-${i}`,
-              label: `${row.day} hours`,
-              value: row.status,
-              options: PROTO_DAY_STATUS.map((item) => ({ value: item.id, label: item.name })),
-            })}
-          </td>
-          <td>${closed ? "" : protoMeterClockField(`hours-from-${i}`, row.from, `${row.day} from`)}</td>
-          <td>${closed ? "" : protoMeterClockField(`hours-to-${i}`, row.to, `${row.day} to`)}</td>
-          <td>
-            ${protoSelect({
-              id: `meter-hours-profile-${id}-${i}`,
-              label: `Select profile for ${row.day} hours`,
-              value: row.profile || "",
-              placeholder: "Select profile",
-              options: PROTO_HOUR_PROFILES.map((item) => ({ value: item.id, label: item.name })),
-            })}
+  return protoMeterPeriodTable(id, rows, "hours");
+}
+
+function protoMeterTouTable(id, rows) {
+  return protoMeterPeriodTable(id, rows, "tou");
+}
+
+// One row per period. A day holds as many periods as it needs, so any opening pattern or tariff fits.
+function protoMeterPeriodTable(id, rows, part) {
+  const spec = PROTO_PERIOD_SPEC[part];
+  const can = protoCanAct();
+  const owner = `data-proto-period-owner="${escapeHtml(id)}"`;
+  const days = rows
+    .map((row, d) => {
+      const periods = protoDayPeriods(row, part);
+      const issue = protoPeriodIssues(periods, part);
+      const span = periods.length + 1;
+      const lead = `
+        <th scope="rowgroup" rowspan="${span}">${escapeHtml(row.day)}</th>
+        <td rowspan="${span}">
+          ${protoSelect({
+            id: `meter-${part}-profile-${id}-${d}`,
+            label: `Select profile for ${row.day} ${spec.noun}`,
+            value: row.profile || "",
+            placeholder: "Select profile",
+            options: spec.presets.map((item) => ({ value: item.id, label: item.name })),
+          })}
+        </td>
+      `;
+      const lines = periods.map((p, i) => {
+        const name = `${row.day} period ${i + 1}`;
+        const only = periods.length < 2;
+        return `
+          <tr>
+            ${i ? "" : lead}
+            <td>${protoMeterClockField(`${part}-from-${d}-${i}`, p.from, `${name} from`)}</td>
+            <td>${protoMeterClockField(`${part}-to-${d}-${i}`, p.to, `${name} to`)}</td>
+            <td>
+              ${protoSelect({
+                id: `meter-${part}-status-${id}-${d}-${i}`,
+                label: `${name} status`,
+                value: p.status,
+                options: spec.statuses.map((item) => ({ value: item.id, label: item.name })),
+              })}
+            </td>
+            <td class="astral-period-act">
+              ${
+                can
+                  ? protoIconBtn(
+                      "close",
+                      `Remove ${name}`,
+                      `${owner} data-proto-period-remove="${part}" data-proto-period-day="${d}" data-proto-period-index="${i}"`,
+                      {
+                        className: "is-plain",
+                        disabled: only,
+                        tipLabel: only ? "A day needs at least one period. Change this one instead." : "Remove",
+                      }
+                    )
+                  : ""
+              }
+            </td>
+          </tr>
+        `;
+      });
+      const note = issue.error || issue.note || "";
+      const foot = `
+        <tr class="astral-period-foot">
+          ${periods.length ? "" : lead}
+          <td colspan="4">
+            ${can ? protoTextBtn("Add a period", `${owner} data-proto-period-add="${part}" data-proto-period-day="${d}"`) : ""}
+            <p class="astral-period-note${issue.error ? " is-error" : ""}" id="astral-period-note-${part}-${d}" role="status"${
+              note ? "" : " hidden"
+            }>${escapeHtml(note)}</p>
           </td>
         </tr>
       `;
+      return `<tbody class="astral-period-day">${lines.join("")}${foot}</tbody>`;
     })
     .join("");
   return `
         <div class="astral-table-wrap">
-          <table class="astral-table">
+          <table class="astral-table astral-period-table">
             <thead>
               <tr>
                 <th scope="col">Day</th>
-                <th scope="col">Status</th>
+                <th scope="col">Select profile</th>
                 <th scope="col">From</th>
                 <th scope="col">To</th>
-                <th scope="col">Select profile</th>
+                <th scope="col">Status</th>
+                <th scope="col"><span class="sr-only">Remove</span></th>
               </tr>
             </thead>
-            <tbody>${hourRows}</tbody>
+            ${days}
           </table>
         </div>
   `;
 }
 
-function protoMeterTouTable(id, rows) {
-  const touRows = rows
-    .map((row, i) => {
-      return `
-        <tr>
-          <th scope="row">${escapeHtml(row.day)}</th>
-          <td>${protoMeterClockField(`tou-on-from-${i}`, row.onFrom, `${row.day} on peak from`)}</td>
-          <td>${protoMeterClockField(`tou-on-to-${i}`, row.onTo, `${row.day} on peak to`)}</td>
-          <td>${protoMeterClockField(`tou-off-from-${i}`, row.offFrom, `${row.day} off peak from`)}</td>
-          <td>${protoMeterClockField(`tou-off-to-${i}`, row.offTo, `${row.day} off peak to`)}</td>
-          <td>
-            ${protoSelect({
-              id: `meter-tou-profile-${id}-${i}`,
-              label: `Select profile for ${row.day} time of use`,
-              value: row.profile || "",
-              placeholder: "Select profile",
-              options: PROTO_TOU_PROFILES.map((item) => ({ value: item.id, label: item.name })),
-            })}
-          </td>
-        </tr>
-      `;
-    })
-    .join("");
-  return `
-        <div class="astral-table-wrap">
-          <table class="astral-table">
-            <thead>
-              <tr>
-                <th scope="col">Day</th>
-                <th scope="col">On peak from</th>
-                <th scope="col">On peak to</th>
-                <th scope="col">Off peak from</th>
-                <th scope="col">Off peak to</th>
-                <th scope="col">Select profile</th>
-              </tr>
-            </thead>
-            <tbody>${touRows}</tbody>
-          </table>
-        </div>
-  `;
+// Typing does not redraw the form, so the day notes and Save follow the typing here.
+function protoSyncPeriodNotes(form, draft) {
+  ["hours", "tou"].forEach((part) => {
+    (Array.isArray(draft?.[part]) ? draft[part] : []).forEach((row, d) => {
+      const note = form.querySelector(`#astral-period-note-${part}-${d}`);
+      if (!note) return;
+      const issue = protoPeriodIssues(protoDayPeriods(row, part), part);
+      const text = issue.error || issue.note || "";
+      note.textContent = text;
+      note.hidden = !text;
+      note.classList.toggle("is-error", Boolean(issue.error));
+    });
+  });
 }
 
 function protoMeterProfileForm(meter) {
@@ -21567,7 +21720,7 @@ function protoMeterProfileForm(meter) {
       <div class="astral-actions">
         ${protoBtn("Save changes", "", {
           type: "submit",
-          disabled: !(dirty && protoCanAct() && !protoMeterAttrsBlocked(draft.attrs)),
+          disabled: !(dirty && protoCanAct() && !protoMeterAttrsBlocked(draft.attrs) && !protoPeriodsBlocked(draft)),
         })}
       </div>
     </form>
@@ -21598,25 +21751,14 @@ function protoMeterPlainTable(headers, rows) {
 }
 
 function protoMeterSiteView(meter, part, site) {
-  if (part === "hours") {
-    const status = (id) => PROTO_DAY_STATUS.find((item) => item.id === id)?.name || id;
+  if (part === "hours" || part === "tou") {
+    const spec = PROTO_PERIOD_SPEC[part];
+    const status = (id) => spec.statuses.find((item) => item.id === id)?.name || id;
     return protoMeterPlainTable(
-      ["Day", "Status", "Hours"],
-      site.hours.map((row) => [
-        row.day,
-        status(row.status),
-        row.status === "operational" ? protoClockShow(`${row.from} to ${row.to}`) : "",
-      ])
-    );
-  }
-  if (part === "tou") {
-    return protoMeterPlainTable(
-      ["Day", "On peak", "Off peak"],
-      site.tou.map((row) => [
-        row.day,
-        protoClockShow(`${row.onFrom} to ${row.onTo}`),
-        protoClockShow(`${row.offFrom} to ${row.offTo}`),
-      ])
+      ["Day", "From", "To", "Status"],
+      site[part].flatMap((row) =>
+        protoDayPeriods(row, part).map((p, i) => [i ? "" : row.day, protoClockShow(p.from), protoClockShow(p.to), status(p.status)])
+      )
     );
   }
   return `
@@ -21703,7 +21845,7 @@ function protoMeterOwnPage(meter, site) {
           ${PROTO_METER_OWN_PARTS.map((part) => protoMeterOwnFold(meter, part, draft, siteProfile, siteName)).join("")}
         </div>
         <div class="astral-actions">
-          ${protoBtn("Save changes", "", { type: "submit", disabled: !(dirty && protoCanAct()) })}
+          ${protoBtn("Save changes", "", { type: "submit", disabled: !(dirty && protoCanAct() && !protoPeriodsBlocked(draft)) })}
         </div>
       </form>
     `
@@ -31359,8 +31501,9 @@ function protoCsvHoursName(meter, point) {
   const hour = protoPointHour(point);
   const day = protoHoursDay(meter, at);
   if (hour == null) {
-    if (day?.status === "closed") return "Closed";
-    if (day?.status === "off") return "Non-operational";
+    const kinds = [...new Set(protoDayPeriods(day, "hours").map((p) => p.status))];
+    if (kinds.length === 1 && kinds[0] === "closed") return "Closed";
+    if (kinds.length === 1 && kinds[0] === "off") return "Non-operational";
     return "Mixed";
   }
   const kind = protoHourKind(meter, hour, day);
@@ -34427,6 +34570,11 @@ function onPrototype(event) {
     protoPickMeterSource(meter.id, String(meterSrc.dataset.protoMeterSrc || ""), meterSrc.dataset.protoMeterSrcOwn === "1");
     return;
   }
+  const periodEdit = event.target.closest("[data-proto-period-add], [data-proto-period-remove]");
+  if (periodEdit) {
+    if (!periodEdit.disabled) protoEditPeriods(periodEdit.dataset);
+    return;
+  }
   const meterTemplate = event.target.closest("[data-proto-meter-template]");
   if (meterTemplate) {
     const meter = protoMeter(String(meterTemplate.dataset.protoMeterTemplate || ""));
@@ -35809,8 +35957,9 @@ function onPrototypeInput(event) {
     }
     store.prototypeMeterOwnDrafts = { ...protoMeterOwnDrafts(), [meter.id]: protoReadMeterOwnForm(form, meter) };
     persistChrome();
+    protoSyncPeriodNotes(form, protoMeterOwnDraft(meter.id));
     const btn = form.querySelector("button[type='submit']");
-    if (btn) btn.disabled = !protoMeterOwnDirty(meter.id);
+    if (btn) btn.disabled = !protoMeterOwnDirty(meter.id) || protoPeriodsBlocked(protoMeterOwnDraft(meter.id));
     return;
   }
   const meterField = event.target.closest("[data-proto-meter-profile] input");
@@ -35844,7 +35993,8 @@ function onPrototypeInput(event) {
       else input.removeAttribute("aria-describedby");
     });
     const btn = form.querySelector("button[type='submit']");
-    if (btn) btn.disabled = !protoMeterDirty(meter.id) || protoMeterAttrsBlocked(draft.attrs);
+    protoSyncPeriodNotes(form, draft);
+    if (btn) btn.disabled = !protoMeterDirty(meter.id) || protoMeterAttrsBlocked(draft.attrs) || protoPeriodsBlocked(draft);
     return;
   }
   const profileName = event.target.closest("input[name='proto-profile-name']");
@@ -36128,7 +36278,7 @@ function onPrototypeSubmit(event) {
     if (!meter) return;
     const draft = protoReadMeterOwnForm(meterOwnForm, meter);
     store.prototypeMeterOwnDrafts = { ...protoMeterOwnDrafts(), [meter.id]: draft };
-    if (!protoMeterOwnDirty(meter.id)) return;
+    if (!protoMeterOwnDirty(meter.id) || protoPeriodsBlocked(draft)) return;
     protoSaveMeterOwn(meter, draft);
     return;
   }
@@ -36141,7 +36291,7 @@ function onPrototypeSubmit(event) {
     if (!meter) return;
     const draft = protoReadMeterProfileForm(meterProfileForm, meter);
     store.prototypeMeterDrafts = { ...protoMeterDrafts(), [protoProfileKey(meter.id)]: draft };
-    if (!protoMeterDirty(meter.id) || protoMeterAttrsBlocked(draft.attrs)) return;
+    if (!protoMeterDirty(meter.id) || protoMeterAttrsBlocked(draft.attrs) || protoPeriodsBlocked(draft)) return;
     protoSaveMeterProfile(meter, draft);
     return;
   }
