@@ -24743,11 +24743,8 @@ function protoQualityWord(quality, value) {
   return "Actual";
 }
 
-const PROTO_BREAKDOWN_ROW = 45;
-const PROTO_BREAKDOWN_OVERSCAN = 8;
 // One cache per Breakdown table, keyed by its fold, so a group can show sites and meter points.
 let protoBreakdownCaches = {};
-let protoBreakdownPaintQueued = false;
 
 function protoBreakdownOpen() {
   return Boolean(store.prototypeBreakdownOpen);
@@ -24927,17 +24924,8 @@ function protoIntervalRowHtml(point, dual, chart, sliceCols) {
   `;
 }
 
-function protoBreakdownClip(tbody) {
-  const pane = tbody?.closest(".astral-pane-body");
-  const stage = tbody?.closest(".astral-stage");
-  // The table scrolls inside its own box (so its heads stay put); only the part of that box in view counts.
-  const wrap = tbody?.closest(".astral-breakdown-scroll");
-  const boxes = [pane, stage, wrap].filter(Boolean).map((el) => el.getBoundingClientRect());
-  if (!boxes.length) return null;
-  const top = Math.max(...boxes.map((box) => box.top));
-  const bottom = Math.min(...boxes.map((box) => box.bottom));
-  return { top, height: Math.max(0, bottom - top) };
-}
+// Every row is drawn at once, so the table is whole. Its rows add up to the graph, and find on the page reaches all of them.
+const protoBreakdownPainted = new WeakMap();
 
 function protoPaintBreakdown() {
   document.querySelectorAll("#astral-fs [data-proto-breakdown-rows]").forEach(protoPaintBreakdownRows);
@@ -24945,28 +24933,11 @@ function protoPaintBreakdown() {
 
 function protoPaintBreakdownRows(tbody) {
   const cache = protoBreakdownCaches[tbody?.dataset.protoBreakdownRows || "toggle"];
-  const clip = protoBreakdownClip(tbody);
-  if (!tbody || !clip || !cache) return;
-  if (tbody.closest("[inert]")) return;
+  if (!tbody || !cache || protoBreakdownPainted.get(tbody) === cache) return;
+  protoBreakdownPainted.set(tbody, cache);
   const { points, dual, chart, sliceCols = [], rowHtml } = cache;
-  const cols = cache.cols || (sliceCols.length ? 2 : 3);
   const paintRow = rowHtml || ((point) => protoIntervalRowHtml(point, dual, chart, sliceCols));
-  const row = PROTO_BREAKDOWN_ROW;
-  const offset = clip.top - tbody.getBoundingClientRect().top;
-  const start = Math.max(0, Math.floor(offset / row) - PROTO_BREAKDOWN_OVERSCAN);
-  const vis = Math.ceil(Math.max(clip.height, row) / row) + PROTO_BREAKDOWN_OVERSCAN * 2;
-  const end = Math.min(points.length, start + vis);
-  const topH = start * row;
-  const botH = (points.length - end) * row;
-  tbody.innerHTML = [
-    topH
-      ? `<tr class="astral-breakdown-pad" aria-hidden="true"><td colspan="${cols}" style="height:${topH}px"></td></tr>`
-      : "",
-    ...points.slice(start, end).map(paintRow),
-    botH
-      ? `<tr class="astral-breakdown-pad" aria-hidden="true"><td colspan="${cols}" style="height:${botH}px"></td></tr>`
-      : "",
-  ].join("");
+  tbody.innerHTML = points.map(paintRow).join("");
 }
 
 function protoSyncTableHeads() {
@@ -24974,7 +24945,7 @@ function protoSyncTableHeads() {
   const plan = [...tables].map((table) => {
     const head = table.tHead;
     if (!head) return null;
-    const rows = [...table.querySelectorAll(":scope > tbody > tr:not(.astral-breakdown-pad)")].slice(0, 8);
+    const rows = [...table.querySelectorAll(":scope > tbody > tr")].slice(0, 8);
     const hs = rows.map((row) => row.getBoundingClientRect().height).filter((h) => h > 0);
     return { head, h: hs.length ? Math.round(Math.min(...hs)) : 0 };
   });
@@ -24999,28 +24970,7 @@ function protoSyncTableHeadsSoon() {
 }
 
 function protoBindBreakdown() {
-  const tbody = document.querySelector("#astral-fs [data-proto-breakdown-rows]");
-  if (!tbody) return;
   protoPaintBreakdown();
-  requestAnimationFrame(() => protoPaintBreakdown());
-  const scrollers = [
-    tbody.closest(".astral-pane-body"),
-    tbody.closest(".astral-stage"),
-    ...document.querySelectorAll("#astral-fs .astral-breakdown-scroll"),
-  ].filter(
-    (el) => el && el.dataset.protoBreakdownBound !== "1"
-  );
-  if (!scrollers.length) return;
-  scrollers.forEach((el) => (el.dataset.protoBreakdownBound = "1"));
-  const onScroll = () => {
-    if (protoBreakdownPaintQueued) return;
-    protoBreakdownPaintQueued = true;
-    requestAnimationFrame(() => {
-      protoBreakdownPaintQueued = false;
-      protoPaintBreakdown();
-    });
-  };
-  scrollers.forEach((el) => el.addEventListener("scroll", onScroll, { passive: true }));
 }
 
 // Horizontal paging for a wide Breakdown. Steps land on whole column heads, so a click never

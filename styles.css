@@ -10021,11 +10021,6 @@ button.astral-state {
   padding: 0 8px;
 }
 
-.astral-breakdown-pad td {
-  padding: 0;
-  border: 0;
-}
-
 .astral-breakdown-cols tbody tr[data-proto-hit],
 .astral-breakdown-cols tbody tr.is-link {
   cursor: pointer;
