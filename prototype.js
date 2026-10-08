@@ -6997,16 +6997,22 @@ function protoChartShowSelect(more = {}) {
     tip: capBlocked,
   };
   if (tier !== "both") {
-    const none = tier === "none";
+    // Past 12 sites only Hours and Time of use are too busy to draw, so they are off and say why.
+    const busy = (what) =>
+      tier === "none"
+        ? {
+            disabled: true,
+            tip: `Too many sites to chart clearly. Choose ${PROTO_OVERLAY_ONE_MAX} sites or fewer to add ${what}.`,
+          }
+        : {};
     return protoSelect({
       id: "chart-show",
       label: "Overlay",
       value: protoChartShow()[0] || "none",
-      disabled: none,
       options: [
         { value: "none", label: "No overlay" },
-        { value: "hours", label: "Hours", note: "Operational, Non-operational, and Closed" },
-        { value: "tou", label: "Time of use", note: "Peak and Off-peak" },
+        { value: "hours", label: "Hours", note: "Operational, Non-operational, and Closed", ...busy("hours") },
+        { value: "tou", label: "Time of use", note: "Peak and Off-peak", ...busy("time of use") },
         capacity,
       ],
       ...more,
@@ -7498,12 +7504,9 @@ function protoWhyOffTip(control, reason) {
 }
 
 function protoChartOverlayNote() {
-  const tier = protoChartOverlayTier();
-  if (tier === "both") return "";
-  const sites = protoChartOverlaySites();
-  return tier === "one"
-    ? `With ${sites} sites in view, the graph shows one overlay at a time.`
-    : `Too many sites to chart clearly. Choose ${PROTO_OVERLAY_ONE_MAX} sites or fewer to add an overlay.`;
+  // Past 12 sites the reason sits on the Hours and Time of use options, not the whole menu.
+  if (protoChartOverlayTier() !== "one") return "";
+  return `With ${protoChartOverlaySites()} sites in view, the graph shows one overlay at a time.`;
 }
 
 // Defaults: Total consumption, Bar, no overlay, no average profile and no highlight.
@@ -9791,8 +9794,11 @@ function protoPickSelect(id, value) {
     return;
   }
   if (id === "chart-show") {
-    if (protoChartOverlayTier() === "one") {
-      if (value !== "none" && value !== "hours" && value !== "tou") return;
+    const tier = protoChartOverlayTier();
+    if (tier !== "both") {
+      // Past 12 sites, Hours and Time of use are off. No overlay still clears a held pick.
+      const allowed = tier === "one" ? ["none", "hours", "tou"] : ["none"];
+      if (!allowed.includes(value)) return;
       setProto({
         prototypeSelectOpen: "",
         prototypeChartShow: value === "none" ? [] : [value],
