@@ -9073,7 +9073,7 @@ button.astral-state {
 .astral-chart-compare {
   stroke: var(--color-flow-out);
   stroke-width: 2;
-  stroke-dasharray: 5 4;
+  stroke-dasharray: none;
 }
 
 .astral-bar {
@@ -14491,10 +14491,6 @@ button.astral-calmap-day:focus-visible {
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
   stroke-linejoin: round;
-}
-
-.astral-calmap-line.is-out {
-  stroke-dasharray: 4 3;
 }
 
 .astral-calmap-total {
