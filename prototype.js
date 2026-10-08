@@ -746,6 +746,7 @@ function protoPageFilterReset() {
     prototypeChartProfile: "",
     prototypeChartWeekends: false,
     prototypeWeatherMeasure: "temperature",
+    prototypeWeatherMeasureBack: "",
     prototypePowerMeasure: "pf",
     prototypeChartFlows: null,
     prototypeChartPairOff: {},
@@ -9808,7 +9809,13 @@ function protoPickSelect(id, value) {
   }
   if (id === "weather-measure") {
     const measure = PROTO_WEATHER_MEASURES.some((item) => item.id === value) ? String(value) : "temperature";
-    setProto({ prototypeSelectOpen: "", prototypeWeatherMeasure: measure, prototypeChartPoint: null });
+    const was = protoWeatherMeasure();
+    setProto({
+      prototypeSelectOpen: "",
+      prototypeWeatherMeasure: measure,
+      prototypeWeatherMeasureBack: was === measure ? store.prototypeWeatherMeasureBack || "" : was,
+      prototypeChartPoint: null,
+    });
     protoRestoreFocus(`#astral-fs [data-proto-select="weather-measure"] .astral-select-btn`);
     return;
   }
@@ -20617,6 +20624,12 @@ function protoWeatherMeasure() {
   return PROTO_WEATHER_MEASURES.some((item) => item.id === id) ? id : "temperature";
 }
 
+// The measure the user was on before Degree days, so Back returns there.
+function protoWeatherMeasureBack() {
+  const id = String(store.prototypeWeatherMeasureBack || "");
+  return id !== "degree" && PROTO_WEATHER_MEASURES.some((item) => item.id === id) ? id : "temperature";
+}
+
 function protoKmBetween(a, b) {
   const rad = (d) => (d * Math.PI) / 180;
   const dLat = rad(b[0] - a[0]);
@@ -20861,16 +20874,35 @@ function protoWeatherPane(sites) {
   const rows = protoWeatherRowsFor(Array.isArray(sites) ? sites : [sites]);
   const degreeNote = `<p class="astral-weather-note">Degree days measure weather, not energy use. They count how far each day's average temperature fell below or rose above ${PROTO_DEGREE_BASE} °C.</p>`;
   if (measure === "degree" && kind === "interval") {
-    return `
-      <div class="astral-chart-head">
-        <div class="astral-chart-heading">
-          <p class="astral-chart-title">Heating and cooling degree days</p>
-          <p class="astral-chart-when">${escapeHtml(`${protoChartWhen()} ${protoChartZone()}`)}</p>
+    const span = protoDateSpan();
+    const custom = protoDatePreset() === "custom";
+    const end = `${span.to.getDate()} ${PROTO_MONTHS_LONG[span.to.getMonth()]}`;
+    const back = PROTO_WEATHER_MEASURES.find((item) => item.id === protoWeatherMeasureBack());
+    const view = custom ? `View 7 days to ${end}` : "View last 7 days";
+    return protoChartWrap(
+      `
+        <div class="astral-chart-mix astral-graph-limit" role="status">
+          <h3>Degree days need whole days</h3>
+          <p>Degree days are counted once a day, so there is nothing to show for ${
+            custom ? "1 day" : "24 hours"
+          }. View 7 days, or go back to ${escapeHtml(back.name.toLowerCase())}.</p>
+          <div class="astral-actions">
+            ${protoBtn(view, `data-proto-weather-days="7"`)}
+            ${protoGhost(`Back to ${back.name.toLowerCase()}`, `data-proto-weather-back="${escapeHtml(back.id)}"`)}
+          </div>
         </div>
-        <div class="astral-chart-nav">${protoWeatherMeasureSelect(measure)}</div>
-      </div>
-      <p class="astral-banner">Degree days are counted for whole days. Choose a date range of 2 days or more.</p>
-    `;
+      `,
+      "Weather, Heating and cooling degree days",
+      false,
+      true,
+      {
+        heading: {
+          title: "Heating and cooling degree days",
+          when: `${protoChartWhen()} ${protoChartZone()}`,
+          tools: protoWeatherMeasureSelect(measure),
+        },
+      }
+    );
   }
   const groups =
     measure === "degree"
@@ -33917,6 +33949,32 @@ function onPrototype(event) {
     return;
   }
   const dateBtn = event.target.closest("[data-proto-date]");
+  const weatherDays = event.target.closest("[data-proto-weather-days]");
+  if (weatherDays) {
+    const span = protoDateSpan();
+    if (protoDatePreset() !== "custom") {
+      setProto({ prototypeDatePreset: "7d", prototypeDateOpen: false, prototypeChartPoint: null, ...protoRememberDateHome("7d") });
+    } else {
+      const from = protoIso(protoAddDays(span.to, -6));
+      const to = protoIso(span.to);
+      setProto({
+        prototypeDatePreset: "custom",
+        prototypeDateFrom: from,
+        prototypeDateTo: to,
+        prototypeDateOpen: false,
+        prototypeChartPoint: null,
+        ...protoRememberDateHome("custom", from, to),
+      });
+    }
+    protoRestoreFocus(`#astral-fs [data-proto-select="weather-measure"] .astral-select-btn`);
+    return;
+  }
+  const weatherBack = event.target.closest("[data-proto-weather-back]");
+  if (weatherBack) {
+    setProto({ prototypeWeatherMeasure: weatherBack.dataset.protoWeatherBack, prototypeChartPoint: null });
+    protoRestoreFocus(`#astral-fs [data-proto-select="weather-measure"] .astral-select-btn`);
+    return;
+  }
   if (dateBtn) {
     const act = dateBtn.dataset.protoDate;
     if (act === "toggle") {
