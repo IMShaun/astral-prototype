@@ -4469,7 +4469,8 @@ function protoChartPicked() {
 
 const PROTO_OVERLAY_IDS = ["hours", "tou", "capacity"];
 
-// Site capacity is a fixed maximum in kVA. Demand is in kW, so the line is the capacity at the target power factor.
+// Site capacity is a fixed maximum in kVA. Demand is in kW, so the line is the capacity at the power factor measured in the dates picked.
+// 0.95 is only assumed when there is no measured power factor.
 const PROTO_CAPACITY_PF = 0.95;
 let protoCapacityBlockedCache = null;
 
@@ -4478,8 +4479,18 @@ function protoSiteCapacityKva(meter) {
   return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
-function protoCapacityKw(kva) {
-  return kva * PROTO_CAPACITY_PF;
+function protoCapacityPf(meters) {
+  const read = protoPowerRows(meters).filter((row) => row.slots);
+  const pf = read.length ? protoPowerSum("", "", read, "").pf : null;
+  return pf == null ? { pf: PROTO_CAPACITY_PF, measured: false } : { pf: Number(pf.toFixed(2)), measured: true };
+}
+
+function protoCapacityPfWords(at) {
+  return at.measured ? `at the measured power factor of ${at.pf}` : `at an assumed power factor of ${at.pf}`;
+}
+
+function protoCapacityKw(kva, pf = PROTO_CAPACITY_PF) {
+  return kva * pf;
 }
 
 // A first guess sized from the site's usual use. Users replace it in Site settings.
@@ -4544,7 +4555,8 @@ function protoCapacityRefs(meters, points) {
   const rows = points || [];
   if (!rows.length) return [];
   const kva = protoSiteCapacityKva(meters[0]);
-  const value = Number(protoCapacityKw(kva).toFixed(1));
+  const at = protoCapacityPf(meters);
+  const value = Number(protoCapacityKw(kva, at.pf).toFixed(1));
   return [
     {
       key: "capacity",
@@ -4559,7 +4571,7 @@ function protoCapacityRefs(meters, points) {
       qualities: [],
       names: rows.map(() => "Site capacity"),
       nowNames: rows.map(() => ""),
-      keyName: `Site capacity ${kva.toLocaleString("en-GB")} kVA, about ${protoFormatAmount(value, 1)} kW at ${PROTO_CAPACITY_PF} power factor`,
+      keyName: `Site capacity ${kva.toLocaleString("en-GB")} kVA, about ${protoFormatAmount(value, 1)} kW ${protoCapacityPfWords(at)}`,
     },
   ];
 }
@@ -20890,6 +20902,7 @@ function protoPowerMeters(meters) {
 const PROTO_POWER_MEASURES = [
   { id: "pf", name: "Power factor", note: "How much of the power drawn does useful work" },
   { id: "reactive", name: "Reactive energy", note: "Lagging and leading kVArh, kept apart" },
+  { id: "apparent", name: "Apparent energy", note: "kVAh, which sets the current the supply carries" },
 ];
 
 // Network charges usually allow reactive energy up to about 33% of kWh in each half-hour, which is a power factor of 0.95.
@@ -20937,8 +20950,12 @@ function protoPowerSlot(model, kwh, key) {
     : Math.min(0.995, Math.max(0.6, model.base - 0.08 * light + noise));
   const q = kwh * Math.tan(Math.acos(pf));
   const low = kwh < model.typical * PROTO_PF_LOW_SHARE;
+  const kvah = Math.hypot(kwh, q);
   return {
     kwh,
+    kvah,
+    peak: kvah * 2,
+    peakAt: "",
     lag: leading ? 0 : q,
     lead: leading ? q : 0,
     excess: Math.max(0, q - PROTO_PF_ALLOWANCE * kwh),
@@ -20951,13 +20968,20 @@ function protoPowerSlot(model, kwh, key) {
   };
 }
 
-const PROTO_PF_SUMS = ["kwh", "lag", "lead", "excess", "keepP", "keepLag", "keepLead", "slots", "lowSlots", "leadSlots"];
+const PROTO_PF_SUMS = ["kwh", "kvah", "lag", "lead", "excess", "keepP", "keepLag", "keepLead", "slots", "lowSlots", "leadSlots"];
 
 // Power factor comes from the totals, never an average of averages. Lagging and leading are not netted off.
+// The highest half-hour's kVA is carried up, since that is what the supply has to carry.
 function protoPowerSum(label, name, parts, quality) {
-  const row = { label, name, quality };
+  const row = { label, name, quality, peak: null, peakAt: "" };
   PROTO_PF_SUMS.forEach((key) => {
     row[key] = parts.reduce((n, part) => n + (part ? part[key] : 0), 0);
+  });
+  parts.forEach((part) => {
+    if (part && part.peak != null && (row.peak == null || part.peak > row.peak)) {
+      row.peak = part.peak;
+      row.peakAt = part.peakAt;
+    }
   });
   row.pf = row.keepP ? row.keepP / Math.hypot(row.keepP, row.keepLag + row.keepLead) : null;
   row.leading = row.keepLead > row.keepLag;
@@ -20986,6 +21010,7 @@ function protoPowerRows(meters) {
     return labels.map((label, i) => {
       const { kwh, quality } = sumAt(i);
       const slot = kwh == null ? null : protoPowerSlot(model, kwh, `${day}|${i}`);
+      if (slot) slot.peakAt = `${label} ${zone}`;
       return protoPowerSum(label, `${label} ${zone}`, [slot], quality);
     });
   }
@@ -20995,9 +21020,12 @@ function protoPowerRows(meters) {
       if (kwh == null) return protoPowerSum(label, names[i], [], "missing");
       const date = protoAddDays(span.from, i);
       const day = protoIso(date);
-      const slots = protoCalendarDayShape(shape, date, kwh).map((v, k) =>
-        v == null ? null : protoPowerSlot(model, v, `${day}|${k}`)
-      );
+      const slots = protoCalendarDayShape(shape, date, kwh).map((v, k) => {
+        if (v == null) return null;
+        const slot = protoPowerSlot(model, v, `${day}|${k}`);
+        slot.peakAt = `${protoDemandSlot(k)} ${zone} on ${names[i]}`;
+        return slot;
+      });
       return protoPowerSum(label, names[i], slots, quality);
     });
   }
@@ -21018,7 +21046,7 @@ function protoPowerAmount(value, unit) {
 
 function protoPowerChart(rows, measure) {
   const reactive = measure === "reactive";
-  const title = reactive ? "Reactive energy" : "Power factor";
+  const title = PROTO_POWER_MEASURES.find((item) => item.id === measure)?.name || "Power factor";
   const heading = { title, when: `${protoChartWhen()} ${protoChartZone()}`, tools: protoPowerMeasureSelect(measure) };
   const line = protoChartIsLine();
   const limit = (key, values, names, label, keyName, places) => ({
@@ -21038,6 +21066,20 @@ function protoPowerChart(rows, measure) {
     keyName,
   });
   const chart = () => {
+    if (measure === "apparent") {
+      const points = rows.map((row) => ({
+        label: row.label,
+        value: row.slots ? Number(row.kvah.toFixed(1)) : null,
+        quality: row.quality,
+        unit: "kVAh",
+        tipNote: row.slots
+          ? `Active energy ${Number(row.kwh.toFixed(1)).toLocaleString("en-GB", { maximumFractionDigits: 1 })} kWh.${row.pf == null ? "" : ` Power factor ${row.pf.toFixed(2)}.`}`
+          : "",
+      }));
+      return line
+        ? protoLineChart([{ id: "kvah", ref: title, color: protoIncomingInk(), dash: "", points }], title, { heading, still: true })
+        : protoBarChart(points, title, { heading, still: true });
+    }
     if (!reactive) {
       const points = rows.map((row) => ({
         label: row.label,
@@ -21119,12 +21161,12 @@ function protoPowerChart(rows, measure) {
   );
 }
 
-// Pick power factor or reactive energy. Each shows its graph, then the figures a bill or an engineer would use.
+// Pick power factor, reactive energy or apparent energy. Each shows its graph, then the figures a bill or an engineer would use.
 function protoPowerPane(meters) {
   const incoming = protoPowerMeters(meters);
   if (protoNoReadings(incoming)) return protoNoReadingsHtml(incoming);
   const measure = protoPowerMeasure();
-  const title = measure === "reactive" ? "Reactive energy" : "Power factor";
+  const title = PROTO_POWER_MEASURES.find((item) => item.id === measure)?.name || "Power factor";
   const rows = protoPowerRows(meters);
   const read = rows.filter((row) => row.slots);
   if (!read.length) {
@@ -21147,7 +21189,38 @@ function protoPowerPane(meters) {
   const way = (row) => (row.leading ? "leading" : "lagging");
   const at = (row) => (grain.one === "half hour" ? `At ${row.name}` : grain.one === "day" ? `On ${row.name}` : `In ${row.name}`);
   let figures;
-  if (measure === "reactive") {
+  if (measure === "apparent") {
+    const sites = new Set(incoming.map((meter) => meter.site || ""));
+    const kva = sites.size === 1 ? protoSiteCapacityKva(incoming[0]) : 0;
+    const peak = read.reduce((best, row) => (row.peak != null && (!best || row.peak > best.peak) ? row : best), null);
+    figures = [
+      { name: "Apparent energy", value: protoPowerAmount(total.kvah, "kVAh"), note: "Calculated from kWh and kVArh" },
+      { name: "Active energy", value: protoPowerAmount(total.kwh, "kWh"), note: "The part that does useful work" },
+      {
+        name: "Extra from reactive energy",
+        value: `${total.kwh ? Math.round((total.kvah / total.kwh - 1) * 100) : 0}%`,
+        note: "More current than the work needs",
+      },
+      ...(peak
+        ? [
+            {
+              name: "Highest half-hour",
+              value: `${Number(peak.peak.toFixed(1)).toLocaleString("en-GB", { maximumFractionDigits: 1 })} kVA`,
+              note: `At ${peak.peakAt}`,
+            },
+          ]
+        : []),
+      ...(peak && kva
+        ? [
+            {
+              name: "Highest half-hour against site capacity",
+              value: `${Math.round((peak.peak / kva) * 100)}%`,
+              note: `Site capacity ${kva.toLocaleString("en-GB")} kVA. Both are in kVA, so no power factor is assumed`,
+            },
+          ]
+        : []),
+    ];
+  } else if (measure === "reactive") {
     figures = [
       { name: "Lagging", value: protoPowerAmount(total.lag, "kVArh"), note: "From motors, transformers and other inductive loads" },
       { name: "Leading", value: protoPowerAmount(total.lead, "kVArh"), note: "From correction equipment or long cables at light load" },
@@ -21186,7 +21259,9 @@ function protoPowerPane(meters) {
     inner: `<div class="astral-pane-summary">${protoWeatherFigureGroup("", figures)}</div>`,
   });
   const note =
-    measure === "reactive"
+    measure === "apparent"
+      ? "Apparent energy sets the current that cables and transformers carry, and site capacity is agreed in kVA. It is calculated here from kWh and kVArh. On sites with many LED drivers, drives or EV chargers, a meter's measured kVAh can be higher."
+      : measure === "reactive"
       ? "Lagging and leading are kept apart, because netting them off hides problems. The allowance is an estimate, so check your network operator's charging statement."
       : `Power factor shows how much of the power drawn does useful work. Below ${PROTO_PF_TARGET}, suppliers may charge for reactive energy. Half hours with very low use are left out, because their power factor says little.`;
   return `
@@ -21360,11 +21435,12 @@ function protoDemandPane(meters) {
   ];
   if (!protoCapacityBlockedFor(meters)) {
     const kva = protoSiteCapacityKva(meters[0]);
-    const capKw = protoCapacityKw(kva);
+    const at = protoCapacityPf(meters);
+    const capKw = protoCapacityKw(kva, at.pf);
     figures.push({
       name: "Highest demand against site capacity",
       value: `${Math.round((top.kw / capKw) * 100)}%`,
-      note: `Site capacity ${kva.toLocaleString("en-GB")} kVA, about ${protoFormatAmount(capKw, 1)} kW`,
+      note: `Site capacity ${kva.toLocaleString("en-GB")} kVA, about ${protoFormatAmount(capKw, 1)} kW ${protoCapacityPfWords(at)}`,
     });
   }
   const spec = PROTO_BREAKDOWN_FOLDS.summary;
