@@ -11121,8 +11121,8 @@ tr.is-off .astral-person-mark {
 }
 
 .astral-tag.is-own {
-  background: var(--color-brand-cyan);
-  color: #000;
+  background: var(--color-flow-in);
+  color: var(--color-action-on-primary, #fff);
 }
 
 .astral-meter-src-cell {
