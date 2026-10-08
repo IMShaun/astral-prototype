@@ -215,14 +215,14 @@ patterns:
     name: Stable controls
     level: foundation
     user_goal: Click through tabs or options without the control moving away from the pointer
-    objects: [tabs, segmented-control, tree, stat-card, pagination]
+    objects: [tabs, segmented-control, tree, stat-card, pagination, select, choice-card, period-table]
     actions: [switch, select, filter]
-    used_in: [Alerts, Reports, Downloads]
+    used_in: [Alerts, Reports, Downloads, Site settings, Meter settings]
     entry_points:
       - Any control clicked repeatedly to switch between items
     structure: Reserve the size of anything above the control so every state puts it in the same place
-    components: [astral-page-tools, astral-page-actions, astral-tabs]
-    states: [each-tab, with-action, without-action, loading]
+    components: [astral-page-tools, astral-page-actions, astral-tabs, astral-own-head, astral-period-table]
+    states: [each-tab, with-action, without-action, loading, read-only, editable]
     permissions: all
     content_terms: []
     variants: []
