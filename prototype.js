@@ -7039,6 +7039,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
           <p class="astral-chart-title">${escapeHtml(heading.title)}</p>
           ${heading.when ? `<p class="astral-chart-when">${escapeHtml(heading.when)}</p>` : ""}
         </div>
+        ${heading.tools ? `<div class="astral-chart-nav">${heading.tools}</div>` : ""}
       </div>`
           : titled || pan
           ? `<div class="astral-chart-head">
@@ -8986,6 +8987,12 @@ function protoPickSelect(id, value) {
     if (id === "usage-type") patch.prototypeUsageCompany = "";
     setProto(patch);
     protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
+    return;
+  }
+  if (id === "weather-measure") {
+    const measure = PROTO_WEATHER_MEASURES.some((item) => item.id === value) ? String(value) : "temperature";
+    setProto({ prototypeSelectOpen: "", prototypeWeatherMeasure: measure, prototypeChartPoint: null });
+    protoRestoreFocus(`#astral-fs [data-proto-select="weather-measure"] .astral-select-btn`);
     return;
   }
   if (id === "chart-profile") {
@@ -19716,9 +19723,9 @@ function protoWeatherAllowed() {
 }
 
 const PROTO_WEATHER_MEASURES = [
-  { id: "temperature", name: "Temperature" },
-  { id: "degree", name: "Degree days" },
-  { id: "rain", name: "Rainfall" },
+  { id: "temperature", name: "Temperature", note: "Average temperature in °C" },
+  { id: "degree", name: "Degree days", note: "Heating and cooling degree days" },
+  { id: "rain", name: "Rainfall", note: "Total rainfall in mm" },
 ];
 
 const PROTO_DEGREE_BASE = 15.5;
@@ -19913,20 +19920,19 @@ function protoWeatherFigureGroup(name, figures) {
   `;
 }
 
-function protoWeatherMeasureSwitch(measure) {
-  return `
-    <div class="astral-weather-measure">
-      <p id="astral-weather-measure-name" class="sr-only">Measure</p>
-      <div class="astral-tabs astral-weather-measures" role="radiogroup" aria-labelledby="astral-weather-measure-name">
-        ${PROTO_WEATHER_MEASURES.map((item) => {
-          const on = item.id === measure;
-          return `<button type="button" role="radio" class="${on ? "is-on" : ""}" aria-checked="${on ? "true" : "false"}" tabindex="${
-            on ? "0" : "-1"
-          }" data-proto-weather-measure="${item.id}">${escapeHtml(item.name)}</button>`;
-        }).join("")}
-      </div>
-    </div>
-  `;
+// The measure is picked from the graph header, where other graphs keep Chart settings.
+function protoWeatherMeasureSelect(measure) {
+  const name = PROTO_WEATHER_MEASURES.find((item) => item.id === measure)?.name || "Temperature";
+  return protoSelect({
+    id: "weather-measure",
+    label: `Measure, ${name}`,
+    value: measure,
+    options: PROTO_WEATHER_MEASURES.map((item) => ({
+      value: item.id,
+      label: item.name,
+      note: item.note,
+    })),
+  });
 }
 
 function protoWeatherChart(rows, measure) {
@@ -19963,7 +19969,7 @@ function protoWeatherChart(rows, measure) {
         dual,
         still: true,
         ...(dual ? { keyNames: { in: "Heating degree days", out: "Cooling degree days" } } : {}),
-        heading: { title, when: `${protoChartWhen()} ${protoChartZone()}` },
+        heading: { title, when: `${protoChartWhen()} ${protoChartZone()}`, tools: protoWeatherMeasureSelect(measure) },
       })
   );
 }
@@ -19980,9 +19986,15 @@ function protoWeatherPane(site) {
   const degreeNote = `<p class="astral-weather-note">Degree days measure weather, not energy use. They count how far each day's average temperature fell below or rose above ${PROTO_DEGREE_BASE} °C.</p>`;
   if (measure === "degree" && kind === "interval") {
     return `
-      ${protoWeatherMeasureSwitch(measure)}
-      ${source}
+      <div class="astral-chart-head">
+        <div class="astral-chart-heading">
+          <p class="astral-chart-title">Heating and cooling degree days</p>
+          <p class="astral-chart-when">${escapeHtml(`${protoChartWhen()} ${protoChartZone()}`)}</p>
+        </div>
+        <div class="astral-chart-nav">${protoWeatherMeasureSelect(measure)}</div>
+      </div>
       <p class="astral-banner">Degree days are counted for whole days. Choose a date range of 2 days or more.</p>
+      ${source}
     `;
   }
   const groups =
@@ -20013,10 +20025,9 @@ function protoWeatherPane(site) {
     inner: `<div class="astral-pane-summary">${groups.join("")}</div>`,
   });
   return `
-    ${protoWeatherMeasureSwitch(measure)}
+    ${protoWeatherChart(rows, measure)}
     ${source}
     ${measure === "degree" ? degreeNote : ""}
-    ${protoWeatherChart(rows, measure)}
     ${summary}
   `;
 }
@@ -31300,6 +31311,7 @@ function protoFloatPlaceBox(menu, host, trigger) {
 
 function protoFloatAlign(menu, host) {
   if (host.classList.contains("astral-search-add")) return "stretch";
+  if (host.parentElement?.classList.contains("astral-chart-nav")) return "end";
   if (
     menu.classList.contains("astral-select-menu") ||
     menu.classList.contains("astral-date-menu") ||
@@ -31386,7 +31398,9 @@ function protoPlaceFloatMenus() {
     if (align === "stretch") {
       menu.style.width = `${Math.round(rect.width)}px`;
       menu.style.minWidth = `${Math.round(rect.width)}px`;
-    } else if (align === "start") menu.style.minWidth = `${Math.round(rect.width)}px`;
+    } else if (align === "start" || menu.classList.contains("astral-select-menu")) {
+      menu.style.minWidth = `${Math.round(rect.width)}px`;
+    }
     const preferUp = protoFloatPreferUp(menu, host);
     const roomBelow = floor - (rect.bottom + gap);
     const roomAbove = rect.top - gap - (box.top + margin);
@@ -31711,7 +31725,6 @@ function protoSlideNavPills(options) {
     "chartStyle",
     snap
   );
-  protoSlideHost(root.querySelector(".astral-weather-measures"), "button.is-on", "weatherMeasure", snap);
 }
 
 function protoPickMeterAttrTab(id) {
@@ -34182,14 +34195,6 @@ function onPrototype(event) {
     );
     return;
   }
-  const weatherBtn = event.target.closest("[data-proto-weather-measure]");
-  if (weatherBtn) {
-    const pick = weatherBtn.dataset.protoWeatherMeasure;
-    const measure = PROTO_WEATHER_MEASURES.some((item) => item.id === pick) ? pick : "temperature";
-    if (measure !== protoWeatherMeasure()) setProto({ prototypeWeatherMeasure: measure, prototypeChartPoint: null });
-    protoRestoreFocus(`[data-proto-weather-measure="${measure}"]`);
-    return;
-  }
   const chartStyleBtn = event.target.closest("[data-proto-chart-style]");
   if (chartStyleBtn) {
     const pick = chartStyleBtn.dataset.protoChartStyle;
@@ -35723,7 +35728,7 @@ function onPrototypeKey(event) {
     return;
   }
   const typeRadio = event.target.closest(
-    ".astral-report-types [role='radio'], .astral-chart-style-switch [role='radio'], .astral-weather-measures [role='radio'], [role='radio'][data-proto-report-tenant-pays], [role='radio'][data-proto-report-tax-incl], [role='radio'][data-proto-export-opt]"
+    ".astral-report-types [role='radio'], .astral-chart-style-switch [role='radio'], [role='radio'][data-proto-report-tenant-pays], [role='radio'][data-proto-report-tax-incl], [role='radio'][data-proto-export-opt]"
   );
   if (typeRadio && ["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) {
     event.preventDefault();
