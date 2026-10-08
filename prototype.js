@@ -22834,10 +22834,9 @@ function protoMeterRow(meter) {
   const facts = protoMeterFacts(meter);
   const channel = facts.channel;
   const title = [facts.refName, facts.ref].filter(Boolean).join(" ");
-  const parts = protoMeterOwnParts(meter.id);
-  const source = parts.length
-    ? protoTag("Custom", "", "is-own")
-    : `<span class="astral-muted">From site</span>`;
+  const own = protoMeterOverride(meter.id);
+  const modes = protoMeterOwnParts(meter.id).map((part) => protoSrcMode(own, part, true));
+  const source = protoMeterSourceTag(modes.includes("own") ? "own" : modes[0] || "site");
   const cells = `
         <span class="astral-meter-ref">${protoMeterMark(meter.commodity)}<span>${escapeHtml(title)}</span></span>
         <span class="astral-meter-channel">${protoFlowPill(protoFlowKind(channel) || "in")}</span>
@@ -22857,16 +22856,14 @@ function protoMeterList(meters) {
   return `
     <div class="astral-meter-list">
       <h4 class="astral-meter-list-title">Meters <span>${rows.length}</span></h4>
-      <div class="astral-meter-list-box">
-        <div class="astral-meter-list-head">
-          <span>Meter</span>
-          <span>Channel</span>
-          <span>Settings</span>
-          <span>Unit rate</span>
-          <span>Use, last 24 hours</span>
-        </div>
-        ${rows.map((meter) => protoMeterRow(meter)).join("")}
+      <div class="astral-meter-list-head">
+        <span>Meter</span>
+        <span>Channel</span>
+        <span>Settings</span>
+        <span>Unit rate</span>
+        <span>Use, last 24 hours</span>
       </div>
+      ${rows.map((meter) => protoMeterRow(meter)).join("")}
     </div>
   `;
 }
