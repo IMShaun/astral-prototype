@@ -23002,13 +23002,12 @@ function protoPresetLine(part, rows, week) {
     const [h, m] = String(value || "0").split(/[.:]/).map(Number);
     return (h || 0) * 60 + (m || 0);
   };
-  const pct = (n) => `${Math.round((n / 1440) * 10000) / 100}%`;
   const fill = (row) =>
     protoDayPeriods(row, part)
       .map((p) => {
-        const from = mins(p.from);
+        const span = Math.max(mins(p.to) - mins(p.from), 0);
         const cls = PROTO_ZONE_BADGES[marks[p.status]]?.cls || "";
-        return `<span class="astral-preset-seg ${cls}" style="left:${pct(from)};width:${pct(mins(p.to) - from)}"></span>`;
+        return span ? `<span class="astral-preset-seg ${cls}" style="flex-grow:${span}"></span>` : "";
       })
       .join("");
   const spoken = week ? protoWeekNote(part, rows) : rows.map((row) => protoPresetTimes(part, row));
@@ -23017,7 +23016,7 @@ function protoPresetLine(part, rows, week) {
       .map(
         (row, d) => `
           <span class="astral-preset-line-cell" title="${escapeHtml(`${PROTO_WEEKDAYS[d]}, ${protoTimesInline(protoPresetTimes(part, row))}`)}">
-            <span class="astral-preset-line-square">${fill(row)}</span>
+            <span class="astral-preset-line-track">${fill(row)}</span>
             <span class="astral-preset-line-day">${PROTO_WEEKDAYS[d].slice(0, 3)}</span>
           </span>`,
       )
@@ -23032,7 +23031,7 @@ function protoPresetLine(part, rows, week) {
     .join("");
   return `
     <span class="astral-preset-line is-day" aria-hidden="true">
-      <span class="astral-preset-line-bar" title="${escapeHtml(spoken.join(". "))}">${fill(rows[0])}</span>
+      <span class="astral-preset-line-track" title="${escapeHtml(spoken.join(". "))}">${fill(rows[0])}</span>
       <span class="astral-preset-line-ticks">${ticks}</span>
     </span>
     <span class="sr-only">${escapeHtml(spoken.join(". "))}</span>
