@@ -14385,8 +14385,7 @@ html.is-classic-scroll #astral-fs .is-scroll-near {
   font-size: 0.875rem;
 }
 
-/* Weather tab. One measure at a time, with its source and units said in words. */
-.astral-weather-source,
+/* Weather tab. One measure at a time, with its units said in words. */
 .astral-weather-note {
   margin: 0;
   color: var(--color-text-secondary);

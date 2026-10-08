@@ -19974,15 +19974,12 @@ function protoWeatherChart(rows, measure) {
   );
 }
 
-// One measure at a time: its graph, then its figures. Units, the source and its distance are always said.
+// One measure at a time: its graph, then its figures. Units are always said.
 function protoWeatherPane(site) {
   const measure = protoWeatherMeasure();
   const station = protoWeatherStation(site);
   const kind = protoDateSpan().kind;
   const rows = protoWeatherRows(station);
-  const source = `
-    <p class="astral-weather-source">Met Office readings from ${escapeHtml(station.name)} weather station, ${station.km} km from ${escapeHtml(site.name)}</p>
-  `;
   const degreeNote = `<p class="astral-weather-note">Degree days measure weather, not energy use. They count how far each day's average temperature fell below or rose above ${PROTO_DEGREE_BASE} °C.</p>`;
   if (measure === "degree" && kind === "interval") {
     return `
@@ -19994,7 +19991,6 @@ function protoWeatherPane(site) {
         <div class="astral-chart-nav">${protoWeatherMeasureSelect(measure)}</div>
       </div>
       <p class="astral-banner">Degree days are counted for whole days. Choose a date range of 2 days or more.</p>
-      ${source}
     `;
   }
   const groups =
@@ -20026,7 +20022,6 @@ function protoWeatherPane(site) {
   });
   return `
     ${protoWeatherChart(rows, measure)}
-    ${source}
     ${measure === "degree" ? degreeNote : ""}
     ${summary}
   `;
