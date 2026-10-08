@@ -26079,7 +26079,6 @@ function protoAlerts() {
     <section class="astral-card astral-reports-sheet astral-alerts-sheet">
       ${protoAlertTools()}
       <div class="astral-stack">${cards || empty}</div>
-      <p class="astral-muted">Every flag here is something a customer would otherwise find from a bill or a missed reading.</p>
     </section>
   `);
 }
