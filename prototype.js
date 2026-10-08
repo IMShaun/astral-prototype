@@ -2052,6 +2052,7 @@ function protoVisibleGroups() {
         )
         .map((site) => ({
           ...site,
+          listed: protoMetersListed(site.meters, picked),
           meters: protoMetersVisible(site.meters, picked),
         }))
         .filter((site) => site.meters.length);
@@ -19272,11 +19273,22 @@ function protoMetersVisible(meters, picked) {
   return (meters || []).filter((item) => protoMeterKindOn(protoMeterKind(item), meterPicks));
 }
 
+// Meters a site has, for counts. Graphs leave water out by default because m³ cannot share a kWh axis, but a count must not.
+function protoMetersListed(meters, picked) {
+  const ids = Array.isArray(picked) ? picked : [];
+  if (ids.includes("__none__")) return [];
+  return protoPickedInGroup(ids, "meter").length ? protoMetersVisible(meters, ids) : meters || [];
+}
+
 function protoSitesForPane(sites) {
   const picked = protoPaneEffectiveFilterIds();
   return (sites || [])
     .filter((site) => protoSitePassesFilter(site, picked))
-    .map((site) => ({ ...site, meters: protoMetersVisible(site.meters, picked) }))
+    .map((site) => ({
+      ...site,
+      listed: protoMetersListed(site.meters, picked),
+      meters: protoMetersVisible(site.meters, picked),
+    }))
     .filter((site) => site.meters.length);
 }
 
@@ -20108,9 +20120,10 @@ function protoSiteMeterNoun(meters) {
 }
 
 function protoSiteButton(site, on) {
-  const n = site.meters.length;
-  const noun = protoSiteMeterNoun(site.meters);
-  const refs = (site.meters || []).map((item) => protoMeterRef(item)).filter(Boolean);
+  const listed = site.listed || site.meters;
+  const n = listed.length;
+  const noun = protoSiteMeterNoun(listed);
+  const refs = listed.map((item) => protoMeterRef(item)).filter(Boolean);
   const tip = refs.length ? `${n} ${noun}. ${refs.join(". ")}` : `${n} ${noun}`;
   const count = n
     ? protoIconTip(`<span class="astral-count">${n}</span>`, tip)
@@ -25307,7 +25320,7 @@ function protoGroupDetail(group) {
     : points.filter((p) =>
         dual ? p.quality === "missing" || p.lastQuality === "missing" : p.quality === "missing"
       ).length;
-  const meterCount = paneSites.reduce((n, site) => n + (site.meters || []).length, 0);
+  const meterCount = paneSites.reduce((n, site) => n + (site.listed || site.meters || []).length, 0);
   const kicker = protoPaneKicker(
     protoPaneAbove(protoIsAllGroup(group.id) ? "all" : "group", group)
   );
@@ -25323,7 +25336,7 @@ function protoGroupDetail(group) {
   const rows = viewSites
     .map((site) => {
       const words = protoSiteFlagWords(site);
-      const meters = protoMeterCountWords(site.meters.length, site.meters);
+      const meters = protoMeterCountWords((site.listed || site.meters).length);
       return `
         <tr data-proto-site="${escapeHtml(site.meters[0]?.id || "")}">
           <td>${escapeHtml(site.name)}</td>
@@ -25485,7 +25498,7 @@ function protoCompareDetail() {
         : profileSites
             .map((site) => {
               const words = protoSiteFlagWords(site);
-              const count = protoMeterCountWords(site.meters.length, site.meters);
+              const count = protoMeterCountWords((site.listed || site.meters).length);
               return `
               <tr data-proto-site="${escapeHtml(protoSiteId(site))}">
                 <td>${escapeHtml(site.name)}</td>
