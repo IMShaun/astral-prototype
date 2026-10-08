@@ -11186,14 +11186,9 @@ tr.is-off .astral-person-mark {
   grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
 }
 
-.astral-meter-own p.astral-muted,
-.astral-meter-own-note {
+.astral-meter-own p.astral-muted {
   margin: 0;
   font-size: 0.875rem;
-}
-
-.astral-meter-own-note {
-  margin-bottom: 16px;
 }
 
 /* Settings for: the site, or one meter that sets its own. */

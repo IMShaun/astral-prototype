@@ -22506,12 +22506,7 @@ function protoMeterProfileForm(meter) {
     `;
     const tag = `<span class="astral-muted">${list.length} ${one ? "meter sets its own" : "meters set their own"}</span>`;
     if (!pick) {
-      return {
-        tag,
-        html: `${select}<p class="astral-muted astral-meter-own-note">${list.length} ${one ? "meter sets its own" : "meters set their own"} ${words}, so changes here do not reach ${
-          one ? "it" : "them"
-        }. Choose ${one ? "it" : "one"} in Settings for to change it.</p>${siteBodies[part]}`,
-      };
+      return { tag, html: `${select}${siteBodies[part]}` };
     }
     const own = protoMeter(pick);
     const ownDraft = protoMeterOwnDraft(pick);
@@ -22752,6 +22747,17 @@ function protoSiteFacts(site) {
   return { ...protoMeterFacts(meter, protoSiteProfile(meter?.id)), attrs: protoSiteAttrSummary(meter) };
 }
 
+// Site profile has no graph, so water sits with electricity and gas unless a meter filter says otherwise.
+function protoProfileMeters(site, all = false) {
+  const ids = protoPaneEffectiveFilterIds();
+  if (ids.includes("__none__")) return [];
+  const picks = protoPickedInGroup(ids, "meter");
+  const meters = picks.length ? protoMetersVisible(site?.meters || [], ids) : site?.meters || [];
+  if (all) return meters;
+  const picked = new Set(protoSiteMeterIds({ meters }));
+  return meters.filter((item) => picked.has(item.id));
+}
+
 function protoProfilePane(sites) {
   const rows = protoSortedRows("site-profile", (sites || []).filter(Boolean), (site, key) => {
     const facts = protoSiteFacts(site);
@@ -22765,8 +22771,8 @@ function protoProfilePane(sites) {
     return `<p class="astral-muted">No sites match these filters.</p>`;
   }
   if (rows.length === 1) {
-    const meters = protoSiteViewMeters(rows[0]);
-    const onSite = protoMetersForPane(rows[0].meters || []);
+    const meters = protoProfileMeters(rows[0]);
+    const onSite = protoProfileMeters(rows[0], true);
     const lead =
       meters.length === 1 && onSite.length > 1
         ? protoMeterInheritOverview(meters[0], rows[0])
