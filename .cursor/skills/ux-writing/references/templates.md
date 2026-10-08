@@ -183,11 +183,11 @@ Short: {State}
 Long: Same. A tag has no long form.
 Formal: Same
 Informal: Same
-When: A short fact on a row, card or heading, such as Own settings, From site or Live. The column heading or the field around it gives the context, so the tag does not repeat it.
+When: A short fact on a row, card or heading, such as Custom, From site or Live. The column heading or the field around it gives the context, so the tag does not repeat it.
 Do: Keep the tag to about 15 characters. Put the detail where the user goes next, such as the opened row, the settings or a tip.
 Don't: List the parts in the tag, such as Own time of use and unit rates. A long tag crowds the row, wraps on small screens and is slow to scan.
 Why: A tag is read at a glance down a column. Short tags line up and compare.
-Example: Settings column on the meter list shows Own settings or From site. The meter's settings say which parts it sets (commit 3f8d89c).
+Example: Settings column on the meter list shows Custom or From site. The meter's settings say which parts it sets (commit 3f8d89c).
 
 ## Home metric card
 
