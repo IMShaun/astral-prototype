@@ -11244,6 +11244,20 @@ tr.is-off .astral-person-mark {
   width: min(36rem, 100%);
 }
 
+/* Saved presets stack in one column, each as tall as its own times. */
+.astral-report-types.is-list {
+  grid-template-columns: 1fr;
+  grid-auto-rows: auto;
+}
+
+.astral-report-types.is-list .astral-muted {
+  display: block;
+}
+
+.astral-empty.astral-preset-empty {
+  min-height: 10rem;
+}
+
 .astral-meter-src-cards .astral-report-type:disabled {
   background: #fff;
   cursor: default;
