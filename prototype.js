@@ -3481,6 +3481,52 @@ function protoDateCompareBars(rows, remake, scale, flow, fromLast) {
   };
 }
 
+// Lines compare dates the same way as bars: one flow, two solid lines, keyed by their dates.
+function protoDateCompareLines(points, remake, meters, dualTotal, outgoing, label) {
+  const ids = protoChartFlowIds();
+  const flow = dualTotal ? (ids.length === 1 ? ids[0] : "") : outgoing ? "out" : "in";
+  const scale = (rows) => protoScalePoints(rows, meters);
+  const pair = protoDateCompareBars(scale(points || []), remake, scale, flow, dualTotal && flow === "out");
+  if (!pair) return null;
+  const off = protoChartPairOff(label);
+  const side = (kind) =>
+    pair.points.map((p) => ({
+      ...p,
+      value: kind === "in" ? p.value : p.last,
+      quality: kind === "in" ? p.quality : p.lastQuality,
+      last: null,
+      lastQuality: "",
+      nowLabel: "",
+      lastLabel: "",
+      nowColor: "",
+      lastColor: "",
+      spokenAt: kind === "in" ? p.nowLabel : p.lastLabel,
+      tip: {
+        value: p.value,
+        quality: p.quality,
+        last: p.last,
+        lastQuality: p.lastQuality,
+        nowLabel: p.nowLabel,
+        lastLabel: p.lastLabel,
+        nowColor: p.nowColor,
+        lastColor: p.lastColor,
+        meterId: "",
+        meterRef: "",
+        meterColor: "",
+      },
+    }));
+  const tracks = ["in", "out"]
+    .filter((kind) => off !== kind)
+    .map((kind) => ({
+      id: kind === "in" ? "now" : "cmp",
+      ref: pair.keyNames[kind],
+      color: pair.keyNames.fills[kind],
+      dash: "",
+      points: side(kind),
+    }));
+  return { tracks, flow, keyNames: pair.keyNames };
+}
+
 // Average profile: the usual pattern, from the 4 weeks before the dates shown. Not the Summary's single average.
 const PROTO_PROFILE = [
   {
@@ -5297,7 +5343,9 @@ function protoUseMeterLines(meters) {
   return protoChartIsIndividual() && protoChartIsLine();
 }
 
+// Compare dates sets two date ranges side by side, so the graph shows the total while it is on.
 function protoChartView() {
+  if (protoDateCompareOn()) return "total";
   return store.prototypeChartView === "individual" ? "individual" : "total";
 }
 
@@ -6595,13 +6643,20 @@ function protoChartViewSelect(more = {}) {
         ? `Combined carbon for ${where}`
         : `How much ${where} used`;
   const calendar = protoCalendarAllowed();
+  const pairing = Boolean(protoDateCompareOn());
   return protoSelect({
     id: "chart-view",
     label: `${total} or ${individual}`,
     value: protoChartIsCalendar() ? "calendar" : view,
     options: [
       { value: "total", label: total, note: totalNote },
-      { value: "individual", label: individual, note: `Which ${parts} made that total` },
+      {
+        value: "individual",
+        label: individual,
+        note: `Which ${parts} made that total`,
+        disabled: pairing,
+        tip: pairing ? `Turn off Compare dates to see ${individual.toLowerCase()}.` : "",
+      },
       ...(calendar ? [{ value: "calendar", label: "Calendar", note: "Each day's total, a month at a time" }] : []),
     ],
     ...more,
@@ -6928,6 +6983,17 @@ function protoPaintPaneChart({ tracks, points, meters, all, dual, outgoing, rema
         color: track.color,
         points: track.points || [],
       }));
+    const pairLines = !breakdown && protoDateCompareSpan() ? protoDateCompareLines(points, remake, list, dualTotal, outgoing, name) : null;
+    if (pairLines) {
+      return protoLineChart(pairLines.tracks, name, {
+        dual: true,
+        datePair: pairLines.flow,
+        keyNames: pairLines.keyNames,
+        zoneMeters: list,
+        refs: protoProfileRefs(remake, lineRefs),
+        weekends: true,
+      });
+    }
     const refs = [...protoDateCompareRefs(remake, lineRefs), ...protoProfileRefs(remake, lineRefs)];
     return lineTracks.length
       ? protoLineChart(lineTracks, name, { dual: dualTotal, zoneMeters: list, refs, weekends: true })
@@ -7109,7 +7175,7 @@ function protoChartOverlayNote() {
 // Defaults: Total consumption, Bar, no overlay, no average profile and no highlight.
 function protoChartSettingsDefault() {
   return (
-    protoChartView() === "total" &&
+    store.prototypeChartView !== "individual" &&
     protoChartStyle() === "bar" &&
     !protoChartPicked().length &&
     !protoProfileId() &&
@@ -8574,6 +8640,7 @@ function protoLineChartBuild(tracks, label, options) {
             meterId: track.id,
             meterRef: track.ref,
             meterColor: track.color,
+            ...(p.tip || {}),
           };
           const refRows = protoRefRowsAt(options.refs, i, track.id);
           if (refRows.length) hit.refs = refRows;
@@ -8600,7 +8667,7 @@ function protoLineChartBuild(tracks, label, options) {
                 tabindex="0"
                 role="img"
                 aria-label="${escapeHtml(
-                  `${p.label}, ${track.ref}, ${protoFormatReading(p.value, p.unit || "kWh")}${
+                  `${p.spokenAt || p.label}, ${track.ref}, ${protoFormatReading(p.value, p.unit || "kWh")}${
                     p.quality === "estimated" ? ", estimated" : ""
                   }${protoZoneWords(buckets[i], zones)}${protoRefWords(refRows, p.unit || "kWh")}${
                     weekend.flags[i] ? ". Weekend" : ""
@@ -8637,6 +8704,10 @@ function protoLineChartBuild(tracks, label, options) {
     zoneSet,
     refs: options.refs,
     weekends: Boolean(weekend.back),
+    keyNames: options.keyNames,
+    datePair: options.datePair,
+    heading: options.heading,
+    still: options.still,
   });
 }
 
