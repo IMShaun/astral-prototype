@@ -11213,13 +11213,24 @@ tr.is-off .astral-person-mark {
   max-width: 40rem;
 }
 
-/* The times panel heading, with the preset button top right. */
+/* The times panel heading, with the preset buttons top right. */
 .astral-times-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   min-width: 0;
+}
+
+.astral-times-actions {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+
+.astral-preset-save-body {
+  display: grid;
+  gap: 16px;
 }
 
 .astral-times-title {

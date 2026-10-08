@@ -5187,6 +5187,7 @@ const CHROME_FIELDS = [
   "prototypeMeterProfiles",
   "prototypeMeterDrafts",
   "prototypeMeterOverrides",
+  "prototypeCustomPresets",
   "prototypeMeterOwnDrafts",
   "prototypeBreakdownOpen",
   "prototypeListOpen",
@@ -5493,6 +5494,9 @@ function applyChrome() {
   store.prototypeMeterOwn = String(store.prototypeMeterOwn || "");
   if (store.prototypeMeterOverrides != null && (typeof store.prototypeMeterOverrides !== "object" || Array.isArray(store.prototypeMeterOverrides))) {
     delete store.prototypeMeterOverrides;
+  }
+  if (store.prototypeCustomPresets != null && (typeof store.prototypeCustomPresets !== "object" || Array.isArray(store.prototypeCustomPresets))) {
+    delete store.prototypeCustomPresets;
   }
   store.prototypeMeterOwnDrafts =
     store.prototypeMeterOwnDrafts && typeof store.prototypeMeterOwnDrafts === "object" && !Array.isArray(store.prototypeMeterOwnDrafts)

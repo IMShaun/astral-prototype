@@ -2484,9 +2484,41 @@ function protoDayPeriods(row, part) {
 
 // The profile a day's periods match exactly, if any.
 function protoPeriodProfile(part, periods) {
-  const spec = PROTO_PERIOD_SPEC[part];
   const key = JSON.stringify(periods);
-  return spec.presets.find((preset) => JSON.stringify(spec.presetPeriods(preset)) === key)?.id || "";
+  return protoDayPresets(part).find((preset) => JSON.stringify(protoPresetPeriods(part, preset)) === key)?.id || "";
+}
+
+// Presets someone saves sit after the standard ones. A saved day holds any periods. A saved week holds every day's times.
+function protoCustomPresets(part) {
+  const own = (store.prototypeCustomPresets || {})[part] || {};
+  return { days: Array.isArray(own.days) ? own.days : [], weeks: Array.isArray(own.weeks) ? own.weeks : [] };
+}
+
+function protoDayPresets(part) {
+  return [...(PROTO_PERIOD_SPEC[part]?.presets || []), ...protoCustomPresets(part).days];
+}
+
+function protoWeekPresets(part) {
+  return [...(PROTO_WEEK_PRESETS[part] || []), ...protoCustomPresets(part).weeks];
+}
+
+function protoPresetPeriods(part, preset) {
+  if (Array.isArray(preset?.periods)) return preset.periods.map((p) => ({ status: p.status, from: p.from, to: p.to }));
+  return PROTO_PERIOD_SPEC[part].presetPeriods(preset);
+}
+
+function protoPresetOptions(standard, own) {
+  const pick = (item) => ({ value: item.id, label: item.name });
+  if (!own.length) return standard.map(pick);
+  return [{ heading: "Standard presets" }, ...standard.map(pick), { heading: "Your presets" }, ...own.map(pick)];
+}
+
+function protoDayPresetOptions(part) {
+  return protoPresetOptions(PROTO_PERIOD_SPEC[part].presets, protoCustomPresets(part).days);
+}
+
+function protoWeekPresetOptions(part) {
+  return protoPresetOptions(PROTO_WEEK_PRESETS[part] || [], protoCustomPresets(part).weeks);
 }
 
 // Settings saved before periods held one block a day. Turn them into periods.
@@ -2790,14 +2822,21 @@ function protoSrcMode(draft, part, meterLevel) {
 }
 
 function protoWeekPreset(part, id) {
-  return (PROTO_WEEK_PRESETS[part] || []).find((week) => week.id === id) || null;
+  return protoWeekPresets(part).find((week) => week.id === id) || null;
 }
 
 function protoWeekRows(part, week) {
-  const spec = PROTO_PERIOD_SPEC[part];
+  if (Array.isArray(week.rows)) {
+    return PROTO_WEEKDAYS.map((day, d) => ({
+      day,
+      profile: week.rows[d]?.profile || "",
+      periods: protoPresetPeriods(part, { periods: week.rows[d]?.periods || [] }),
+    }));
+  }
+  const presets = protoDayPresets(part);
   return PROTO_WEEKDAYS.map((day, d) => {
-    const preset = spec.presets.find((item) => item.id === week.days[d]) || spec.presets[0];
-    return { day, profile: preset.id, periods: spec.presetPeriods(preset) };
+    const preset = presets.find((item) => item.id === week.days[d]) || presets[0];
+    return { day, profile: preset.id, periods: protoPresetPeriods(part, preset) };
   });
 }
 
@@ -2829,9 +2868,9 @@ function protoStartPreset(draft, part, kind) {
     protoUseWeek(draft, part, protoWeekFor(part, draft[part]));
     return;
   }
-  const spec = PROTO_PERIOD_SPEC[part];
+  const presets = protoDayPresets(part);
   draft[part] = (draft[part] || []).map((row) =>
-    spec.presets.some((item) => item.id === row.profile) ? row : { ...row, profile: spec.presets[0].id, periods: spec.presetPeriods(spec.presets[0]) }
+    presets.some((item) => item.id === row.profile) ? row : { ...row, profile: presets[0].id, periods: protoPresetPeriods(part, presets[0]) }
   );
   draft.weeks = { ...(draft.weeks || {}), [part]: PROTO_DAY_BY_DAY };
 }
@@ -3078,14 +3117,13 @@ function protoPickMeterProfileSelect(id, value) {
   const profile = String(id).match(/^meter-(hours|tou)-profile-(.+)-(\d+)$/);
   if (profile) {
     const [, part, owner, d] = profile;
-    const spec = PROTO_PERIOD_SPEC[part];
-    const preset = spec.presets.find((item) => item.id === value);
+    const preset = protoDayPresets(part).find((item) => item.id === value);
     if (!preset) return;
     protoPatchMeterDraft(owner, (draft) => {
       const row = draft[part]?.[Number(d)];
       if (!row) return;
       row.profile = preset.id;
-      row.periods = spec.presetPeriods(preset);
+      row.periods = protoPresetPeriods(part, preset);
     });
     protoRestoreFocus(`#astral-fs [data-proto-select="${CSS.escape(id)}"] .astral-select-btn`);
   }
@@ -9441,6 +9479,12 @@ function protoCloseModal(kind) {
     if (id) protoRestoreFocus(`#astral-fs [data-proto-alert-info="${CSS.escape(id)}"]`);
     return;
   }
+  if (kind === "preset-save") {
+    const part = store.prototypePresetSave?.part || "";
+    setProto({ prototypePresetSave: null });
+    if (part) protoRestoreFocus(`#astral-fs [data-proto-preset-save-open="${part}"]`);
+    return;
+  }
   if (kind === "preset-pick") {
     const part = store.prototypePresetPick?.part || "";
     setProto({ prototypePresetPick: null });
@@ -9879,6 +9923,12 @@ function protoReportAddEmail(raw) {
 }
 
 function protoPickSelect(id, value) {
+  if (id === "preset-save-day" && store.prototypePresetSave) {
+    const name = document.querySelector("#astral-preset-name")?.value ?? store.prototypePresetSave.name;
+    setProto({ prototypePresetSave: { ...store.prototypePresetSave, day: Number(value) || 0, name }, prototypeSelectOpen: "" });
+    protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
+    return;
+  }
   if (id === "export-format" || id === "export-range-preset" || id === "export-range-unit") {
     store.prototypeSelectOpen = "";
     protoSetExportPrefs({ [id === "export-format" ? "format" : id === "export-range-unit" ? "rangeUnit" : "rangePreset"]: value });
@@ -22434,7 +22484,7 @@ function protoMeterPeriodTable(id, rows, part, opts = {}) {
             value: row.profile || "",
             placeholder: "Select profile",
             disabled: Boolean(lock),
-            options: spec.presets.map((item) => ({ value: item.id, label: item.name })),
+            options: protoDayPresetOptions(part),
           })}
         </td>
       `;
@@ -22701,7 +22751,7 @@ function protoMeterProfileForm(meter) {
         })}
       </div>
     </form>
-    ${protoPresetPickModal()}
+    ${protoPresetPickModal()}${protoPresetSaveModal()}
   `;
 }
 
@@ -22769,17 +22819,21 @@ function protoTimesPanel(owner, part, mode, body, attrs = "") {
   const cls = attrs ? "astral-own-scope astral-fold-panel" : "astral-fold-panel";
   if (part === "rates") return `<div class="${cls}"${attrs}>${body}</div>`;
   const shared = `data-proto-src-preset="${part}" data-proto-meter-src-owner="${escapeHtml(owner)}"`;
-  const btn =
+  const off = { disabled: !protoCanAct() };
+  const use =
     mode === "preset"
-      ? protoGhost("Stop using preset", `${shared} data-proto-meter-src="${part}" data-proto-meter-src-mode="own"`, {
-          disabled: !protoCanAct(),
-        })
-      : protoGhost("Use a preset", `${shared} data-proto-preset-open="${part}"`, { disabled: !protoCanAct() });
+      ? protoGhost("Stop using preset", `${shared} data-proto-meter-src="${part}" data-proto-meter-src-mode="own"`, off)
+      : protoGhost("Use a preset", `${shared} data-proto-preset-open="${part}"`, off);
+  const save = protoGhost(
+    "Save preset",
+    `data-proto-preset-save-open="${part}" data-proto-meter-src-owner="${escapeHtml(owner)}"`,
+    off
+  );
   return `
     <div class="${cls}"${attrs}>
       <div class="astral-times-head">
         <h5 class="astral-times-title">Times for each day</h5>
-        ${btn}
+        <div class="astral-times-actions">${save}${use}</div>
       </div>
       ${body}
     </div>
@@ -22854,6 +22908,119 @@ function protoPresetPickGo() {
   else protoPickSiteSource(pick.owner, pick.part, "preset", focus, pick.kind);
 }
 
+const PROTO_PRESET_SAVE_KINDS = [
+  ["week", "A full week", "Save the times for every day as one week."],
+  ["day", "One day", "Save the times for one day."],
+];
+
+// The times being saved. A meter that follows the site saves the site's times.
+function protoSrcRows(owner, part) {
+  if (owner.startsWith("own~")) {
+    const id = owner.slice(4);
+    return protoMeterOwnDraft(id)[part] || protoMeterDraft(id)[part] || [];
+  }
+  return protoMeterDraft(owner)[part] || [];
+}
+
+function protoPresetSaveModal() {
+  const save = store.prototypePresetSave;
+  if (!save || !PROTO_PERIOD_SPEC[save.part]) return "";
+  const rows = protoSrcRows(save.owner, save.part);
+  const title = `Save ${save.part === "tou" ? "time of use" : "operational hours"} as a preset`;
+  const cards = PROTO_PRESET_SAVE_KINDS.map(([value, label, note]) => {
+    const on = save.kind === value;
+    return `
+      <button type="button" role="radio" class="astral-report-type${on ? " is-on" : ""}" aria-checked="${on ? "true" : "false"}" tabindex="${
+        on ? "0" : "-1"
+      }" data-proto-preset-save-kind="${value}">
+        <span class="astral-report-type-head">${protoRadio(on)}<span>${escapeHtml(label)}</span></span>
+        <span class="astral-muted">${escapeHtml(note)}</span>
+      </button>
+    `;
+  }).join("");
+  const dayPick =
+    save.kind === "day"
+      ? `
+        <div class="astral-field">
+          <span id="astral-preset-save-day-label">Day</span>
+          ${protoSelect({
+            id: "preset-save-day",
+            label: "Day",
+            labelledby: "astral-preset-save-day-label",
+            value: String(save.day),
+            options: rows.map((row, d) => ({ value: String(d), label: row.day, note: protoPresetTimes(save.part, row) })),
+          })}
+        </div>`
+      : "";
+  const error = save.error || "";
+  return `
+    <div class="astral-modal-back" data-proto-modal="preset-save">
+      <div class="astral-modal astral-preset-pick" id="astral-preset-save" role="dialog" aria-modal="true" aria-labelledby="astral-preset-save-title">
+        ${protoModalHead("astral-preset-save-title", title, "Save these times so you can use them again.", "preset-save")}
+        <div class="astral-modal-body astral-preset-save-body">
+          <div class="astral-report-types is-pair" role="radiogroup" aria-labelledby="astral-preset-save-title">${cards}</div>
+          ${dayPick}
+          <label class="astral-field">
+            <span>Preset name</span>
+            <input type="text" id="astral-preset-name" maxlength="40" autocomplete="off" value="${escapeHtml(save.name || "")}"${
+              error ? ' aria-invalid="true" aria-describedby="astral-preset-name-error"' : ""
+            } />
+          </label>
+          ${error ? `<p class="astral-export-error" id="astral-preset-name-error" role="alert">${escapeHtml(error)}</p>` : ""}
+        </div>
+        <div class="astral-modal-foot">
+          <div class="astral-actions">
+            ${protoBtn("Save preset", 'data-proto-preset-save-go="1"')}
+            ${protoGhost("Cancel", 'data-proto-modal-close="preset-save"')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function protoPresetSaveOpen(owner, part) {
+  if (!protoCanAct() || !PROTO_PERIOD_SPEC[part]) return;
+  protoStashSrcForm(owner);
+  setProto({
+    prototypePresetSave: { owner, part, kind: "week", day: protoPeriodDayId(part, 7), name: "", error: "" },
+    prototypeSelectOpen: "",
+  });
+  protoRestoreFocus("#astral-fs #astral-preset-save .astral-report-type.is-on");
+}
+
+function protoPresetSaveGo() {
+  const save = store.prototypePresetSave;
+  if (!save) return;
+  const name = String(document.querySelector("#astral-preset-name")?.value ?? save.name ?? "").trim();
+  const list = save.kind === "day" ? protoDayPresets(save.part) : protoWeekPresets(save.part);
+  const error = !name
+    ? "Enter a name for the preset."
+    : list.some((item) => item.name.toLowerCase() === name.toLowerCase())
+      ? "A preset with this name already exists. Enter a different name."
+      : "";
+  if (error) {
+    setProto({ prototypePresetSave: { ...save, name, error } });
+    protoRestoreFocus("#astral-fs #astral-preset-name");
+    return;
+  }
+  const rows = protoSrcRows(save.owner, save.part);
+  const own = protoCustomPresets(save.part);
+  const id = `own-${save.kind}-${Date.now().toString(36)}`;
+  const periods = (row) => protoPresetPeriods(save.part, { periods: protoDayPeriods(row, save.part) });
+  if (save.kind === "day") {
+    own.days = [...own.days, { id, name, periods: periods(rows[save.day]) }];
+  } else {
+    const weekRows = rows.map((row) => ({ profile: row.profile || "", periods: periods(row) }));
+    own.weeks = [...own.weeks, { id, name, days: weekRows.map((row) => row.profile), rows: weekRows }];
+  }
+  setProto({
+    prototypeCustomPresets: { ...(store.prototypeCustomPresets || {}), [save.part]: own },
+    prototypePresetSave: null,
+  });
+  protoRestoreFocus(`#astral-fs [data-proto-preset-save-open="${save.part}"]`);
+}
+
 function protoMeterSrcGroup(meter, part, mode, siteName) {
   return protoSrcCards(`own~${meter.id}`, part, mode, [
     ["site", `Follow ${siteName}`, "Updates when the site changes."],
@@ -22899,7 +23066,7 @@ function protoWeekPresetView(owner, part, rows, weekId) {
               value: row.profile || "",
               placeholder: "Select a preset",
               disabled: lock,
-              options: spec.presets.map((item) => ({ value: item.id, label: item.name })),
+              options: protoDayPresetOptions(part),
             })}
           </td>
           <td><span class="astral-week-times">${escapeHtml(protoPresetTimes(part, row))}${
@@ -22921,7 +23088,7 @@ function protoWeekPresetView(owner, part, rows, weekId) {
           value: week?.id || "",
           placeholder: "Select a week",
           disabled: lock,
-          options: (PROTO_WEEK_PRESETS[part] || []).map((item) => ({ value: item.id, label: item.name })),
+          options: protoWeekPresetOptions(part),
         })}
       </div>`;
   return `
@@ -35547,6 +35714,23 @@ function onPrototype(event) {
     protoPresetPickGo();
     return;
   }
+  const presetSaveOpen = event.target.closest("[data-proto-preset-save-open]");
+  if (presetSaveOpen) {
+    protoPresetSaveOpen(String(presetSaveOpen.dataset.protoMeterSrcOwner || ""), String(presetSaveOpen.dataset.protoPresetSaveOpen || ""));
+    return;
+  }
+  const presetSaveKind = event.target.closest("[data-proto-preset-save-kind]");
+  if (presetSaveKind && store.prototypePresetSave) {
+    const kind = String(presetSaveKind.dataset.protoPresetSaveKind || "");
+    const name = document.querySelector("#astral-preset-name")?.value ?? store.prototypePresetSave.name;
+    setProto({ prototypePresetSave: { ...store.prototypePresetSave, kind, name, error: "" } });
+    protoRestoreFocus(`#astral-fs [data-proto-preset-save-kind="${CSS.escape(kind)}"]`);
+    return;
+  }
+  if (event.target.closest("[data-proto-preset-save-go]")) {
+    protoPresetSaveGo();
+    return;
+  }
   const meterSrc = event.target.closest("[data-proto-meter-src]");
   if (meterSrc) {
     const owner = String(meterSrc.dataset.protoMeterSrcOwner || "");
@@ -37573,6 +37757,11 @@ function onPrototypeKey(event) {
     else form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     return;
   }
+  if (event.target.id === "astral-preset-name" && event.key === "Enter") {
+    event.preventDefault();
+    protoPresetSaveGo();
+    return;
+  }
   const tagSearch = event.target.closest("input[name='proto-point-tag-query']");
   if (tagSearch && event.key === "Enter") {
     event.preventDefault();
@@ -37581,7 +37770,7 @@ function onPrototypeKey(event) {
   }
   if (event.key === "Escape" && store?.prototypeFullscreen) {
     const modalKind = document.querySelector(
-      "#astral-fs .astral-modal-back[data-proto-modal^='report-'], #astral-fs .astral-modal-back[data-proto-modal='preset-pick'], #astral-fs .astral-modal-back[data-proto-modal='alert-info'], #astral-fs .astral-modal-back[data-proto-modal='export'], #astral-fs .astral-modal-back[data-proto-modal='date-compare']"
+      "#astral-fs .astral-modal-back[data-proto-modal^='report-'], #astral-fs .astral-modal-back[data-proto-modal^='preset-'], #astral-fs .astral-modal-back[data-proto-modal='alert-info'], #astral-fs .astral-modal-back[data-proto-modal='export'], #astral-fs .astral-modal-back[data-proto-modal='date-compare']"
     )?.dataset.protoModal;
     if (modalKind && !store.prototypeSelectOpen && !store.prototypeReportCalOpen) {
       protoCloseModal(modalKind);
