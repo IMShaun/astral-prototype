@@ -2538,6 +2538,26 @@ function protoPeriodIssues(periods, part) {
   };
 }
 
+// The first stretch of the day no period covers. Null once the periods run with no gap to 24:00.
+function protoPeriodGap(periods) {
+  const list = (periods || []).map((p) => ({ start: protoParseClock(p.from), end: protoParseClock(p.to) }));
+  if (!list.length) return { from: "00.00", to: "24.00" };
+  const save = (hours) => protoClockSave(protoClockOf(hours));
+  if (list.some((p) => p.start == null || p.end == null || p.end <= p.start)) {
+    const end = list[list.length - 1].end;
+    const from = end != null && end < 24 ? save(end) : "";
+    return { from, to: from ? "24.00" : "" };
+  }
+  let at = 0;
+  for (const p of [...list].sort((a, b) => a.start - b.start)) {
+    if (p.start > at) return { from: save(at), to: save(p.start) };
+    at = Math.max(at, p.end);
+  }
+  return at < 24 ? { from: save(at), to: "24.00" } : null;
+}
+
+const PROTO_PERIOD_FULL_TIP = "This day is covered up to 24:00. Shorten a period to add another.";
+
 function protoPeriodsBlocked(draft) {
   return ["hours", "tou"].some((part) =>
     (Array.isArray(draft?.[part]) ? draft[part] : []).some((row) => protoPeriodIssues(protoDayPeriods(row, part), part).error)
@@ -2970,7 +2990,7 @@ function protoPickMeterProfileSelect(id, value) {
   }
 }
 
-// Add a period to the end of a day, or take one out.
+// Add a period in the first gap of a day, or take one out.
 function protoEditPeriods(data) {
   if (!protoCanAct()) return;
   const owner = String(data.protoPeriodOwner || "");
@@ -2985,11 +3005,11 @@ function protoEditPeriods(data) {
     if (!row) return;
     const periods = protoDayPeriods(row, part).map((p) => ({ status: p.status, from: p.from, to: p.to }));
     if (data.protoPeriodAdd) {
+      const gap = protoPeriodGap(periods);
+      if (!gap) return;
       const last = periods[periods.length - 1];
-      const end = protoParseClock(last?.to);
-      const from = !last ? "00.00" : end != null && end < 24 ? last.to : "";
       const next = spec.statuses.find((item) => item.id !== last?.status) || spec.statuses[0];
-      periods.push({ status: next.id, from, to: from ? "24.00" : "" });
+      periods.push({ status: next.id, from: gap.from, to: gap.to });
       focus = `[name='${part}-from-${d}-${periods.length - 1}']`;
     } else {
       if (!Number.isInteger(i) || periods.length < 2) return;
@@ -21708,7 +21728,7 @@ function protoMeterMap(place, label) {
   `;
 }
 
-function protoMeterClockField(name, value, label) {
+function protoMeterClockField(name, value, label, locked) {
   return `
     <label class="astral-field">
       <span class="sr-only">${escapeHtml(label)}</span>
@@ -21721,7 +21741,7 @@ function protoMeterClockField(name, value, label) {
         autocomplete="off"
         spellcheck="false"
         maxlength="5"
-        placeholder="00:00"
+        placeholder="00:00"${locked ? "\n        disabled" : ""}
       />
     </label>
   `;
@@ -21763,7 +21783,7 @@ function protoMeterAttrField(name, label, value, unit, opts = {}) {
           inputmode="decimal"
           autocomplete="off"
           spellcheck="false"
-          aria-describedby="${escapeHtml(unitId)}"
+          aria-describedby="${escapeHtml(unitId)}"${opts.locked ? "\n          disabled" : ""}
         />
         <span class="astral-field-unit" id="${escapeHtml(unitId)}">${escapeHtml(unit)}</span>
       </span>
@@ -22290,9 +22310,11 @@ function protoMeterTouTable(id, rows) {
 
 // One row per period. A day holds as many periods as it needs, so any opening pattern or tariff fits.
 // Day tabs show one day at a time. Every day stays in the form, so typing, Save, and the CSV still cover the week.
-function protoMeterPeriodTable(id, rows, part) {
+// A locked table draws the same rows with every control off, so a meter that follows the site lines up with one that sets its own.
+function protoMeterPeriodTable(id, rows, part, opts = {}) {
   const spec = PROTO_PERIOD_SPEC[part];
   const can = protoCanAct();
+  const lock = opts.lockTip || "";
   const owner = `data-proto-period-owner="${escapeHtml(id)}"`;
   const issues = rows.map((row) => protoPeriodIssues(protoDayPeriods(row, part), part));
   const panels = rows.map((row, d) => {
@@ -22306,6 +22328,7 @@ function protoMeterPeriodTable(id, rows, part) {
             label: `Select profile for ${row.day} ${spec.noun}`,
             value: row.profile || "",
             placeholder: "Select profile",
+            disabled: Boolean(lock),
             options: spec.presets.map((item) => ({ value: item.id, label: item.name })),
           })}
         </td>
@@ -22316,13 +22339,14 @@ function protoMeterPeriodTable(id, rows, part) {
       return `
           <tr>
             ${i ? "" : lead}
-            <td>${protoMeterClockField(`${part}-from-${d}-${i}`, p.from, `${name} from`)}</td>
-            <td>${protoMeterClockField(`${part}-to-${d}-${i}`, p.to, `${name} to`)}</td>
+            <td>${protoMeterClockField(`${part}-from-${d}-${i}`, p.from, `${name} from`, lock)}</td>
+            <td>${protoMeterClockField(`${part}-to-${d}-${i}`, p.to, `${name} to`, lock)}</td>
             <td>
               ${protoSelect({
                 id: `meter-${part}-status-${id}-${d}-${i}`,
                 label: `${name} status`,
                 value: p.status,
+                disabled: Boolean(lock),
                 options: spec.statuses.map((item) => ({ value: item.id, label: item.name })),
               })}
             </td>
@@ -22335,8 +22359,8 @@ function protoMeterPeriodTable(id, rows, part) {
                       `${owner} data-proto-period-remove="${part}" data-proto-period-day="${d}" data-proto-period-index="${i}"`,
                       {
                         className: "is-plain",
-                        disabled: only,
-                        tipLabel: only ? "A day needs at least one period. Change this one instead." : "Remove",
+                        disabled: only || Boolean(lock),
+                        tipLabel: lock || (only ? "A day needs at least one period. Change this one instead." : "Remove"),
                       }
                     )
                   : ""
@@ -22346,11 +22370,16 @@ function protoMeterPeriodTable(id, rows, part) {
         `;
     });
     const note = issue.error || issue.note || "";
+    const full = !protoPeriodGap(periods);
+    const addTip = lock || (full ? PROTO_PERIOD_FULL_TIP : "");
+    const add = protoTextBtn("Add a period", `${owner} data-proto-period-add="${part}" data-proto-period-day="${d}"`, {
+      disabled: Boolean(addTip),
+    });
     const foot = `
         <tr class="astral-period-foot">
           ${periods.length ? "" : lead}
           <td colspan="4">
-            ${can ? protoTextBtn("Add a period", `${owner} data-proto-period-add="${part}" data-proto-period-day="${d}"`) : ""}
+            ${can ? `<span class="astral-tip-host">${add}${addTip ? protoTip(addTip) : ""}</span>` : ""}
             <p class="astral-period-note${issue.error ? " is-error" : ""}" id="astral-period-note-${part}-${d}" role="status"${
               note ? "" : " hidden"
             }>${escapeHtml(note)}</p>
@@ -22441,6 +22470,20 @@ function protoPickPeriodDay(tab) {
   });
 }
 
+// Add a period turns off once the day is covered to 24:00, and its tip says why.
+function protoSetPeriodAdd(btn, full) {
+  if (btn.disabled === full) return;
+  btn.disabled = full;
+  const host = btn.closest(".astral-tip-host");
+  if (!host) return;
+  const tip = (host._protoTip && document.contains(host._protoTip) ? host._protoTip : null) || host.querySelector(":scope > .astral-icon-tip");
+  if (!full && tip) {
+    protoRestoreIconTip(tip);
+    tip.remove();
+  }
+  if (full && !tip) host.insertAdjacentHTML("beforeend", protoTip(PROTO_PERIOD_FULL_TIP));
+}
+
 // Typing does not redraw the form, so the day notes and Save follow the typing here.
 function protoSyncPeriodNotes(form, draft) {
   ["hours", "tou"].forEach((part) => {
@@ -22452,6 +22495,8 @@ function protoSyncPeriodNotes(form, draft) {
       note.textContent = text;
       note.hidden = !text;
       note.classList.toggle("is-error", Boolean(issue.error));
+      const add = protoScopeFind(form, `[data-proto-period-add="${part}"][data-proto-period-day="${d}"]`);
+      if (add) protoSetPeriodAdd(add, !protoPeriodGap(protoDayPeriods(row, part)));
       const tab = protoScopeFind(form, `[data-proto-period-tab="${part}"][data-proto-period-tab-day="${d}"]`);
       if (!tab) return;
       tab.classList.toggle("has-error", Boolean(issue.error));
@@ -22490,7 +22535,15 @@ function protoMeterProfileForm(meter) {
     if (meters.length < 2 && !ownCount) return { tag, html: panel(siteBodies[part]) };
     const pick = protoSiteOwnPick(site, part);
     const capId = `astral-own-pick-${part}`;
+    const own = pick ? protoMeter(pick) : meters[0];
+    const ownDraft = protoMeterOwnDraft(own.id);
+    const isOwn = Boolean(pick && ownDraft[part]);
+    // The site keeps a hidden copy of the source cards, so the picker and the table sit in the same place for every choice.
+    const cards = pick
+      ? protoMeterSrcGroup(own, part, isOwn, siteName)
+      : `<div class="astral-own-src-space" aria-hidden="true" inert>${protoMeterSrcGroup(own, part, false, siteName)}</div>`;
     const select = panel(`
+      <div class="astral-own-head">
       <div class="astral-field astral-own-pick">
         <span id="${capId}">Settings for</span>
         ${protoSelect({
@@ -22512,16 +22565,15 @@ function protoMeterProfileForm(meter) {
           ],
         })}
       </div>
+      ${cards}
+      </div>
     `);
     if (!pick) return { tag, html: `${select}${panel(siteBodies[part])}` };
-    const own = protoMeter(pick);
-    const ownDraft = protoMeterOwnDraft(pick);
-    const isOwn = Boolean(ownDraft[part]);
     return {
       tag,
-      html: `${select}${panel(protoMeterSrcGroup(own, part, isOwn, siteName))}<div class="astral-own-scope astral-fold-panel" data-proto-own-scope="${escapeHtml(
+      html: `${select}<div class="astral-own-scope astral-fold-panel" data-proto-own-scope="${escapeHtml(
         pick
-      )}">${isOwn ? protoMeterOwnEditor(own, part, ownDraft) : protoMeterSiteView(own, part, draft)}</div>`,
+      )}">${isOwn ? protoMeterOwnEditor(own, part, ownDraft) : protoMeterSiteView(own, part, draft, siteName)}</div>`,
     };
   };
   const notes = { hours: section("hours"), tou: section("tou"), rates: section("rates") };
@@ -22578,38 +22630,13 @@ function protoMeterOwnMeter() {
   return id ? protoMeter(id) : null;
 }
 
-function protoMeterSiteView(meter, part, site) {
-  if (part === "hours" || part === "tou") {
-    const spec = PROTO_PERIOD_SPEC[part];
-    const status = (id) => spec.statuses.find((item) => item.id === id)?.name || id;
-    const plain = (headers, rows) => `
-        <table class="astral-table">
-          <thead><tr>${headers.map((item) => `<th scope="col">${escapeHtml(item)}</th>`).join("")}</tr></thead>
-          <tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody>
-        </table>
-    `;
-    return protoPeriodDays(
-      `site~${meter.id}`,
-      site[part],
-      part,
-      site[part].map((row) =>
-        plain(
-          ["From", "To", "Status"],
-          protoDayPeriods(row, part).map((p) => [protoClockShow(p.from), protoClockShow(p.to), status(p.status)])
-        )
-      )
-    );
-  }
-  return `
-    <dl class="astral-meter-meta astral-meter-rates">
-      ${protoMeterRateSpec(meter)
-        .map((item) => {
-          const value = String(site.attrs[item.key] ?? "").trim();
-          return `<div><dt>${escapeHtml(item.label)}</dt><dd>${escapeHtml(value ? `${value} ${item.unit}` : "Not set")}</dd></div>`;
-        })
-        .join("")}
-    </dl>
-  `;
+// What a meter that follows the site gets, drawn like the editor with every control off so nothing moves on a switch.
+function protoMeterSiteView(meter, part, site, siteName) {
+  const lockTip = `These follow ${siteName}. Choose Set for this meter to change them.`;
+  if (part === "hours" || part === "tou") return protoMeterPeriodTable(`site~${meter.id}`, site[part], part, { lockTip });
+  return `<div class="astral-meter-attrs"><div class="astral-meter-attr-grid">${protoMeterRateSpec(meter)
+    .map((item) => protoMeterAttrField(item.key, item.label, site.attrs?.[item.key], item.unit, { locked: true }))
+    .join("")}</div></div>`;
 }
 
 function protoMeterSrcGroup(meter, part, own, siteName) {
@@ -22647,7 +22674,7 @@ function protoMeterOwnFold(meter, part, draft, site, siteName) {
   const name = PROTO_METER_PART_NAMES[part];
   let body;
   if (!own) {
-    body = `${protoMeterSiteView(meter, part, site)}<p class="astral-muted">These come from ${escapeHtml(
+    body = `${protoMeterSiteView(meter, part, site, siteName)}<p class="astral-muted">These come from ${escapeHtml(
       siteName
     )}. Change them in Site settings and every meter that follows the site picks them up.</p>`;
   } else {

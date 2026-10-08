@@ -3926,6 +3926,13 @@ body.is-proto-fs .stage {
   flex: none;
 }
 
+.astral-text:disabled,
+.astral-text:disabled:hover {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  cursor: not-allowed;
+}
+
 .astral-user,
 .astral-avatar,
 .astral-muted,
@@ -11202,13 +11209,31 @@ tr.is-off .astral-person-mark {
   cursor: default;
 }
 
-.astral-meter-rates {
-  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
-}
-
 .astral-meter-own p.astral-muted {
   margin: 0;
   font-size: 0.875rem;
+}
+
+/* The picker and the source cards share a row. The site keeps the cards' space, so nothing moves on a switch. */
+.astral-own-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px 24px;
+}
+
+.astral-own-head > .astral-own-pick {
+  flex: 1 1 280px;
+}
+
+.astral-own-head > .astral-meter-src-cards,
+.astral-own-head > .astral-own-src-space {
+  flex: 1 1 32rem;
+  max-width: 40rem;
+}
+
+.astral-own-src-space {
+  visibility: hidden;
 }
 
 /* Settings for: the site, or any meter on it. */
