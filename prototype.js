@@ -5080,24 +5080,36 @@ function protoFlowKind(label) {
   return "";
 }
 
-// Comparing dates shows one flow at a time, so In and Out become a single pick.
-const protoFlowSingleCache = new Map();
+// Comparing dates shows one flow at a time, so In and Out are always a single pick there.
 function protoChartFlowSingle() {
-  if (!protoDateCompareOn()) return false;
-  if (protoCompareOn()) return protoDateCompareHasFlows();
-  const key = [store.prototypeScope, store.prototypeGroup, store.activePrototypeMeter].join("|");
-  if (!protoFlowSingleCache.has(key)) {
-    if (protoFlowSingleCache.size > 50) protoFlowSingleCache.clear();
-    protoFlowSingleCache.set(key, protoDateCompareHasFlows());
+  return Boolean(protoDateCompareOn());
+}
+
+// Which flows the graph's meters have, so a single pick never lands on one with no meters.
+const protoFlowHasCache = new Map();
+function protoChartFlowHas() {
+  if (protoCompareOn()) {
+    const flow = protoMetersFlow(protoPanePoolMeters());
+    return { in: flow.incoming.length > 0, out: flow.outgoing.length > 0 };
   }
-  return protoFlowSingleCache.get(key);
+  const key = [store.prototypeScope, store.prototypeGroup, store.activePrototypeMeter].join("|");
+  if (!protoFlowHasCache.has(key)) {
+    if (protoFlowHasCache.size > 50) protoFlowHasCache.clear();
+    const flow = protoMetersFlow(protoPanePoolMeters());
+    protoFlowHasCache.set(key, { in: flow.incoming.length > 0, out: flow.outgoing.length > 0 });
+  }
+  return protoFlowHasCache.get(key);
 }
 
 function protoChartFlowIds() {
   const picked = Array.isArray(store.prototypeChartFlows)
     ? ["in", "out"].filter((id) => store.prototypeChartFlows.includes(id))
     : ["in", "out"];
-  if (protoChartFlowSingle()) return picked.length === 1 ? picked : ["in"];
+  if (protoChartFlowSingle()) {
+    const has = protoChartFlowHas();
+    if (picked.length === 1 && has[picked[0]]) return picked;
+    return [!has.in && has.out ? "out" : "in"];
+  }
   return picked;
 }
 
