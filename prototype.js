@@ -24603,6 +24603,9 @@ function protoSummaryGrain() {
 
 function protoSummaryAmount(value, unit) {
   const n = Number(value) || 0;
+  if (unit === "£") {
+    return `£${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
   return `${n.toLocaleString("en-GB", { minimumFractionDigits: 0, maximumFractionDigits: 1 })} ${unit}`;
 }
 
@@ -24629,14 +24632,17 @@ function protoSummaryFigures(points, key, flow, unit) {
   const high = have.reduce((best, point) => (Number(point[key]) > Number(best[key]) ? point : best));
   const low = have.reduce((best, point) => (Number(point[key]) < Number(best[key]) ? point : best));
   const estimated = have.some((point) => point[qualityKey] === "estimated");
-  const word = flow === "out" ? "outgoing" : "use";
+  // Cost and Carbon name their own measure. Incoming and Outgoing headings keep the two flows apart.
+  const pane = protoPaneId();
+  const word = pane === "cost" ? "cost" : pane === "carbon" ? "carbon" : flow === "out" ? "outgoing" : "use";
+  const totalName = pane === "consumption" && flow === "out" ? "Total outgoing" : `Total ${word}`;
   const counted =
     have.length === all.length
       ? `Across ${have.length} ${have.length === 1 ? grain.one : grain.many}`
       : `${have.length} of ${all.length} ${grain.many} have readings`;
   return [
     {
-      name: flow === "out" ? "Total outgoing" : "Total use",
+      name: totalName,
       value: protoSummaryAmount(total, unit),
       note: estimated ? `${counted}. Includes estimated readings` : counted,
     },
@@ -24653,7 +24659,7 @@ function protoSummaryFigures(points, key, flow, unit) {
 // Overview first: the figures for exactly what the graph shows. Incoming and outgoing never share a figure.
 function protoPaneSummary({ points, meters, dual }) {
   const list = meters || [];
-  if (protoPaneId() !== "consumption" || !list.length || protoConsumptionUnitsMixed(list)) return "";
+  if (!protoPaneIsGraph() || !list.length || protoConsumptionUnitsMixed(list)) return "";
   const scaled = protoScalePoints(points, list);
   if (!scaled.length) return "";
   const unit = scaled.find((point) => point?.unit)?.unit || protoMeasureUnit(list);
