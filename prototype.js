@@ -24536,115 +24536,6 @@ function protoCommitPortfolioTree(patch, options) {
   else protoResetPaneScroll();
 }
 
-// The site list loads in batches, as a long list does from the server.
-// The graph, totals and Export always use the full selection, never just the loaded rows.
-const PROTO_TREE_BATCH = 30;
-const PROTO_TREE_FETCH_MS = 700;
-let protoTreeCount = PROTO_TREE_BATCH;
-let protoTreeKey = "";
-let protoTreeStatus = "";
-let protoTreeTarget = "";
-let protoTreeTimer = 0;
-let protoTreeObserver = null;
-
-function protoTreeLoad(groups, currentSite) {
-  const key = `${protoCompanyId()}|${protoState().query.trim().toLowerCase()}|${protoTreeFilterIds().join(",")}`;
-  if (key !== protoTreeKey) {
-    protoTreeKey = key;
-    protoTreeCount = PROTO_TREE_BATCH;
-    protoTreeStatus = "";
-    window.clearTimeout(protoTreeTimer);
-  }
-  const order = [];
-  const seen = new Set();
-  groups.forEach((group) =>
-    group.sites.forEach((site) => {
-      if (seen.has(site.name)) return;
-      seen.add(site.name);
-      order.push(site.name);
-    })
-  );
-  const names = new Set(order.slice(0, protoTreeCount));
-  // The selected site always shows, so the tree never hides what the pane is about.
-  if (currentSite) names.add(currentSite.name);
-  return { names, order, total: order.length, shown: order.filter((name) => names.has(name)).length };
-}
-
-function protoTreeLoadState(target, idle) {
-  if (String(target) !== String(protoTreeTarget)) return `<span>${escapeHtml(idle)}</span>`;
-  if (protoTreeStatus === "failed") {
-    return `<span>Could not load more sites.</span> ${protoTextBtn("Try again", `data-proto-tree-retry="${target}"`)}`;
-  }
-  if (protoTreeStatus === "loading") {
-    return `<span class="astral-tree-spin" aria-hidden="true"></span><span>Loading more sites</span>`;
-  }
-  return `<span>${escapeHtml(idle)}</span>`;
-}
-
-// Inside an open group, the rows still to come. Scrolling to it loads the rest of that group.
-function protoTreeMoreRow(group, left, load) {
-  if (left <= 0) return "";
-  const last = Math.max(...group.sites.map((site) => load.order.indexOf(site.name)));
-  return `
-    <li class="astral-tree-more" data-proto-tree-more="${last + 1}">
-      ${protoTreeLoadState(last + 1, `${left} more ${left === 1 ? "site" : "sites"}`)}
-    </li>
-  `;
-}
-
-// Loaded rows, kept apart from the totals on All, each group and the pane heading.
-function protoTreeLoadFoot(load) {
-  if (load.shown >= load.total) return "";
-  return `
-    <li class="astral-tree-load">
-      <p role="status">${load.shown} of ${load.total} sites loaded</p>
-    </li>
-  `;
-}
-
-function protoTreeRepaint() {
-  const active = document.activeElement;
-  const name = active?.matches?.("input[name]") ? active.getAttribute("name") : "";
-  const caret = name ? active.selectionStart : null;
-  render();
-  if (name) protoRestoreFocus(`#astral-fs input[name="${CSS.escape(name)}"]`, caret);
-}
-
-function protoTreeFetch(target) {
-  if (protoTreeStatus === "loading") return;
-  protoTreeStatus = "loading";
-  protoTreeTarget = String(target);
-  protoTreeRepaint();
-  window.clearTimeout(protoTreeTimer);
-  protoTreeTimer = window.setTimeout(() => {
-    if (navigator.onLine === false) {
-      protoTreeStatus = "failed";
-    } else {
-      protoTreeStatus = "";
-      protoTreeCount = Math.max(protoTreeCount + PROTO_TREE_BATCH, Number(target) || 0);
-    }
-    if (protoViewId(store.activePrototypeView) === "portfolio") protoTreeRepaint();
-  }, PROTO_TREE_FETCH_MS);
-}
-
-function protoBindTreeLoad() {
-  protoTreeObserver?.disconnect();
-  protoTreeObserver = null;
-  const tree = document.querySelector("#astral-fs .astral-list > .astral-tree");
-  const marks = tree ? [...tree.querySelectorAll("[data-proto-tree-more]")] : [];
-  if (!marks.length || protoTreeStatus || !("IntersectionObserver" in window)) return;
-  protoTreeObserver = new IntersectionObserver(
-    (entries) => {
-      const hit = entries.find((entry) => entry.isIntersecting && !entry.target.closest("[inert]"));
-      if (!hit || protoTreeStatus) return;
-      protoTreeObserver?.disconnect();
-      protoTreeFetch(hit.target.dataset.protoTreeMore);
-    },
-    { root: tree, rootMargin: "0px 0px 80px 0px" }
-  );
-  marks.forEach((el) => protoTreeObserver.observe(el));
-}
-
 function protoPortfolio() {
   const state = protoState();
   const q = state.query.trim().toLowerCase();
@@ -24656,19 +24547,16 @@ function protoPortfolio() {
   const groups = protoVisibleGroups();
   const forceOpen = Boolean(q) || protoTreeFilterOn();
   const companies = protoCompaniesFrom(groups);
-  const load = protoTreeLoad(companies.length ? companies.flatMap((company) => company.groups) : groups, currentSite);
   const groupRow = (group) => {
       const on = Boolean(currentGroup && group.id === currentGroup.id);
       const shut = !forceOpen && closed.includes(group.id);
       const count = `${group.sites.length} ${group.sites.length === 1 ? "site" : "sites"}`;
-      const shown = group.sites.filter((site) => load.names.has(site.name));
-      const kids = shown
+      const kids = group.sites
         .map((site) => {
           const siteOn = state.scope !== "group" && currentSite && site.name === currentSite.name;
           return `<li>${protoSiteButton(site, siteOn)}</li>`;
         })
         .join("");
-      const more = protoTreeMoreRow(group, group.sites.length - shown.length, load);
       return `
         <li class="astral-tree-group${shut ? "" : " is-open"}">
           <button
@@ -24689,7 +24577,7 @@ function protoPortfolio() {
             aria-hidden="${shut ? "true" : "false"}"
             ${shut ? "inert" : ""}
           >
-            <ul class="astral-tree-sites">${kids}${more}</ul>
+            <ul class="astral-tree-sites">${kids}</ul>
           </div>
         </li>
       `;
@@ -24730,7 +24618,7 @@ function protoPortfolio() {
         .join("")
     : groups.map(groupRow).join("");
   const empty = groups.length ? "" : `<li class="astral-muted">No sites match.</li>`;
-  const list = `${protoAllTreeRow(currentGroup)}${groupRows}${empty}${protoTreeLoadFoot(load)}`;
+  const list = `${protoAllTreeRow(currentGroup)}${groupRows}${empty}`;
 
   return astralShell(`
     ${astralPageHead(
@@ -31376,7 +31264,6 @@ function renderPrototype() {
   protoEqualReportCardsSoon();
   protoBindScrollRegions();
   requestAnimationFrame(protoBindScrollRegions);
-  protoBindTreeLoad();
   protoBindFloatMenus();
   protoPlaceFloatMenusSoon();
   protoFitChartSoon();
@@ -35201,12 +35088,6 @@ function onPrototype(event) {
   if (event.target.closest("[data-proto-export-range-current]")) {
     protoSetExportPrefs({ rangeCurrent: !protoExportPrefs().rangeCurrent });
     protoRestoreFocus("#astral-fs [data-proto-export-range-current]");
-    return;
-  }
-  const treeRetryBtn = event.target.closest("[data-proto-tree-retry]");
-  if (treeRetryBtn) {
-    protoTreeStatus = "";
-    protoTreeFetch(treeRetryBtn.dataset.protoTreeRetry);
     return;
   }
   const graphExportBtn = event.target.closest("[data-proto-graph-export]");
