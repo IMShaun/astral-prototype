@@ -6712,6 +6712,7 @@ button.astral-state {
   appearance: none;
   margin: 0;
   border: 0;
+  border-bottom: 1px solid var(--color-border-strong);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -11204,6 +11205,11 @@ tr.is-off .astral-person-mark {
   max-width: 40rem;
 }
 
+/* Three cards at the same width as two in the pair, so a card keeps its size in every view. */
+.astral-meter-src-cards.is-three {
+  max-width: 60rem;
+}
+
 .astral-meter-src-cards .astral-report-type:disabled {
   background: #fff;
   cursor: default;
@@ -11214,28 +11220,39 @@ tr.is-off .astral-person-mark {
   font-size: 0.875rem;
 }
 
-/* The picker and the source cards share a row. The site keeps the cards' space, so nothing moves on a switch. */
-.astral-own-head {
-  display: flex;
+/* Use a preset: a week, then a day preset for each day. */
+.astral-week-preset {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.astral-week-table {
+  width: 100%;
+  max-width: 60rem;
+}
+
+.astral-week-table th[scope="row"] {
+  width: 8rem;
+  font-weight: 500;
+  text-align: left;
+}
+
+.astral-week-table td:nth-child(2) {
+  width: 16rem;
+}
+
+.astral-week-table td:nth-child(2) .astral-select,
+.astral-week-table td:nth-child(2) .astral-select-btn {
+  width: 100%;
+}
+
+.astral-week-times {
+  display: inline-flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 16px 24px;
+  align-items: center;
+  gap: 8px;
 }
-
-.astral-own-head > .astral-own-pick {
-  flex: 1 1 280px;
-}
-
-.astral-own-head > .astral-meter-src-cards,
-.astral-own-head > .astral-own-src-space {
-  flex: 1 1 32rem;
-  max-width: 40rem;
-}
-
-.astral-own-src-space {
-  visibility: hidden;
-}
-
 /* Settings for: the site, or any meter on it. */
 .astral-own-pick {
   display: grid;

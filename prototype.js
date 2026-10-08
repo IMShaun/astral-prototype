@@ -77,7 +77,21 @@ const PROTO_TOU_PROFILES = [
     offFrom: "22.00",
     offTo: "06.00",
   },
+  { id: "off-all", name: "Off peak all day", onFrom: "", onTo: "", offFrom: "00.00", offTo: "24.00" },
 ];
+// A week preset names a day preset for each day, Monday to Sunday. Any day can then be changed.
+const PROTO_WEEK_PRESETS = {
+  hours: [
+    { id: "depot-week", name: "Depot week", days: ["depot", "depot", "depot", "depot", "depot", "off", "closed"] },
+    { id: "retail-week", name: "Retail week", days: ["retail", "retail", "retail", "retail", "retail", "retail", "off"] },
+    { id: "always-on", name: "Always on", days: Array(7).fill("all-day") },
+  ],
+  tou: [
+    { id: "standard-week", name: "Standard week", days: Array(7).fill("peak-off") },
+    { id: "weekday-peak-week", name: "Weekday peak", days: [...Array(5).fill("weekday-peak"), "off-all", "off-all"] },
+    { id: "night-day-week", name: "Night and day", days: Array(7).fill("night-day") },
+  ],
+};
 const PROTO_DAY_STATUS = [
   { id: "operational", name: "Operational" },
   { id: "off", name: "Non-operational" },
@@ -2763,7 +2777,47 @@ function protoMeterOwnClean(own) {
   PROTO_METER_OWN_PARTS.forEach((part) => {
     if (own?.[part]) out[part] = own[part];
   });
+  const weeks = Object.fromEntries(Object.entries(own?.weeks || {}).filter(([part, week]) => week && out[part]));
+  if (Object.keys(weeks).length) out.weeks = weeks;
   return out;
+}
+
+// Where a part's times come from. A meter can follow its site. The site or a meter can use a week preset or set its own.
+function protoSrcMode(draft, part, meterLevel) {
+  if (meterLevel && !draft?.[part]) return "site";
+  if (part !== "rates" && draft?.weeks?.[part]) return "preset";
+  return "own";
+}
+
+function protoWeekPreset(part, id) {
+  return (PROTO_WEEK_PRESETS[part] || []).find((week) => week.id === id) || null;
+}
+
+function protoWeekRows(part, week) {
+  const spec = PROTO_PERIOD_SPEC[part];
+  return PROTO_WEEKDAYS.map((day, d) => {
+    const preset = spec.presets.find((item) => item.id === week.days[d]) || spec.presets[0];
+    return { day, profile: preset.id, periods: spec.presetPeriods(preset) };
+  });
+}
+
+// The week whose days match these rows, so switching to a preset keeps what is already there when it can.
+function protoWeekFor(part, rows) {
+  const weeks = PROTO_WEEK_PRESETS[part] || [];
+  return (weeks.find((week) => week.days.every((id, d) => rows?.[d]?.profile === id)) || weeks[0])?.id || "";
+}
+
+function protoUseWeek(draft, part, weekId) {
+  const week = protoWeekPreset(part, weekId);
+  if (!week) return;
+  draft[part] = protoWeekRows(part, week);
+  draft.weeks = { ...(draft.weeks || {}), [part]: week.id };
+}
+
+function protoDropWeek(draft, part) {
+  if (!draft?.weeks) return;
+  delete draft.weeks[part];
+  if (!Object.keys(draft.weeks).length) delete draft.weeks;
 }
 
 function protoMeterOwnParts(id) {
@@ -2839,25 +2893,56 @@ function protoReadMeterOwnForm(form, meter) {
   return draft;
 }
 
-function protoPickMeterSource(id, part, own) {
+function protoPickMeterSource(id, part, mode) {
   const meter = protoMeter(id);
   if (!meter || !PROTO_METER_OWN_PARTS.includes(part) || !protoCanAct()) return;
-  const form = document.querySelector("#astral-fs [data-proto-meter-own-form]");
-  const draft = form ? protoReadMeterOwnForm(form, meter) : protoMeterOwnDraft(id);
-  if (own && !draft[part]) {
-    const site = protoSiteProfile(id);
-    draft[part] =
-      part === "rates"
-        ? Object.fromEntries(protoMeterRateSpec(meter).map((item) => [item.key, String(site.attrs[item.key] ?? "")]))
-        : protoCloneProfile(site[part]);
+  const scope = document.querySelector(`#astral-fs [data-proto-own-scope="${CSS.escape(id)}"]`);
+  const draft = scope ? protoReadMeterOwnForm(scope, meter) : protoMeterOwnDraft(id);
+  if (mode === "site") {
+    delete draft[part];
+    protoDropWeek(draft, part);
+  } else {
+    if (!draft[part]) {
+      const site = protoSiteProfile(id);
+      draft[part] =
+        part === "rates"
+          ? Object.fromEntries(protoMeterRateSpec(meter).map((item) => [item.key, String(site.attrs[item.key] ?? "")]))
+          : protoCloneProfile(site[part]);
+    }
+    if (mode === "preset" && part !== "rates") {
+      if (!draft.weeks?.[part]) protoUseWeek(draft, part, protoWeekFor(part, draft[part]));
+    } else protoDropWeek(draft, part);
   }
-  if (!own) delete draft[part];
   setProto({
     prototypeMeterOwnDrafts: { ...protoMeterOwnDrafts(), [id]: protoMeterOwnClean(draft) },
     prototypeMeterFold: part,
     prototypeSelectOpen: "",
   });
-  protoRestoreFocus(`#astral-fs [data-proto-meter-src="${part}"][data-proto-meter-src-own="${own ? 1 : 0}"]`);
+  protoRestoreFocus(`#astral-fs [data-proto-meter-src="${part}"][data-proto-meter-src-mode="${mode}"]`);
+}
+
+function protoPickSiteSource(id, part, mode) {
+  const meter = protoMeter(id);
+  if (!meter || !PROTO_PERIOD_SPEC[part] || !protoCanAct()) return;
+  const form = document.querySelector(`#astral-fs [data-proto-meter-profile="${CSS.escape(id)}"]`);
+  if (form) {
+    store.prototypeMeterDrafts = { ...protoMeterDrafts(), [protoProfileKey(id)]: protoReadMeterProfileForm(form, meter) };
+  }
+  protoPatchMeterDraft(id, (draft) => {
+    if (mode !== "preset") protoDropWeek(draft, part);
+    else if (!draft.weeks?.[part]) protoUseWeek(draft, part, protoWeekFor(part, draft[part]));
+  });
+  protoRestoreFocus(`#astral-fs [data-proto-meter-src="${part}"][data-proto-meter-src-mode="${mode}"]`);
+}
+
+// A week preset fills Monday to Sunday with day presets.
+function protoPickWeekPreset(id, value) {
+  const match = String(id).match(/^meter-week-(hours|tou)-(.+)$/);
+  if (!match || !protoCanAct()) return;
+  const [, part, owner] = match;
+  if (!protoWeekPreset(part, value)) return;
+  protoPatchMeterDraft(owner, (draft) => protoUseWeek(draft, part, value));
+  protoRestoreFocus(`#astral-fs [data-proto-select="${CSS.escape(id)}"] .astral-select-btn`);
 }
 
 function protoSaveMeterOwn(meter, draft) {
@@ -9793,6 +9878,10 @@ function protoPickSelect(id, value) {
     protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
     return;
   }
+  if (String(id).startsWith("meter-week-")) {
+    protoPickWeekPreset(id, value);
+    return;
+  }
   if (String(id).startsWith("meter-hours-") || String(id).startsWith("meter-tou-")) {
     protoPickMeterProfileSelect(id, value);
     return;
@@ -14040,7 +14129,7 @@ function protoReportSiteCharges(tenant, util) {
     <div class="astral-report-charges">
       <div class="astral-report-split-head">
         <span class="astral-report-split-ask">${escapeHtml(site.name)} charges</span>
-        ${protoMeterSourceTag(false)}
+        ${protoMeterSourceTag("site")}
         ${protoTextBtn(open ? "Done" : "Edit charges", `data-proto-report-rates-edit="${escapeHtml(key)}"`, {
           className: "astral-report-charges-edit",
         })}
@@ -22067,6 +22156,8 @@ function protoApplySiteSettingsCsv(meter, text) {
     if (old.length > next.length) changed += old.length - next.length;
     row.periods = next;
     row.profile = protoPeriodProfile(part, next);
+    // Imported times are the site's own, so the part leaves its week preset.
+    protoDropWeek(draft, part);
   });
   if (changed) {
     store.prototypeMeterDrafts = { ...protoMeterDrafts(), [protoProfileKey(meter.id)]: draft };
@@ -22187,8 +22278,10 @@ function protoMeterOwnWords(parts) {
   return `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
 }
 
-function protoMeterSourceTag(own) {
-  return own ? protoTag("Custom", "", "is-own") : protoTag("From site", "", "is-quiet");
+function protoMeterSourceTag(mode) {
+  if (mode === "preset") return protoTag("Preset", "", "is-own");
+  if (mode === "own") return protoTag("Custom", "", "is-own");
+  return protoTag("From site", "", "is-quiet");
 }
 
 function protoSiteOwnMeters(site) {
@@ -22203,7 +22296,7 @@ function protoMeterInheritOverview(meter, site) {
   const row = (part, kind, value) => `
     <div>
       <dt>${protoProfileFactMark(kind)}${escapeHtml(PROTO_METER_PART_NAMES[part])}</dt>
-      <dd class="astral-meter-src-value"><span>${escapeHtml(value)}</span>${protoMeterSourceTag(own.has(part))}</dd>
+      <dd class="astral-meter-src-value"><span>${escapeHtml(value)}</span>${protoMeterSourceTag(protoSrcMode(protoMeterOverride(meter.id), part, true))}</dd>
     </div>
   `;
   const lead = own.size
@@ -22225,15 +22318,6 @@ function protoMeterInheritOverview(meter, site) {
               : ""
           }</p>
         </div>
-        ${
-          protoCanAct()
-            ? protoGhost(
-                `${protoIconMark("settings")}<span>Meter settings</span>`,
-                `data-proto-meter-own-open="${escapeHtml(meter.id)}"`,
-                { html: true }
-              )
-            : ""
-        }
       </div>
     </div>
   `;
@@ -22531,18 +22615,15 @@ function protoMeterProfileForm(meter) {
     const tag = ownCount
       ? `<span class="astral-muted">${ownCount} ${ownCount === 1 ? "meter sets its own" : "meters set their own"}</span>`
       : "";
-    if (meters.length < 2 && !ownCount) return { tag, html: panel(siteBodies[part]) };
+    const timed = part !== "rates";
+    const siteMode = timed ? protoSrcMode(draft, part, false) : "own";
+    const siteBody =
+      siteMode === "preset" ? protoWeekPresetView(id, part, draft[part], draft.weeks[part]) : siteBodies[part];
+    const siteCards = timed ? panel(protoSiteSrcGroup(id, part, siteMode)) : "";
+    if (meters.length < 2 && !ownCount) return { tag, html: `${siteCards}${panel(siteBody)}` };
     const pick = protoSiteOwnPick(site, part);
     const capId = `astral-own-pick-${part}`;
-    const own = pick ? protoMeter(pick) : meters[0];
-    const ownDraft = protoMeterOwnDraft(own.id);
-    const isOwn = Boolean(pick && ownDraft[part]);
-    // The site keeps a hidden copy of the source cards, so the picker and the table sit in the same place for every choice.
-    const cards = pick
-      ? protoMeterSrcGroup(own, part, isOwn, siteName)
-      : `<div class="astral-own-src-space" aria-hidden="true" inert>${protoMeterSrcGroup(own, part, false, siteName)}</div>`;
     const select = panel(`
-      <div class="astral-own-head">
       <div class="astral-field astral-own-pick">
         <span id="${capId}">Settings for</span>
         ${protoSelect({
@@ -22558,21 +22639,23 @@ function protoMeterProfileForm(meter) {
                 protoMeterKind(item),
                 protoMeterName(item),
                 protoMeterUtility(item),
-                protoMeterSourceTag(Boolean(protoMeterOwnDraft(item.id)[part]))
+                protoMeterSourceTag(protoSrcMode(protoMeterOwnDraft(item.id), part, true))
               )
             ),
           ],
         })}
       </div>
-      ${cards}
-      </div>
     `);
-    if (!pick) return { tag, html: `${select}${panel(siteBodies[part])}` };
+    // With a picker, rates get the site's one card too, so the fields sit in the same place for the site and a meter.
+    if (!pick) return { tag, html: `${select}${panel(protoSiteSrcGroup(id, part, siteMode))}${panel(siteBody)}` };
+    const own = protoMeter(pick);
+    const ownDraft = protoMeterOwnDraft(own.id);
+    const mode = protoSrcMode(ownDraft, part, true);
     return {
       tag,
-      html: `${select}<div class="astral-own-scope astral-fold-panel" data-proto-own-scope="${escapeHtml(
+      html: `${select}${panel(protoMeterSrcGroup(own, part, mode, siteName))}<div class="astral-own-scope astral-fold-panel" data-proto-own-scope="${escapeHtml(
         pick
-      )}">${isOwn ? protoMeterOwnEditor(own, part, ownDraft) : protoMeterSiteView(own, part, draft, siteName)}</div>`,
+      )}">${mode === "site" ? protoMeterSiteView(own, part, draft, siteName) : protoMeterOwnEditor(own, part, ownDraft)}</div>`,
     };
   };
   const notes = { hours: section("hours"), tou: section("tou"), rates: section("rates") };
@@ -22619,16 +22702,6 @@ function protoSaveSiteForm(meter, draft) {
   own.forEach((item) => protoSaveMeterOwn(item, protoMeterOwnDraft(item.id)));
 }
 
-function protoMeterOwnId() {
-  const id = String(store.prototypeMeterOwn || "");
-  return id && protoMeter(id) && protoProfileSiteMap().has(id) ? id : "";
-}
-
-function protoMeterOwnMeter() {
-  const id = protoMeterOwnId();
-  return id ? protoMeter(id) : null;
-}
-
 // What a meter that follows the site gets, drawn like the editor with every control off so nothing moves on a switch.
 function protoMeterSiteView(meter, part, site, siteName) {
   const lockTip = `These follow ${siteName}. Choose Set for this meter to change them.`;
@@ -22638,103 +22711,123 @@ function protoMeterSiteView(meter, part, site, siteName) {
     .join("")}</div></div>`;
 }
 
-function protoMeterSrcGroup(meter, part, own, siteName) {
+// The source cards. A meter can follow the site, so it has three. The site has two in the same grid, so each card keeps its width and place.
+function protoSrcCards(owner, part, mode, choices) {
   const name = PROTO_METER_PART_NAMES[part];
-  const choice = (isOwn, label, note) => {
-    const on = own === isOwn;
+  const cards = choices.map(([value, label, note]) => {
+    const on = mode === value;
     return `
     <button type="button" role="radio" class="astral-report-type${on ? " is-on" : ""}" aria-checked="${on ? "true" : "false"}" tabindex="${
       on ? "0" : "-1"
-    }" data-proto-meter-src="${part}" data-proto-meter-src-own="${isOwn ? 1 : 0}" data-proto-meter-src-id="${escapeHtml(meter.id)}"${
+    }" data-proto-meter-src="${part}" data-proto-meter-src-mode="${value}" data-proto-meter-src-owner="${escapeHtml(owner)}"${
       protoCanAct() ? "" : " disabled"
     }>
       <span class="astral-report-type-head">${protoRadio(on)}<span>${escapeHtml(label)}</span></span>
       <span class="astral-muted">${escapeHtml(note)}</span>
     </button>
   `;
-  };
+  });
+  const grid = part === "rates" ? "is-pair" : "is-three";
   return `
-    <div class="astral-report-types is-pair astral-meter-src-cards" role="radiogroup" aria-label="${escapeHtml(`${name} source`)}">
-      ${choice(false, `Follow ${siteName}`, "Updates when the site changes.")}
-      ${choice(true, "Set for this meter", "Only applies to this meter.")}
+    <div class="astral-report-types ${grid} astral-meter-src-cards" role="radiogroup" aria-label="${escapeHtml(`${name} source`)}">
+      ${cards.join("")}
+    </div>
+  `;
+}
+
+const PROTO_SRC_PRESET = ["preset", "Use a preset", "Start from a saved week, then change any day."];
+
+function protoMeterSrcGroup(meter, part, mode, siteName) {
+  return protoSrcCards(`own~${meter.id}`, part, mode, [
+    ["site", `Follow ${siteName}`, "Updates when the site changes."],
+    ...(part === "rates" ? [] : [PROTO_SRC_PRESET]),
+    ["own", "Set for this meter", "Only applies to this meter."],
+  ]);
+}
+
+function protoSiteSrcGroup(id, part, mode) {
+  if (part === "rates") return protoSrcCards(id, part, "own", [["own", "Set for this site", "Choose the rates for this site."]]);
+  return protoSrcCards(id, part, mode, [PROTO_SRC_PRESET, ["own", "Set for this site", "Choose the times for each day."]]);
+}
+
+// A day in a few words, such as Operational 05:00 to 21:00 or Closed all day.
+function protoPresetTimes(part, row) {
+  const spec = PROTO_PERIOD_SPEC[part];
+  const periods = protoDayPeriods(row, part);
+  const name = (status) => spec.statuses.find((item) => item.id === status)?.name || "";
+  if (periods.length === 1) return `${name(periods[0].status)} all day`;
+  const main = spec.statuses[0].id;
+  return periods
+    .filter((p) => p.status === main)
+    .map((p) => `${name(p.status)} ${protoClockShow(p.from)} to ${protoClockShow(p.to)}`)
+    .join(", ");
+}
+
+// A week preset, then a day preset for each day. A day that differs from the week is marked Changed.
+function protoWeekPresetView(owner, part, rows, weekId) {
+  const spec = PROTO_PERIOD_SPEC[part];
+  const week = protoWeekPreset(part, weekId);
+  const capId = `astral-week-${part}-${String(owner).replace(/[^\w-]/g, "-")}`;
+  const lock = !protoCanAct();
+  const days = rows
+    .map((row, d) => {
+      const changed = week && row.profile !== week.days[d];
+      return `
+        <tr>
+          <th scope="row">${escapeHtml(row.day)}</th>
+          <td>
+            ${protoSelect({
+              id: `meter-${part}-profile-${owner}-${d}`,
+              label: `${row.day} preset`,
+              value: row.profile || "",
+              placeholder: "Select a preset",
+              disabled: lock,
+              options: spec.presets.map((item) => ({ value: item.id, label: item.name })),
+            })}
+          </td>
+          <td><span class="astral-week-times">${escapeHtml(protoPresetTimes(part, row))}${
+            changed ? ` ${protoTag("Changed", "", "is-quiet")}` : ""
+          }</span></td>
+        </tr>
+      `;
+    })
+    .join("");
+  return `
+    <div class="astral-week-preset">
+      <div class="astral-field astral-own-pick">
+        <span id="${capId}">Week preset</span>
+        ${protoSelect({
+          id: `meter-week-${part}-${owner}`,
+          label: "Week preset",
+          labelledby: capId,
+          value: week?.id || "",
+          placeholder: "Select a week",
+          disabled: lock,
+          options: (PROTO_WEEK_PRESETS[part] || []).map((item) => ({ value: item.id, label: item.name })),
+        })}
+      </div>
+      <table class="astral-table astral-week-table">
+        <thead>
+          <tr>
+            <th scope="col">Day</th>
+            <th scope="col">Day preset</th>
+            <th scope="col">Times</th>
+          </tr>
+        </thead>
+        <tbody>${days}</tbody>
+      </table>
     </div>
   `;
 }
 
 function protoMeterOwnEditor(meter, part, draft) {
+  if (protoSrcMode(draft, part, true) === "preset") {
+    return protoWeekPresetView(`own~${meter.id}`, part, draft[part], draft.weeks[part]);
+  }
   if (part === "hours" || part === "tou") return protoMeterPeriodTable(`own~${meter.id}`, draft[part], part);
   return `<div class="astral-meter-attrs"><div class="astral-meter-attr-grid">${protoMeterRateSpec(meter)
     .map((item) => protoMeterAttrField(item.key, item.label, draft.rates?.[item.key], item.unit))
     .join("")}</div></div>`;
-}
-
-function protoMeterOwnFold(meter, part, draft, site, siteName) {
-  const own = Boolean(draft[part]);
-  const name = PROTO_METER_PART_NAMES[part];
-  let body;
-  if (!own) {
-    body = `${protoMeterSiteView(meter, part, site, siteName)}<p class="astral-muted">These come from ${escapeHtml(
-      siteName
-    )}. Change them in Site settings and every meter that follows the site picks them up.</p>`;
-  } else {
-    body = `${protoMeterOwnEditor(meter, part, draft)}${
-      part === "rates"
-        ? `<p class="astral-muted">${escapeHtml(siteName)}'s rates are ${escapeHtml(protoMeterRateSummary(meter, site))}.</p>`
-        : ""
-    }`;
-  }
-  return protoMeterSectionFold(
-    part,
-    name,
-    part,
-    `
-      <div class="astral-meter-own">
-        <div class="astral-fold-panel">${protoMeterSrcGroup(meter, part, own, siteName)}</div>
-        <div class="astral-fold-panel">${body}</div>
-      </div>
-    `,
-    protoMeterSourceTag(own)
-  );
-}
-
-function protoMeterOwnPage(meter, site) {
-  const id = meter.id;
-  const draft = protoMeterOwnDraft(id);
-  const dirty = protoMeterOwnDirty(id);
-  const siteProfile = protoSiteProfile(id);
-  const siteName = site?.name || protoMeterFacts(meter).site || "the site";
-  return protoPaneShell(
-    `
-        <div class="astral-detail-head">
-          <div class="astral-detail-lead">
-            ${protoIconBtn("prev", "Back", "data-proto-meter-close")}
-            <div>
-              ${protoPaneKicker(siteName)}
-              <h3>${escapeHtml(protoMeterName(meter))}</h3>
-            </div>
-          </div>
-          ${
-            protoCanAct()
-              ? `<div class="astral-detail-tools">${protoGhost(
-                  `${protoIconMark("settings")}<span>Site settings</span>`,
-                  `data-proto-meter-settings="${escapeHtml(id)}"`,
-                  { html: true, className: "astral-meter-upload" }
-                )}</div>`
-              : ""
-          }
-        </div>
-    `,
-    `
-      <form class="astral-meter-profile" data-proto-meter-own-form="${escapeHtml(id)}">
-        <div class="astral-meter-folds">
-          ${PROTO_METER_OWN_PARTS.map((part) => protoMeterOwnFold(meter, part, draft, siteProfile, siteName)).join("")}
-        </div>
-        <div class="astral-actions">
-          ${protoBtn("Save changes", "", { type: "submit", disabled: !(dirty && protoCanAct() && !protoPeriodsBlocked(draft)) })}
-        </div>
-      </form>
-    `
-  );
 }
 
 function protoMeterRow(meter) {
@@ -22752,16 +22845,8 @@ function protoMeterRow(meter) {
         <span class="astral-meter-hours">${escapeHtml(protoMeterRateSummary(meter))}</span>
         <span class="astral-meter-use">${escapeHtml(facts.use === "Partial" ? "Partial data" : facts.use)}</span>
   `;
-  if (!protoCanAct()) {
-    return `<article class="astral-meter-row is-static"><div class="astral-meter-row-head">${cells}</div></article>`;
-  }
-  return `
-    <article class="astral-meter-row">
-      <button type="button" class="astral-meter-row-head" data-proto-meter-own-open="${escapeHtml(meter.id)}" aria-label="${escapeHtml(
-        `Meter settings for ${title}`
-      )}">${cells}</button>
-    </article>
-  `;
+  // Settings live in Site settings only, so a meter row is a record, not a link.
+  return `<article class="astral-meter-row is-static"><div class="astral-meter-row-head">${cells}</div></article>`;
 }
 
 function protoMeterList(meters) {
@@ -25514,10 +25599,6 @@ function protoPortfolioDetail() {
     const settingsMeter = protoMeterSettingsMeter();
     if (settingsMeter && protoPaneId() === "profile" && !protoCompareOn()) {
       return protoMeterSettingsPage(settingsMeter, currentSite);
-    }
-    const ownMeter = protoMeterOwnMeter();
-    if (ownMeter && protoPaneId() === "profile" && !protoCompareOn()) {
-      return protoMeterOwnPage(ownMeter, protoSiteByMeter(ownMeter.id) || currentSite);
     }
     const viewMeters = protoSiteViewMeters(currentSite);
     const flow = protoSiteViewFlow(currentSite);
@@ -35330,26 +35411,13 @@ function onPrototype(event) {
     );
     return;
   }
-  const meterOwnOpen = event.target.closest("[data-proto-meter-own-open]");
-  if (meterOwnOpen) {
-    const id = String(meterOwnOpen.dataset.protoMeterOwnOpen || "");
-    if (!id || !protoCanAct()) return;
-    protoCommitPortfolioTree(
-      {
-        ...protoMeterSettingsReset(),
-        prototypeMeterOwn: id,
-        prototypeMeterOpen: id,
-        prototypePane: "profile",
-      },
-      { pane: true }
-    );
-    return;
-  }
   const meterSrc = event.target.closest("[data-proto-meter-src]");
   if (meterSrc) {
-    const meter = protoMeter(String(meterSrc.dataset.protoMeterSrcId || "")) || protoMeterOwnMeter();
-    if (!meter) return;
-    protoPickMeterSource(meter.id, String(meterSrc.dataset.protoMeterSrc || ""), meterSrc.dataset.protoMeterSrcOwn === "1");
+    const owner = String(meterSrc.dataset.protoMeterSrcOwner || "");
+    const part = String(meterSrc.dataset.protoMeterSrc || "");
+    const mode = String(meterSrc.dataset.protoMeterSrcMode || "");
+    if (owner.startsWith("own~")) protoPickMeterSource(owner.slice(4), part, mode);
+    else protoPickSiteSource(owner, part, mode);
     return;
   }
   const periodEdit = event.target.closest("[data-proto-period-add], [data-proto-period-remove]");
@@ -36724,25 +36792,6 @@ function onPrototypeInput(event) {
     if (active) protoRestoreFocus("#astral-fs input[name='proto-org-name']", start);
     return;
   }
-  const ownField = event.target.closest("[data-proto-meter-own-form] input");
-  if (ownField) {
-    const form = ownField.closest("[data-proto-meter-own-form]");
-    const meter = protoMeter(String(form?.getAttribute("data-proto-meter-own-form") || ""));
-    if (!form || !meter || !protoCanAct()) return;
-    if (ownField.classList.contains("astral-clock-input")) {
-      const applied = protoApplyClockInput(ownField.value, ownField.selectionStart);
-      ownField.value = applied.next;
-      if (document.activeElement === ownField && ownField.setSelectionRange) {
-        ownField.setSelectionRange(applied.caret, applied.caret);
-      }
-    }
-    store.prototypeMeterOwnDrafts = { ...protoMeterOwnDrafts(), [meter.id]: protoReadMeterOwnForm(form, meter) };
-    persistChrome();
-    protoSyncPeriodNotes(form, protoMeterOwnDraft(meter.id));
-    const btn = form.querySelector("button[type='submit']");
-    if (btn) btn.disabled = !protoMeterOwnDirty(meter.id) || protoPeriodsBlocked(protoMeterOwnDraft(meter.id));
-    return;
-  }
   const scopeField = event.target.closest("[data-proto-meter-profile] [data-proto-own-scope] input");
   if (scopeField) {
     const scope = scopeField.closest("[data-proto-own-scope]");
@@ -37070,18 +37119,6 @@ function onPrototypeSubmit(event) {
       protoEnterProduct();
       return;
     }
-    return;
-  }
-  const meterOwnForm = event.target.closest("[data-proto-meter-own-form]");
-  if (meterOwnForm) {
-    event.preventDefault();
-    if (!protoCanAct()) return;
-    const meter = protoMeter(String(meterOwnForm.getAttribute("data-proto-meter-own-form") || ""));
-    if (!meter) return;
-    const draft = protoReadMeterOwnForm(meterOwnForm, meter);
-    store.prototypeMeterOwnDrafts = { ...protoMeterOwnDrafts(), [meter.id]: draft };
-    if (!protoMeterOwnDirty(meter.id) || protoPeriodsBlocked(draft)) return;
-    protoSaveMeterOwn(meter, draft);
     return;
   }
   const meterProfileForm = event.target.closest("[data-proto-meter-profile]");

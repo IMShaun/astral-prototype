@@ -31,9 +31,9 @@ A control may move when the person asks for it, for example by scrolling, resizi
 - Check by clicking every option in turn and measuring each control's position in the browser. Every option should report the same left and top.
 - Give repeated elements the same size on every page that shows them, so they sit in the same place when people move between pages. Every summary card has a badge row (`--summary-mark`, 36px), so every card is 117px on Alerts, Reports, and Downloads. See [Summary cards](foundation.summary-cards.md).
 - Reserve space with `min-height`, not `height` or `max-height`. Content that needs more room, such as a label that wraps on a narrow screen, must still grow the element instead of overflowing or being clipped.
-- Treat a picker or choice that swaps the view below it, such as Settings for or Follow the site and Set for this meter, as a control under this rule. Every element the views share must sit at the same left and top in every view.
+- Treat a picker or choice that swaps the view below it, such as Settings for or the source cards (Follow the site, Use a preset, Set for this meter), as a control under this rule. Every element the views share must sit at the same left and top in every view.
 - Show read-only and editable states of the same content with the same markup, and turn the controls off. A meter that follows the site shows the period table with disabled inputs and a disabled Add a period, so its header, rows and foot match the editor.
-- When one view has a part the others do not, keep its space in the others. The site view of Settings for keeps a hidden, inert copy of the source cards, so the table starts at the same place.
+- When one view has a part the others do not, give every view the same part with its own choices. In Site settings, the site and every meter have a source cards panel in the same grid. The site has two cards (Use a preset, Set for this site) and a meter three, so each card keeps its width and place. In Attributes the site has one card, Set for this site, so the fields start at the same place.
 
 ### Don't
 
@@ -56,13 +56,13 @@ Supports WCAG 3.2.3 Consistent navigation, and people using magnification, a poi
 - Reports > Reports, Downloads. 29, 177 on both.
 - Summary cards on Alerts (Activity, Settings, History), Reports, and Downloads. All 117px since every card got a badge (commit `6e29f8f`). Before the first fix, cards with a type badge were 122px and the rest 110px.
 - Site settings > Operational hours, Time of use and Attributes, Settings for the site, a meter that follows it, and a meter set on its own. Day tabs 190, table head 248, first row 288 and Add a period 432 in every view (commit `2044e20`). Before it, the table dropped 149px when a meter was picked, and a following meter had shorter rows and no Add a period.
-- A meter's own settings page, the same three folds, Follow and Set. Same offsets as Site settings.
+- Site settings with source cards. Picker 61, cards 192 and body 362 for the site and a meter in every source. In Attributes, picker 151, cards 282 and fields 431 for the site and a meter.
 
 ## Known limitations
 
 Pane tabs, tree items, and Work Desk stat strips have not been measured against this rule.
 
-In Attributes on Site settings, the site view has group tabs and the full site form, while a meter shows only its rates. The fields start 66px lower for the site because the content differs. Everything the views share stays put.
+In Attributes on Site settings, the site view has group tabs and the full site form, while a meter shows only its rates. The content differs, but the panels start at the same place.
 
 ## Evidence
 
