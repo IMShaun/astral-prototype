@@ -4003,12 +4003,13 @@ function protoLimitKey(refs) {
   const list = (refs || []).filter(protoRefIsLimit);
   if (!list.length) return "";
   return `<div class="astral-ref-key" role="list" aria-label="Reference lines">${list
-    .map(
-      (ref) =>
-        `<span class="astral-ref-key-item" role="listitem">${protoRefKeyMark(ref.style)}<span>${escapeHtml(
-          ref.keyName
-        )}</span></span>`
-    )
+    .map((ref) => {
+      const tip = ref.keyTip || "";
+      const pill = `<span class="astral-ref-key-item"${tip ? ' tabindex="0"' : ""}>${protoRefKeyMark(
+        ref.style
+      )}<span>${escapeHtml(ref.keyName)}</span></span>`;
+      return `<span role="listitem">${tip ? protoIconTip(pill, tip) : pill}</span>`;
+    })
     .join("")}</div>`;
 }
 
@@ -4591,7 +4592,8 @@ function protoCapacityRefs(meters, points) {
       qualities: [],
       names: rows.map(() => "Site capacity"),
       nowNames: rows.map(() => ""),
-      keyName: `Site capacity ${kva.toLocaleString("en-GB")} kVA, about ${protoFormatAmount(value, 1)} kW ${protoCapacityPfWords(at)}`,
+      keyName: `Site capacity ${kva.toLocaleString("en-GB")} kVA`,
+      keyTip: `About ${protoFormatAmount(value, 1)} kW ${protoCapacityPfWords(at)}`,
     },
   ];
 }
@@ -6385,14 +6387,19 @@ function protoPointSliceRows(point) {
   if (point.compare) {
     const rows = [];
     if (point.value !== "" && point.value != null) {
-      rows.push({ name: point.nowLabel || "In", value: point.value, quality: point.quality, color: point.nowColor || "" });
+      rows.push({
+        name: point.nowLabel || "In",
+        value: point.value,
+        quality: point.quality,
+        color: point.nowColor || protoChartFlowFill("in"),
+      });
     }
     if (point.last !== "" && point.last != null) {
       rows.push({
         name: point.lastLabel || "Out",
         value: point.last,
         quality: point.lastQuality,
-        color: point.lastColor || "",
+        color: point.lastColor || protoChartFlowFill("out"),
       });
     }
     return rows;
@@ -7694,7 +7701,7 @@ function protoBarPairView(view, off, datePair) {
       value: p.last,
       quality: p.lastQuality,
       nowLabel: p.lastLabel,
-      nowColor: p.lastColor,
+      nowColor: p.lastColor || (datePair ? "" : protoChartFlowFill("out")),
       last: null,
       lastLabel: "",
     })),
@@ -21105,7 +21112,7 @@ function protoPowerChart(rows, measure) {
   const title = PROTO_POWER_MEASURES.find((item) => item.id === measure)?.name || "Power factor";
   const heading = { title, when: `${protoChartWhen()} ${protoChartZone()}`, tools: protoPowerMeasureSelect(measure) };
   const line = protoChartIsLine();
-  const limit = (key, values, names, label, keyName, places) => ({
+  const limit = (key, values, names, label, keyName, places, keyTip = "") => ({
     key,
     kind: "limit",
     track: "",
@@ -21120,6 +21127,7 @@ function protoPowerChart(rows, measure) {
     names,
     nowNames: values.map(() => ""),
     keyName,
+    keyTip,
   });
   const chart = () => {
     if (measure === "apparent") {
@@ -21150,8 +21158,9 @@ function protoPowerChart(rows, measure) {
           points.map(() => PROTO_PF_TARGET),
           points.map(() => "Target"),
           `Target ${PROTO_PF_TARGET}`,
-          `Target power factor ${PROTO_PF_TARGET}`,
-          2
+          `Target ${PROTO_PF_TARGET}`,
+          2,
+          `Aim to keep power factor at ${PROTO_PF_TARGET} or above`
         ),
       ];
       return line
@@ -21166,8 +21175,9 @@ function protoPowerChart(rows, measure) {
         allowance,
         rows.map(() => "Allowance"),
         "Allowance",
-        `Allowance before excess charges, about ${Math.round(PROTO_PF_ALLOWANCE * 100)}% of kWh`,
-        1
+        "Allowance",
+        1,
+        `Reactive energy up to about ${Math.round(PROTO_PF_ALLOWANCE * 100)}% of kWh before excess charges`
       ),
     ];
     const keyNames = { in: "Lagging", out: "Leading" };
@@ -21314,15 +21324,8 @@ function protoPowerPane(meters) {
     clipClass: "astral-breakdown-clip",
     inner: `<div class="astral-pane-summary">${protoWeatherFigureGroup("", figures)}</div>`,
   });
-  const note =
-    measure === "apparent"
-      ? "Apparent energy sets the current that cables and transformers carry, and site capacity is agreed in kVA. It is calculated here from kWh and kVArh. On sites with many LED drivers, drives or EV chargers, a meter's measured kVAh can be higher."
-      : measure === "reactive"
-      ? "Lagging and leading are kept apart, because netting them off hides problems. The allowance is an estimate, so check your network operator's charging statement."
-      : `Power factor shows how much of the power drawn does useful work. Below ${PROTO_PF_TARGET}, suppliers may charge for reactive energy. Half hours with very low use are left out, because their power factor says little.`;
   return `
     ${protoPowerChart(rows, measure)}
-    <p class="astral-weather-note">${escapeHtml(note)}</p>
     ${summary}
   `;
 }
@@ -21510,11 +21513,8 @@ function protoDemandPane(meters) {
     clipClass: "astral-breakdown-clip",
     inner: `<div class="astral-pane-summary">${protoWeatherFigureGroup("", figures)}</div>`,
   });
-  const each =
-    span.kind === "interval" ? "Each half-hour shows its average." : `Each ${span.kind === "day" ? "day" : "month"} shows its highest half-hour.`;
   return `
     ${protoDemandChart(rows, meters)}
-    <p class="astral-weather-note">Demand is how fast electricity is drawn, in kW. ${each}</p>
     ${summary}
   `;
 }

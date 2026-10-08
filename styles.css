@@ -9263,10 +9263,29 @@ button.astral-state {
   overflow: visible;
 }
 
+/* Key items read as pills, like the series pills beside them. They do not toggle. */
 .astral-ref-key-item {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border-control);
+  border-radius: 999px;
+  color: #000;
+  background: #fff;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.astral-ref-key-item .astral-ref-mark {
+  width: 12px;
+}
+
+.astral-ref-key-item .astral-ref-mark.is-bar,
+.astral-ref-key-item .astral-ref-mark.is-band,
+.astral-ref-key-item .astral-ref-mark.is-band-dot {
+  width: 10px;
 }
 
 .astral-ref-mark {
@@ -14467,13 +14486,6 @@ html.is-classic-scroll #astral-fs .is-scroll-near {
 }
 
 .astral-figure-note {
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
-}
-
-/* Weather tab. One measure at a time, with its units said in words. */
-.astral-weather-note {
-  margin: 0;
   color: var(--color-text-secondary);
   font-size: 0.875rem;
 }
