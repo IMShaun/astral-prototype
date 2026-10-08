@@ -25664,18 +25664,42 @@ function protoScrollCapture(root) {
   return saved.length ? saved : null;
 }
 
+// When content in a pane gets shorter, such as a removed row, the browser pulls the scroll back and everything above jumps down.
+// Keep the lost height as bottom padding, and give it back only as it scrolls out of view.
+const PROTO_SCROLL_HOLD = ".astral-pane-body, .astral-stage-body, .astral-stage";
+
+function protoScrollHold(node, top) {
+  if (!node.matches(PROTO_SCROLL_HOLD)) return;
+  const lack = Math.ceil(top - (node.scrollHeight - node.clientHeight));
+  if (lack <= 0) return;
+  const base = node._protoHoldBase ?? (parseFloat(getComputedStyle(node).paddingBottom) || 0);
+  node._protoHoldBase = base;
+  node._protoHoldSpare = (node._protoHoldSpare || 0) + lack;
+  node.style.paddingBottom = `${base + node._protoHoldSpare}px`;
+  if (node._protoHoldEase) return;
+  node._protoHoldEase = () => {
+    const spare = node._protoHoldSpare || 0;
+    const need = Math.max(0, Math.ceil(node.scrollTop + node.clientHeight - (node.scrollHeight - spare)));
+    if (need >= spare) return;
+    node._protoHoldSpare = need;
+    node.style.paddingBottom = need ? `${base + need}px` : "";
+  };
+  node.addEventListener("scroll", node._protoHoldEase, { passive: true });
+}
+
 function protoScrollRestore(root, saved) {
   if (!root || !saved) return;
   const apply = () => {
     const nodes = new Map();
     root.querySelectorAll("*").forEach((node) => {
-      if (node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth) {
+      if (node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth || node.matches(PROTO_SCROLL_HOLD)) {
         nodes.set(protoScrollNodeKey(node, root), node);
       }
     });
     saved.forEach((item) => {
       const node = nodes.get(item.key);
       if (!node) return;
+      protoScrollHold(node, item.top);
       if (node.scrollTop !== item.top) node.scrollTop = item.top;
       if (node.scrollLeft !== item.left) node.scrollLeft = item.left;
     });
