@@ -22857,14 +22857,16 @@ function protoMeterList(meters) {
   return `
     <div class="astral-meter-list">
       <h4 class="astral-meter-list-title">Meters <span>${rows.length}</span></h4>
-      <div class="astral-meter-list-head">
-        <span>Meter</span>
-        <span>Channel</span>
-        <span>Settings</span>
-        <span>Unit rate</span>
-        <span>Use, last 24 hours</span>
+      <div class="astral-meter-list-box">
+        <div class="astral-meter-list-head">
+          <span>Meter</span>
+          <span>Channel</span>
+          <span>Settings</span>
+          <span>Unit rate</span>
+          <span>Use, last 24 hours</span>
+        </div>
+        ${rows.map((meter) => protoMeterRow(meter)).join("")}
       </div>
-      ${rows.map((meter) => protoMeterRow(meter)).join("")}
     </div>
   `;
 }

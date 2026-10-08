@@ -6674,6 +6674,25 @@ button.astral-state {
   border-bottom: 1px solid var(--color-border-strong);
 }
 
+/* The table sits in a rounded box. The last row has no rule, so no line sits on the box's bottom edge. */
+.astral-meter-list-box {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-card);
+}
+
+.astral-meter-list-box .astral-meter-list-head,
+.astral-meter-list-box .astral-meter-row-head {
+  padding-inline: 16px;
+}
+
+.astral-meter-list-box > .astral-meter-row:last-child > .astral-meter-row-head {
+  border-bottom: 0;
+}
+
 .astral-meter-list-head {
   color: var(--color-text-secondary);
   font-size: 0.875rem;
