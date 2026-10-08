@@ -22495,9 +22495,6 @@ function protoMeterProfileForm(meter) {
     return {
       tag,
       html: `${select}<div class="astral-own-scope" data-proto-own-scope="${escapeHtml(pick)}">
-        <p class="astral-muted astral-meter-own-note">Changes here reach ${escapeHtml(protoMeterName(own))} only. Every other meter follows ${escapeHtml(
-          siteName
-        )}.</p>
         ${body}
       </div>`,
     };
