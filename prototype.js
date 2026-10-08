@@ -10008,11 +10008,6 @@ function protoReportAddEmail(raw) {
 }
 
 function protoPickSelect(id, value) {
-  if (id === "preset-pick-day" && store.prototypePresetPick) {
-    setProto({ prototypePresetPick: { ...store.prototypePresetPick, day: Number(value) || 0 }, prototypeSelectOpen: "" });
-    protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
-    return;
-  }
   if (id === "preset-save-day" && store.prototypePresetSave) {
     const name = document.querySelector("#astral-preset-name")?.value ?? store.prototypePresetSave.name;
     setProto({ prototypePresetSave: { ...store.prototypePresetSave, day: Number(value) || 0, name }, prototypeSelectOpen: "" });
@@ -23063,23 +23058,34 @@ function protoPresetPickList(pick) {
       )
     )
     .join("");
-  const dayPick = week
-    ? ""
-    : `
-      <div class="astral-field">
-        <span id="astral-preset-pick-day-label">Day</span>
-        ${protoSelect({
-          id: "preset-pick-day",
-          label: "Day",
-          labelledby: "astral-preset-pick-day-label",
-          value: String(pick.day),
-          options: PROTO_WEEKDAYS.map((day, d) => ({ value: String(d), label: day })),
-        })}
-      </div>`;
   return `
     ${protoBreakdownKey(Object.values(PROTO_PRESET_LINE[pick.part] || {}))}
     <div class="astral-report-types is-list" role="radiogroup" aria-label="${week ? "Your saved weeks" : "Your saved days"}">${cards}</div>
-    ${dayPick}
+  `;
+}
+
+// Step three for One day. The chosen day preset stays in view, and any number of days can take it.
+function protoPresetPickDays(pick) {
+  const preset = protoSavedPresets(pick.part, "day").find((item) => item.id === pick.choice);
+  const days = pick.days || [];
+  const ticks = PROTO_WEEKDAYS.map((day, d) => {
+    const on = days.includes(d);
+    return `<button type="button" role="checkbox" class="astral-template-col${on ? " is-on" : ""}" aria-checked="${
+      on ? "true" : "false"
+    }" data-proto-preset-day="${d}">${protoCheck(on)}<span>${escapeHtml(day)}</span></button>`;
+  }).join("");
+  const card = preset
+    ? `<div class="astral-preset-chosen">
+        <span class="astral-preset-chosen-name">${escapeHtml(preset.name)}</span>
+        ${protoPresetLine(pick.part, [{ periods: protoPresetPeriods(pick.part, preset) }], false)}
+      </div>`
+    : "";
+  return `
+    ${card}
+    <div class="astral-field">
+      <span id="astral-preset-days-label">Days</span>
+      <div class="astral-template-cols" role="group" aria-labelledby="astral-preset-days-label">${ticks}</div>
+    </div>
   `;
 }
 
@@ -23087,20 +23093,33 @@ function protoPresetPickModal() {
   const pick = store.prototypePresetPick;
   if (!pick || !PROTO_PERIOD_SPEC[pick.part]) return "";
   const title = `Use a preset for ${pick.part === "tou" ? "time of use" : "operational hours"}`;
-  const list = pick.step === "list";
-  const lead = !list
-    ? "Choose what the preset sets."
-    : pick.kind === "week"
-      ? "Choose a saved week. It replaces the times for every day."
-      : "Choose a saved day and the day to use it on.";
-  const body = list
-    ? protoPresetPickList(pick)
-    : `<div class="astral-report-types is-pair" role="radiogroup" aria-labelledby="astral-preset-pick-title">${PROTO_PRESET_KINDS.map(
-        ([value, label, note]) => protoPresetPickCard("data-proto-preset-kind", value, pick.kind === value, label, [note])
-      ).join("")}</div>`;
-  const actions = list
-    ? `${protoBtn("Use preset", 'data-proto-preset-go="1"', { disabled: !pick.choice })}${protoGhost("Back", 'data-proto-preset-back="1"')}`
-    : `${protoBtn("Continue", 'data-proto-preset-go="1"')}${protoGhost("Cancel", 'data-proto-modal-close="preset-pick"')}`;
+  const step = pick.step === "list" || pick.step === "days" ? pick.step : "kind";
+  const dayList = step === "list" && pick.kind === "day";
+  const lead =
+    step === "kind"
+      ? "Choose what the preset sets."
+      : step === "days"
+        ? "Choose the days to use it on. It replaces their times."
+        : pick.kind === "week"
+          ? "Choose a saved week. It replaces the times for every day."
+          : "Choose a saved day.";
+  const body =
+    step === "days"
+      ? protoPresetPickDays(pick)
+      : step === "list"
+        ? protoPresetPickList(pick)
+        : `<div class="astral-report-types is-pair" role="radiogroup" aria-labelledby="astral-preset-pick-title">${PROTO_PRESET_KINDS.map(
+            ([value, label, note]) => protoPresetPickCard("data-proto-preset-kind", value, pick.kind === value, label, [note])
+          ).join("")}</div>`;
+  const back = protoGhost("Back", 'data-proto-preset-back="1"');
+  const actions =
+    step === "kind"
+      ? `${protoBtn("Continue", 'data-proto-preset-go="1"')}${protoGhost("Cancel", 'data-proto-modal-close="preset-pick"')}`
+      : dayList
+        ? `${protoBtn("Continue", 'data-proto-preset-go="1"', { disabled: !pick.choice })}${back}`
+        : `${protoBtn("Use preset", 'data-proto-preset-go="1"', {
+            disabled: step === "days" ? !(pick.days || []).length : !pick.choice,
+          })}${back}`;
   return `
     <div class="astral-modal-back" data-proto-modal="preset-pick">
       <div class="astral-modal astral-preset-pick" id="astral-preset-pick" role="dialog" aria-modal="true" aria-labelledby="astral-preset-pick-title">
@@ -23132,7 +23151,7 @@ function protoPresetPickOpen(owner, part) {
   if (!protoCanAct() || !PROTO_PERIOD_SPEC[part]) return;
   protoStashSrcForm(owner);
   setProto({
-    prototypePresetPick: { owner, part, kind: "week", step: "kind", choice: "", day: protoPeriodDayId(part, 7) },
+    prototypePresetPick: { owner, part, kind: "week", step: "kind", choice: "", days: [protoPeriodDayId(part, 7)] },
     prototypeSelectOpen: "",
   });
   protoRestoreFocus("#astral-fs #astral-preset-pick .astral-report-type.is-on");
@@ -23149,27 +23168,39 @@ function protoPresetPickFocus() {
   );
 }
 
-// Step one asks for a week or a day. Step two lists the saved presets of that kind. Using one copies its times into the section.
+// Step one asks for a week or a day. Step two lists the saved presets of that kind.
+// For One day, step three asks which days take it. Using a preset copies its times into the section.
 function protoPresetPickGo() {
   const pick = store.prototypePresetPick;
   if (!pick) return;
   const list = protoSavedPresets(pick.part, pick.kind);
-  if (pick.step !== "list") {
-    setProto({ prototypePresetPick: { ...pick, step: "list", choice: list[0]?.id || "" } });
+  if (pick.step !== "list" && pick.step !== "days") {
+    const choice = list.some((item) => item.id === pick.choice) ? pick.choice : list[0]?.id || "";
+    setProto({ prototypePresetPick: { ...pick, step: "list", choice } });
     protoPresetPickFocus();
+    return;
+  }
+  if (pick.step === "list" && pick.kind === "day") {
+    if (!pick.choice) return;
+    setProto({ prototypePresetPick: { ...pick, step: "days" } });
+    protoRestoreFocus("#astral-fs #astral-preset-pick [data-proto-preset-day]");
     return;
   }
   const preset = list.find((item) => item.id === pick.choice);
   if (!preset) return;
-  const { owner, part, kind, day } = pick;
+  const { owner, part, kind } = pick;
+  const days = kind === "day" ? [...(pick.days || [])].sort((a, b) => a - b) : [];
+  if (kind === "day" && !days.length) return;
   store.prototypePresetPick = null;
-  if (kind === "day") store.prototypePeriodDay = { ...(store.prototypePeriodDay || {}), [part]: day };
+  if (kind === "day") store.prototypePeriodDay = { ...(store.prototypePeriodDay || {}), [part]: days[0] };
   protoPatchMeterDraft(owner, (draft) => {
     if (!draft[part]) draft[part] = protoCloneProfile(protoSiteProfile(owner.replace(/^own~/, ""))[part]);
     if (kind === "week") draft[part] = protoWeekRows(part, preset);
     else {
       const periods = protoPresetPeriods(part, preset);
-      draft[part] = draft[part].map((row, d) => (d === day ? { ...row, profile: protoPeriodProfile(part, periods), periods } : row));
+      draft[part] = draft[part].map((row, d) =>
+        days.includes(d) ? { ...row, profile: protoPeriodProfile(part, periods), periods: periods.map((p) => ({ ...p })) } : row
+      );
     }
     protoDropWeek(draft, part);
   });
@@ -36007,8 +36038,18 @@ function onPrototype(event) {
     return;
   }
   if (event.target.closest("[data-proto-preset-back]") && store.prototypePresetPick) {
-    setProto({ prototypePresetPick: { ...store.prototypePresetPick, step: "kind" } });
+    const pick = store.prototypePresetPick;
+    setProto({ prototypePresetPick: { ...pick, step: pick.step === "days" ? "list" : "kind" } });
     protoPresetPickFocus();
+    return;
+  }
+  const presetDay = event.target.closest("[data-proto-preset-day]");
+  if (presetDay && store.prototypePresetPick) {
+    const d = Number(presetDay.dataset.protoPresetDay);
+    const now = store.prototypePresetPick.days || [];
+    const days = now.includes(d) ? now.filter((x) => x !== d) : [...now, d];
+    setProto({ prototypePresetPick: { ...store.prototypePresetPick, days } });
+    protoRestoreFocus(`#astral-fs [data-proto-preset-day="${d}"]`);
     return;
   }
   const presetChoice = event.target.closest("[data-proto-preset-choice]");

@@ -11250,6 +11250,19 @@ tr.is-off .astral-person-mark {
   gap: 16px;
 }
 
+/* The day preset being used, shown above the days that take it. */
+.astral-preset-chosen {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+}
+
+.astral-preset-chosen-name {
+  font-weight: 500;
+}
+
 .astral-times-title {
   margin: 0;
   font-size: 1rem;
