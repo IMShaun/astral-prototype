@@ -3718,13 +3718,13 @@ function protoDateCompareLines(points, remake, meters, dualTotal, outgoing, labe
 const PROTO_PROFILE = [
   {
     id: "weekday",
-    name: "Same weekday",
-    note: "Each day against the same day of the week, from the 4 weeks before",
+    name: "Same day of the week",
+    note: "Monday compared with the last 4 Mondays",
   },
   {
     id: "daytype",
     name: "Weekday or weekend",
-    note: "Each day against all weekdays or all weekend days, from the 4 weeks before",
+    note: "Monday compared with the last 20 weekdays",
   },
 ];
 const PROTO_PROFILE_DAYS = 28;
@@ -3767,7 +3767,7 @@ function protoProfileKeyName(id, span, win) {
     ).length;
     return `Average profile, ${count} ${protoDayIsWeekend(day) ? "weekend days" : "weekdays"}, ${range}`;
   }
-  return `Average profile, ${id === "weekday" ? "same weekday" : "weekday or weekend"}, ${range}`;
+  return `Average profile, ${id === "weekday" ? "same day of the week" : "weekday or weekend"}, ${range}`;
 }
 
 function protoMean(list) {
@@ -7057,7 +7057,6 @@ function protoChartShowSelect(more = {}) {
   const capacity = {
     value: "capacity",
     label: "Site capacity",
-    note: "The most the site can draw, as a line",
     disabled: Boolean(capBlocked),
     tip: capBlocked,
   };
@@ -7076,8 +7075,8 @@ function protoChartShowSelect(more = {}) {
       value: protoChartShow()[0] || "none",
       options: [
         { value: "none", label: "No overlay" },
-        { value: "hours", label: "Hours", note: "Operational, Non-operational, and Closed", ...busy("hours") },
-        { value: "tou", label: "Time of use", note: "Peak and Off-peak", ...busy("time of use") },
+        { value: "hours", label: "Operational hours", ...busy("operational hours") },
+        { value: "tou", label: "Time of use", ...busy("time of use") },
         capacity,
       ],
       ...more,
@@ -7092,8 +7091,8 @@ function protoChartShowSelect(more = {}) {
     allLabel: "All overlays",
     countLabel: "overlays",
     options: [
-      { value: "hours", label: "Hours", note: "Operational, Non-operational, and Closed" },
-      { value: "tou", label: "Time of use", note: "Peak and Off-peak" },
+      { value: "hours", label: "Operational hours" },
+      { value: "tou", label: "Time of use" },
       capacity,
     ],
     ...more,
@@ -7492,7 +7491,7 @@ function protoChartZoneField(set, field) {
   const pick = set?.pick || set?.groups?.[0] || null;
   if (!pick) return "";
   const { showHours, showTou } = set.zones;
-  const lead = `${showHours && showTou ? "Hours and time of use" : showHours ? "Hours" : "Time of use"} for`;
+  const lead = `${showHours && showTou ? "Operational hours and time of use" : showHours ? "Operational hours" : "Time of use"} for`;
   const open = protoSelectOpen() === "chart-zone-for";
   const several = set.groups.length > 1;
   return field("zone", lead, (labelledby) =>
@@ -7806,7 +7805,7 @@ function protoChartBoundsWords(set) {
   const group = set?.pick || set?.groups?.[0];
   if (!group || !set.zones?.on) return "";
   const { showHours, showTou } = set.zones;
-  const lead = showHours && showTou ? "Hours and time of use" : showHours ? "Hours" : "Time of use";
+  const lead = showHours && showTou ? "Operational hours and time of use" : showHours ? "Operational hours" : "Time of use";
   return `${lead} for ${[group.label, set.utility].filter(Boolean).join(" \u00b7 ")}`;
 }
 
