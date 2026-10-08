@@ -11252,26 +11252,30 @@ tr.is-off .astral-person-mark {
 
 .astral-report-types.is-list .astral-report-type {
   grid-template-columns: minmax(7rem, 1fr) minmax(0, 2fr);
-  align-items: start;
+  align-items: center;
   column-gap: 16px;
 }
 
-/* A preset as a timeline: one 24 hour bar per day. The colours match the status marks in the key. */
+/* A preset at a glance. The colours match the status marks in the key. */
 .astral-preset-line {
   display: grid;
-  gap: 2px;
   width: 100%;
 }
 
-.astral-preset-line-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
+/* A week is one row of day squares. Each square fills top to bottom from 00:00 to 24:00. */
+.astral-preset-line.is-week {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
 }
 
-.astral-preset-line.has-days .astral-preset-line-row {
-  grid-template-columns: 1.75rem minmax(0, 1fr);
+.astral-preset-line-cell {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.astral-preset-line.is-day {
+  gap: 4px;
 }
 
 .astral-preset-line-day,
@@ -11282,19 +11286,43 @@ tr.is-off .astral-person-mark {
   color: var(--color-text-secondary);
 }
 
+.astral-preset-line-square,
 .astral-preset-line-bar {
   position: relative;
-  height: 10px;
   overflow: hidden;
-  border-radius: 2px;
+  border-radius: 4px;
   background: #fff;
+}
+
+.astral-preset-line-square::after,
+.astral-preset-line-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   box-shadow: inset 0 0 0 1px var(--color-border-strong);
+}
+
+.astral-preset-line-square {
+  width: 100%;
+  max-width: 2.5rem;
+  aspect-ratio: 1;
+}
+
+.astral-preset-line-bar {
+  height: 2rem;
 }
 
 .astral-preset-seg {
   position: absolute;
   top: 0;
   bottom: 0;
+}
+
+.astral-preset-line-square .astral-preset-seg {
+  bottom: auto;
+  left: 0;
+  right: 0;
 }
 
 .astral-preset-seg.is-open {
@@ -11317,7 +11345,6 @@ tr.is-off .astral-person-mark {
 .astral-preset-line-ticks {
   position: relative;
   height: 12px;
-  margin-top: 2px;
 }
 
 .astral-preset-line-ticks > span {
