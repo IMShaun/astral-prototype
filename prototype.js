@@ -731,6 +731,7 @@ function protoPageFilterReset() {
     prototypeMeterOwn: "",
     prototypeMeterFold: "",
     prototypeMeterAttrTab: "",
+    prototypePeriodDay: null,
     prototypeMeterUpload: null,
     prototypeSummaryOpen: true,
     prototypeBreakdownOpen: false,
@@ -793,6 +794,7 @@ function protoPortfolioHomePatch() {
     prototypeMeterOwn: "",
     prototypeMeterFold: "",
     prototypeMeterAttrTab: "",
+    prototypePeriodDay: null,
     prototypeMeterUpload: null,
     prototypeGroupSites: [],
     prototypeSiteMeters: [],
@@ -22053,6 +22055,7 @@ function protoMeterSettingsReset() {
     prototypeMeterOwn: "",
     prototypeMeterFold: "",
     prototypeMeterAttrTab: "",
+    prototypePeriodDay: null,
     prototypeMeterUpload: null,
   };
 }
@@ -22242,17 +22245,17 @@ function protoMeterTouTable(id, rows) {
 }
 
 // One row per period. A day holds as many periods as it needs, so any opening pattern or tariff fits.
+// Day tabs show one day at a time. Every day stays in the form, so typing, Save, and the CSV still cover the week.
 function protoMeterPeriodTable(id, rows, part) {
   const spec = PROTO_PERIOD_SPEC[part];
   const can = protoCanAct();
   const owner = `data-proto-period-owner="${escapeHtml(id)}"`;
-  const days = rows
-    .map((row, d) => {
-      const periods = protoDayPeriods(row, part);
-      const issue = protoPeriodIssues(periods, part);
-      const span = periods.length + 1;
-      const lead = `
-        <th scope="rowgroup" rowspan="${span}">${escapeHtml(row.day)}</th>
+  const issues = rows.map((row) => protoPeriodIssues(protoDayPeriods(row, part), part));
+  const panels = rows.map((row, d) => {
+    const periods = protoDayPeriods(row, part);
+    const issue = issues[d];
+    const span = periods.length + 1;
+    const lead = `
         <td rowspan="${span}">
           ${protoSelect({
             id: `meter-${part}-profile-${id}-${d}`,
@@ -22263,10 +22266,10 @@ function protoMeterPeriodTable(id, rows, part) {
           })}
         </td>
       `;
-      const lines = periods.map((p, i) => {
-        const name = `${row.day} period ${i + 1}`;
-        const only = periods.length < 2;
-        return `
+    const lines = periods.map((p, i) => {
+      const name = `${row.day} period ${i + 1}`;
+      const only = periods.length < 2;
+      return `
           <tr>
             ${i ? "" : lead}
             <td>${protoMeterClockField(`${part}-from-${d}-${i}`, p.from, `${name} from`)}</td>
@@ -22297,9 +22300,9 @@ function protoMeterPeriodTable(id, rows, part) {
             </td>
           </tr>
         `;
-      });
-      const note = issue.error || issue.note || "";
-      const foot = `
+    });
+    const note = issue.error || issue.note || "";
+    const foot = `
         <tr class="astral-period-foot">
           ${periods.length ? "" : lead}
           <td colspan="4">
@@ -22310,15 +22313,10 @@ function protoMeterPeriodTable(id, rows, part) {
           </td>
         </tr>
       `;
-      return `<tbody class="astral-period-day">${lines.join("")}${foot}</tbody>`;
-    })
-    .join("");
-  return `
-        <div class="astral-table-wrap">
+    return `
           <table class="astral-table astral-period-table">
             <thead>
               <tr>
-                <th scope="col">Day</th>
                 <th scope="col">Select profile</th>
                 <th scope="col">From</th>
                 <th scope="col">To</th>
@@ -22326,10 +22324,77 @@ function protoMeterPeriodTable(id, rows, part) {
                 <th scope="col"><span class="sr-only">Remove</span></th>
               </tr>
             </thead>
-            ${days}
+            <tbody class="astral-period-day">${lines.join("")}${foot}</tbody>
           </table>
-        </div>
+    `;
+  });
+  return protoPeriodDays(id, rows, part, panels, issues);
+}
+
+function protoPeriodDayId(part, count) {
+  const d = Number(store.prototypePeriodDay?.[part]);
+  return Number.isInteger(d) && d >= 0 && d < count ? d : 0;
+}
+
+function protoPeriodDomId(id, part, d) {
+  return `astral-period-${String(id).replace(/[^\w-]/g, "-")}-${part}-${d}`;
+}
+
+// One tab a day, Monday to Sunday. A flag marks a day that needs a fix, since Save waits on every day.
+function protoPeriodDays(id, rows, part, panels, issues = []) {
+  const active = protoPeriodDayId(part, rows.length);
+  const tabs = rows
+    .map((row, d) => {
+      const on = d === active;
+      const bad = Boolean(issues[d]?.error);
+      return `<button type="button" role="tab" id="${protoPeriodDomId(id, part, d)}-tab" aria-controls="${protoPeriodDomId(
+        id,
+        part,
+        d
+      )}" class="${on ? "is-on" : ""}${bad ? " has-error" : ""}" data-proto-period-tab="${part}" data-proto-period-tab-day="${d}" aria-selected="${
+        on ? "true" : "false"
+      }" tabindex="${on ? "0" : "-1"}">${escapeHtml(row.day)}<span class="astral-period-tab-flag"${
+        bad ? "" : " hidden"
+      }><span class="sr-only"> needs a fix</span></span></button>`;
+    })
+    .join("");
+  return `
+    <div class="astral-period-days" data-proto-period-days="${part}">
+      <div class="astral-period-tabs">
+        <div class="astral-tabs" role="tablist" aria-label="Days of the week" data-part="${part}">${tabs}</div>
+      </div>
+      ${panels
+        .map(
+          (panel, d) => `
+      <div class="astral-table-wrap astral-period-panel" role="tabpanel" id="${protoPeriodDomId(id, part, d)}" aria-labelledby="${protoPeriodDomId(
+        id,
+        part,
+        d
+      )}-tab" data-proto-period-panel="${d}"${d === active ? "" : " hidden"}>${panel}</div>`
+        )
+        .join("")}
+    </div>
   `;
+}
+
+function protoPickPeriodDay(tab) {
+  const part = String(tab.dataset.protoPeriodTab || "");
+  const d = Number(tab.dataset.protoPeriodTabDay);
+  if (!PROTO_PERIOD_SPEC[part] || !Number.isInteger(d)) return;
+  store.prototypePeriodDay = { ...(store.prototypePeriodDay || {}), [part]: d };
+  persistChrome();
+  document.querySelectorAll(`#astral-fs [data-proto-period-days="${part}"]`).forEach((root) => {
+    root.querySelectorAll("[data-proto-period-tab]").forEach((item) => {
+      const on = Number(item.dataset.protoPeriodTabDay) === d;
+      item.classList.toggle("is-on", on);
+      item.setAttribute("aria-selected", on ? "true" : "false");
+      item.tabIndex = on ? 0 : -1;
+    });
+    root.querySelectorAll("[data-proto-period-panel]").forEach((panel) => {
+      panel.hidden = Number(panel.dataset.protoPeriodPanel) !== d;
+    });
+    protoSlideHost(root.querySelector(".astral-period-tabs .astral-tabs"), "button.is-on", `periodTabs-${part}`, false);
+  });
 }
 
 // Typing does not redraw the form, so the day notes and Save follow the typing here.
@@ -22343,6 +22408,11 @@ function protoSyncPeriodNotes(form, draft) {
       note.textContent = text;
       note.hidden = !text;
       note.classList.toggle("is-error", Boolean(issue.error));
+      const tab = form.querySelector(`[data-proto-period-tab="${part}"][data-proto-period-tab-day="${d}"]`);
+      if (!tab) return;
+      tab.classList.toggle("has-error", Boolean(issue.error));
+      const flag = tab.querySelector(".astral-period-tab-flag");
+      if (flag) flag.hidden = !issue.error;
     });
   });
 }
@@ -22404,27 +22474,25 @@ function protoMeterOwnMeter() {
   return id ? protoMeter(id) : null;
 }
 
-function protoMeterPlainTable(headers, rows) {
-  return `
-    <div class="astral-table-wrap">
-      <table class="astral-table">
-        <thead><tr>${headers.map((item) => `<th scope="col">${escapeHtml(item)}</th>`).join("")}</tr></thead>
-        <tbody>${rows
-          .map((row) => `<tr>${row.map((cell, i) => (i ? `<td>${escapeHtml(cell)}</td>` : `<th scope="row">${escapeHtml(cell)}</th>`)).join("")}</tr>`)
-          .join("")}</tbody>
-      </table>
-    </div>
-  `;
-}
-
 function protoMeterSiteView(meter, part, site) {
   if (part === "hours" || part === "tou") {
     const spec = PROTO_PERIOD_SPEC[part];
     const status = (id) => spec.statuses.find((item) => item.id === id)?.name || id;
-    return protoMeterPlainTable(
-      ["Day", "From", "To", "Status"],
-      site[part].flatMap((row) =>
-        protoDayPeriods(row, part).map((p, i) => [i ? "" : row.day, protoClockShow(p.from), protoClockShow(p.to), status(p.status)])
+    const plain = (headers, rows) => `
+        <table class="astral-table">
+          <thead><tr>${headers.map((item) => `<th scope="col">${escapeHtml(item)}</th>`).join("")}</tr></thead>
+          <tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody>
+        </table>
+    `;
+    return protoPeriodDays(
+      `site~${meter.id}`,
+      site[part],
+      part,
+      site[part].map((row) =>
+        plain(
+          ["From", "To", "Status"],
+          protoDayPeriods(row, part).map((p) => [protoClockShow(p.from), protoClockShow(p.to), status(p.status)])
+        )
       )
     );
   }
@@ -33031,6 +33099,9 @@ function protoSlideNavPills(options) {
   );
   protoSlideHost(root.querySelector("nav.astral-links"), ".astral-link[aria-current='page']", "links", snap);
   protoSlideHost(root.querySelector(".astral-meter-attr-tabs .astral-tabs"), "button.is-on", "attrTabs", snap);
+  ["hours", "tou"].forEach((part) => {
+    protoSlideHost(root.querySelector(`.astral-period-tabs .astral-tabs[data-part="${part}"]`), "button.is-on", `periodTabs-${part}`, snap);
+  });
   protoSlideHost(
     document.querySelector("#astral-fs .astral-chart-style-switch"),
     "button.is-on",
@@ -35063,6 +35134,7 @@ function onPrototype(event) {
         prototypeMeterOpen: id,
         prototypeMeterFold: "",
         prototypeMeterAttrTab: "",
+        prototypePeriodDay: null,
     prototypeMeterUpload: null,
         prototypePane: "profile",
       },
@@ -35106,6 +35178,11 @@ function onPrototype(event) {
       store.prototypeMeterDrafts = { ...protoMeterDrafts(), [protoProfileKey(meter.id)]: protoReadMeterProfileForm(form, meter) };
     }
     protoCsvDownload(protoSiteSettingsCsv(meter), protoSiteSettingsCsvName(meter));
+    return;
+  }
+  const periodTab = event.target.closest("[data-proto-period-tab]");
+  if (periodTab) {
+    protoPickPeriodDay(periodTab);
     return;
   }
   const meterAttrTab = event.target.closest("[data-proto-meter-attr-tab]");

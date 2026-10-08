@@ -10369,7 +10369,7 @@ button.astral-state {
   white-space: nowrap;
 }
 
-/* Periods: one tbody per day. Rules sit between days, not between a day's periods. */
+/* Periods: one table per day, under day tabs. Rules sit under the day, not between its periods. */
 .astral-period-table tbody th,
 .astral-period-table tbody td[rowspan] {
   vertical-align: top;
@@ -10415,6 +10415,35 @@ button.astral-state {
 
 .astral-period-note.is-error {
   color: var(--color-text-danger);
+}
+
+/* Day tabs: one day of periods at a time, Monday to Sunday. */
+.astral-period-days {
+  display: grid;
+  gap: var(--space-16, 16px);
+  min-width: 0;
+}
+
+.astral-period-tabs {
+  display: flex;
+  min-width: 0;
+}
+
+.astral-period-panel[hidden] {
+  display: none;
+}
+
+.astral-period-tab-flag {
+  width: 8px;
+  height: 8px;
+  margin-left: var(--space-4);
+  border-radius: 50%;
+  background: var(--color-text-danger);
+  flex: none;
+}
+
+.astral-period-tab-flag[hidden] {
+  display: none;
 }
 
 /* Column headers: Body S in Infra Grey C on white, sentence case, over an Infra Grey B rule. */
