@@ -6558,13 +6558,15 @@ function protoChartViewSelect(more = {}) {
       : pane === "carbon"
         ? `Combined carbon for ${where}`
         : `How much ${where} used`;
+  const calendar = protoCalendarAllowed();
   return protoSelect({
     id: "chart-view",
     label: `${total} or ${individual}`,
-    value: view,
+    value: protoChartIsCalendar() ? "calendar" : view,
     options: [
       { value: "total", label: total, note: totalNote },
       { value: "individual", label: individual, note: `Which ${parts} made that total` },
+      ...(calendar ? [{ value: "calendar", label: "Calendar", note: "Each day's total, a month at a time" }] : []),
     ],
     ...more,
   });
@@ -6614,13 +6616,12 @@ function protoChartStyleSelect(more = {}) {
   });
 }
 
-// Bar or Line as a two way switch, in the look of the tabs.
+// Bar or Line as a two way switch, in the look of the tabs. Calendar is a View.
 function protoChartStyleSwitch(labelledby) {
   const style = protoChartStyle();
   const items = [
     { id: "bar", name: "Bar", icon: "chart-bar" },
     { id: "line", name: "Line", icon: "chart-line" },
-    ...(protoCalendarAllowed() ? [{ id: "calendar", name: "Calendar", icon: "calendar" }] : []),
   ];
   return `
     <div class="astral-tabs astral-chart-style-switch" role="radiogroup" aria-labelledby="${escapeHtml(labelledby)}">
@@ -7084,17 +7085,12 @@ function protoChartSettings(zoneSet) {
   const fields = open
     ? [
         field("view", "View", (labelledby) =>
-          protoChartViewSelect({ label: "View", labelledby, ...(calendar ? { disabled: true } : {}) })
+          protoChartViewSelect({ label: "View", labelledby }) +
+          (calendar
+            ? `<p class="astral-chart-setting-note">Calendar shows the total for each day. Chart type and Overlay apply to the graph.</p>`
+            : "")
         ),
-        field(
-          "style",
-          "Chart type",
-          (labelledby) =>
-            protoChartStyleSwitch(labelledby) +
-            (calendar
-              ? `<p class="astral-chart-setting-note">Calendar shows the total for each day. View and Overlay apply to Bar and Line.</p>`
-              : "")
-        ),
+        calendar ? "" : field("style", "Chart type", (labelledby) => protoChartStyleSwitch(labelledby)),
         field("show", "Overlay", (labelledby) =>
           calendar
             ? protoChartShowSelect({ labelledby, disabled: true })
@@ -9285,11 +9281,18 @@ function protoPickSelect(id, value) {
     return;
   }
   if (id === "chart-view") {
-    setProto({
-      prototypeSelectOpen: "",
-      prototypeChartView: value === "individual" ? "individual" : "total",
-      prototypeChartPoint: null,
-    });
+    if (value === "calendar") {
+      if (!protoCalendarAllowed()) return;
+      setProto({ prototypeSelectOpen: "", prototypeChartStyle: "calendar", prototypeChartPoint: null });
+    } else {
+      setProto({
+        prototypeSelectOpen: "",
+        prototypeChartView: value === "individual" ? "individual" : "total",
+        ...(protoChartIsCalendar() ? { prototypeChartStyle: "bar" } : {}),
+        prototypeChartPoint: null,
+      });
+    }
+    protoRestoreFocus(`#astral-chart-settings-menu [data-proto-select="chart-view"] .astral-select-btn`);
     return;
   }
   if (id === "chart-show") {
