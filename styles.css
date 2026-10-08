@@ -9417,18 +9417,23 @@ button.astral-state {
   gap: 4px;
 }
 
-.astral-date-group + .astral-date-group > .astral-select-heading {
+.astral-date-foot {
+  display: grid;
   margin-top: 4px;
+  padding-top: 4px;
   border-top: 1px solid var(--color-border-subtle);
+}
+
+.astral-date-compare-modal .astral-date-compare-dates {
+  margin: 0;
+  font-size: 0.8125rem;
 }
 
 .astral-date-menu .astral-select-heading:first-child {
   padding-top: 4px;
 }
 
-.astral-date-menu-note {
-  margin: 0;
-  padding: 0 12px 4px;
+.astral-date-foot .astral-muted {
   font-size: 0.8125rem;
   white-space: normal;
   max-width: 16rem;
