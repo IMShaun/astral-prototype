@@ -5080,9 +5080,25 @@ function protoFlowKind(label) {
   return "";
 }
 
+// Comparing dates shows one flow at a time, so In and Out become a single pick.
+const protoFlowSingleCache = new Map();
+function protoChartFlowSingle() {
+  if (!protoDateCompareOn()) return false;
+  if (protoCompareOn()) return protoDateCompareHasFlows();
+  const key = [store.prototypeScope, store.prototypeGroup, store.activePrototypeMeter].join("|");
+  if (!protoFlowSingleCache.has(key)) {
+    if (protoFlowSingleCache.size > 50) protoFlowSingleCache.clear();
+    protoFlowSingleCache.set(key, protoDateCompareHasFlows());
+  }
+  return protoFlowSingleCache.get(key);
+}
+
 function protoChartFlowIds() {
-  if (!Array.isArray(store.prototypeChartFlows)) return ["in", "out"];
-  return ["in", "out"].filter((id) => store.prototypeChartFlows.includes(id));
+  const picked = Array.isArray(store.prototypeChartFlows)
+    ? ["in", "out"].filter((id) => store.prototypeChartFlows.includes(id))
+    : ["in", "out"];
+  if (protoChartFlowSingle()) return picked.length === 1 ? picked : ["in"];
+  return picked;
 }
 
 function protoChartFlowOn(kind) {
@@ -5152,7 +5168,9 @@ function protoBarFlowView(points, paired) {
 function protoToggleChartFlow(kind) {
   if (kind !== "in" && kind !== "out") return;
   const cur = protoChartFlowIds();
-  const next = ["in", "out"].filter((id) => (id === kind ? !cur.includes(id) : cur.includes(id)));
+  const next = protoChartFlowSingle()
+    ? [kind]
+    : ["in", "out"].filter((id) => (id === kind ? !cur.includes(id) : cur.includes(id)));
   const overlayOpen = Boolean(store.prototypePaneFilterOpen);
   setProto({
     prototypeChartFlows: next.length === 2 ? null : next,
@@ -5169,7 +5187,9 @@ function protoToggleChartFlow(kind) {
 function protoTogglePaneFlowTick(kind) {
   if (kind !== "in" && kind !== "out") return;
   const cur = Array.isArray(store.prototypeChartFlows) ? protoChartFlowIds() : [];
-  const next = ["in", "out"].filter((id) => (id === kind ? !cur.includes(id) : cur.includes(id)));
+  const next = protoChartFlowSingle()
+    ? [kind]
+    : ["in", "out"].filter((id) => (id === kind ? !cur.includes(id) : cur.includes(id)));
   setProto({
     prototypeChartFlows: next.length ? next : null,
     prototypeChartPoint: null,
@@ -18744,7 +18764,7 @@ function protoFilterItemOn(attr, picked, item) {
   if (!id) return false;
   if (!protoFilterItemAvailable(attr, item)) return false;
   if (attr === "data-proto-pane-filter" && (id === "in" || id === "out")) {
-    return Array.isArray(store.prototypeChartFlows) && protoChartFlowOn(id);
+    return (protoChartFlowSingle() || Array.isArray(store.prototypeChartFlows)) && protoChartFlowOn(id);
   }
   if (attr === "data-proto-pane-filter" && (id === "electricity" || id === "gas" || id === "water")) {
     return (protoPaneMeterKindIds() || []).includes(id);
@@ -18791,6 +18811,7 @@ function protoTogglePaneFilterGroup(groupId) {
   if (groupId === "meter") {
     patch.prototypePaneMeterKinds = selectAll ? protoPanePoolMeterKinds() : null;
   } else if (groupId === "flow") {
+    if (protoChartFlowSingle()) return;
     patch.prototypeChartFlows = selectAll ? ["in", "out"] : null;
   } else {
     patch.prototypePaneFilters = protoFilterGroupSelectNext(
@@ -19070,7 +19091,10 @@ function protoFilterTickGroups(picked, attr, groups = PROTO_TREE_FILTERS) {
     const mix = state === "mix";
     const checked = allOn ? "true" : mix ? "mixed" : "false";
     const usable = group.items.some((item) => protoFilterItemAvailable(attr, item));
-    const allBtn = `
+    const single = attr === "data-proto-pane-filter" && group.id === "flow" && protoChartFlowSingle();
+    const allBtn = single
+      ? ""
+      : `
       <button
         type="button"
         role="menuitemcheckbox"
@@ -19097,13 +19121,13 @@ function protoFilterTickGroups(picked, attr, groups = PROTO_TREE_FILTERS) {
         return `
           <button
             type="button"
-            role="menuitemcheckbox"
+            role="${single ? "menuitemradio" : "menuitemcheckbox"}"
             class="astral-filter-child${on ? " is-on" : ""}${avail ? "" : " is-disabled"}"
             aria-checked="${on ? "true" : "false"}"
             ${avail ? "" : `disabled aria-disabled="true" title="None in this view"`}
             ${attr}="${escapeHtml(item.id)}"
           >
-            <span class="astral-check${on ? " is-on" : ""}" aria-hidden="true"></span>
+            <span class="${single ? "astral-radio" : "astral-check"}${on ? " is-on" : ""}" aria-hidden="true"></span>
             ${item.mark ? protoMarkFace(item.mark, item.name) : protoFilterFace(item.id, item.name)}
             ${countHtml}
           </button>
