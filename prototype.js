@@ -2489,18 +2489,102 @@ function protoPeriodProfile(part, periods) {
   return protoDayPresets(part).find((preset) => JSON.stringify(protoPresetPeriods(part, preset)) === key)?.id || "";
 }
 
+// Sample saved presets, so the lists show how a long set looks. They sit after anything the user saves.
+function protoSamplePeriods(...spans) {
+  return spans.map(([status, from, to]) => ({ status, from, to }));
+}
+
+function protoSampleOpen(from, to, outside = "off") {
+  const spans = [];
+  if (from !== "00.00") spans.push([outside, "00.00", from]);
+  spans.push(["operational", from, to]);
+  if (to !== "24.00") spans.push([outside, to, "24.00"]);
+  return protoSamplePeriods(...spans);
+}
+
+function protoSampleWeek(id, name, days) {
+  const rows = days.map((periods) => ({ profile: "", periods }));
+  return { id: `sample-week-${id}`, name, days: rows.map(() => ""), rows };
+}
+
+const protoSampleAll = (status) => protoSamplePeriods([status, "00.00", "24.00"]);
+
+const PROTO_SAMPLE_PRESETS = (() => {
+  const workweek = (day, sat, sun) => [day, day, day, day, day, sat, sun];
+  const closed = protoSampleAll("closed");
+  const non = protoSampleAll("off");
+  const nights = protoSamplePeriods(["operational", "00.00", "06.00"], ["off", "06.00", "22.00"], ["operational", "22.00", "24.00"]);
+  const station = protoSamplePeriods(["operational", "00.00", "01.00"], ["off", "01.00", "04.30"], ["operational", "04.30", "24.00"]);
+  const peak = (...spans) => {
+    const out = [];
+    let at = "00.00";
+    spans.forEach(([from, to]) => {
+      if (from !== at) out.push(["off", at, from]);
+      out.push(["on", from, to]);
+      at = to;
+    });
+    if (at !== "24.00") out.push(["off", at, "24.00"]);
+    return protoSamplePeriods(...out);
+  };
+  const offPeak = protoSampleAll("off");
+  return {
+    hours: {
+      weeks: [
+        protoSampleWeek("office", "Office hours", workweek(protoSampleOpen("08.00", "18.00"), closed, closed)),
+        protoSampleWeek("depot", "Depot shifts", workweek(protoSampleOpen("05.00", "23.00"), protoSampleOpen("06.00", "14.00"), non)),
+        protoSampleWeek("retail", "Shop hours", workweek(protoSampleOpen("09.00", "17.30"), protoSampleOpen("09.00", "17.30"), protoSampleOpen("10.00", "16.00"))),
+        protoSampleWeek("station", "Station hours", workweek(station, station, protoSampleOpen("06.00", "24.00"))),
+        protoSampleWeek("nights", "Night shifts", workweek(nights, protoSamplePeriods(["operational", "00.00", "06.00"], ["off", "06.00", "24.00"]), non)),
+        protoSampleWeek("school", "School term", workweek(protoSampleOpen("07.30", "16.30"), closed, closed)),
+        protoSampleWeek("always", "Always open", workweek(protoSampleAll("operational"), protoSampleAll("operational"), protoSampleAll("operational"))),
+        protoSampleWeek("shutdown", "Shutdown week", workweek(closed, closed, closed)),
+      ],
+      days: [
+        { id: "sample-day-half", name: "Half day", periods: protoSamplePeriods(["off", "00.00", "08.00"], ["operational", "08.00", "13.00"], ["closed", "13.00", "24.00"]) },
+        { id: "sample-day-early", name: "Early shift", periods: protoSampleOpen("06.00", "14.00") },
+        { id: "sample-day-late", name: "Late shift", periods: protoSampleOpen("14.00", "22.00") },
+        { id: "sample-day-night", name: "Night shift", periods: nights },
+        { id: "sample-day-cleaning", name: "Cleaning only", periods: protoSampleOpen("06.00", "09.00", "closed") },
+        { id: "sample-day-holiday", name: "Bank holiday", periods: closed },
+        { id: "sample-day-all", name: "Open all day", periods: protoSampleAll("operational") },
+      ],
+    },
+    tou: {
+      weeks: [
+        protoSampleWeek("evening", "Evening peak", workweek(peak(["16.00", "19.00"]), offPeak, offPeak)),
+        protoSampleWeek("winter", "Winter peaks", workweek(peak(["07.00", "11.00"], ["16.00", "20.00"]), offPeak, offPeak)),
+        protoSampleWeek("economy", "Economy 7", workweek(peak(["07.30", "24.00"]), peak(["07.30", "24.00"]), peak(["07.30", "24.00"]))),
+        protoSampleWeek("flat", "No peak", workweek(offPeak, offPeak, offPeak)),
+      ],
+      days: [
+        { id: "sample-day-evening", name: "Evening peak", periods: peak(["16.00", "19.00"]) },
+        { id: "sample-day-two", name: "Two peaks", periods: peak(["07.00", "11.00"], ["16.00", "20.00"]) },
+        { id: "sample-day-economy", name: "Economy 7", periods: peak(["07.30", "24.00"]) },
+        { id: "sample-day-offpeak", name: "Off peak all day", periods: offPeak },
+      ],
+    },
+  };
+})();
+
 // Presets someone saves sit after the standard ones. A saved day holds any periods. A saved week holds every day's times.
 function protoCustomPresets(part) {
   const own = (store.prototypeCustomPresets || {})[part] || {};
   return { days: Array.isArray(own.days) ? own.days : [], weeks: Array.isArray(own.weeks) ? own.weeks : [] };
 }
 
+// What the Use a preset list shows: the user's own saved presets, then the samples.
+function protoListedPresets(part) {
+  const own = protoCustomPresets(part);
+  const sample = PROTO_SAMPLE_PRESETS[part] || { days: [], weeks: [] };
+  return { days: [...own.days, ...sample.days], weeks: [...own.weeks, ...sample.weeks] };
+}
+
 function protoDayPresets(part) {
-  return [...(PROTO_PERIOD_SPEC[part]?.presets || []), ...protoCustomPresets(part).days];
+  return [...(PROTO_PERIOD_SPEC[part]?.presets || []), ...protoListedPresets(part).days];
 }
 
 function protoWeekPresets(part) {
-  return [...(PROTO_WEEK_PRESETS[part] || []), ...protoCustomPresets(part).weeks];
+  return [...(PROTO_WEEK_PRESETS[part] || []), ...protoListedPresets(part).weeks];
 }
 
 function protoPresetPeriods(part, preset) {
@@ -2515,11 +2599,11 @@ function protoPresetOptions(standard, own) {
 }
 
 function protoDayPresetOptions(part) {
-  return protoPresetOptions(PROTO_PERIOD_SPEC[part].presets, protoCustomPresets(part).days);
+  return protoPresetOptions(PROTO_PERIOD_SPEC[part].presets, protoListedPresets(part).days);
 }
 
 function protoWeekPresetOptions(part) {
-  return protoPresetOptions(PROTO_WEEK_PRESETS[part] || [], protoCustomPresets(part).weeks);
+  return protoPresetOptions(PROTO_WEEK_PRESETS[part] || [], protoListedPresets(part).weeks);
 }
 
 // Settings saved before periods held one block a day. Turn them into periods.
@@ -22840,8 +22924,8 @@ function protoTimesPanel(owner, part, mode, body, attrs = "") {
   const off = { disabled: !protoCanAct() };
   const use =
     mode === "preset"
-      ? protoGhost("Stop using preset", `${shared} data-proto-meter-src="${part}" data-proto-meter-src-mode="own"`, off)
-      : protoGhost("Use a preset", `${shared} data-proto-preset-open="${part}"`, off);
+      ? protoBtn("Stop using preset", `${shared} data-proto-meter-src="${part}" data-proto-meter-src-mode="own"`, off)
+      : protoBtn("Use a preset", `${shared} data-proto-preset-open="${part}"`, off);
   const save = protoGhost(
     "Save preset",
     `data-proto-preset-save-open="${part}" data-proto-meter-src-owner="${escapeHtml(owner)}"`,
@@ -22864,6 +22948,11 @@ const PROTO_PRESET_KINDS = [
 ];
 
 // Each run of days with the same times on one line, such as Monday to Friday, operational 05:00 to 21:00.
+// Times read after a day name, so each period starts in lower case.
+function protoTimesInline(times) {
+  return String(times || "").replace(/(^|, )(\w)/g, (_, sep, c) => sep + c.toLowerCase());
+}
+
 function protoWeekNote(part, rows) {
   const lines = [];
   rows.forEach((row, d) => {
@@ -22877,7 +22966,7 @@ function protoWeekNote(part, rows) {
       from === to
         ? PROTO_WEEKDAYS[from]
         : `${PROTO_WEEKDAYS[from]} ${to === from + 1 ? "and" : "to"} ${PROTO_WEEKDAYS[to]}`;
-    return times ? `${days}, ${times.charAt(0).toLowerCase()}${times.slice(1)}` : days;
+    return times ? `${days}, ${protoTimesInline(times)}` : days;
   });
 }
 
@@ -22898,8 +22987,8 @@ const PROTO_PRESET_LINE = {
   tou: { on: "tou-on", off: "tou-off" },
 };
 
-// A preset at a glance, coloured by status. A week is one row of day squares, each filled top to bottom from 00:00 to 24:00.
-// A day is one bar split left to right. Screen readers get the same as text.
+// A preset at a glance, coloured by status. Time runs left to right from 00:00 to 24:00.
+// A week is one row of day squares. A day is one wider bar. Screen readers get the same as text.
 function protoPresetLine(part, rows, week) {
   const marks = PROTO_PRESET_LINE[part] || {};
   const mins = (value) => {
@@ -22907,13 +22996,12 @@ function protoPresetLine(part, rows, week) {
     return (h || 0) * 60 + (m || 0);
   };
   const pct = (n) => `${Math.round((n / 1440) * 10000) / 100}%`;
-  const [start, size] = week ? ["top", "height"] : ["left", "width"];
   const fill = (row) =>
     protoDayPeriods(row, part)
       .map((p) => {
         const from = mins(p.from);
         const cls = PROTO_ZONE_BADGES[marks[p.status]]?.cls || "";
-        return `<span class="astral-preset-seg ${cls}" style="${start}:${pct(from)};${size}:${pct(mins(p.to) - from)}"></span>`;
+        return `<span class="astral-preset-seg ${cls}" style="left:${pct(from)};width:${pct(mins(p.to) - from)}"></span>`;
       })
       .join("");
   const spoken = week ? protoWeekNote(part, rows) : rows.map((row) => protoPresetTimes(part, row));
@@ -22921,7 +23009,7 @@ function protoPresetLine(part, rows, week) {
     const days = rows
       .map(
         (row, d) => `
-          <span class="astral-preset-line-cell" title="${escapeHtml(`${PROTO_WEEKDAYS[d]}, ${protoPresetTimes(part, row).replace(/^\w/, (c) => c.toLowerCase())}`)}">
+          <span class="astral-preset-line-cell" title="${escapeHtml(`${PROTO_WEEKDAYS[d]}, ${protoTimesInline(protoPresetTimes(part, row))}`)}">
             <span class="astral-preset-line-square">${fill(row)}</span>
             <span class="astral-preset-line-day">${PROTO_WEEKDAYS[d].slice(0, 3)}</span>
           </span>`,
@@ -23045,7 +23133,7 @@ function protoPresetPickOpen(owner, part) {
 }
 
 function protoSavedPresets(part, kind) {
-  const own = protoCustomPresets(part);
+  const own = protoListedPresets(part);
   return kind === "week" ? own.weeks : own.days;
 }
 
