@@ -14,3 +14,4 @@ One Markdown file per pattern. Templates live in `.cursor/skills/ux-patterns/ref
 - [Type tags](foundation.type-tags.md)
 - [Summary cards](foundation.summary-cards.md)
 - [Why-off tips](foundation.why-off-tips.md)
+- [Complete lists](foundation.complete-lists.md)

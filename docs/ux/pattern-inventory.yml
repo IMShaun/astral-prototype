@@ -25,7 +25,7 @@ patterns:
       - prototype.js protoBindScrollRegions
       - .cursor/skills/ux-patterns/references/scrollbars.md
     evidence:
-      - Named desk rule: native scroll, Tabs hide the bar, Breakdown loads as they scroll, Reports wrap
+      - Named desk rule: native scroll, Tabs hide the bar, Breakdown draws every row at once, Reports wrap
     maturity: emerging
     health: healthy
     last_reviewed: "2026-09-18"
@@ -364,5 +364,35 @@ patterns:
       - User correction on 2026-10-08, disabled input warnings move into hover tips (commit 1d3a47a).
     maturity: emerging
     health: needs-evidence
+    last_reviewed: "2026-10-08"
+    decision_refs: []
+  - id: foundation.complete-lists
+    name: Complete lists
+    level: foundation
+    user_goal: See and check the whole set when a list is added up, compared, or drawn as a whole
+    objects: [tree, table, list]
+    actions: [scan, compare, scroll]
+    used_in: [Portfolio, Compare]
+    entry_points:
+      - Portfolio tree, every group and company
+      - Breakdown tables under a graph
+    structure: Every item loads and draws at once, so counts, totals, and the graph match the rows people see
+    components: [astral-tree, astral-breakdown-cols, astral-table]
+    states: [loaded, too-much-data]
+    permissions: all
+    content_terms: []
+    variants: []
+    exceptions:
+      - Summaries of an already loaded list, such as +3 more in a graph hover, Show more on filter pills, or a pin listing the first seven
+    accessibility: Find on page and screen readers reach every row without scrolling first. No loading status part way through a list (WCAG 1.3.2, 2.4.5)
+    implementation_refs:
+      - prototype.js protoPortfolio
+      - prototype.js protoPaintBreakdownRows
+      - prototype.js protoPaneListTable
+    evidence:
+      - User correction on 2026-10-08, the tree loads every site at once instead of batches of 30 (commit c4364e8).
+      - User decision on 2026-10-08, Breakdown draws every row at once (commit 35979c9).
+    maturity: emerging
+    health: healthy
     last_reviewed: "2026-10-08"
     decision_refs: []

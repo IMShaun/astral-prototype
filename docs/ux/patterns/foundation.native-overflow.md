@@ -25,7 +25,7 @@ Do not add a second bar on a child when the pane already scrolls. Do not hide a 
 
 ## Canonical behaviour
 
-Vertical first. Reports wrap instead of scrolling sideways. The reports sheet scrolls. The grid does not get a second bar. Breakdown loads as they scroll. The pane scrolls it. Reduced motion keeps `scroll-behavior: auto`. The bar never sits on a control.
+Vertical first. Reports wrap instead of scrolling sideways. The reports sheet scrolls. The grid does not get a second bar. Breakdown draws every row at once. The pane scrolls it. See [Complete lists](foundation.complete-lists.md). Reduced motion keeps `scroll-behavior: auto`. The bar never sits on a control.
 
 ## Accessibility
 
@@ -45,6 +45,7 @@ Touch platforms may auto-hide the overlay bar. Do not force that hide on desktop
 - `scrollbar-width: none` on a pane or table
 - Nested competing scrollers
 - Infinite lists with no end and no announcement
+- Lists that load in batches as people scroll, when the list is added up or drawn as a whole. See [Complete lists](foundation.complete-lists.md).
 
 ## Product surfaces using it
 

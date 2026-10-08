@@ -56,7 +56,7 @@ Tabs in Astral are a pill. Overflow there is a last resort. The tab buttons are 
 
 ## Performance
 
-Let the browser paint. Do not restyle on every scroll. For a very long list, window the rows or load as they scroll. Breakdown already loads as they scroll. Do not give that table its own bar. The pane scrolls it.
+Let the browser paint. Do not restyle on every scroll. Draw every row of a list that is added up or drawn as a whole, such as the tree and Breakdown. See `docs/ux/patterns/foundation.complete-lists.md`. Do not give that table its own bar. The pane scrolls it.
 
 ## When reviewing
 
