@@ -11167,6 +11167,23 @@ tr.is-off .astral-person-mark {
   margin-bottom: 16px;
 }
 
+/* Settings for: the site, or one meter that sets its own. */
+.astral-own-pick {
+  display: grid;
+  gap: 4px;
+  max-width: 360px;
+  margin-bottom: 16px;
+}
+
+.astral-own-pick > span {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.astral-own-pick .astral-select-btn {
+  width: 100%;
+}
+
 .astral-accordion-note {
   flex: none;
   max-width: 45%;

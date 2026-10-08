@@ -732,6 +732,7 @@ function protoPageFilterReset() {
     prototypeMeterFold: "",
     prototypeMeterAttrTab: "",
     prototypePeriodDay: null,
+    prototypeSiteOwnPick: null,
     prototypeMeterUpload: null,
     prototypeSummaryOpen: true,
     prototypeBreakdownOpen: false,
@@ -795,6 +796,7 @@ function protoPortfolioHomePatch() {
     prototypeMeterFold: "",
     prototypeMeterAttrTab: "",
     prototypePeriodDay: null,
+    prototypeSiteOwnPick: null,
     prototypeMeterUpload: null,
     prototypeGroupSites: [],
     prototypeSiteMeters: [],
@@ -2770,14 +2772,29 @@ function protoMeterOwnDraft(id) {
 }
 
 function protoMeterOwnDirty(id) {
-  return JSON.stringify(protoMeterOwnDraft(id)) !== JSON.stringify(protoMeterOwnClean(protoMeterOverride(id)));
+  const same = (own) => {
+    const out = { ...own };
+    if (out.rates) out.rates = Object.fromEntries(Object.entries(out.rates).filter(([, value]) => value !== "" && value != null).sort());
+    return JSON.stringify(out);
+  };
+  return same(protoMeterOwnDraft(id)) !== same(protoMeterOwnClean(protoMeterOverride(id)));
+}
+
+// Site settings can hold one meter's own table. Each reader keeps to its own: the site form skips the meter's part, and the meter's part reads only itself.
+function protoScopeAll(root, sel) {
+  const scope = root.closest("[data-proto-own-scope]");
+  return [...root.querySelectorAll(sel)].filter((el) => el.closest("[data-proto-own-scope]") === scope);
+}
+
+function protoScopeFind(root, sel) {
+  return protoScopeAll(root, sel)[0] || null;
 }
 
 function protoReadPeriodRows(form, rows, part) {
   return rows.map((row, d) => {
     const periods = protoDayPeriods(row, part).map((p, i) => {
       const read = (edge) => {
-        const input = form.querySelector(`[name='${part}-${edge}-${d}-${i}']`);
+        const input = protoScopeFind(form, `[name='${part}-${edge}-${d}-${i}']`);
         return input ? protoClockSave(input.value) : p[edge];
       };
       return { status: p.status, from: read("from"), to: read("to") };
@@ -2792,7 +2809,7 @@ function protoReadMeterOwnForm(form, meter) {
   if (draft.tou) draft.tou = protoReadPeriodRows(form, draft.tou, "tou");
   if (draft.rates) {
     const rates = { ...draft.rates };
-    form.querySelectorAll(".astral-meter-attrs input[name]").forEach((input) => {
+    protoScopeAll(form, ".astral-meter-attrs input[name]").forEach((input) => {
       rates[input.name] = String(input.value || "").trim();
     });
     draft.rates = rates;
@@ -2987,7 +3004,7 @@ function protoReadMeterProfileForm(form, meter) {
   draft.hours = protoReadPeriodRows(form, draft.hours, "hours");
   draft.tou = protoReadPeriodRows(form, draft.tou, "tou");
   const attrs = { ...draft.attrs };
-  form.querySelectorAll(".astral-meter-attrs input[name]").forEach((input) => {
+  protoScopeAll(form, ".astral-meter-attrs input[name]").forEach((input) => {
     attrs[input.name] = String(input.value || "").trim();
   });
   draft.attrs = attrs;
@@ -9739,6 +9756,13 @@ function protoPickSelect(id, value) {
   }
   if (String(id).startsWith("report-tpl:")) {
     protoReportPatchDraft({ [id.slice("report-tpl:".length)]: value });
+    return;
+  }
+  if (String(id).startsWith("site-own-")) {
+    const part = String(id).slice("site-own-".length);
+    if (!PROTO_METER_OWN_PARTS.includes(part)) return;
+    setProto({ prototypeSiteOwnPick: { ...(store.prototypeSiteOwnPick || {}), [part]: value }, prototypeSelectOpen: "" });
+    protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
     return;
   }
   if (String(id).startsWith("meter-hours-") || String(id).startsWith("meter-tou-")) {
@@ -22056,6 +22080,7 @@ function protoMeterSettingsReset() {
     prototypeMeterFold: "",
     prototypeMeterAttrTab: "",
     prototypePeriodDay: null,
+    prototypeSiteOwnPick: null,
     prototypeMeterUpload: null,
   };
 }
@@ -22401,14 +22426,14 @@ function protoPickPeriodDay(tab) {
 function protoSyncPeriodNotes(form, draft) {
   ["hours", "tou"].forEach((part) => {
     (Array.isArray(draft?.[part]) ? draft[part] : []).forEach((row, d) => {
-      const note = form.querySelector(`#astral-period-note-${part}-${d}`);
+      const note = protoScopeFind(form, `#astral-period-note-${part}-${d}`);
       if (!note) return;
       const issue = protoPeriodIssues(protoDayPeriods(row, part), part);
       const text = issue.error || issue.note || "";
       note.textContent = text;
       note.hidden = !text;
       note.classList.toggle("is-error", Boolean(issue.error));
-      const tab = form.querySelector(`[data-proto-period-tab="${part}"][data-proto-period-tab-day="${d}"]`);
+      const tab = protoScopeFind(form, `[data-proto-period-tab="${part}"][data-proto-period-tab-day="${d}"]`);
       if (!tab) return;
       tab.classList.toggle("has-error", Boolean(issue.error));
       const flag = tab.querySelector(".astral-period-tab-flag");
@@ -22420,48 +22445,105 @@ function protoSyncPeriodNotes(form, draft) {
 function protoMeterProfileForm(meter) {
   const id = meter.id;
   const draft = protoMeterDraft(id);
-  const dirty = protoMeterDirty(id);
-  const hoursTable = protoMeterHoursTable(id, draft.hours);
-  const touTable = protoMeterTouTable(id, draft.tou);
   const site = protoSiteByMeter(id);
-  const ownNote = (part) => {
-    const list = protoSiteOwnMeters(site).filter((item) => protoMeterOwnParts(item.id).includes(part));
-    if (!list.length) return { tag: "", html: "" };
+  const siteName = site?.name || "This site";
+  const siteBodies = {
+    hours: protoMeterHoursTable(id, draft.hours),
+    tou: protoMeterTouTable(id, draft.tou),
+    rates: `<div class="astral-meter-attrs">${protoMeterAttrFields(meter, draft.attrs)}</div>`,
+  };
+  // Meters that set their own part are picked here, so the site and every meter can be changed on one page.
+  const section = (part) => {
+    const list = protoSiteOwnList(site, part);
+    if (!list.length) return { tag: "", html: siteBodies[part] };
+    const pick = protoSiteOwnPick(site, part);
+    const words = PROTO_METER_PART_WORDS[part];
+    const capId = `astral-own-pick-${part}`;
+    const one = list.length === 1;
+    const select = `
+      <div class="astral-field astral-own-pick">
+        <span id="${capId}">Settings for</span>
+        ${protoSelect({
+          id: `site-own-${part}`,
+          label: "Settings for",
+          labelledby: capId,
+          value: pick,
+          options: [
+            { value: "", label: siteName, note: "And every meter that follows it" },
+            ...list.map((item) => ({ value: item.id, label: protoMeterName(item), note: `Sets its own ${words}` })),
+          ],
+        })}
+      </div>
+    `;
+    const tag = `<span class="astral-muted">${list.length} ${one ? "meter sets its own" : "meters set their own"}</span>`;
+    if (!pick) {
+      return {
+        tag,
+        html: `${select}<p class="astral-muted astral-meter-own-note">${list.length} ${one ? "meter sets its own" : "meters set their own"} ${words}, so changes here do not reach ${
+          one ? "it" : "them"
+        }. Choose ${one ? "it" : "one"} in Settings for to change it.</p>${siteBodies[part]}`,
+      };
+    }
+    const own = protoMeter(pick);
+    const ownDraft = protoMeterOwnDraft(pick);
+    const body =
+      part === "tou"
+        ? protoMeterTouTable(`own~${pick}`, ownDraft.tou)
+        : `<div class="astral-meter-attrs"><div class="astral-meter-attr-grid">${protoMeterRateSpec(own)
+            .map((item) => protoMeterAttrField(item.key, item.label, ownDraft.rates?.[item.key], item.unit))
+            .join("")}</div></div>`;
     return {
-      tag: `<span class="astral-muted">${list.length} ${list.length === 1 ? "meter sets its own" : "meters set their own"}</span>`,
-      html: `<p class="astral-muted astral-meter-own-note">${list
-        .map((item) =>
-          protoCanAct()
-            ? protoTextBtn(protoMeterName(item), `data-proto-meter-own-open="${escapeHtml(item.id)}"`)
-            : escapeHtml(protoMeterName(item))
-        )
-        .join(", ")} ${list.length === 1 ? "sets its own" : "set their own"} ${
-        PROTO_METER_PART_WORDS[part]
-      }, so changes here don't reach ${list.length === 1 ? "it" : "them"}.</p>`,
+      tag,
+      html: `${select}<div class="astral-own-scope" data-proto-own-scope="${escapeHtml(pick)}">
+        <p class="astral-muted astral-meter-own-note">Changes here reach ${escapeHtml(protoMeterName(own))} only. Every other meter follows ${escapeHtml(
+          siteName
+        )}.</p>
+        ${body}
+      </div>`,
     };
   };
-  const notes = { hours: ownNote("hours"), tou: ownNote("tou"), rates: ownNote("rates") };
+  const notes = { hours: section("hours"), tou: section("tou"), rates: section("rates") };
   return `
     <form class="astral-meter-profile" data-proto-meter-profile="${escapeHtml(id)}">
       <div class="astral-meter-folds">
-        ${protoMeterSectionFold("hours", "Operational hours", "hours", `${notes.hours.html}${hoursTable}`, notes.hours.tag)}
-        ${protoMeterSectionFold("tou", "Time of use", "tou", `${notes.tou.html}${touTable}`, notes.tou.tag)}
-        ${protoMeterSectionFold(
-          "rates",
-          "Attributes",
-          "rates",
-          `${notes.rates.html}<div class="astral-meter-attrs">${protoMeterAttrFields(meter, draft.attrs)}</div>`,
-          notes.rates.tag
-        )}
+        ${protoMeterSectionFold("hours", "Operational hours", "hours", notes.hours.html, notes.hours.tag)}
+        ${protoMeterSectionFold("tou", "Time of use", "tou", notes.tou.html, notes.tou.tag)}
+        ${protoMeterSectionFold("rates", "Attributes", "rates", notes.rates.html, notes.rates.tag)}
       </div>
       <div class="astral-actions">
         ${protoBtn("Save changes", "", {
           type: "submit",
-          disabled: !(dirty && protoCanAct() && !protoMeterAttrsBlocked(draft.attrs) && !protoPeriodsBlocked(draft)),
+          disabled: !protoCanAct() || protoSiteFormBlocked(id, draft),
         })}
       </div>
     </form>
   `;
+}
+
+function protoSiteOwnList(site, part) {
+  return protoSiteOwnMeters(site).filter((item) => protoMeterOwnParts(item.id).includes(part));
+}
+
+function protoSiteOwnPick(site, part) {
+  const raw = String(store.prototypeSiteOwnPick?.[part] || "");
+  return protoSiteOwnList(site, part).some((item) => item.id === raw) ? raw : "";
+}
+
+// One Save covers the site and any meter changed through Settings for.
+function protoSiteFormBlocked(id, draft) {
+  const own = protoSiteOwnMeters(protoSiteByMeter(id)).filter((item) => protoMeterOwnDirty(item.id));
+  if (!protoMeterDirty(id) && !own.length) return true;
+  return (
+    protoMeterAttrsBlocked(draft.attrs) ||
+    protoPeriodsBlocked(draft) ||
+    own.some((item) => protoPeriodsBlocked(protoMeterOwnDraft(item.id)))
+  );
+}
+
+function protoSaveSiteForm(meter, draft) {
+  const own = protoSiteOwnMeters(protoSiteByMeter(meter.id)).filter((item) => protoMeterOwnDirty(item.id));
+  if (protoMeterDirty(meter.id)) protoSaveMeterProfile(meter, draft);
+  own.forEach((item) => protoSaveMeterOwn(item, protoMeterOwnDraft(item.id)));
 }
 
 function protoMeterOwnId() {
@@ -35135,6 +35217,7 @@ function onPrototype(event) {
         prototypeMeterFold: "",
         prototypeMeterAttrTab: "",
         prototypePeriodDay: null,
+        prototypeSiteOwnPick: null,
     prototypeMeterUpload: null,
         prototypePane: "profile",
       },
@@ -36555,6 +36638,27 @@ function onPrototypeInput(event) {
     if (btn) btn.disabled = !protoMeterOwnDirty(meter.id) || protoPeriodsBlocked(protoMeterOwnDraft(meter.id));
     return;
   }
+  const scopeField = event.target.closest("[data-proto-meter-profile] [data-proto-own-scope] input");
+  if (scopeField) {
+    const scope = scopeField.closest("[data-proto-own-scope]");
+    const form = scopeField.closest("[data-proto-meter-profile]");
+    const own = protoMeter(String(scope?.dataset.protoOwnScope || ""));
+    const siteId = String(form?.getAttribute("data-proto-meter-profile") || "");
+    if (!form || !own || !siteId || !protoCanAct()) return;
+    if (scopeField.classList.contains("astral-clock-input")) {
+      const applied = protoApplyClockInput(scopeField.value, scopeField.selectionStart);
+      scopeField.value = applied.next;
+      if (document.activeElement === scopeField && scopeField.setSelectionRange) {
+        scopeField.setSelectionRange(applied.caret, applied.caret);
+      }
+    }
+    store.prototypeMeterOwnDrafts = { ...protoMeterOwnDrafts(), [own.id]: protoReadMeterOwnForm(scope, own) };
+    persistChrome();
+    protoSyncPeriodNotes(scope, protoMeterOwnDraft(own.id));
+    const btn = form.querySelector("button[type='submit']");
+    if (btn) btn.disabled = protoSiteFormBlocked(siteId, protoMeterDraft(siteId));
+    return;
+  }
   const meterField = event.target.closest("[data-proto-meter-profile] input");
   if (meterField) {
     const form = meterField.closest("[data-proto-meter-profile]");
@@ -36587,7 +36691,7 @@ function onPrototypeInput(event) {
     });
     const btn = form.querySelector("button[type='submit']");
     protoSyncPeriodNotes(form, draft);
-    if (btn) btn.disabled = !protoMeterDirty(meter.id) || protoMeterAttrsBlocked(draft.attrs) || protoPeriodsBlocked(draft);
+    if (btn) btn.disabled = protoSiteFormBlocked(meter.id, draft);
     return;
   }
   const profileName = event.target.closest("input[name='proto-profile-name']");
@@ -36884,8 +36988,11 @@ function onPrototypeSubmit(event) {
     if (!meter) return;
     const draft = protoReadMeterProfileForm(meterProfileForm, meter);
     store.prototypeMeterDrafts = { ...protoMeterDrafts(), [protoProfileKey(meter.id)]: draft };
-    if (!protoMeterDirty(meter.id) || protoMeterAttrsBlocked(draft.attrs) || protoPeriodsBlocked(draft)) return;
-    protoSaveMeterProfile(meter, draft);
+    const scope = meterProfileForm.querySelector("[data-proto-own-scope]");
+    const own = scope && protoMeter(String(scope.dataset.protoOwnScope || ""));
+    if (own) store.prototypeMeterOwnDrafts = { ...protoMeterOwnDrafts(), [own.id]: protoReadMeterOwnForm(scope, own) };
+    if (protoSiteFormBlocked(meter.id, draft)) return;
+    protoSaveSiteForm(meter, draft);
     return;
   }
   const profileForm = event.target.closest("[data-proto-profile]");
