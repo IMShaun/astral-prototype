@@ -6846,6 +6846,7 @@ button.astral-state {
 .astral-meter-folds {
   display: grid;
   min-width: 0;
+  border-top: 1px solid var(--color-border-strong);
 }
 
 .astral-meter-fold {
@@ -11191,12 +11192,11 @@ tr.is-off .astral-person-mark {
   font-size: 0.875rem;
 }
 
-/* Settings for: the site, or one meter that sets its own. */
+/* Settings for: the site, or any meter on it. */
 .astral-own-pick {
   display: grid;
   gap: 4px;
   max-width: 360px;
-  margin-bottom: 16px;
 }
 
 .astral-own-pick > span {
@@ -11204,8 +11204,45 @@ tr.is-off .astral-person-mark {
   font-size: 0.875rem;
 }
 
+.astral-own-pick .astral-select,
 .astral-own-pick .astral-select-btn {
   width: 100%;
+}
+
+.astral-select-btn .astral-own-option .astral-select-option-copy > .astral-muted {
+  display: none;
+}
+
+.astral-own-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.astral-own-option > .astral-meter-mark {
+  width: 20px;
+  height: 20px;
+}
+
+.astral-own-option > .astral-select-option-copy {
+  flex: 1 1 auto;
+}
+
+.astral-own-option > .astral-tag {
+  flex: none;
+}
+
+/* One container per part of an open fold, so the picker, the source and each table read apart. */
+.astral-fold-panel {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-card);
+  background: var(--color-background-primary, #fff);
 }
 
 .astral-accordion-note {
@@ -12858,18 +12895,6 @@ tr.is-off .astral-person-mark {
   height: 16px;
   display: block;
   flex: none;
-}
-
-.astral-meter-settings-lead {
-  margin: 0;
-}
-
-.astral-meter-settings-lead .astral-text-btn {
-  display: inline;
-  min-height: 0;
-  height: auto;
-  padding: 0;
-  vertical-align: baseline;
 }
 
 .astral-brand-colours {
