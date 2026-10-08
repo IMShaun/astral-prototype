@@ -2609,7 +2609,7 @@ function protoMeterAttrDefaults(meter) {
   }
   return {
     ...base,
-    capacity: "200",
+    capacity: protoSiteCapacityDefault(protoProfileMeters(meter.id)) || "200",
     standingElec: "0.45",
     emissionsElec: "0.193",
     onElec: String(pence),
@@ -2662,9 +2662,10 @@ function protoProfileMeters(id) {
 
 function protoProfileAttrDefaults(id) {
   const site = protoProfileSiteMap().get(id)?.site;
+  const meters = protoProfileMeters(id);
   return Object.assign(
     { name: site?.baseName || site?.name || "", street: "", town: "", postcode: "", country: "United Kingdom" },
-    ...protoProfileMeters(id).map((meter) => protoMeterAttrDefaults(meter))
+    ...meters.map((meter) => protoMeterAttrDefaults(meter))
   );
 }
 
@@ -3626,10 +3627,10 @@ function protoDateCompareBars(rows, remake, scale, flow, fromLast) {
 }
 
 // Lines compare dates the same way as bars: one flow, two solid lines, keyed by their dates.
-function protoDateCompareLines(points, remake, meters, dualTotal, outgoing, label) {
+function protoDateCompareLines(points, remake, meters, dualTotal, outgoing, label, scaleRows) {
   const ids = protoChartFlowIds();
   const flow = dualTotal ? (ids.length === 1 ? ids[0] : "") : outgoing ? "out" : "in";
-  const scale = (rows) => protoScalePoints(rows, meters);
+  const scale = scaleRows || ((rows) => protoScalePoints(rows, meters));
   const pair = protoDateCompareBars(scale(points || []), remake, scale, flow, dualTotal && flow === "out");
   if (!pair) return null;
   const off = protoChartPairOff(label);
@@ -3931,7 +3932,14 @@ function protoRefLines(refs, scale, xAt, count) {
         )
         .join("");
       const ink = ref.color ? ` style="--ref-ink:${escapeHtml(ref.color)}"` : "";
-      return `<g class="astral-ref is-${escapeHtml(ref.style)}"${ink}>${lines}${marks}</g>`;
+      const end = runs.length ? runs[runs.length - 1][runs[runs.length - 1].length - 1] : null;
+      const tag =
+        ref.label && end
+          ? `<text class="astral-ref-label" data-m="refl|${key}" x="${(end[1] - 4).toFixed(1)}" y="${(end[2] - 6).toFixed(
+              1
+            )}" text-anchor="end">${escapeHtml(ref.label)}</text>`
+          : "";
+      return `<g class="astral-ref is-${escapeHtml(ref.style)}"${ink}>${lines}${marks}${tag}</g>`;
     })
     .join("");
   return `<g class="astral-ref-lines" aria-hidden="true">${body}</g>`;
@@ -3944,7 +3952,7 @@ function protoRefKeyMark(style, color) {
 
 // Names both periods under the graph. The solid mark is the date range picked, the broken marks are the comparison.
 function protoRefKey(refs, bars) {
-  const list = refs || [];
+  const list = (refs || []).filter((ref) => ref.kind !== "capacity");
   if (!list.length) return "";
   const seen = new Set();
   const items = [
@@ -3963,6 +3971,20 @@ function protoRefKey(refs, bars) {
     );
   });
   return `<div class="astral-ref-key" role="list" aria-label="Date ranges">${items.join("")}</div>`;
+}
+
+// Reference lines that are not a date range, such as Site capacity, get their own key.
+function protoLimitKey(refs) {
+  const list = (refs || []).filter((ref) => ref.kind === "capacity");
+  if (!list.length) return "";
+  return `<div class="astral-ref-key" role="list" aria-label="Reference lines">${list
+    .map(
+      (ref) =>
+        `<span class="astral-ref-key-item" role="listitem">${protoRefKeyMark(ref.style)}<span>${escapeHtml(
+          ref.keyName
+        )}</span></span>`
+    )
+    .join("")}</div>`;
 }
 
 function protoChartTimeLabel(time) {
@@ -4437,7 +4459,104 @@ const PROTO_ZONE_TOU = ["tou-on", "tou-off"];
 function protoChartPicked() {
   const raw = store.prototypeChartShow;
   const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
-  return list.filter((id, i) => (id === "hours" || id === "tou") && list.indexOf(id) === i);
+  return list.filter((id, i) => PROTO_OVERLAY_IDS.includes(id) && list.indexOf(id) === i);
+}
+
+const PROTO_OVERLAY_IDS = ["hours", "tou", "capacity"];
+
+// Site capacity is a fixed maximum in kVA. Demand is in kW, so the line is the capacity at the target power factor.
+const PROTO_CAPACITY_PF = 0.95;
+let protoCapacityBlockedCache = null;
+
+function protoSiteCapacityKva(meter) {
+  const value = Number(protoSiteProfile(meter?.id)?.attrs?.capacity);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+function protoCapacityKw(kva) {
+  return kva * PROTO_CAPACITY_PF;
+}
+
+// A first guess sized from the site's usual use. Users replace it in Site settings.
+function protoSiteCapacityDefault(meters) {
+  const list = meters || [];
+  const memo = (protoSiteCapacityDefault.memo ||= new WeakMap());
+  if (memo.has(list)) return memo.get(list);
+  const incoming = list.filter(
+    (meter) => meter.direction !== "Export" && protoMeterKind(meter) === "electricity"
+  );
+  const avgKw = incoming.reduce((n, meter) => n + protoDayKwh(meter), 0) / 24;
+  const value = incoming.length ? String(Math.max(25, Math.ceil((avgKw * 2.6) / PROTO_CAPACITY_PF / 25) * 25)) : "";
+  protoSiteCapacityDefault.memo.set(list, value);
+  return value;
+}
+
+function protoCapacityBlockedFor(meters) {
+  const list = (meters || []).filter(Boolean);
+  if (protoPaneId() !== "demand") return "Site capacity shows on the Demand tab.";
+  if (!list.length || new Set(list.map((meter) => meter.site || "")).size !== 1) return "Site capacity works with one site.";
+  if (!list.some((meter) => protoMeterKind(meter) === "electricity" && meter.direction !== "Export")) {
+    return "Site capacity needs incoming electricity.";
+  }
+  if (!protoSiteCapacityKva(list[0])) return "Add a site capacity in Site settings to show it.";
+  return "";
+}
+
+// Why Site capacity cannot show for the graph in view, or nothing when it can.
+// Keyed on the view, since a store patch can land between two calls in the same tick.
+function protoOverlayViewKey() {
+  return [
+    protoPaneId(),
+    store.activePrototypeView || "",
+    store.prototypeScope || "",
+    store.activePrototypeMeter || "",
+    store.prototypeGroup || "",
+    (store.prototypeSiteMeters || []).join(","),
+    (store.prototypeCompareMeters || []).join(","),
+    (store.prototypeCompareSites || []).join(","),
+    (store.prototypeGroupSites || []).join(","),
+    protoCompareIds().join(","),
+    (protoPaneMeterKindIds() || ["*"]).join(","),
+    protoPaneFilterIds().join(","),
+    protoTreeFilterIds().join(","),
+  ].join("|");
+}
+
+function protoCapacityBlocked() {
+  const key = protoOverlayViewKey();
+  if (!protoCapacityBlockedCache || protoCapacityBlockedCache.key !== key) {
+    protoCapacityBlockedCache = { key, value: protoCapacityBlockedFor(protoPaneGraphMeters()) };
+    queueMicrotask(() => {
+      protoCapacityBlockedCache = null;
+    });
+  }
+  return protoCapacityBlockedCache.value;
+}
+
+// A flat reference line, never a data series. It has no track, so it sits over every line and bar.
+function protoCapacityRefs(meters, points) {
+  if (!protoChartShow().includes("capacity") || protoCapacityBlockedFor(meters)) return [];
+  const rows = points || [];
+  if (!rows.length) return [];
+  const kva = protoSiteCapacityKva(meters[0]);
+  const value = Number(protoCapacityKw(kva).toFixed(1));
+  return [
+    {
+      key: "capacity",
+      kind: "capacity",
+      track: "",
+      style: "cap",
+      color: "",
+      flat: true,
+      label: "Site capacity",
+      places: 1,
+      values: rows.map(() => value),
+      qualities: [],
+      names: rows.map(() => "Site capacity"),
+      nowNames: rows.map(() => ""),
+      keyName: `Site capacity ${kva.toLocaleString("en-GB")} kVA, about ${protoFormatAmount(value, 1)} kW at ${PROTO_CAPACITY_PF} power factor`,
+    },
+  ];
 }
 
 // Up to 5 sites in view (after filters) take both overlays; up to 12 take one at a time; past that the graph is too busy for either.
@@ -4446,13 +4565,14 @@ const PROTO_OVERLAY_ONE_MAX = 12;
 let protoOverlaySitesCache = null;
 
 function protoChartOverlaySites() {
-  if (protoOverlaySitesCache == null) {
-    protoOverlaySitesCache = new Set((protoPaneGraphMeters() || []).map((meter) => meter?.site || "")).size;
+  const key = protoOverlayViewKey();
+  if (!protoOverlaySitesCache || protoOverlaySitesCache.key !== key) {
+    protoOverlaySitesCache = { key, value: new Set((protoPaneGraphMeters() || []).map((meter) => meter?.site || "")).size };
     queueMicrotask(() => {
       protoOverlaySitesCache = null;
     });
   }
-  return protoOverlaySitesCache;
+  return protoOverlaySitesCache.value;
 }
 
 function protoChartOverlayTier() {
@@ -4469,9 +4589,10 @@ function protoChartShow() {
   const list = protoChartPicked();
   const tier = protoChartOverlayTier();
   if (tier === "none") return [];
-  // One at a time keeps the latest pick.
-  if (tier === "one" && list.length > 1) return list.slice(-1);
-  return ["hours", "tou"].filter((id) => list.includes(id));
+  // One at a time keeps the latest pick. Site capacity needs one site, so it never shows here.
+  if (tier === "one") return list.filter((id) => id !== "capacity").slice(-1);
+  // A Site capacity pick that cannot show is kept, and returns when the view allows it.
+  return PROTO_OVERLAY_IDS.filter((id) => list.includes(id) && (id !== "capacity" || !protoCapacityBlocked()));
 }
 
 function protoChartShowHours() {
@@ -5535,6 +5656,8 @@ function protoUseMeterLines(meters) {
 // Compare dates sets two date ranges side by side, so the graph shows the total while it is on.
 function protoChartView() {
   if (protoDateCompareOn()) return "total";
+  // Peaks at different meter points do not add up, so Demand is always the total.
+  if (protoPaneId() === "demand") return "total";
   return store.prototypeChartView === "individual" ? "individual" : "total";
 }
 
@@ -6820,21 +6943,26 @@ function protoChartViewSelect(more = {}) {
   const where = protoChartViewWhere();
   const parts = protoChartViewParts();
   const total =
-    pane === "cost" ? "Total cost" : pane === "carbon" ? "Total carbon" : "Total consumption";
+    pane === "cost" ? "Total cost" : pane === "carbon" ? "Total carbon" : pane === "demand" ? "Total demand" : "Total consumption";
   const individual =
     pane === "cost"
       ? "Individual cost"
       : pane === "carbon"
         ? "Individual carbon"
-        : "Individual consumption";
+        : pane === "demand"
+          ? "Individual demand"
+          : "Individual consumption";
   const totalNote =
     pane === "cost"
       ? `How much ${where} spent`
       : pane === "carbon"
         ? `Combined carbon for ${where}`
-        : `How much ${where} used`;
+        : pane === "demand"
+          ? `How fast ${where} drew electricity`
+          : `How much ${where} used`;
   const calendar = protoCalendarAllowed();
   const pairing = Boolean(protoDateCompareOn());
+  const demand = pane === "demand";
   return protoSelect({
     id: "chart-view",
     label: `${total} or ${individual}`,
@@ -6845,8 +6973,12 @@ function protoChartViewSelect(more = {}) {
         value: "individual",
         label: individual,
         note: `Which ${parts} made that total`,
-        disabled: pairing,
-        tip: pairing ? `Turn off Compare dates to see ${individual.toLowerCase()}.` : "",
+        disabled: pairing || demand,
+        tip: demand
+          ? "Peaks at different meter points do not add up, so Demand shows the total."
+          : pairing
+            ? `Turn off Compare dates to see ${individual.toLowerCase()}.`
+            : "",
       },
       ...(calendar ? [{ value: "calendar", label: "Calendar", note: "Each day's total, a month at a time" }] : []),
     ],
@@ -6856,6 +6988,14 @@ function protoChartViewSelect(more = {}) {
 
 function protoChartShowSelect(more = {}) {
   const tier = protoChartOverlayTier();
+  const capBlocked = tier === "both" ? protoCapacityBlocked() : "Site capacity works with one site.";
+  const capacity = {
+    value: "capacity",
+    label: "Site capacity",
+    note: "The most the site can draw, as a line",
+    disabled: Boolean(capBlocked),
+    tip: capBlocked,
+  };
   if (tier !== "both") {
     const none = tier === "none";
     return protoSelect({
@@ -6867,6 +7007,7 @@ function protoChartShowSelect(more = {}) {
         { value: "none", label: "No overlay" },
         { value: "hours", label: "Hours", note: "Operational, Non-operational, and Closed" },
         { value: "tou", label: "Time of use", note: "Peak and Off-peak" },
+        capacity,
       ],
       ...more,
     });
@@ -6877,10 +7018,12 @@ function protoChartShowSelect(more = {}) {
     multi: true,
     values: protoChartShow(),
     placeholder: "No overlay",
-    allLabel: "Hours and time of use",
+    allLabel: "All overlays",
+    countLabel: "overlays",
     options: [
       { value: "hours", label: "Hours", note: "Operational, Non-operational, and Closed" },
       { value: "tou", label: "Time of use", note: "Peak and Off-peak" },
+      capacity,
     ],
     ...more,
   });
@@ -7648,6 +7791,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
       <div class="astral-chart-keys">
         ${dual ? protoChartKey(true, extras.keyNames, label) : ""}
         ${protoRefKey(extras.refs, extras.bars)}
+        ${protoLimitKey(extras.refs)}
         ${extras.weekends ? protoWeekendKey() : ""}
       </div>
       <div class="astral-tip" hidden>
@@ -9658,8 +9802,10 @@ function protoPickSelect(id, value) {
       protoRestoreFocus(`#astral-fs [data-proto-select="chart-show"] .astral-select-btn`);
       return;
     }
-    if (value !== "hours" && value !== "tou") return;
-    const cur = protoChartShow();
+    if (value !== "hours" && value !== "tou" && value !== "capacity") return;
+    if (value === "capacity" && protoCapacityBlocked()) return;
+    // Toggle the saved picks, so a Site capacity pick held back on another tab is kept.
+    const cur = protoChartPicked();
     setProto({
       prototypeChartShow: cur.includes(value) ? cur.filter((item) => item !== value) : [...cur, value],
       prototypeChartSliceOff: [],
@@ -19908,7 +20054,7 @@ function protoGraphDays() {
 // Null while the graph can show the selection. Mixed units ask for a unit first, so they never reach the limit.
 // It counts the same meter points the export would, so the message and the export agree.
 function protoGraphLimit(fileId) {
-  if (!protoPaneIsGraph()) return null;
+  if (!protoPaneIsGraph() && protoPaneId() !== "demand") return null;
   const id = String(fileId || "");
   const meters = protoExportMeters(id);
   if (!meters.length || protoConsumptionUnitsMixed(meters)) return null;
@@ -20237,6 +20383,7 @@ function protoKnownPane(raw) {
     raw === "cost" ||
     raw === "carbon" ||
     raw === "power" ||
+    raw === "demand" ||
     raw === "weather"
   ) {
     return raw;
@@ -20265,6 +20412,7 @@ function protoPaneChartLabel(dual) {
   const pane = protoPaneId();
   if (pane === "cost") return "Cost";
   if (pane === "carbon") return "Carbon";
+  if (pane === "demand") return "Demand";
   return dual ? "Incoming and outgoing" : "Consumption";
 }
 
@@ -20273,7 +20421,8 @@ function protoChartIsGraph(label) {
     label === "Consumption" ||
     label === "Incoming and outgoing" ||
     label === "Cost" ||
-    label === "Carbon"
+    label === "Carbon" ||
+    label === "Demand"
   );
 }
 
@@ -20359,6 +20508,7 @@ function protoPaneTabs(alertCount, queryCount) {
     { id: "consumption", name: "Consumption" },
     { id: "cost", name: "Cost" },
     { id: "carbon", name: "Carbon" },
+    { id: "demand", name: "Demand" },
     { id: "power", name: "Power factor" },
     { id: "weather", name: "Weather" },
     { id: "profile", name: "Site profile" },
@@ -20369,7 +20519,7 @@ function protoPaneTabs(alertCount, queryCount) {
     items,
     active,
     "data-proto-pane",
-    "Consumption, Cost, Carbon, Power factor, Weather, Site profile, Alerts, and Queries"
+    "Consumption, Cost, Carbon, Demand, Power factor, Weather, Site profile, Alerts, and Queries"
   );
 }
 
@@ -20849,6 +20999,197 @@ function protoPowerPane(meters) {
   `;
 }
 
+// Demand is how fast electricity is drawn, in kW. A half-hour's kWh doubled gives its kW.
+// A day or month shows its highest half-hour, because that is what a supply has to carry.
+function protoDemandSlot(i) {
+  return `${String(Math.floor(i / 2)).padStart(2, "0")}.${i % 2 ? "30" : "00"}`;
+}
+
+function protoDemandRows(meters) {
+  const list = protoPowerMeters(meters);
+  if (!list.length) return [];
+  const span = protoDateSpan();
+  const zone = protoChartZone();
+  const series = list.map((meter) => protoSiteSeries(meter));
+  const labels = series[0].map((p) => p.label);
+  const names = protoSpanPointNames(span, labels, false);
+  const sumAt = (i) => {
+    const have = series.map((s) => s[i]).filter((p) => p && p.value != null);
+    return {
+      kwh: have.length ? have.reduce((n, p) => n + p.value, 0) : null,
+      quality: have.some((p) => p.quality === "estimated") ? "estimated" : have.length ? "actual" : "missing",
+    };
+  };
+  if (span.kind === "interval") {
+    return labels.map((label, i) => {
+      const { kwh, quality } = sumAt(i);
+      const kw = kwh == null ? null : kwh * 2;
+      const at = `${label} ${zone}`;
+      return { label, kw, kwh, hours: kwh == null ? 0 : 0.5, quality, peakAt: at, low: kw, lowAt: at };
+    });
+  }
+  if (span.kind === "day") {
+    return labels.map((label, i) => {
+      const { kwh, quality } = sumAt(i);
+      const empty = { label, kw: null, kwh: null, hours: 0, quality: "missing", peakAt: "", low: null, lowAt: "" };
+      if (kwh == null) return empty;
+      const slots = protoCalendarDayShape(list, protoAddDays(span.from, i), kwh);
+      let peak = -1;
+      let low = -1;
+      slots.forEach((v, k) => {
+        if (v == null) return;
+        if (peak < 0 || v > slots[peak]) peak = k;
+        if (low < 0 || v < slots[low]) low = k;
+      });
+      if (peak < 0) return empty;
+      return {
+        label,
+        kw: slots[peak] * 2,
+        kwh,
+        hours: 24,
+        quality,
+        peakAt: `${protoDemandSlot(peak)} ${zone} on ${names[i]}`,
+        low: slots[low] * 2,
+        lowAt: `${protoDemandSlot(low)} ${zone} on ${names[i]}`,
+      };
+    });
+  }
+  return labels.map((label, i) => {
+    const start = new Date(span.from.getFullYear(), span.from.getMonth() + i, 1);
+    const monthEnd = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+    const end = monthEnd > span.to ? span.to : monthEnd;
+    const days = start > end ? [] : protoWithSpan({ from: start, to: end, kind: "day" }, () => protoDemandRows(list));
+    const have = days.filter((row) => row.kw != null);
+    if (!have.length) return { label, kw: null, kwh: null, hours: 0, quality: "missing", peakAt: "", low: null, lowAt: "" };
+    const top = have.reduce((best, row) => (row.kw > best.kw ? row : best));
+    const bottom = have.reduce((best, row) => (row.low < best.low ? row : best));
+    return {
+      label,
+      kw: top.kw,
+      kwh: have.reduce((n, row) => n + row.kwh, 0),
+      hours: have.reduce((n, row) => n + row.hours, 0),
+      quality: have.some((row) => row.quality === "estimated") ? "estimated" : "actual",
+      peakAt: top.peakAt,
+      low: bottom.low,
+      lowAt: bottom.lowAt,
+    };
+  });
+}
+
+function protoDemandPoints(rows) {
+  return rows.map((row) => ({
+    label: row.label,
+    value: row.kw == null ? null : Number(row.kw.toFixed(1)),
+    quality: row.quality,
+    unit: "kW",
+  }));
+}
+
+// Demand takes the same Chart settings as Consumption. Site capacity is an overlay here, because both are in kW.
+function protoDemandChart(rows, meters) {
+  const label = "Demand";
+  const points = protoDemandPoints(rows);
+  const remake = () => ({ points: protoDemandPoints(protoDemandRows(meters)) });
+  const same = (list) => list;
+  const capacity = protoCapacityRefs(meters, points);
+  if (protoChartIsLine()) {
+    const lineRefs = (again) => [{ id: "demand", track: "demand", color: protoIncomingInk(), points: again.points || [] }];
+    const pair = protoDateCompareSpan() ? protoDateCompareLines(points, remake, meters, false, false, label, same) : null;
+    if (pair) {
+      return protoLineChart(pair.tracks, label, {
+        dual: true,
+        datePair: pair.flow,
+        keyNames: pair.keyNames,
+        zoneMeters: meters,
+        refs: [...protoProfileRefs(remake, lineRefs), ...capacity],
+        weekends: true,
+      });
+    }
+    return protoLineChart([{ id: "demand", ref: label, color: protoIncomingInk(), dash: "", points }], label, {
+      zoneMeters: meters,
+      refs: [...protoDateCompareRefs(remake, lineRefs), ...protoProfileRefs(remake, lineRefs), ...capacity],
+      weekends: true,
+    });
+  }
+  const barRefs = (again) => [{ id: "total", points: again.points || [] }];
+  const profileRefs = protoProfileRefs(remake, barRefs);
+  if (protoDateCompareSpan()) {
+    const pair = protoDateCompareBars(points, remake, same, "in", false);
+    if (pair) {
+      return protoBarChart(pair.points, label, {
+        datePair: "in",
+        zoneMeters: meters,
+        refs: [...profileRefs, ...capacity],
+        keyNames: pair.keyNames,
+        weekends: true,
+      });
+    }
+  }
+  return protoBarChart(points, label, {
+    zoneMeters: meters,
+    refs: [...protoDateCompareRefs(remake, barRefs), ...profileRefs, ...capacity],
+    weekends: true,
+  });
+}
+
+// The graph in kW, then the figures Data Vision users look for: highest, average and lowest demand, and the total used.
+function protoDemandPane(meters) {
+  const incoming = protoPowerMeters(meters);
+  if (protoNoReadings(incoming)) return protoNoReadingsHtml(incoming);
+  const rows = protoDemandRows(meters);
+  const have = rows.filter((row) => row.kw != null);
+  if (!have.length) {
+    return `
+      <div class="astral-chart-head">
+        <div class="astral-chart-heading">
+          <p class="astral-chart-title">Demand</p>
+          <p class="astral-chart-when">${escapeHtml(`${protoChartWhen()} ${protoChartZone()}`)}</p>
+        </div>
+      </div>
+      <p class="astral-banner">Demand comes from incoming electricity meters. There are none in this view.</p>
+    `;
+  }
+  const span = protoDateSpan();
+  const kw = (value) => `${Number(value.toFixed(1)).toLocaleString("en-GB", { maximumFractionDigits: 1 })} kW`;
+  const top = have.reduce((best, row) => (row.kw > best.kw ? row : best));
+  const bottom = have.reduce((best, row) => (row.low < best.low ? row : best));
+  const kwh = have.reduce((n, row) => n + row.kwh, 0);
+  const hours = have.reduce((n, row) => n + row.hours, 0);
+  const figures = [
+    { name: "Highest demand", value: kw(top.kw), note: `At ${top.peakAt}` },
+    { name: "Average demand", value: kw(hours ? kwh / hours : 0), note: "Total used divided by the hours with readings" },
+    { name: "Lowest demand", value: kw(bottom.low), note: `At ${bottom.lowAt}` },
+    { name: "Total used", value: `${Math.round(kwh).toLocaleString("en-GB")} kWh`, note: "Incoming electricity" },
+  ];
+  if (!protoCapacityBlockedFor(meters)) {
+    const kva = protoSiteCapacityKva(meters[0]);
+    const capKw = protoCapacityKw(kva);
+    figures.push({
+      name: "Highest demand against site capacity",
+      value: `${Math.round((top.kw / capKw) * 100)}%`,
+      note: `Site capacity ${kva.toLocaleString("en-GB")} kVA, about ${protoFormatAmount(capKw, 1)} kW`,
+    });
+  }
+  const spec = PROTO_BREAKDOWN_FOLDS.summary;
+  const summary = protoAccordion({
+    id: spec.id,
+    open: Boolean(store[spec.field]),
+    name: "Summary",
+    note: protoRangeWords(span.from, span.to),
+    attr: 'data-proto-breakdown="summary"',
+    modifier: "astral-breakdown",
+    clipClass: "astral-breakdown-clip",
+    inner: `<div class="astral-pane-summary">${protoWeatherFigureGroup("", figures)}</div>`,
+  });
+  const each =
+    span.kind === "interval" ? "Each half-hour shows its average." : `Each ${span.kind === "day" ? "day" : "month"} shows its highest half-hour.`;
+  return `
+    ${protoDemandChart(rows, meters)}
+    <p class="astral-weather-note">Demand is how fast electricity is drawn, in kW. ${each}</p>
+    ${summary}
+  `;
+}
+
 function protoMeterFacts(meter, profile = protoMeterProfile(meter?.id)) {
   const kind = protoMeterKind(meter);
   const site = protoSiteByMeter(meter?.id);
@@ -21165,7 +21506,7 @@ function protoMeterAttrSpec(kind) {
   const key = kind === "water" ? "Water" : kind === "gas" ? "Gas" : "Elec";
   const useUnit = kind === "water" ? "m³" : "kWh";
   return [
-    ...(kind === "electricity" ? [{ key: "capacity", label: "Supply capacity", unit: "kVA" }] : []),
+    ...(kind === "electricity" ? [{ key: "capacity", label: "Site capacity", unit: "kVA" }] : []),
     { key: `emissions${key}`, label: "Emissions factor", unit: `kgCO2e/${useUnit}` },
     { key: `standing${key}`, label: "Daily standing charge", unit: "£/day" },
     ...(kind === "water"
@@ -23972,6 +24313,10 @@ function protoGroupDetail(group) {
     `,
     pane === "alerts"
       ? protoAlertPane(alerts, "group")
+      : pane === "demand"
+        ? limit
+          ? protoGraphLimitHtml(limit)
+          : protoDemandPane(viewMeters)
       : pane === "power"
         ? protoPowerPane(viewMeters)
       : pane === "weather"
@@ -24155,6 +24500,10 @@ function protoCompareDetail() {
     `,
     pane === "alerts"
       ? protoAlertPane(alerts, noun)
+      : pane === "demand"
+        ? limit
+          ? protoGraphLimitHtml(limit)
+          : protoDemandPane(meters)
       : pane === "power"
         ? protoPowerPane(meters)
       : pane === "weather"
@@ -24703,6 +25052,10 @@ function protoPortfolioDetail() {
                 ? protoWeatherPane([currentSite])
                 : pane === "power"
                 ? protoPowerPane(viewMeters)
+                : pane === "demand"
+                ? limit
+                  ? protoGraphLimitHtml(limit)
+                  : protoDemandPane(viewMeters)
                 : protoNoReadings(viewMeters)
                 ? protoNoReadingsHtml(viewMeters)
                 : limit
