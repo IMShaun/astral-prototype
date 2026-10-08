@@ -19779,7 +19779,7 @@ function protoExportModalState() {
   const raw = store.prototypeExportModal;
   if (!raw || typeof raw !== "object" || !raw.file) return null;
   const file = String(raw.file);
-  if (protoExportNeedsSite(file) || protoExportNoData(file)) return null;
+  if (protoExportNoData(file)) return null;
   const prefs = protoExportPrefs();
   // Too large to graph opens on Source data. Chart data, Image and PDF are still built from the same data in the background.
   const limit = raw.limit === true && Boolean(protoGraphLimit(file));
@@ -19892,17 +19892,7 @@ function protoExportSummary(state) {
   return `${text}.`;
 }
 
-// Graph exports work for one site at a time. On All, a group or a compare of several sites, Export stays in place but greyed out and says why.
-// A selection too large to graph is the exception. Its only export is the full Source data.
-function protoExportNeedsSite(fileId) {
-  const id = String(fileId || "");
-  if (protoGraphLimit(id)) return false;
-  if (id.startsWith("group:")) return true;
-  if (id === "compare") return (protoCompareBundle().sites || []).length > 1;
-  return false;
-}
-
-// Every meter point in view has stopped sending readings before the dates picked, so Export is greyed out.
+// The only greyed-out Export. Every meter point in view has stopped sending readings before the dates picked, so the graph is empty too.
 function protoExportNoData(fileId) {
   return protoNoReadings(protoExportMeters(String(fileId || "")));
 }
@@ -19960,15 +19950,6 @@ function protoGraphLimitHtml(limit) {
 // Export opens one pop-up that holds every export option.
 function protoExportControl(fileId) {
   if (!protoCanAct()) return "";
-  if (protoExportNeedsSite(fileId)) {
-    return `
-      <div class="astral-export">
-        ${protoIconBtn("export", "Export, choose a site first", 'data-proto-export="toggle" aria-disabled="true"', {
-          tipLabel: "Choose a site to export",
-        })}
-      </div>
-    `;
-  }
   const open = protoExportModalState()?.file === String(fileId || "");
   if (protoExportNoData(fileId)) {
     return `
