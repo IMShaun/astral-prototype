@@ -10418,6 +10418,16 @@ button.astral-state {
   padding-top: 4px;
 }
 
+/* A panel's own border closes the table, so the last row drops its line and padding. */
+.astral-fold-panel .astral-table > tbody:last-child > tr:last-child > td,
+.astral-fold-panel .astral-period-day > tr > td[rowspan] {
+  border-bottom: 0;
+}
+
+.astral-fold-panel .astral-table > tbody:last-child > tr:last-child > td {
+  padding-bottom: 0;
+}
+
 .astral-period-act {
   width: 40px;
 }
