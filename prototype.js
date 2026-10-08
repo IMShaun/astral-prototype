@@ -22868,14 +22868,50 @@ function protoWeekNote(part, rows) {
   });
 }
 
-function protoPresetPickCard(attr, value, on, label, lines) {
+function protoPresetPickCard(attr, value, on, label, lines, extra = "") {
   return `
     <button type="button" role="radio" class="astral-report-type${on ? " is-on" : ""}" aria-checked="${on ? "true" : "false"}" tabindex="${
       on ? "0" : "-1"
     }" ${attr}="${escapeHtml(value)}">
       <span class="astral-report-type-head">${protoRadio(on)}<span>${escapeHtml(label)}</span></span>
-      ${lines.map((line) => `<span class="astral-muted">${escapeHtml(line)}</span>`).join("")}
+      ${lines.map((line) => `<span class="astral-muted">${escapeHtml(line)}</span>`).join("")}${extra}
     </button>
+  `;
+}
+
+// Each status as the same mark the charts and tables use, so the timeline reads like the rest of the app.
+const PROTO_PRESET_LINE = {
+  hours: { operational: "hours-on", off: "hours-non", closed: "hours-off" },
+  tou: { on: "tou-on", off: "tou-off" },
+};
+
+// A preset at a glance: one 24 hour bar per day, coloured by status. Screen readers get the same as text.
+function protoPresetLine(part, rows, week) {
+  const marks = PROTO_PRESET_LINE[part] || {};
+  const mins = (value) => {
+    const [h, m] = String(value || "0").split(/[.:]/).map(Number);
+    return (h || 0) * 60 + (m || 0);
+  };
+  const pct = (n) => `${Math.round((n / 1440) * 10000) / 100}%`;
+  const bar = (row) =>
+    protoDayPeriods(row, part)
+      .map((p) => {
+        const from = mins(p.from);
+        const cls = PROTO_ZONE_BADGES[marks[p.status]]?.cls || "";
+        return `<span class="astral-preset-seg ${cls}" style="left:${pct(from)};width:${pct(mins(p.to) - from)}"></span>`;
+      })
+      .join("");
+  const day = (d) => (week ? `<span class="astral-preset-line-day">${PROTO_WEEKDAYS[d].slice(0, 3)}</span>` : "");
+  const ticks = [0, 6, 12, 18, 24]
+    .map((h) => `<span style="left:${(h / 24) * 100}%">${String(h).padStart(2, "0")}:00</span>`)
+    .join("");
+  const spoken = week ? protoWeekNote(part, rows) : rows.map((row) => protoPresetTimes(part, row));
+  return `
+    <span class="astral-preset-line${week ? " has-days" : ""}" aria-hidden="true">
+      ${rows.map((row, d) => `<span class="astral-preset-line-row">${day(d)}<span class="astral-preset-line-bar">${bar(row)}</span></span>`).join("")}
+      <span class="astral-preset-line-row">${week ? "<span></span>" : ""}<span class="astral-preset-line-ticks">${ticks}</span></span>
+    </span>
+    <span class="sr-only">${escapeHtml(spoken.join(". "))}</span>
   `;
 }
 
@@ -22897,7 +22933,10 @@ function protoPresetPickList(pick) {
         item.id,
         item.id === pick.choice,
         item.name,
-        week ? protoWeekNote(pick.part, protoWeekRows(pick.part, item)) : [protoPresetTimes(pick.part, { periods: item.periods })]
+        [],
+        week
+          ? protoPresetLine(pick.part, protoWeekRows(pick.part, item), true)
+          : protoPresetLine(pick.part, [{ periods: protoPresetPeriods(pick.part, item) }], false)
       )
     )
     .join("");
@@ -22915,6 +22954,7 @@ function protoPresetPickList(pick) {
         })}
       </div>`;
   return `
+    ${protoBreakdownKey(Object.values(PROTO_PRESET_LINE[pick.part] || {}))}
     <div class="astral-report-types is-list" role="radiogroup" aria-label="${week ? "Your saved weeks" : "Your saved days"}">${cards}</div>
     ${dayPick}
   `;
