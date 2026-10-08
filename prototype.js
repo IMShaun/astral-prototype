@@ -3142,7 +3142,7 @@ function protoChartZone() {
   return "UTC";
 }
 
-// Compare dates draws a second period on the same graph. It is separate from Compare, which adds sites.
+// "Compare with" in the date menu draws a second period on the same graph. It is separate from Compare sites.
 const PROTO_DATE_COMPARE = [
   { id: "previous", name: "Previous period" },
   { id: "year", name: "Same period last year" },
@@ -3198,30 +3198,47 @@ function protoSpanPointNames(span, labels, withYear) {
   });
 }
 
-function protoDateCompareControl() {
-  const id = protoDateCompareId();
+// The date comparison in force, or "" when there is none or the chart cannot show one.
+function protoDateCompareOn() {
+  return protoChartIsCalendar() ? "" : protoDateCompareId();
+}
+
+// "Compare with" options in the date menu. Comparing dates sits with the dates, apart from Compare sites.
+function protoDateCompareOptions() {
   const calendar = protoChartIsCalendar();
+  const id = protoDateCompareOn();
   const span = protoDateSpan();
-  const on = Boolean(id) && !calendar;
-  const words = on ? protoSpanWords(protoCompareSpanFor(id, span)) : "";
-  const select = protoSelect({
-    id: "date-compare",
-    label: on ? `Compare dates, ${words}` : "Compare dates",
-    value: on ? id : "",
-    text: on ? words : "Compare dates",
-    kind: "tool",
-    disabled: calendar,
-    tip: calendar ? "Compare dates works with Bar and Line." : "",
-    options: PROTO_DATE_COMPARE.map((item) => ({
-      value: item.id,
-      label: item.name,
-      note: protoSpanWords(protoCompareSpanFor(item.id, span)),
-    })),
-  });
-  const clear = on
-    ? protoClearButton("astral-compare-clear", `data-proto-date-compare="clear"`, "Remove date comparison")
+  const option = (value, label, note) => {
+    const on = !calendar && value === id;
+    const copy = note
+      ? `<span class="astral-select-option-copy"><span>${escapeHtml(label)}</span><span class="astral-muted">${escapeHtml(
+          note
+        )}</span></span>`
+      : `<span>${escapeHtml(label)}</span>`;
+    return `
+      <button
+        type="button"
+        role="option"
+        class="${[on ? "is-on" : "", calendar ? "is-disabled" : ""].filter(Boolean).join(" ")}"
+        aria-selected="${on ? "true" : "false"}"
+        ${calendar ? `aria-disabled="true"` : ""}
+        data-proto-date-compare="${escapeHtml(value || "none")}"
+      >${copy}</button>
+    `;
+  };
+  const options = [
+    option("", "No comparison", ""),
+    ...PROTO_DATE_COMPARE.map((item) => option(item.id, item.name, protoSpanWords(protoCompareSpanFor(item.id, span)))),
+  ].join("");
+  const note = calendar
+    ? `<p class="astral-date-menu-note astral-muted">Comparing dates works with Bar and Line.</p>`
     : "";
-  return `<div class="astral-date-compare${on ? " is-on" : ""}">${select}${clear}</div>`;
+  return `
+    <div class="astral-date-group" role="listbox" aria-labelledby="astral-date-compare-heading">
+      <p class="astral-select-heading" id="astral-date-compare-heading">Compare with</p>
+      ${note}${options}
+    </div>
+  `;
 }
 
 // One reference series per line, aligned to the graph's points by position.
@@ -8980,11 +8997,6 @@ function protoPickSelect(id, value) {
     protoRestoreFocus(`#astral-chart-settings-menu [data-proto-select="chart-profile"] .astral-select-btn`);
     return;
   }
-  if (id === "date-compare") {
-    setProto({ prototypeSelectOpen: "", prototypeDateCompare: String(value || ""), prototypeChartPoint: null });
-    protoRestoreFocus(`#astral-fs [data-proto-select="date-compare"] .astral-select-btn`);
-    return;
-  }
   if (id === "chart-view") {
     setProto({
       prototypeSelectOpen: "",
@@ -9326,6 +9338,16 @@ function protoPickSelect(id, value) {
 function protoDateControl() {
   const open = Boolean(store.prototypeDateOpen);
   const preset = protoDatePreset();
+  const compare = protoDateCompareOn();
+  const compareName = PROTO_DATE_COMPARE.find((item) => item.id === compare)?.name || "";
+  const range = protoDateButtonLabel();
+  const text = compare ? `${range} and ${compareName.toLowerCase()}` : range;
+  const label = compare
+    ? `Date range, ${range}, compared with ${protoSpanWords(protoCompareSpanFor(compare, protoDateSpan()))}`
+    : `Date range, ${range}`;
+  const clear = compare
+    ? protoClearButton("astral-compare-clear", `data-proto-date-compare="clear"`, "Remove date comparison")
+    : "";
   const options = PROTO_DATE_PRESETS.map((item) => {
     const on = item.id === preset;
     return `
@@ -9339,25 +9361,30 @@ function protoDateControl() {
     `;
   }).join("");
   return `
-    <div class="astral-date${open ? protoMenuEnterClass("date") : ""}">
+    <div class="astral-date${compare ? " has-compare" : ""}${open ? protoMenuEnterClass("date") : ""}">
       <button
         type="button"
         class="astral-date-btn"
-        aria-haspopup="listbox"
         aria-expanded="${open ? "true" : "false"}"
         aria-controls="astral-date-menu"
+        aria-label="${escapeHtml(label)}"
         data-proto-date="toggle"
       >
-        <span>${escapeHtml(protoDateButtonLabel())}</span>
+        <span>${escapeHtml(text)}</span>
         ${protoChevronMark("menu")}
       </button>
+      ${clear}
       <div
         id="astral-date-menu"
         class="astral-date-menu${open ? protoMenuEnterClass("date") : ""}"
-        role="listbox"
-        aria-label="Date range"
         ${open ? "" : "hidden"}
-      >${options}</div>
+      >
+        <div class="astral-date-group" role="listbox" aria-labelledby="astral-date-range-heading">
+          <p class="astral-select-heading" id="astral-date-range-heading">Date range</p>
+          ${options}
+        </div>
+        ${protoDateCompareOptions()}
+      </div>
     </div>
   `;
 }
@@ -23022,7 +23049,6 @@ function protoDetailTools(csvId) {
   return `
     <div class="astral-detail-tools">
       ${protoDateControl()}
-      ${protoDateCompareControl()}
       ${protoCompareControl()}
       ${protoPaneFilterControl()}
       ${protoExportControl(csvId)}
@@ -23032,6 +23058,7 @@ function protoDetailTools(csvId) {
 
 function protoCompareControl() {
   const n = protoCompareIds().length;
+  const nouns = protoCompareNoun(true);
   const noun = protoCompareNoun(n !== 1);
   const chip = protoCountChip(n);
   const clear = n
@@ -23040,8 +23067,8 @@ function protoCompareControl() {
   return `
     <div class="astral-compare${n ? " has-picked" : ""}">
       ${protoGhost(
-        `Compare${chip}`,
-        `data-proto-compare="open"${n ? ` aria-label="Compare, ${n} other ${escapeHtml(noun)}"` : ""}`,
+        `Compare ${escapeHtml(nouns)}${chip}`,
+        `data-proto-compare="open"${n ? ` aria-label="Compare ${escapeHtml(nouns)}, ${n} other ${escapeHtml(noun)}"` : ""}`,
         { html: true }
       )}
       ${clear}
@@ -33645,10 +33672,21 @@ function onPrototype(event) {
     protoRestoreFocus(`#astral-fs [data-proto-compare-id="${CSS.escape(id)}"]`);
     return;
   }
-  const dateCompareClear = event.target.closest('[data-proto-date-compare="clear"]');
-  if (dateCompareClear) {
-    setProto({ prototypeDateCompare: "", prototypeChartPoint: null });
-    protoRestoreFocus(`#astral-fs [data-proto-select="date-compare"] .astral-select-btn`);
+  const dateCompareBtn = event.target.closest("[data-proto-date-compare]");
+  if (dateCompareBtn) {
+    const act = dateCompareBtn.dataset.protoDateCompare;
+    if (act === "clear") {
+      setProto({ prototypeDateCompare: "", prototypeChartPoint: null });
+      protoRestoreFocus(`#astral-fs .astral-date-btn`);
+      return;
+    }
+    if (dateCompareBtn.getAttribute("aria-disabled") === "true") return;
+    setProto({
+      prototypeDateCompare: act === "none" ? "" : act,
+      prototypeDateOpen: false,
+      prototypeChartPoint: null,
+    });
+    protoRestoreFocus(`#astral-fs .astral-date-btn`);
     return;
   }
   const compareBtn = event.target.closest("[data-proto-compare]");

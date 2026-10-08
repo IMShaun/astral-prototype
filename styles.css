@@ -9387,22 +9387,58 @@ button.astral-state {
   border-radius: 4px;
 }
 
-.astral-date-compare {
+/* A date comparison joins the date pill, with its own clear button, like Compare sites. */
+.astral-date.has-compare {
   display: inline-flex;
   align-items: center;
-}
-
-.astral-date-compare.is-on {
+  gap: 2px;
+  padding-right: 4px;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-button);
-  padding-right: 4px;
-  gap: 2px;
   background: var(--color-background-surface);
 }
 
-.astral-date-compare.is-on .astral-select-btn {
+.astral-date.has-compare:hover {
+  background: var(--color-background-hover);
+}
+
+.astral-date.has-compare > .astral-date-btn {
   border: 0;
   background: transparent;
+  max-width: 26rem;
+}
+
+.astral-date.has-compare .astral-compare-clear:hover {
+  background: transparent;
+}
+
+.astral-date-group {
+  display: grid;
+  gap: 4px;
+}
+
+.astral-date-group + .astral-date-group > .astral-select-heading {
+  margin-top: 4px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.astral-date-menu .astral-select-heading:first-child {
+  padding-top: 4px;
+}
+
+.astral-date-menu-note {
+  margin: 0;
+  padding: 0 12px 4px;
+  font-size: 0.8125rem;
+  white-space: normal;
+  max-width: 16rem;
+}
+
+.astral-date-menu button.is-disabled,
+.astral-date-menu button.is-disabled:hover {
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: default;
 }
 
 @media (prefers-reduced-motion: reduce) {
