@@ -9886,9 +9886,22 @@ button.astral-state {
   font-size: 0.75rem;
 }
 
-.astral-chart-setting > .astral-chart-setting-note {
+.astral-chart-setting > .astral-tip-host.is-why {
+  display: flex;
+  width: 100%;
+}
+
+.astral-chart-setting > .astral-tip-host.is-why > :not(.astral-icon-tip, .sr-only) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.astral-icon-tip.is-why {
+  width: max-content;
   max-width: 32ch;
+  white-space: normal;
   line-height: 1.4;
+  font-size: 0.75rem;
 }
 
 .astral-chart-limit {

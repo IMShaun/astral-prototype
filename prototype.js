@@ -3247,11 +3247,8 @@ function protoDateCompareOn() {
 function protoDateCompareMenuItem() {
   const calendar = protoChartIsCalendar();
   const id = protoDateCompareOn();
-  const note = calendar
-    ? "Comparing dates works with Bar and Line."
-    : id
-      ? `With ${protoDateCompareName(protoDatePreset(), id).toLowerCase()}`
-      : "";
+  const note = id && !calendar ? `With ${protoDateCompareName(protoDatePreset(), id).toLowerCase()}` : "";
+  const why = calendar ? "Comparing dates works with Bar and Line." : "";
   const copy = note
     ? `<span class="astral-select-option-copy"><span>Compare</span><span class="astral-muted">${escapeHtml(
         note
@@ -3261,11 +3258,15 @@ function protoDateCompareMenuItem() {
     <div class="astral-date-foot">
       <button
         type="button"
-        class="${[id ? "is-on" : "", calendar ? "is-disabled" : ""].filter(Boolean).join(" ")}"
+        class="${[id ? "is-on" : "", calendar ? "is-disabled astral-tip-host is-why" : ""].filter(Boolean).join(" ")}"
         aria-haspopup="dialog"
-        ${calendar ? `aria-disabled="true"` : ""}
+        ${calendar ? `aria-disabled="true" aria-describedby="astral-date-compare-why"` : ""}
         data-proto-date="compare"
-      >${copy}</button>
+      >${copy}${
+        why
+          ? `<span class="astral-icon-tip is-why" id="astral-date-compare-why" role="tooltip" aria-hidden="true">${escapeHtml(why)}</span>`
+          : ""
+      }</button>
     </div>
   `;
 }
@@ -3612,7 +3613,8 @@ function protoWeekendOn() {
 function protoWeekendSwitch() {
   const blocked = protoWeekendBlocked();
   const on = Boolean(store.prototypeChartWeekends) && !blocked;
-  return `
+  return protoWhyOffTip(
+    `
     <button
       type="button"
       class="astral-chart-switch"
@@ -3625,8 +3627,9 @@ function protoWeekendSwitch() {
       <span id="astral-chart-weekends-name">Highlight weekends</span>
       <span class="astral-switch${on ? " is-on" : ""}" aria-hidden="true"></span>
     </button>
-    ${blocked ? `<p class="astral-chart-setting-note">${escapeHtml(blocked)}</p>` : ""}
-  `;
+  `,
+    blocked
+  );
 }
 
 // Shading with a dotted pattern, a bar along the top and Sat or Sun under the axis, so it never relies on colour.
@@ -7086,15 +7089,21 @@ function protoChartUtilityField(set, field) {
   );
 }
 
+// A control that is off, or limited, says why in a hover tip rather than a note under it. Screen readers get the reason in line.
+function protoWhyOffTip(control, reason) {
+  if (!reason) return control;
+  return `<span class="astral-tip-host is-why">${control}<span class="sr-only">${escapeHtml(
+    reason
+  )}</span><span class="astral-icon-tip is-why" role="tooltip" aria-hidden="true">${escapeHtml(reason)}</span></span>`;
+}
+
 function protoChartOverlayNote() {
   const tier = protoChartOverlayTier();
   if (tier === "both") return "";
   const sites = protoChartOverlaySites();
-  const text =
-    tier === "one"
-      ? `With ${sites} sites in view, the graph shows one overlay at a time.`
-      : `Too many sites to chart clearly. Choose ${PROTO_OVERLAY_ONE_MAX} sites or fewer to add an overlay.`;
-  return `<p class="astral-chart-setting-note">${escapeHtml(text)}</p>`;
+  return tier === "one"
+    ? `With ${sites} sites in view, the graph shows one overlay at a time.`
+    : `Too many sites to chart clearly. Choose ${PROTO_OVERLAY_ONE_MAX} sites or fewer to add an overlay.`;
 }
 
 // Defaults: Total consumption, Bar, no overlay, no average profile and no highlight.
@@ -7117,25 +7126,16 @@ function protoChartSettings(zoneSet) {
   const calendar = protoChartIsCalendar();
   const fields = open
     ? [
-        field("view", "View", (labelledby) =>
-          protoChartViewSelect({ label: "View", labelledby }) +
-          (calendar
-            ? `<p class="astral-chart-setting-note">Calendar shows the total for each day. Chart type and Overlay apply to the graph.</p>`
-            : "")
-        ),
+        field("view", "View", (labelledby) => protoChartViewSelect({ label: "View", labelledby })),
         calendar ? "" : field("style", "Chart type", (labelledby) => protoChartStyleSwitch(labelledby)),
         field("show", "Overlay", (labelledby) =>
           calendar
-            ? protoChartShowSelect({ labelledby, disabled: true })
-            : protoChartShowSelect({ labelledby }) + protoChartOverlayNote()
+            ? protoWhyOffTip(protoChartShowSelect({ labelledby, disabled: true }), "Overlay works with Bar and Line.")
+            : protoWhyOffTip(protoChartShowSelect({ labelledby }), protoChartOverlayNote())
         ),
-        field("profile", "Average profile", (labelledby) => {
-          const blocked = protoProfileBlocked();
-          return (
-            protoProfileSelect({ labelledby }) +
-            (blocked ? `<p class="astral-chart-setting-note">${escapeHtml(blocked)}</p>` : "")
-          );
-        }),
+        field("profile", "Average profile", (labelledby) =>
+          protoWhyOffTip(protoProfileSelect({ labelledby }), protoProfileBlocked())
+        ),
         field("weekends", "Weekends", () => protoWeekendSwitch()),
         calendar ? "" : protoChartUtilityField(zoneSet, field),
         calendar ? "" : protoChartZoneField(zoneSet, field),
@@ -31636,6 +31636,7 @@ function protoIconTipForHost(host) {
 }
 
 function protoTipMenuOpen(host) {
+  if (host.querySelector(':scope > .astral-select > .astral-select-btn[aria-expanded="true"]')) return true;
   return Boolean(
     host
       .closest(
