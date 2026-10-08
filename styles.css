@@ -10415,7 +10415,24 @@ button.astral-state {
   white-space: nowrap;
 }
 
-/* Periods: one table per day, under day tabs. Rules sit under the day, not between its periods. */
+/* Periods: one table per day, under day tabs. Rules sit under the day, not between its periods.
+   Fixed columns, so switching days never moves them, whatever each day holds. */
+.astral-period-table {
+  table-layout: fixed;
+}
+
+.astral-period-col-profile {
+  width: 28%;
+}
+
+.astral-period-col-time {
+  width: 18%;
+}
+
+.astral-period-col-act {
+  width: 52px;
+}
+
 .astral-period-table tbody th,
 .astral-period-table tbody td[rowspan] {
   vertical-align: top;

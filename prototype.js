@@ -22645,6 +22645,13 @@ function protoMeterPeriodTable(id, rows, part, opts = {}) {
       `;
     return `
           <table class="astral-table astral-period-table">
+            <colgroup>
+              <col class="astral-period-col-profile" />
+              <col class="astral-period-col-time" />
+              <col class="astral-period-col-time" />
+              <col />
+              <col class="astral-period-col-act" />
+            </colgroup>
             <thead>
               <tr>
                 <th scope="col">Select profile</th>
