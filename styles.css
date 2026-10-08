@@ -7756,11 +7756,13 @@ button.astral-state {
 }
 
 /* A checkbox centres on the label line, not on the label and hint together. */
-.astral-select-options button:has(> .astral-check):has(> .astral-select-option-copy > .astral-muted) {
+.astral-select-options button:has(> .astral-check):has(> .astral-select-option-copy > .astral-muted),
+.astral-select-options button:has(> .astral-radio):has(> .astral-select-option-copy > .astral-muted) {
   align-items: flex-start;
 }
 
-.astral-select-options button:has(> .astral-select-option-copy > .astral-muted) > .astral-check {
+.astral-select-options button:has(> .astral-select-option-copy > .astral-muted) > .astral-check,
+.astral-select-options button:has(> .astral-select-option-copy > .astral-muted) > .astral-radio {
   margin-top: calc((1lh - 16px) / 2);
 }
 
@@ -11906,28 +11908,6 @@ tr.is-off .astral-person-mark {
 .astral-report-email-check .astral-modal-body {
   display: grid;
   gap: 16px;
-}
-
-.astral-email-inbox {
-  display: grid;
-  gap: 4px;
-  padding: 12px 16px;
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-lg);
-}
-
-.astral-email-from {
-  font-weight: 600;
-}
-
-.astral-email-line {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.astral-email-line strong {
-  font-weight: 500;
 }
 
 /* Sized by script to the email's height. The email paints its own grey page. */

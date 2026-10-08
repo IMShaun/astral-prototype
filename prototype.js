@@ -8923,7 +8923,9 @@ function protoSelect(config) {
             )}</span><span class="astral-muted">${escapeHtml(item.note)}</span></span>`
           : `<span>${escapeHtml(item.label)}</span>`);
       const box = multi
-        ? `<span class="astral-check${on ? " is-on" : ""}" aria-hidden="true"></span>`
+        ? item.radio
+          ? `<span class="astral-radio${on ? " is-on" : ""}" aria-hidden="true"></span>`
+          : `<span class="astral-check${on ? " is-on" : ""}" aria-hidden="true"></span>`
         : "";
       const count =
         item.count == null
@@ -9475,7 +9477,11 @@ function protoPickSelect(id, value) {
   if (id === "report-utility") {
     const draft = protoReportDraft();
     if (!draft) return;
-    const next = protoReportToggleIn(protoReportUtilityIds(draft.utility, draft.type), value);
+    const now = protoReportUtilityIds(draft.utility, draft.type);
+    const shared = now.filter((util) => !protoReportUtilitySolo(draft.type, util));
+    const next = protoReportUtilitySolo(draft.type, value)
+      ? [value]
+      : protoReportToggleIn(shared.length ? shared : [], value);
     // A report always holds at least one utility.
     if (next.length) protoReportPatchDraft({ utility: next }, id);
     protoRestoreFocus(
@@ -9968,21 +9974,37 @@ const PROTO_REPORT_UTILITY = [
   { id: "water", name: "Water" },
 ];
 
-// The utilities a type can pick. A Threshold alert adds up kWh, and water is in m³, so it has no Water.
-function protoReportUtilityChoices(type) {
-  return PROTO_REPORT_UTILITY.filter((item) => item.id !== "all" && !(type === "alert" && item.id === "water"));
+function protoReportUtilityChoices() {
+  return PROTO_REPORT_UTILITY.filter((item) => item.id !== "all");
+}
+
+// A Threshold alert adds up kWh, and water is in m³, so water is picked on its own.
+function protoReportUtilitySolo(type, id) {
+  return type === "alert" && id === "water";
 }
 
 // A report can hold several utilities. "all", a single id or a list all become a list; none means all.
+// For an alert, "all" means every kWh utility.
 function protoReportUtilityIds(raw, type) {
-  const ids = protoReportUtilityChoices(type).map((item) => item.id);
+  const ids = protoReportUtilityChoices().map((item) => item.id);
   const list = (Array.isArray(raw) ? raw : raw && raw !== "all" ? [raw] : []).map(String);
   const picked = ids.filter((id) => list.includes(id));
-  return picked.length ? picked : ids;
+  if (type !== "alert") return picked.length ? picked : ids;
+  const shared = ids.filter((id) => !protoReportUtilitySolo(type, id));
+  const solo = picked.find((id) => protoReportUtilitySolo(type, id));
+  const kwh = picked.filter((id) => !protoReportUtilitySolo(type, id));
+  return kwh.length ? kwh : solo ? [solo] : shared;
 }
 
 function protoReportUtilityAll(raw, type) {
-  return protoReportUtilityIds(raw, type).length === protoReportUtilityChoices(type).length;
+  const ids = protoReportUtilityIds(raw, type);
+  const pool = protoReportUtilityChoices().filter((item) => !protoReportUtilitySolo(type, item.id));
+  return ids.length === pool.length && pool.every((item) => ids.includes(item.id));
+}
+
+// An alert on water counts m³. Every other alert counts kWh.
+function protoReportAlertUnit(def) {
+  return def?.type === "alert" && protoReportUtilityIds(def.utility, "alert")[0] === "water" ? "m³" : "kWh";
 }
 
 // "electricity and gas" for the file line.
@@ -10768,8 +10790,8 @@ function protoReportDef(id) {
   return protoReportDefs().find((def) => def.id === id) || null;
 }
 
-function protoReportKwh(n) {
-  return `${Math.round(n).toLocaleString("en-GB")} kWh`;
+function protoReportKwh(n, def) {
+  return `${Math.round(n).toLocaleString("en-GB")} ${protoReportAlertUnit(def)}`;
 }
 
 function protoReportJoin(names) {
@@ -10781,12 +10803,9 @@ function protoReportJoin(names) {
 
 // A report's utility pick narrows the meters. Without a report it counts electricity and gas.
 function protoReportAlertMeters(site, def) {
-  const ids = def ? protoReportUtilityIds(def.utility, "alert") : null;
+  const ids = protoReportUtilityIds(def?.utility, "alert");
   return (site?.meters || []).filter(
-    (meter) =>
-      meter.direction !== "Export" &&
-      protoMeterKind(meter) !== "water" &&
-      (!ids || ids.includes(protoMeterKind(meter)))
+    (meter) => meter.direction !== "Export" && ids.includes(protoMeterKind(meter))
   );
 }
 
@@ -11253,7 +11272,7 @@ function protoReportSummary(def) {
     const util = protoReportUtilityAll(def.utility, def.type) ? "" : ` ${protoReportUtilityNames(def.utility, def.type)}`;
     const below = protoReportAlertBelow(def);
     if (def.basis === "absolute") {
-      return `When ${scope} uses ${below ? "less" : "more"}${util} than ${protoReportKwh(def.amount)} in a day.`;
+      return `When ${scope} uses ${below ? "less" : "more"}${util} than ${protoReportKwh(def.amount, def)} in a day.`;
     }
     const more = `${def.percent}% ${below ? "less" : "more"}${util}`;
     return `When ${scope} uses ${more} than its ${protoReportAverageWord(def)} over the last ${PROTO_REPORT_AVERAGE_DAYS} days.`;
@@ -11589,7 +11608,7 @@ function protoReportAutoName(def) {
   if (def.type === "alert") {
     const below = protoReportAlertBelow(def);
     return def.basis === "absolute"
-      ? `Daily use ${below ? "under" : "over"} ${protoReportKwh(def.amount)}`
+      ? `Daily use ${below ? "under" : "over"} ${protoReportKwh(def.amount, def)}`
       : `Use ${def.percent}% ${below ? "below" : "above"} ${protoReportSiteOnly(def) ? "site average" : "average"}`;
   }
   return `No data for ${protoReportSilenceName(def.hours)}`;
@@ -11755,7 +11774,7 @@ function protoReportDraftPreview(draft) {
     const average = protoReportAverageWord(def);
     if (!items.length) return "Data is missing for yesterday, so there is nothing to check yet.";
     if (def.basis === "absolute") {
-      const limit = `Limit ${protoReportKwh(def.amount)} a day.`;
+      const limit = `Limit ${protoReportKwh(def.amount, def)} a day.`;
       if (!hits.length) return `${limit} ${none} was ${levels[0] === "portfolio" && levels.length === 1 ? "not " : ""}${word} it yesterday.`;
       return `${limit} ${protoReportJoin(hits.map((item) => item.name))} ${went(hits.length)} ${word} it yesterday.`;
     }
@@ -11766,8 +11785,9 @@ function protoReportDraftPreview(draft) {
         : `${none} used ${more} its ${average} yesterday.`;
     }
     if (hits.length === 1) {
-      return `${hits[0].name} used ${protoReportKwh(hits[0].day)} yesterday. Its ${average} is ${protoReportKwh(
-        hits[0].average
+      return `${hits[0].name} used ${protoReportKwh(hits[0].day, def)} yesterday. Its ${average} is ${protoReportKwh(
+        hits[0].average,
+        def
       )} a day.`;
     }
     return `${protoReportJoin(hits.map((item) => item.name))} used ${more} their ${average}s yesterday.`;
@@ -11899,11 +11919,15 @@ function protoReportAlertScopeField(draft) {
   } else {
     values = (draft.meters || []).map((id) => `meter:${id}`);
     options = protoEstateSites().flatMap((site) =>
-      protoReportAlertMeters(site, draft).map((meter) => ({
-        value: `meter:${meter.id}`,
-        label: site.name,
-        note: meter.mpan ? `${meter.name} · MPAN ${meter.mpan}` : meter.name,
-      }))
+      protoReportAlertMeters(site, draft).map((meter) => {
+        const facts = protoMeterFacts(meter);
+        return {
+          value: `meter:${meter.id}`,
+          label: site.name,
+          note: facts.ref ? `${facts.commodity} · ${facts.refName} ${facts.ref}` : facts.commodity,
+          search: `${meter.name} ${meter.mpan || ""}`,
+        };
+      })
     );
   }
   const select = protoSelect({
@@ -12239,6 +12263,8 @@ function protoReportRecipientsHtml(draft) {
 }
 
 function protoReportUtilitySelect(draft) {
+  const values = protoReportUtilityIds(draft.utility, draft.type);
+  const alert = draft.type === "alert";
   return protoReportField(
     "Utility",
     protoSelect({
@@ -12246,14 +12272,20 @@ function protoReportUtilitySelect(draft) {
       label: "Utility",
       multi: true,
       wide: true,
-      values: protoReportUtilityIds(draft.utility, draft.type),
+      values,
       placeholder: "Pick utilities",
-      allLabel: "All utilities",
+      allLabel: alert ? "" : "All utilities",
+      text: alert && protoReportUtilityAll(draft.utility, draft.type) ? "Electricity and gas" : "",
       countLabel: "utilities",
-      options: protoReportUtilityChoices(draft.type).map((item) => ({
-        value: item.id,
-        label: item.name,
-      })),
+      options: protoReportUtilityChoices().map((item) => {
+        const solo = protoReportUtilitySolo(draft.type, item.id);
+        return {
+          value: item.id,
+          label: item.name,
+          radio: solo,
+          note: solo ? "In m³, so picked on its own" : "",
+        };
+      }),
     })
   );
 }
@@ -13897,7 +13929,7 @@ function protoReportGroups(draft, opts = {}) {
                 options: PROTO_REPORT_BASIS.map((item) => ({
                   value: item.id,
                   label: item.name,
-                  note: item.note,
+                  note: item.id === "absolute" ? `A fixed daily use in ${protoReportAlertUnit(draft)}` : item.note,
                 })),
               })
             )}
@@ -13906,14 +13938,13 @@ function protoReportGroups(draft, opts = {}) {
             ${protoReportUtilitySelect(draft)}
             ${
               absolute
-                ? protoReportInput(`Daily use ${below ? "under" : "over"} (kWh)`, "amount", draft.amount, 'inputmode="decimal"')
+                ? protoReportInput(`Daily use ${below ? "under" : "over"} (${protoReportAlertUnit(draft)})`, "amount", draft.amount, 'inputmode="decimal"')
                 : protoReportInput(`${below ? "Below" : "Above"} ${protoReportSiteOnly(draft) ? "site average" : "average"} by (%)`, "percent", draft.percent, 'inputmode="decimal"')
             }
           </div>
           <div class="astral-report-pair">
             ${protoReportOptionSelect("report-priority", "Priority", PROTO_REPORT_PRIORITY, draft.priority)}
           </div>
-          <p class="astral-muted">Water is in m³, not kWh, so alerts watch electricity and gas.</p>
         `
       ),
       protoReportGroup("delivery", protoReportNotifyFields(draft, opts)),
@@ -14058,15 +14089,15 @@ function protoReportAlertEmail(def) {
       const gap = item.average ? (Math.abs(item.day - item.average) / item.average) * 100 : 0;
       const note =
         def.basis === "absolute"
-          ? `${protoReportKwh(item.day)}. The limit is ${protoReportKwh(item.limit)}`
-          : `${protoReportKwh(item.day)}. Its ${average} is ${protoReportKwh(item.average)}. ${pct(gap)} ${below ? "below" : "above"}`;
+          ? `${protoReportKwh(item.day, def)}. The limit is ${protoReportKwh(item.limit, def)}`
+          : `${protoReportKwh(item.day, def)}. Its ${average} is ${protoReportKwh(item.average, def)}. ${pct(gap)} ${below ? "below" : "above"}`;
       return { title: item.name, note, side: day };
     });
     const who = rows.length === 1 ? rows[0].title : `${rows.length} ${level.many}`;
     const one = rows.length === 1;
     title =
       def.basis === "absolute"
-        ? `${who} used ${below ? "less" : "more"} than ${protoReportKwh(def.amount)}`
+        ? `${who} used ${below ? "less" : "more"} than ${protoReportKwh(def.amount, def)}`
         : `${who} used ${pct(def.percent)} ${below ? "less" : "more"} than ${one ? "its" : "their"} ${average}${one ? "" : "s"}`;
   }
   const level = window.AstralEmails?.level;
@@ -14116,12 +14147,6 @@ function protoReportEmailPreviewModal(draft) {
           "report-email"
         )}
         <div class="astral-modal-body">
-          <section class="astral-email-inbox" aria-label="In their inbox">
-            <span class="astral-email-from">${escapeHtml(lib?.SENDER.name || "Astral")}</span>
-            <span class="astral-email-line"><strong>${escapeHtml(scenario.subject)}</strong> <span class="astral-muted">${escapeHtml(
-              scenario.preheader
-            )}</span></span>
-          </section>
           ${example ? '<p class="astral-muted">Nothing was flagged yesterday, so the rows are examples.</p>' : ""}
           ${frame}
         </div>
@@ -25916,12 +25941,13 @@ function protoAlertFound(item, def) {
   const use = def && site ? protoReportSiteUse(site, def) : null;
   if (use) {
     if (def.basis === "absolute") {
-      return `Yesterday this site used ${protoReportKwh(use.day)}. Your limit is ${protoReportKwh(def.amount)}.`;
+      return `Yesterday this site used ${protoReportKwh(use.day, def)}. Your limit is ${protoReportKwh(def.amount, def)}.`;
     }
     if (use.average) {
       const pct = Math.round(((use.day - use.average) / use.average) * 100);
-      return `Yesterday this site used ${protoReportKwh(use.day)}. Its site average is ${protoReportKwh(
-        use.average
+      return `Yesterday this site used ${protoReportKwh(use.day, def)}. Its site average is ${protoReportKwh(
+        use.average,
+        def
       )}, so that is ${Math.abs(pct)}% ${pct < 0 ? "below" : "above"}.`;
     }
   }
