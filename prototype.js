@@ -741,6 +741,7 @@ function protoPageFilterReset() {
     prototypeChartWeekends: false,
     prototypeWeatherMeasure: "temperature",
     prototypeChartFlows: null,
+    prototypeChartPairOff: {},
     prototypeChartSliceOff: [],
     prototypePaneMeterKinds: null,
     prototypePillsOpen: false,
@@ -7213,22 +7214,73 @@ function protoChartKeyPill({ on, label, spoken, hit, fill, ink }) {
   `;
 }
 
-// names swaps In and Out for other pairs, such as Joined and Left. Those keys are labels, not toggles.
-function protoChartKey(dual, names) {
+// Named pairs, such as two date ranges or Joined and Left. Each graph keeps its own pick, and one side always stays on.
+function protoChartPairOff(label) {
+  const off = (store.prototypeChartPairOff || {})[label];
+  return off === "in" || off === "out" ? off : "";
+}
+
+function protoToggleChartPair(label, kind) {
+  if (!label || (kind !== "in" && kind !== "out")) return;
+  const cur = protoChartPairOff(label);
+  const other = kind === "in" ? "out" : "in";
+  const next = cur === kind ? "" : cur === other ? other : kind;
+  if (next === cur) return;
+  setProto({
+    prototypeChartPairOff: { ...(store.prototypeChartPairOff || {}), [label]: next },
+    prototypeChartPoint: null,
+  });
+  protoRestoreFocus(`#astral-fs [data-proto-chart="${CSS.escape(label)}"] [data-proto-chart-pair="${kind}"]`);
+}
+
+// Hides one side of a named pair. The side left shows in its own colour.
+function protoBarPairView(view, off, datePair) {
+  if (!off || !view.paired || view.empty) return { ...view, cmp: false };
+  if (off === "out") {
+    return {
+      ...view,
+      paired: false,
+      cmp: false,
+      points: view.points.map((p) => ({ ...p, last: null, lastLabel: "" })),
+    };
+  }
+  return {
+    ...view,
+    paired: false,
+    cmp: datePair,
+    outgoing: datePair ? false : true,
+    points: view.points.map((p) => ({
+      ...p,
+      value: p.last,
+      quality: p.lastQuality,
+      nowLabel: p.lastLabel,
+      nowColor: p.lastColor,
+      last: null,
+      lastLabel: "",
+    })),
+  };
+}
+
+// names swaps In and Out for other pairs, such as Joined and Left. Each one turns its side on or off.
+function protoChartKey(dual, names, label) {
   if (!dual) return "";
   if (names) {
-    const still = (kind) => {
+    const off = protoChartPairOff(label);
+    const item = (kind) => {
       const fill = names.fills?.[kind] || protoChartFlowFill(kind);
-      return `<span class="astral-meter-pill is-on is-still" role="listitem" style="--slice:${escapeHtml(
-        fill
-      )};--slice-ink:${escapeHtml(protoSliceInk(fill))}"><span class="astral-meter-pill-label">${escapeHtml(
-        names[kind]
-      )}</span></span>`;
+      return protoChartKeyPill({
+        on: off !== kind,
+        label: names[kind],
+        spoken: names[kind],
+        hit: `data-proto-chart-pair="${kind}"`,
+        fill,
+        ink: protoSliceInk(fill),
+      });
     };
     return `
     <div class="astral-chart-key" role="list" aria-label="${escapeHtml(`${names.in} and ${names.out}`)}">
-      ${still("in")}
-      ${still("out")}
+      ${item("in")}
+      ${item("out")}
     </div>
   `;
   }
@@ -7337,7 +7389,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
       }
       ${svg}
       <div class="astral-chart-keys">
-        ${dual ? protoChartKey(true, extras.keyNames) : ""}
+        ${dual ? protoChartKey(true, extras.keyNames, label) : ""}
         ${protoRefKey(extras.refs, extras.bars)}
         ${extras.weekends ? protoWeekendKey() : ""}
       </div>
@@ -8155,9 +8207,13 @@ function protoBarChart(points, label, options = {}) {
     ? false
     : datePair || Boolean(options.dual) || source.some((p) => p.last != null || p.lastLabel);
   // Two date ranges sit side by side for one flow, so the flow filter does not split them.
-  const view = datePair
-    ? { points: source, paired: true, outgoing: options.datePair === "out", empty: false }
-    : protoBarFlowView(source, dual);
+  const view = protoBarPairView(
+    datePair
+      ? { points: source, paired: true, outgoing: options.datePair === "out", empty: false }
+      : protoBarFlowView(source, dual),
+    options.keyNames && dual ? protoChartPairOff(label) : "",
+    datePair
+  );
   const rows = view.points;
   const { w, h } = protoChartBox();
   const zones = options.zoneMeters ? protoChartZones() : { on: false, narrow: false };
@@ -8172,7 +8228,7 @@ function protoBarChart(points, label, options = {}) {
     ? protoWeekendLayer(rows.length, pad, w, h, (i) => [pad.l + i * gap, pad.l + (i + 1) * gap])
     : { back: "", axis: "", flags: [] };
   const paired = view.paired;
-  const barClass = view.outgoing || options.outgoing ? "astral-bar-out" : "astral-bar";
+  const barClass = view.cmp ? "astral-bar is-cmp" : view.outgoing || options.outgoing ? "astral-bar-out" : "astral-bar";
   const pairClass = datePair ? "astral-bar is-cmp" : "astral-bar-out";
   const picked = protoChartPoint();
   const queried = protoChartQueryTimes(label);
@@ -34274,6 +34330,11 @@ function onPrototype(event) {
   const chartFlow = event.target.closest("[data-proto-chart-flow]");
   if (chartFlow) {
     protoToggleChartFlow(chartFlow.dataset.protoChartFlow);
+    return;
+  }
+  const chartPair = event.target.closest("[data-proto-chart-pair]");
+  if (chartPair) {
+    protoToggleChartPair(chartPair.closest("[data-proto-chart]")?.dataset.protoChart || "", chartPair.dataset.protoChartPair);
     return;
   }
   const chartSlice = event.target.closest("[data-proto-chart-slice]");

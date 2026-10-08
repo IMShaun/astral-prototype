@@ -13769,10 +13769,6 @@ button.astral-state:focus-visible,
   margin: 0 0 var(--space-16);
 }
 
-.astral-meter-pill.is-still {
-  cursor: default;
-}
-
 .astral-rail-link .astral-count {
   flex: none;
   width: 22px;
