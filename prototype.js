@@ -4223,7 +4223,7 @@ function protoWeekendLayer(count, pad, w, h, spanOf) {
 }
 
 function protoWeekendKey() {
-  return `<div class="astral-ref-key" role="list" aria-label="Highlights"><span class="astral-ref-key-item" role="listitem"><span class="astral-weekend-mark" aria-hidden="true"></span><span>Weekend, Saturday and Sunday</span></span></div>`;
+  return `<div class="astral-ref-key" role="list" aria-label="Highlights"><span class="astral-ref-key-item" role="listitem"><span class="astral-weekend-mark" aria-hidden="true"></span><span>Weekend</span></span></div>`;
 }
 
 function protoRefRowsAt(refs, i, track) {
