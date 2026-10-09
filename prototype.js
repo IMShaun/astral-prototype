@@ -22699,16 +22699,17 @@ function protoMeterInheritOverview(meter, site) {
 }
 
 // Each preset is a pill led by the icons of the utilities that use it, so meters that differ from the site stand out.
-// When every meter shares one preset, the pill is just its name. A week that follows no preset reads Custom week, with its days in a tooltip.
-function protoMeterValuePills(site, key, siteProfile) {
+// When every meter shares one preset, the pill is just its name. Hovering a pill shows its week as day squares.
+// In a table, meters on different presets fold into one Mixed pill. Its tooltip lists each utility with its week.
+function protoMeterValuePills(site, key, siteProfile, { fold = false } = {}) {
   const meters = site?.meters || [];
   const groups = [];
   const groupFor = (profile) => {
     const label = protoPresetSummary(key, profile) || "Custom week";
-    const days = label === "Custom week" ? protoDayRuns(key, profile) : [];
-    const id = `${label}|${days.join("|")}`;
+    const rows = profile?.[key] || [];
+    const id = `${label}|${protoDayRuns(key, profile).join("|")}`;
     let group = groups.find((g) => g.id === id);
-    if (!group) groups.push((group = { id, label, days, kinds: [] }));
+    if (!group) groups.push((group = { id, label, rows, kinds: [] }));
     return group;
   };
   groupFor(siteProfile);
@@ -22721,19 +22722,31 @@ function protoMeterValuePills(site, key, siteProfile) {
   const used = groups.filter((g) => g.kinds.length);
   const shown = used.length ? used : groups.slice(0, 1);
   const icons = shown.length > 1;
-  const pills = shown.map(({ label, days, kinds }) => {
+  const wordsFor = (kinds) => {
     const names = kinds.map((kind) => protoMeterUtility({ commodity: kind }));
-    const words = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0];
-    const lead = icons
-      ? `${kinds.map((kind) => protoIconMark(kind, "astral-meter-mark")).join("")}<span class="sr-only">${escapeHtml(
-          words
-        )}. </span>`
-      : "";
-    if (!days.length) return `<span class="astral-value-pill">${lead}${escapeHtml(label)}</span>`;
-    const lines = days.map((line) => `<span>${escapeHtml(line)}</span>`).join("");
-    return `<span class="astral-value-pill astral-tip-host" tabindex="0">${lead}${escapeHtml(
-      label
-    )}<span class="astral-icon-tip is-list" role="tooltip"><span class="is-head">By day</span>${lines}</span></span>`;
+    return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0] || "";
+  };
+  const marksFor = (kinds) => kinds.map((kind) => protoIconMark(kind, "astral-meter-mark")).join("");
+  const week = (rows) => (rows.length === 7 ? protoPresetLine(key, rows, true) : "");
+  const tipRow = ({ label, rows, kinds }) => `
+    <span class="astral-week-tip-row">
+      <span class="astral-week-tip-marks" aria-hidden="true">${marksFor(kinds)}</span>
+      <span class="astral-week-tip-name"><span class="sr-only">${escapeHtml(wordsFor(kinds))}. </span>${escapeHtml(label)}</span>
+      ${week(rows)}
+    </span>`;
+  const tip = (list) => `
+    <span class="astral-icon-tip astral-week-tip" role="tooltip">
+      ${list.map((group) => tipRow(group)).join("")}
+      ${protoBreakdownKey(Object.values(PROTO_PRESET_LINE[key] || {}))}
+    </span>`;
+  if (fold && icons) {
+    return `<span class="astral-value-pills"><span class="astral-value-pill astral-tip-host" tabindex="0">Mixed${tip(
+      shown
+    )}</span></span>`;
+  }
+  const pills = shown.map((group) => {
+    const lead = icons ? `${marksFor(group.kinds)}<span class="sr-only">${escapeHtml(wordsFor(group.kinds))}. </span>` : "";
+    return `<span class="astral-value-pill astral-tip-host" tabindex="0">${lead}${escapeHtml(group.label)}${tip([group])}</span>`;
   });
   return `<span class="astral-value-pills">${pills.join("")}</span>`;
 }
@@ -23774,7 +23787,6 @@ function protoProfilePane(sites) {
     return `${lead}${protoMeterList(meters)}`;
   }
   return `
-    <p class="astral-muted">Hours, time of use, and attributes for each site. Meters follow their site unless they set their own. Open a site to change them.</p>
     <div class="astral-table-wrap">
       <table class="astral-table astral-profile-table">
         <thead>
@@ -23794,8 +23806,8 @@ function protoProfilePane(sites) {
               return `
                 <tr data-proto-site="${escapeHtml(protoSiteId(row))}" data-proto-drill>
                   <td class="astral-profile-site">${escapeHtml(row.name)}</td>
-                  <td>${protoMeterValuePills(site, "hours", profile)}</td>
-                  <td>${protoMeterValuePills(site, "tou", profile)}</td>
+                  <td>${protoMeterValuePills(site, "hours", profile, { fold: true })}</td>
+                  <td>${protoMeterValuePills(site, "tou", profile, { fold: true })}</td>
                   <td>${protoSiteAttrList(meter)}</td>
                 </tr>
               `;

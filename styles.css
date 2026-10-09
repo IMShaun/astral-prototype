@@ -7271,15 +7271,12 @@ button.astral-state {
 }
 
 .astral-profile-table th:nth-child(1) {
+  width: 24%;
+}
+
+.astral-profile-table th:nth-child(2),
+.astral-profile-table th:nth-child(3) {
   width: 18%;
-}
-
-.astral-profile-table th:nth-child(2) {
-  width: 15%;
-}
-
-.astral-profile-table th:nth-child(4) {
-  width: 26%;
 }
 
 .astral-profile-table td {
@@ -7288,6 +7285,42 @@ button.astral-state {
 
 .astral-profile-table .astral-value-pills {
   margin-top: 0;
+}
+
+/* Hovering a preset pill shows each week as day squares, led by the utilities on it, over the status key. */
+.astral-icon-tip.astral-week-tip {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  font-weight: 400;
+  text-align: start;
+}
+
+.astral-week-tip-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.astral-week-tip-marks {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.astral-week-tip-name {
+  margin-right: 12px;
+  font-weight: 600;
+}
+
+.astral-week-tip .astral-preset-line .astral-icon-tip {
+  display: none;
+}
+
+.astral-week-tip .astral-breakdown-key {
+  margin: 4px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border-strong);
 }
 
 .astral-value-pill {
