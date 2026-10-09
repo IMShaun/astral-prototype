@@ -22593,6 +22593,22 @@ function protoMeterInheritOverview(meter, site) {
   `;
 }
 
+// Meters that set their own value for a setting, each as a quiet line under the site value.
+function protoMeterOwnNotes(site, key, siteValue) {
+  const meters = site?.meters || [];
+  const notes = meters
+    .filter((item) => protoMeterOwnParts(item.id).includes(key))
+    .map((item) => ({ item, value: protoMeterFacts(item)[key] }))
+    .filter(({ value }) => value && value !== siteValue)
+    .map(({ item, value }) => {
+      const utility = protoMeterUtility(item);
+      const shared = meters.filter((other) => protoMeterUtility(other) === utility).length > 1;
+      const who = shared ? `${utility} ${protoMeterRef(item)}` : `${utility} meter`;
+      return `<span class="astral-meter-own-note">${escapeHtml(`${who} uses ${value}`)}</span>`;
+    });
+  return notes.join("");
+}
+
 function protoMeterOverview(meter) {
   const facts = protoMeterFacts(meter, protoSiteProfile(meter?.id));
   const site = protoSiteByMeter(meter?.id);
@@ -22604,11 +22620,11 @@ function protoMeterOverview(meter) {
           ${protoSiteAddressRow(meter)}
           <div>
             <dt>${protoProfileFactMark("hours")}Operational hours</dt>
-            <dd>${escapeHtml(facts.hours)}</dd>
+            <dd>${escapeHtml(facts.hours)}${protoMeterOwnNotes(site, "hours", facts.hours)}</dd>
           </div>
           <div>
             <dt>${protoProfileFactMark("tou")}Time of use</dt>
-            <dd>${escapeHtml(facts.tou)}</dd>
+            <dd>${escapeHtml(facts.tou)}${protoMeterOwnNotes(site, "tou", facts.tou)}</dd>
           </div>
           <div>
             <dt>${protoProfileFactMark("rates")}Attributes</dt>

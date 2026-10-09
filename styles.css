@@ -7199,6 +7199,15 @@ button.astral-state {
   font-weight: 600;
 }
 
+/* A meter that sets its own value, under the site value. */
+.astral-meter-own-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
 .astral-meter-ref {
   display: flex;
   align-items: center;
