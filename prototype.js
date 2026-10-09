@@ -2788,7 +2788,8 @@ function protoPeriodIssues(periods, part) {
   if (!gaps.length) return {};
   const words = gaps.length > 1 ? `${gaps.slice(0, -1).join(", ")} and ${gaps[gaps.length - 1]}` : gaps[0];
   return {
-    note: `No period covers ${words}, so ${gaps.length > 1 ? "they count" : "it counts"} as ${PROTO_PERIOD_SPEC[part].gap}.`,
+    gap: true,
+    note: `No period covers ${words}. Add a period so the whole day is set.`,
   };
 }
 
@@ -2985,8 +2986,10 @@ function protoSiteProfile(id) {
 
 // Demo gaps, so the Incomplete and Missing tags show before anyone clears a setting.
 // A number is how many days, counted back from Sunday, have no periods. All seven reads as Missing.
-// A list names the days instead, Monday as 0.
+// A list names the days instead, Monday as 0. { part: [...] } leaves those days only partly covered.
 const PROTO_DEMO_PROFILE_GAPS = {
+  Euston: { tou: 7 },
+  "Manchester Traction": { hours: { part: [1, 3] } },
   Stafford: { hours: 7 },
   Preston: { hours: 2 },
   "Northampton depot": { hours: [0] },
@@ -3001,6 +3004,13 @@ function protoDemoProfileGaps(id, profile) {
   Object.entries(gaps).forEach(([part, count]) => {
     if (!Array.isArray(profile[part])) return;
     profile[part].forEach((row, d) => {
+      if (count?.part) {
+        if (!count.part.includes(d)) return;
+        const list = protoDayPeriods(row, part);
+        row.periods = list.length > 1 ? list.slice(0, -1) : [{ ...(list[0] || { status: PROTO_PERIOD_SPEC[part].statuses[0].id }), from: "00.00", to: "12.00" }];
+        row.profile = "";
+        return;
+      }
       if (Array.isArray(count) ? !count.includes(d) : d < 7 - count) return;
       row.periods = [];
       row.profile = "";
@@ -3351,12 +3361,12 @@ function protoPresetSummary(part, profile) {
   return names[0] && names.every((name) => name === names[0]) ? names[0] : "";
 }
 
-// Missing when no day has a period. Incomplete when a day has none, or a period has no start or end.
+// Missing when no day has a period. Incomplete when a day has none, a period has no start or end, or part of a day has no period.
 function protoProfileFill(part, profile) {
   const rows = Array.isArray(profile?.[part]) ? profile[part] : [];
   const days = rows.map((row) => protoDayPeriods(row, part));
   if (!days.some((list) => list.length)) return "missing";
-  const whole = (list) => list.length > 0 && list.every((p) => protoParseClock(p.from) != null && protoParseClock(p.to) != null);
+  const whole = (list) => list.length > 0 && !protoPeriodIssues(list, part).error && !protoPeriodGap(list);
   return days.length === 7 && days.every(whole) ? "" : "incomplete";
 }
 
@@ -23776,7 +23786,8 @@ function protoMeterSectionFold(id, name, kind, inner, noteHtml = "") {
     id: `astral-meter-fold-${id}`,
     open: protoMeterFoldId() === id,
     name,
-    noteHtml,
+    // Hours and time of use keep a holder for the tag, so typing can change it without drawing the form again.
+    noteHtml: id === "rates" ? noteHtml : `<span class="astral-fold-tag" data-proto-fold-tag="${escapeHtml(id)}">${noteHtml}</span>`,
     attr: `data-proto-meter-fold="${escapeHtml(id)}"`,
     lead: protoProfileFactMark(kind),
     modifier: "astral-meter-fold",
@@ -23928,14 +23939,19 @@ function protoPeriodDomId(id, part, d) {
 }
 
 // One tab a day, Monday to Sunday. A red flag marks a day that needs a fix, since Save waits on every day.
-// A yellow flag marks a day with no times set, matching the Incomplete tag.
+// A yellow flag marks a day with no times or with hours no period covers, matching the Incomplete tag.
+function protoPeriodFlagWords(issue) {
+  if (issue?.error) return " needs a fix";
+  if (issue?.empty) return " has no times set";
+  return issue?.gap ? " is not complete" : "";
+}
 function protoPeriodDays(id, rows, part, panels, issues = []) {
   const active = protoPeriodDayId(part, rows.length);
   const tabs = rows
     .map((row, d) => {
       const on = d === active;
       const bad = Boolean(issues[d]?.error);
-      const empty = !bad && Boolean(issues[d]?.empty);
+      const empty = !bad && Boolean(issues[d]?.empty || issues[d]?.gap);
       return `<button type="button" role="tab" id="${protoPeriodDomId(id, part, d)}-tab" aria-controls="${protoPeriodDomId(
         id,
         part,
@@ -23944,7 +23960,7 @@ function protoPeriodDays(id, rows, part, panels, issues = []) {
         on ? "true" : "false"
       }" tabindex="${on ? "0" : "-1"}">${escapeHtml(row.day)}<span class="astral-period-tab-flag"${
         bad || empty ? "" : " hidden"
-      }><span class="sr-only">${empty ? " has no times set" : " needs a fix"}</span></span></button>`;
+      }><span class="sr-only">${protoPeriodFlagWords(issues[d])}</span></span></button>`;
     })
     .join("");
   return `
@@ -24010,6 +24026,19 @@ function protoPresetSaveReady(part, rows) {
   });
 }
 
+// Typing does not redraw the form, so the Incomplete, Missing and Mixed tags on each fold follow it here.
+function protoSyncFoldTags(form, siteId) {
+  const site = protoSiteByMeter(siteId);
+  if (!form || !site) return;
+  const draft = protoMeterDraft(siteId);
+  ["hours", "tou"].forEach((part) => {
+    const holder = form.querySelector(`[data-proto-fold-tag="${part}"]`);
+    if (!holder) return;
+    const html = protoSiteFoldTag(draft, site.meters || [], part, protoSiteOwnList(site, part).length);
+    if (holder.innerHTML !== html) holder.innerHTML = html;
+  });
+}
+
 // Typing does not redraw the form, so the day notes and Save follow the typing here.
 function protoSyncPeriodNotes(form, draft) {
   ["hours", "tou"].forEach((part) => {
@@ -24041,12 +24070,12 @@ function protoSyncPeriodNotes(form, draft) {
       const tab = protoScopeFind(form, `[data-proto-period-tab="${part}"][data-proto-period-tab-day="${d}"]`);
       if (!tab) return;
       tab.classList.toggle("has-error", Boolean(issue.error));
-      tab.classList.toggle("is-empty", Boolean(issue.empty));
+      tab.classList.toggle("is-empty", !issue.error && Boolean(issue.empty || issue.gap));
       const flag = tab.querySelector(".astral-period-tab-flag");
       if (flag) {
-        flag.hidden = !issue.error && !issue.empty;
+        flag.hidden = !issue.error && !issue.empty && !issue.gap;
         const words = flag.querySelector(".sr-only");
-        if (words) words.textContent = issue.error ? " needs a fix" : " has no times set";
+        if (words) words.textContent = protoPeriodFlagWords(issue);
       }
     });
   });
@@ -24743,7 +24772,10 @@ function protoPresetTimes(part, row) {
   const spec = PROTO_PERIOD_SPEC[part];
   const periods = protoDayPeriods(row, part);
   const name = (status) => spec.statuses.find((item) => item.id === status)?.name || "";
-  if (periods.length === 1) return `${name(periods[0].status)} all day`;
+  if (!periods.length) return "No times set";
+  const whole = periods.length === 1 && protoClockShow(periods[0].from) === "00:00" && protoClockShow(periods[0].to) === "24:00";
+  if (whole) return `${name(periods[0].status)} all day`;
+  if (periods.length === 1) return `${name(periods[0].status)} ${protoClockShow(periods[0].from)} to ${protoClockShow(periods[0].to)}`;
   // Name the operational times. A day with none, such as maintenance only, names its non-operational times instead.
   const said = spec.statuses.slice(0, 2).map((status) => status.id).find((id) => periods.some((p) => p.status === id));
   return periods
@@ -39122,6 +39154,7 @@ function onPrototypeInput(event) {
     store.prototypeMeterOwnDrafts = { ...protoMeterOwnDrafts(), [own.id]: protoReadMeterOwnForm(scope, own) };
     persistChrome();
     protoSyncPeriodNotes(scope, protoMeterOwnDraft(own.id));
+    protoSyncFoldTags(form, siteId);
     const btn = form.querySelector("button[type='submit']");
     if (btn) btn.disabled = protoSiteFormBlocked(siteId, protoMeterDraft(siteId));
     return;
@@ -39158,6 +39191,7 @@ function onPrototypeInput(event) {
     });
     const btn = form.querySelector("button[type='submit']");
     protoSyncPeriodNotes(form, draft);
+    protoSyncFoldTags(form, meter.id);
     if (btn) btn.disabled = protoSiteFormBlocked(meter.id, draft);
     return;
   }
