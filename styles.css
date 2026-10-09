@@ -11250,10 +11250,12 @@ tr.is-off .astral-person-mark {
   gap: 16px;
 }
 
-/* The day preset being used, shown above the days that take it. */
+/* The day preset being used, shown above the days that take it. Name left and bar right, as in the list. */
 .astral-preset-chosen {
   display: grid;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
   padding: 16px;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-lg);
@@ -11312,14 +11314,10 @@ tr.is-off .astral-person-mark {
 }
 
 .astral-preset-line.is-day {
-  gap: 6px;
-}
-
-.astral-preset-line-ticks {
-  font-size: var(--font-size-12, 12px);
-  font-weight: 400;
-  line-height: 12px;
-  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 26px;
 }
 
 /* One track per day. Its own border frames the whole day, and the periods join inside it, clipped to the rounded corners. */
@@ -11328,23 +11326,19 @@ tr.is-off .astral-person-mark {
   box-sizing: border-box;
   overflow: hidden;
   border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
   background: #fff;
 }
 
 .astral-preset-line.is-week .astral-preset-line-track {
   width: 20px;
   height: 20px;
-  border-radius: var(--radius-sm);
 }
 
+/* A day is one bar the same height as a week square and as wide as the whole week, weekend tray included. */
 .astral-preset-line.is-day .astral-preset-line-track {
-  height: 12px;
-  border-radius: var(--radius-button);
-}
-
-.astral-preset-line.is-day > .astral-preset-line-cell {
-  display: grid;
-  width: auto;
+  width: calc(7 * 20px + 6 * 4px + 4px + 6px);
+  height: 20px;
 }
 
 /* Hovering a day uses the chart tooltip layout, so a preset reads like a point on a graph.
@@ -11383,25 +11377,6 @@ tr.is-off .astral-person-mark {
 .astral-preset-seg.is-closed,
 .astral-preset-seg.is-offpeak {
   background: #fff;
-}
-
-.astral-preset-line-ticks {
-  position: relative;
-  height: 12px;
-}
-
-.astral-preset-line-ticks > span {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-}
-
-.astral-preset-line-ticks > span:first-child {
-  transform: none;
-}
-
-.astral-preset-line-ticks > span:last-child {
-  transform: translateX(-100%);
 }
 
 .astral-empty.astral-preset-empty {

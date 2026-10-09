@@ -23031,15 +23031,11 @@ function protoPresetLine(part, rows, week, name = "") {
       <span class="sr-only">${escapeHtml(spoken.join(". "))}</span>
     `;
   }
-  const ticks = [0, 6, 12, 18, 24]
-    .map((h) => `<span style="left:${(h / 24) * 100}%">${String(h).padStart(2, "0")}:00</span>`)
-    .join("");
   return `
     <span class="astral-preset-line is-day" aria-hidden="true">
       <span class="astral-preset-line-cell astral-tip-host">
         <span class="astral-preset-line-track">${fill(rows[0])}</span>${tip(name || "All day", rows[0])}
       </span>
-      <span class="astral-preset-line-ticks">${ticks}</span>
     </span>
     <span class="sr-only">${escapeHtml(spoken.join(". "))}</span>
   `;
