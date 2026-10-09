@@ -11282,10 +11282,22 @@ tr.is-off .astral-person-mark {
   grid-auto-rows: auto;
 }
 
+/* Every row is the same height. The name keeps to one line and ends with an ellipsis if it runs out of room. */
 .astral-report-types.is-list .astral-report-type {
-  grid-template-columns: minmax(7rem, 1fr) minmax(0, 2fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 16px;
+}
+
+.astral-report-types.is-list .astral-report-type-head {
+  min-width: 0;
+}
+
+.astral-report-types.is-list .astral-report-type-head > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* A preset at a glance. Time runs left to right from 00:00 to 24:00 on each track.
