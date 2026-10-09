@@ -22990,25 +22990,41 @@ const PROTO_PRESET_LINE = {
 
 // A preset at a glance, coloured by status. Time runs left to right from 00:00 to 24:00.
 // A week is one row of day squares. A day is one wider bar. Screen readers get the same as text.
-function protoPresetLine(part, rows, week) {
+// Hovering a day shows the chart tooltip layout. The day heads it and each period is a row with its key mark.
+function protoPresetLine(part, rows, week, name = "") {
   const marks = PROTO_PRESET_LINE[part] || {};
   const mins = (value) => {
     const [h, m] = String(value || "0").split(/[.:]/).map(Number);
     return (h || 0) * 60 + (m || 0);
   };
+  const periods = (row) => protoDayPeriods(row, part).filter((p) => mins(p.to) > mins(p.from));
   const fill = (row) =>
-    protoDayPeriods(row, part)
+    periods(row)
       .map((p) => {
-        const span = Math.max(mins(p.to) - mins(p.from), 0);
         const cls = PROTO_ZONE_BADGES[marks[p.status]]?.cls || "";
-        return span ? `<span class="astral-preset-seg ${cls}" style="flex-grow:${span}"></span>` : "";
+        return `<span class="astral-preset-seg ${cls}" style="flex-grow:${mins(p.to) - mins(p.from)}"></span>`;
       })
       .join("");
+  const tip = (head, row) => {
+    const lines = periods(row)
+      .map(
+        (p) =>
+          `<span class="astral-query-pin-reading">${protoZoneBadges(marks[p.status])}<span class="astral-query-pin-series">${escapeHtml(
+            PROTO_ZONE_BADGES[marks[p.status]]?.name || ""
+          )}</span><span class="astral-query-pin-kwh">${escapeHtml(
+            `${protoClockShow(p.from)} to ${protoClockShow(p.to)}`
+          )}</span></span>`
+      )
+      .join("");
+    return `<span class="astral-icon-tip is-reading" aria-hidden="true"><span class="astral-tip-time">${escapeHtml(
+      head
+    )}</span><span class="astral-query-pin-readings">${lines}</span></span>`;
+  };
   const spoken = week ? protoWeekNote(part, rows) : rows.map((row) => protoPresetTimes(part, row));
   if (week) {
     const cell = (row, d) => `
-          <span class="astral-preset-line-cell" title="${escapeHtml(`${PROTO_WEEKDAYS[d]}, ${protoTimesInline(protoPresetTimes(part, row))}`)}">
-            <span class="astral-preset-line-track">${fill(row)}</span>
+          <span class="astral-preset-line-cell astral-tip-host">
+            <span class="astral-preset-line-track">${fill(row)}</span>${tip(PROTO_WEEKDAYS[d], row)}
           </span>`;
     const weekdays = rows.slice(0, 5).map((row, d) => cell(row, d)).join("");
     const weekend = rows.slice(5).map((row, d) => cell(row, d + 5)).join("");
@@ -23022,7 +23038,9 @@ function protoPresetLine(part, rows, week) {
     .join("");
   return `
     <span class="astral-preset-line is-day" aria-hidden="true">
-      <span class="astral-preset-line-track" title="${escapeHtml(spoken.join(". "))}">${fill(rows[0])}</span>
+      <span class="astral-preset-line-cell astral-tip-host">
+        <span class="astral-preset-line-track">${fill(rows[0])}</span>${tip(name || "All day", rows[0])}
+      </span>
       <span class="astral-preset-line-ticks">${ticks}</span>
     </span>
     <span class="sr-only">${escapeHtml(spoken.join(". "))}</span>
@@ -23050,7 +23068,7 @@ function protoPresetPickList(pick) {
         [],
         week
           ? protoPresetLine(pick.part, protoWeekRows(pick.part, item), true)
-          : protoPresetLine(pick.part, [{ periods: protoPresetPeriods(pick.part, item) }], false)
+          : protoPresetLine(pick.part, [{ periods: protoPresetPeriods(pick.part, item) }], false, item.name)
       )
     )
     .join("");
@@ -23073,7 +23091,7 @@ function protoPresetPickDays(pick) {
   const card = preset
     ? `<div class="astral-preset-chosen">
         <span class="astral-preset-chosen-name">${escapeHtml(preset.name)}</span>
-        ${protoPresetLine(pick.part, [{ periods: protoPresetPeriods(pick.part, preset) }], false)}
+        ${protoPresetLine(pick.part, [{ periods: protoPresetPeriods(pick.part, preset) }], false, preset.name)}
       </div>`
     : "";
   return `

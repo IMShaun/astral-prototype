@@ -11341,6 +11341,28 @@ tr.is-off .astral-person-mark {
   height: 12px;
   border-radius: var(--radius-button);
 }
+
+.astral-preset-line.is-day > .astral-preset-line-cell {
+  display: grid;
+  width: auto;
+}
+
+/* Hovering a day uses the chart tooltip layout, so a preset reads like a point on a graph. */
+.astral-icon-tip.is-reading {
+  display: grid;
+  gap: 8px;
+  min-width: 16rem;
+  max-width: 20rem;
+  padding: 12px;
+  font-weight: 400;
+  text-align: start;
+  white-space: normal;
+}
+
+.astral-icon-tip.is-reading .astral-zone-badges {
+  flex: none;
+}
+
 .astral-preset-seg {
   flex: 0 1 0;
   min-width: 2px;
