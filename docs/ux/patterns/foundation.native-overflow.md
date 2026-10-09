@@ -27,6 +27,10 @@ Do not add a second bar on a child when the pane already scrolls. Do not hide a 
 
 Vertical first. Reports wrap instead of scrolling sideways. The reports sheet scrolls. The grid does not get a second bar. Breakdown draws every row at once. The pane scrolls it. See [Complete lists](foundation.complete-lists.md). Reduced motion keeps `scroll-behavior: auto`. The bar never sits on a control.
 
+- Do: size a scrolling option list so the last row in view is cut through the middle. Every select option list, side lists such as Standard presets and Your presets included, shows five options and half of the sixth. `.astral-select-options` sets this with `--astral-option-row` (2.5rem, or 3.875rem for options with a note) and `--astral-option-frame` for a list with its own padding and border.
+- Don't: end the view on a whole row. A list that stops cleanly between rows looks complete, and people miss the options below it.
+- Why: a cut-off row shows there is more to scroll to, even where the platform hides the scroll bar.
+
 ## Accessibility
 
 WCAG 2.1.1. Focusable region or descendant. Native bars, not `role="scrollbar"`. Thumb versus track at least 3:1. Do not put cyan on white. Focus is a 2px black edge.
@@ -49,7 +53,9 @@ Touch platforms may auto-hide the overlay bar. Do not force that hide on desktop
 
 ## Product surfaces using it
 
-Portfolio pane, stage pages, Reports, Compare, query thread, tree, Settings, auth.
+Portfolio pane, stage pages, Reports, Compare, query thread, tree, Settings, auth. Every select and its side lists use the cut-off last row, through the shared `protoSelect` builder.
+
+Known limitation: filter menus (`.astral-filter-menu`) cap at a fixed height that mixes groups and headings, so they do not yet guarantee a cut-off row.
 
 ## Evidence
 
