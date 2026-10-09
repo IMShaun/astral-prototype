@@ -24607,7 +24607,7 @@ function protoPresetSaveModal() {
         .map((id) => {
           const note = protoPresetStandard(save.part, save.kind, id) ? "Standard preset" : "Your preset";
           return protoPresetPickCard("data-proto-preset-save-match", id, save.match === id, find(id).name, [
-            id === current ? `${note}. ${dayName} uses it now.` : `${note}.`,
+            `${note}.`,
           ]);
         })
         .join("");
