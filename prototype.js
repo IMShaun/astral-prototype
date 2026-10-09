@@ -2494,14 +2494,6 @@ function protoSamplePeriods(...spans) {
   return spans.map(([status, from, to]) => ({ status, from, to }));
 }
 
-function protoSampleOpen(from, to, outside = "off") {
-  const spans = [];
-  if (from !== "00.00") spans.push([outside, "00.00", from]);
-  spans.push(["operational", from, to]);
-  if (to !== "24.00") spans.push([outside, to, "24.00"]);
-  return protoSamplePeriods(...spans);
-}
-
 function protoSampleWeek(id, name, days) {
   const rows = days.map((periods) => ({ profile: "", periods }));
   return { id: `sample-week-${id}`, name, days: rows.map(() => ""), rows };
@@ -2509,58 +2501,85 @@ function protoSampleWeek(id, name, days) {
 
 const protoSampleAll = (status) => protoSamplePeriods([status, "00.00", "24.00"]);
 
+// Samples follow common UK commercial patterns. They are editable starting points, not defaults for any business.
+// Preparation and cleaning around trading are Non-operational, and Closed can still use energy for essential services.
 const PROTO_SAMPLE_PRESETS = (() => {
   const workweek = (day, sat, sun) => [day, day, day, day, day, sat, sun];
   const closed = protoSampleAll("closed");
-  const non = protoSampleAll("off");
-  const nights = protoSamplePeriods(["operational", "00.00", "06.00"], ["off", "06.00", "22.00"], ["operational", "22.00", "24.00"]);
-  const station = protoSamplePeriods(["operational", "00.00", "01.00"], ["off", "01.00", "04.30"], ["operational", "04.30", "24.00"]);
-  const peak = (...spans) => {
+  // Lays out [status, from, to] spans across the day, filling any time between them with the gap status.
+  const lay = (gap, ...spans) => {
     const out = [];
     let at = "00.00";
-    spans.forEach(([from, to]) => {
-      if (from !== at) out.push(["off", at, from]);
-      out.push(["on", from, to]);
+    spans.forEach(([status, from, to]) => {
+      if (from !== at) out.push([gap, at, from]);
+      out.push([status, from, to]);
       at = to;
     });
-    if (at !== "24.00") out.push(["off", at, "24.00"]);
+    if (at !== "24.00") out.push([gap, at, "24.00"]);
     return protoSamplePeriods(...out);
   };
+  // Trading with an hour of preparation before and an hour of cleaning after.
+  const trading = (from, to, prep, clean) =>
+    lay("closed", ["off", prep, from], ["operational", from, to], ["off", to, clean]);
+  const open = (from, to) => lay("closed", ["operational", from, to]);
+  const office = trading("09.00", "17.00", "08.00", "18.00");
+  const split = lay("closed", ["off", "10.00", "11.00"], ["operational", "11.00", "15.00"], ["off", "15.00", "17.00"], ["operational", "17.00", "23.00"], ["off", "23.00", "24.00"]);
+  // A night shift runs 22.00 to 06.00 and carries on into the next day.
+  const nightStart = lay("closed", ["operational", "22.00", "24.00"]);
+  const nightOn = lay("closed", ["operational", "00.00", "06.00"], ["operational", "22.00", "24.00"]);
+  const nightEnd = lay("closed", ["operational", "00.00", "06.00"]);
+  const peak = (...spans) => lay("off", ...spans.map(([from, to]) => ["on", from, to]));
   const offPeak = protoSampleAll("off");
   return {
     hours: {
       weeks: [
-        protoSampleWeek("office", "Office hours", workweek(protoSampleOpen("08.00", "18.00"), closed, closed)),
-        protoSampleWeek("depot", "Depot shifts", workweek(protoSampleOpen("05.00", "23.00"), protoSampleOpen("06.00", "14.00"), non)),
-        protoSampleWeek("retail", "Shop hours", workweek(protoSampleOpen("09.00", "17.30"), protoSampleOpen("09.00", "17.30"), protoSampleOpen("10.00", "16.00"))),
-        protoSampleWeek("station", "Station hours", workweek(station, station, protoSampleOpen("06.00", "24.00"))),
-        protoSampleWeek("nights", "Night shifts", workweek(nights, protoSamplePeriods(["operational", "00.00", "06.00"], ["off", "06.00", "24.00"]), non)),
-        protoSampleWeek("school", "School term", workweek(protoSampleOpen("07.30", "16.30"), closed, closed)),
-        protoSampleWeek("always", "Always open", workweek(protoSampleAll("operational"), protoSampleAll("operational"), protoSampleAll("operational"))),
-        protoSampleWeek("shutdown", "Shutdown week", workweek(closed, closed, closed)),
+        protoSampleWeek("office", "Office hours", workweek(office, closed, closed)),
+        protoSampleWeek("trade", "Trade counter", workweek(open("08.00", "18.00"), open("08.00", "13.00"), closed)),
+        protoSampleWeek("shop", "Shop hours", workweek(
+          trading("09.00", "18.00", "08.00", "19.00"),
+          trading("09.00", "18.00", "08.00", "19.00"),
+          trading("10.00", "16.00", "09.00", "17.00")
+        )),
+        protoSampleWeek("long", "Long day", workweek(open("06.00", "22.00"), open("06.00", "22.00"), trading("10.00", "16.00", "08.00", "18.00"))),
+        protoSampleWeek("restaurant", "Restaurant", [closed, split, split, split, split, split, split]),
+        protoSampleWeek("shifts", "Two shifts", [
+          ...Array(4).fill(open("06.00", "22.00")),
+          open("06.00", "14.00"),
+          lay("closed", ["off", "08.00", "12.00"]),
+          closed,
+        ]),
+        protoSampleWeek("nights", "Night shifts", [nightStart, nightOn, nightOn, nightOn, nightOn, nightEnd, closed]),
+        protoSampleWeek("always", "Always open", Array(7).fill(protoSampleAll("operational"))),
+        protoSampleWeek("shutdown", "Shutdown week", Array(7).fill(closed)),
       ],
       days: [
-        { id: "sample-day-half", name: "Half day", periods: protoSamplePeriods(["off", "00.00", "08.00"], ["operational", "08.00", "13.00"], ["closed", "13.00", "24.00"]) },
-        { id: "sample-day-early", name: "Early shift", periods: protoSampleOpen("06.00", "14.00") },
-        { id: "sample-day-late", name: "Late shift", periods: protoSampleOpen("14.00", "22.00") },
-        { id: "sample-day-night", name: "Night shift", periods: nights },
-        { id: "sample-day-cleaning", name: "Cleaning only", periods: protoSampleOpen("06.00", "09.00", "closed") },
-        { id: "sample-day-holiday", name: "Bank holiday", periods: closed },
+        { id: "sample-day-office", name: "Office day", periods: office },
+        { id: "sample-day-early", name: "Early start", periods: open("05.00", "14.00") },
+        { id: "sample-day-long", name: "Long day", periods: open("06.00", "22.00") },
+        { id: "sample-day-evening", name: "Afternoon and evening", periods: open("12.00", "23.00") },
+        { id: "sample-day-split", name: "Split sessions", periods: split },
+        { id: "sample-day-first", name: "First shift", periods: open("06.00", "14.00") },
+        { id: "sample-day-second", name: "Second shift", periods: open("14.00", "22.00") },
+        { id: "sample-day-night", name: "Night shift", periods: nightOn },
+        { id: "sample-day-maintenance", name: "Maintenance only", periods: lay("closed", ["off", "08.00", "12.00"]) },
         { id: "sample-day-all", name: "Open all day", periods: protoSampleAll("operational") },
+        { id: "sample-day-closed", name: "Closed all day", periods: closed },
       ],
     },
+    // Peak and off-peak windows for comparing use. They are not a copy of anyone's tariff.
     tou: {
       weeks: [
-        protoSampleWeek("evening", "Evening peak", workweek(peak(["16.00", "19.00"]), offPeak, offPeak)),
-        protoSampleWeek("winter", "Winter peaks", workweek(peak(["07.00", "11.00"], ["16.00", "20.00"]), offPeak, offPeak)),
-        protoSampleWeek("economy", "Economy 7", workweek(peak(["07.30", "24.00"]), peak(["07.30", "24.00"]), peak(["07.30", "24.00"]))),
-        protoSampleWeek("flat", "No peak", workweek(offPeak, offPeak, offPeak)),
+        protoSampleWeek("evening", "Evening peak", Array(7).fill(peak(["16.00", "19.00"]))),
+        protoSampleWeek("weekday", "Weekday evening peak", workweek(peak(["16.00", "19.00"]), offPeak, offPeak)),
+        protoSampleWeek("late", "Weekday late peak", workweek(peak(["17.00", "19.30"]), offPeak, offPeak)),
+        protoSampleWeek("daynight", "Day and night", Array(7).fill(peak(["07.00", "24.00"]))),
+        protoSampleWeek("single", "Single rate", Array(7).fill(offPeak)),
       ],
       days: [
         { id: "sample-day-evening", name: "Evening peak", periods: peak(["16.00", "19.00"]) },
-        { id: "sample-day-two", name: "Two peaks", periods: peak(["07.00", "11.00"], ["16.00", "20.00"]) },
-        { id: "sample-day-economy", name: "Economy 7", periods: peak(["07.30", "24.00"]) },
-        { id: "sample-day-offpeak", name: "Off peak all day", periods: offPeak },
+        { id: "sample-day-late", name: "Late evening peak", periods: peak(["17.00", "19.30"]) },
+        { id: "sample-day-daynight", name: "Day and night", periods: peak(["07.00", "24.00"]) },
+        { id: "sample-day-single", name: "Single rate", periods: offPeak },
       ],
     },
   };
@@ -23346,9 +23365,10 @@ function protoPresetTimes(part, row) {
   const periods = protoDayPeriods(row, part);
   const name = (status) => spec.statuses.find((item) => item.id === status)?.name || "";
   if (periods.length === 1) return `${name(periods[0].status)} all day`;
-  const main = spec.statuses[0].id;
+  // Name the operational times. A day with none, such as maintenance only, names its non-operational times instead.
+  const said = spec.statuses.slice(0, 2).map((status) => status.id).find((id) => periods.some((p) => p.status === id));
   return periods
-    .filter((p) => p.status === main)
+    .filter((p) => p.status === said)
     .map((p) => `${name(p.status)} ${protoClockShow(p.from)} to ${protoClockShow(p.to)}`)
     .join(", ");
 }
