@@ -7231,6 +7231,16 @@ button.astral-state {
   margin-left: -2px;
 }
 
+.astral-value-pill.astral-tip-host {
+  position: relative;
+  cursor: default;
+}
+
+.astral-value-pill.astral-tip-host:focus-visible {
+  outline: 2px solid var(--color-focus-contrast);
+  outline-offset: 2px;
+}
+
 .astral-meter-ref {
   display: flex;
   align-items: center;

@@ -3205,11 +3205,18 @@ function protoPresetSummary(part, profile) {
 function protoHoursSummary(profile) {
   const named = protoPresetSummary("hours", profile);
   if (named) return named;
-  const rows = profile?.hours || [];
-  const presets = protoDayPresets("hours");
+  const runs = protoDayRuns("hours", profile);
+  return runs.length ? runs.join(" \u00b7 ") : "Closed";
+}
+
+// Runs of days that share a day preset or times, such as Monday to Saturday, Weekday depot.
+function protoDayRuns(part, profile) {
+  const rows = profile?.[part] || [];
+  const presets = protoDayPresets(part);
   const days = rows.map((row) => {
     const preset = presets.find((item) => item.id === row.profile);
     if (preset) return preset.name;
+    if (part !== "hours") return "Custom";
     const periods = protoDayPeriods(row, "hours");
     const open = periods
       .filter((p) => p.status === "operational" && p.from && p.to)
@@ -3218,23 +3225,21 @@ function protoHoursSummary(profile) {
     if (open) return protoClockShow(open);
     return periods.some((p) => p.status === "closed") ? "Closed" : "Non-operational";
   });
-  if (!days.length) return "Closed";
-  if (days.every((text) => text === days[0])) return days[0];
+  if (!days.length) return [];
+  if (days.every((text) => text === days[0])) return [days[0]];
   const runs = [];
   days.forEach((text, d) => {
     const last = runs[runs.length - 1];
     if (last && last.text === text) last.to = d;
     else runs.push({ from: d, to: d, text });
   });
-  return runs
-    .map(({ from, to, text }) => {
-      const span =
-        from === to
-          ? PROTO_WEEKDAYS[from]
-          : `${PROTO_WEEKDAYS[from]} ${to === from + 1 ? "and" : "to"} ${PROTO_WEEKDAYS[to]}`;
-      return `${span}, ${text}`;
-    })
-    .join(" \u00b7 ");
+  return runs.map(({ from, to, text }) => {
+    const span =
+      from === to
+        ? PROTO_WEEKDAYS[from]
+        : `${PROTO_WEEKDAYS[from]} ${to === from + 1 ? "and" : "to"} ${PROTO_WEEKDAYS[to]}`;
+    return `${span}, ${text}`;
+  });
 }
 
 function protoTouSummary(profile) {
@@ -22611,31 +22616,48 @@ function protoMeterInheritOverview(meter, site) {
 }
 
 // Each preset is a pill led by the icons of the utilities that use it, so meters that differ from the site stand out.
-function protoMeterValuePills(site, key, siteValue) {
+// When every meter shares one preset, the pill is just its name. A week that follows no preset reads Custom week, with its days in a tooltip.
+function protoMeterValuePills(site, key, siteProfile) {
   const meters = site?.meters || [];
-  const groups = [{ value: siteValue, kinds: [] }];
+  const groups = [];
+  const groupFor = (profile) => {
+    const label = protoPresetSummary(key, profile) || "Custom week";
+    const days = label === "Custom week" ? protoDayRuns(key, profile) : [];
+    const id = `${label}|${days.join("|")}`;
+    let group = groups.find((g) => g.id === id);
+    if (!group) groups.push((group = { id, label, days, kinds: [] }));
+    return group;
+  };
+  groupFor(siteProfile);
   meters.forEach((item) => {
     const own = protoMeterOwnParts(item.id).includes(key);
-    const value = (own && protoMeterFacts(item)[key]) || siteValue;
-    let group = groups.find((g) => g.value === value);
-    if (!group) groups.push((group = { value, kinds: [] }));
+    const group = groupFor(own ? protoMeterProfile(item.id) : siteProfile);
     const kind = protoMeterKind(item);
     if (!group.kinds.includes(kind)) group.kinds.push(kind);
   });
   const used = groups.filter((g) => g.kinds.length);
-  if (!used.length) return escapeHtml(siteValue);
-  const pills = used.map(({ value, kinds }) => {
+  const shown = used.length ? used : groups.slice(0, 1);
+  const icons = shown.length > 1;
+  const pills = shown.map(({ label, days, kinds }) => {
     const names = kinds.map((kind) => protoMeterUtility({ commodity: kind }));
     const words = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0];
-    return `<span class="astral-value-pill">${kinds
-      .map((kind) => protoIconMark(kind, "astral-meter-mark"))
-      .join("")}<span class="sr-only">${escapeHtml(words)}. </span>${escapeHtml(value)}</span>`;
+    const lead = icons
+      ? `${kinds.map((kind) => protoIconMark(kind, "astral-meter-mark")).join("")}<span class="sr-only">${escapeHtml(
+          words
+        )}. </span>`
+      : "";
+    if (!days.length) return `<span class="astral-value-pill">${lead}${escapeHtml(label)}</span>`;
+    const lines = days.map((line) => `<span>${escapeHtml(line)}</span>`).join("");
+    return `<span class="astral-value-pill astral-tip-host" tabindex="0">${lead}${escapeHtml(
+      label
+    )}<span class="astral-icon-tip is-list" role="tooltip"><span class="is-head">By day</span>${lines}</span></span>`;
   });
   return `<span class="astral-value-pills">${pills.join("")}</span>`;
 }
 
 function protoMeterOverview(meter) {
-  const facts = protoMeterFacts(meter, protoSiteProfile(meter?.id));
+  const siteProfile = protoSiteProfile(meter?.id);
+  const facts = protoMeterFacts(meter, siteProfile);
   const site = protoSiteByMeter(meter?.id);
   return `
     <div class="astral-meter-overview">
@@ -22645,11 +22667,11 @@ function protoMeterOverview(meter) {
           ${protoSiteAddressRow(meter)}
           <div>
             <dt>${protoProfileFactMark("hours")}Operational hours</dt>
-            <dd>${protoMeterValuePills(site, "hours", facts.hours)}</dd>
+            <dd>${protoMeterValuePills(site, "hours", siteProfile)}</dd>
           </div>
           <div>
             <dt>${protoProfileFactMark("tou")}Time of use</dt>
-            <dd>${protoMeterValuePills(site, "tou", facts.tou)}</dd>
+            <dd>${protoMeterValuePills(site, "tou", siteProfile)}</dd>
           </div>
           <div>
             <dt>${protoProfileFactMark("rates")}Attributes</dt>
