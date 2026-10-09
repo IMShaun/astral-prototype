@@ -11415,6 +11415,16 @@ tr.is-off .astral-person-mark {
   color: var(--color-action-on-primary, #fff);
 }
 
+.astral-tag.is-incomplete {
+  background: var(--color-status-warning-subtle);
+  color: var(--color-text-warning);
+}
+
+.astral-tag.is-missing {
+  background: var(--color-status-danger-subtle);
+  color: var(--color-text-danger);
+}
+
 .astral-meter-src-cell {
   min-width: 0;
   overflow: hidden;

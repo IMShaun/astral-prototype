@@ -23834,7 +23834,7 @@ function protoMeterProfileForm(meter) {
     // Attributes are already split by Site and each utility, so they need no Settings for picker.
     if (part === "rates") return { tag: "", html: protoTimesPanel(id, part, "own", siteBodies.rates) };
     const ownCount = protoSiteOwnList(site, part).length;
-    const tag = ownCount ? protoTag("Mixed", "", "is-own") : "";
+    const tag = protoSiteFoldTag(draft, meters, part, ownCount);
     const siteMode = protoSrcMode(draft, part, false);
     const siteBody =
       siteMode === "preset" ? protoWeekPresetView(id, part, draft[part], draft.weeks[part]) : siteBodies[part];
@@ -23899,6 +23899,19 @@ function protoMeterProfileForm(meter) {
     </form>
     ${protoPresetPickModal()}${protoPresetSaveModal()}
   `;
+}
+
+// Same order as the Site profile table. A gap shows before Mixed, and Missing only when every week is empty.
+function protoSiteFoldTag(draft, meters, part, ownCount) {
+  const fills = meters.length
+    ? meters.map((item) => {
+        const own = protoMeterOwnDraft(item.id);
+        return protoProfileFill(part, Array.isArray(own[part]) ? own : draft);
+      })
+    : [protoProfileFill(part, draft)];
+  if (fills.every((fill) => fill === "missing")) return protoTag("Missing", "", "is-missing");
+  if (fills.some(Boolean)) return protoTag("Incomplete", "", "is-incomplete");
+  return ownCount ? protoTag("Mixed", "", "is-own") : "";
 }
 
 function protoSiteOwnList(site, part) {
