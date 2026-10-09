@@ -3186,19 +3186,37 @@ function protoApplyClockInput(raw, caret) {
   return { next, caret: next.length };
 }
 
+// Hours that change across the week read as runs of days, such as Monday to Saturday, 05:00 to 21:00 · Sunday, closed.
 function protoHoursSummary(profile) {
   const rows = profile?.hours || [];
-  const open = rows
-    .map((row) =>
-      protoDayPeriods(row, "hours")
-        .filter((p) => p.status === "operational" && p.from && p.to)
-        .map((p) => `${p.from} to ${p.to}`)
-        .join(", ")
-    )
-    .filter(Boolean);
-  if (open.length) return open.every((item) => item === open[0]) ? protoClockShow(open[0]) : "Varies by day";
-  if (rows.some((row) => protoDayPeriods(row, "hours").some((p) => p.status === "off"))) return "Non-operational";
-  return "Closed";
+  const days = rows.map((row) => {
+    const periods = protoDayPeriods(row, "hours");
+    const open = periods
+      .filter((p) => p.status === "operational" && p.from && p.to)
+      .map((p) => `${p.from} to ${p.to}`)
+      .join(", ");
+    if (open) return protoClockShow(open);
+    return periods.some((p) => p.status === "closed") ? "closed" : "non-operational";
+  });
+  if (!days.some((text) => /^\d/.test(text))) {
+    return days.includes("non-operational") ? "Non-operational" : "Closed";
+  }
+  if (days.every((text) => text === days[0])) return days[0];
+  const runs = [];
+  days.forEach((text, d) => {
+    const last = runs[runs.length - 1];
+    if (last && last.text === text) last.to = d;
+    else runs.push({ from: d, to: d, text });
+  });
+  return runs
+    .map(({ from, to, text }) => {
+      const span =
+        from === to
+          ? PROTO_WEEKDAYS[from]
+          : `${PROTO_WEEKDAYS[from]} ${to === from + 1 ? "and" : "to"} ${PROTO_WEEKDAYS[to]}`;
+      return `${span}, ${text}`;
+    })
+    .join(" \u00b7 ");
 }
 
 function protoTouSummary(profile) {
@@ -5196,7 +5214,7 @@ function protoZoneGroupNote(meter, zones) {
   const bits = [];
   if (zones.showHours) {
     const hours = protoHoursSummary(profile);
-    bits.push(/^\d/.test(hours) ? `Operational ${hours}` : hours === "Varies by day" ? "Hours vary by day" : hours);
+    bits.push(/^\d/.test(hours) ? `Operational ${hours}` : / \u00b7 |, /.test(hours) ? "Hours vary by day" : hours);
   }
   if (zones.showTou) {
     const tou = protoTouSummary(profile);

@@ -6741,13 +6741,16 @@ button.astral-state {
   background: transparent;
 }
 
+/* The same padded card as the meters list below, so the sections read as matching cards. */
 .astral-site-overview {
   display: grid;
   gap: 8px;
   /* Same 16px lead as .astral-chart-wrap, so every tab starts at one height. */
-  padding: 16px 0;
-  border-bottom: 1px solid var(--color-border-strong);
-  margin-bottom: 16px;
+  margin: 16px 0;
+  padding: 24px;
+  background: #fff;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-card);
 }
 
 .astral-meter-summary {
