@@ -3186,21 +3186,39 @@ function protoApplyClockInput(raw, caret) {
   return { next, caret: next.length };
 }
 
-// Hours that change across the week read as runs of days, such as Monday to Saturday, 05:00 to 21:00 · Sunday, closed.
+// The preset a part's week follows, by name. A week preset first, then one day preset on every day.
+function protoPresetSummary(part, profile) {
+  const rows = profile?.[part] || [];
+  const picked = profile?.weeks?.[part] && protoWeekPreset(part, profile.weeks[part]);
+  if (picked) return picked.name;
+  if (rows.length !== 7) return "";
+  const week = protoWeekPresets(part).find(
+    (item) => Array.isArray(item.days) && item.days.every((id, d) => rows[d]?.profile === id)
+  );
+  if (week) return week.name;
+  const days = protoDayPresets(part);
+  const names = rows.map((row) => days.find((item) => item.id === row.profile)?.name || "");
+  return names[0] && names.every((name) => name === names[0]) ? names[0] : "";
+}
+
+// Hours read as the preset they follow. Otherwise as runs of days, such as Monday to Saturday, Weekday depot · Sunday, Closed.
 function protoHoursSummary(profile) {
+  const named = protoPresetSummary("hours", profile);
+  if (named) return named;
   const rows = profile?.hours || [];
+  const presets = protoDayPresets("hours");
   const days = rows.map((row) => {
+    const preset = presets.find((item) => item.id === row.profile);
+    if (preset) return preset.name;
     const periods = protoDayPeriods(row, "hours");
     const open = periods
       .filter((p) => p.status === "operational" && p.from && p.to)
       .map((p) => `${p.from} to ${p.to}`)
       .join(", ");
     if (open) return protoClockShow(open);
-    return periods.some((p) => p.status === "closed") ? "closed" : "non-operational";
+    return periods.some((p) => p.status === "closed") ? "Closed" : "Non-operational";
   });
-  if (!days.some((text) => /^\d/.test(text))) {
-    return days.includes("non-operational") ? "Non-operational" : "Closed";
-  }
+  if (!days.length) return "Closed";
   if (days.every((text) => text === days[0])) return days[0];
   const runs = [];
   days.forEach((text, d) => {
@@ -3222,8 +3240,7 @@ function protoHoursSummary(profile) {
 function protoTouSummary(profile) {
   const rows = profile?.tou || [];
   if (!rows.length) return "On peak and off peak";
-  const named = PROTO_TOU_PROFILES.find((item) => rows.every((row) => row.profile === item.id));
-  return named?.name || "Varies by day";
+  return protoPresetSummary("tou", profile) || "Varies by day";
 }
 
 function protoPatchMeterDraft(id, patch) {
@@ -5214,7 +5231,7 @@ function protoZoneGroupNote(meter, zones) {
   const bits = [];
   if (zones.showHours) {
     const hours = protoHoursSummary(profile);
-    bits.push(/^\d/.test(hours) ? `Operational ${hours}` : / \u00b7 |, /.test(hours) ? "Hours vary by day" : hours);
+    bits.push(/^\d\d[:.]\d\d/.test(hours) ? `Operational ${hours}` : / \u00b7 |, /.test(hours) ? "Hours vary by day" : hours);
   }
   if (zones.showTou) {
     const tou = protoTouSummary(profile);
