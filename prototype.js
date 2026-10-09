@@ -749,6 +749,7 @@ function protoPageFilterReset() {
     prototypeSiteOwnPick: null,
     prototypeMeterUpload: null,
     prototypeSiteImport: null,
+    prototypeDrillBack: null,
     prototypeSummaryOpen: true,
     prototypeBreakdownOpen: false,
     prototypeMeterBreakdownOpen: false,
@@ -815,6 +816,7 @@ function protoPortfolioHomePatch() {
     prototypeSiteOwnPick: null,
     prototypeMeterUpload: null,
     prototypeSiteImport: null,
+    prototypeDrillBack: null,
     prototypeGroupSites: [],
     prototypeSiteMeters: [],
     prototypePaneMeterKinds: null,
@@ -6717,23 +6719,35 @@ const PROTO_DRILL_BACK_KEYS = [
   "prototypeCompareLevel",
 ];
 
-function protoDrillBackStash(label) {
+// A site or group opened from a table row can go back to the view it was opened from, one level at a time.
+function protoDrillBackStash(label, to) {
   const state = {};
   PROTO_DRILL_BACK_KEYS.forEach((key) => {
     state[key] = store[key] === undefined ? null : JSON.parse(JSON.stringify(store[key]));
   });
-  return { label: String(label || ""), state };
+  const scroll = document.querySelector("#astral-fs .astral-pane-body")?.scrollTop || 0;
+  return { label: String(label || ""), to, state, scroll, prev: protoDrillBack() };
+}
+
+function protoDrillHere() {
+  return store.prototypeScope === "site" ? `site:${store.activePrototypeMeter || ""}` : `group:${store.prototypeGroup || ""}`;
 }
 
 function protoDrillBack() {
   const back = store.prototypeDrillBack;
-  return back && back.state && back.label ? back : null;
+  return back && back.state && back.label && back.to === protoDrillHere() ? back : null;
 }
 
-function protoDrillBackLink() {
+function protoDrillFromLabel() {
+  if (protoIsAllGroup(store.prototypeGroup)) return "all sites";
+  return protoGroup(store.prototypeGroup)?.name || "the previous view";
+}
+
+// Wraps a pane title so the Back button sits to its left, as on Site settings.
+function protoDrillLead(titleHtml) {
   const back = protoDrillBack();
-  if (!back) return "";
-  return `<p class="astral-drill-back">${protoBackLink(`Back to ${back.label}`, "data-proto-drill-back")}</p>`;
+  if (!back) return `<div>${titleHtml}</div>`;
+  return `<div class="astral-detail-lead">${protoIconBtn("prev", `Back to ${back.label}`, "data-proto-drill-back")}<div>${titleHtml}</div></div>`;
 }
 
 function protoPinDrillAttr(row) {
@@ -26568,10 +26582,10 @@ function protoGroupDetail(group) {
   return protoPaneShell(
     `
       <div class="astral-detail-head">
-        <div>
+        ${protoDrillLead(`
           ${kicker}
           ${protoDetailTitle(group.name, statusLine)}
-        </div>
+        `)}
         ${protoDetailTools(`group:${group.id}`)}
       </div>
       ${protoPaneFilterPills()}
@@ -27321,10 +27335,10 @@ function protoPortfolioDetail() {
       : protoPaneShell(
           `
         <div class="astral-detail-head">
-          <div>
+          ${protoDrillLead(`
             ${protoPaneKicker(protoPaneAbove("site", currentSite))}
             <h3>${escapeHtml(currentSite.name)}</h3>
-          </div>
+          `)}
           ${protoDetailTools(csvId)}
         </div>
         ${protoPaneFilterPills()}
@@ -37461,10 +37475,16 @@ function onPrototype(event) {
           ...protoComparePatch("group", id),
         };
     if (fromTree) {
-      protoCommitPortfolioTree(patch, { pane: !sameGroup });
+      protoCommitPortfolioTree({ ...patch, prototypeDrillBack: null }, { pane: !sameGroup });
       return;
     }
-    setProto(patch);
+    setProto({
+      ...patch,
+      prototypeDrillBack:
+        !sameGroup && store.prototypeScope === "group"
+          ? protoDrillBackStash(protoDrillFromLabel(), `group:${id}`)
+          : null,
+    });
     return;
   }
   const siteBtn = event.target.closest("[data-proto-site]");
@@ -37490,11 +37510,39 @@ function onPrototype(event) {
       ...protoComparePatch("site", meterId),
     };
     if (siteBtn.closest(".astral-tree") && siteBtn.matches("button")) {
-      protoCommitPortfolioTree(patch, { pane: true });
+      protoCommitPortfolioTree({ ...patch, prototypeDrillBack: null }, { pane: true });
       return;
     }
-    setProto(patch);
+    setProto({
+      ...patch,
+      prototypeDrillBack:
+        !sameSite && store.prototypeScope === "group"
+          ? protoDrillBackStash(protoDrillFromLabel(), `site:${meterId}`)
+          : sameSite
+            ? store.prototypeDrillBack
+            : null,
+    });
     if (siteBtn.hasAttribute("data-proto-drill")) requestAnimationFrame(protoRevealTreeSite);
+    return;
+  }
+  if (event.target.closest("[data-proto-drill-back]")) {
+    const back = protoDrillBack();
+    if (back) {
+      setProto({
+        ...back.state,
+        prototypeDrillBack: back.prev || null,
+        prototypeMeterOpen: "none",
+        ...protoMeterSettingsReset(),
+        activePrototypeView: "portfolio",
+        prototypeFullscreen: true,
+      });
+      if (back.scroll) {
+        requestAnimationFrame(() => {
+          const body = document.querySelector("#astral-fs .astral-pane-body");
+          if (body) body.scrollTop = back.scroll;
+        });
+      }
+    }
     return;
   }
   const drillMeter = event.target.closest("[data-proto-drill-meter]");
