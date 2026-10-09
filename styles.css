@@ -11627,6 +11627,130 @@ tr.is-off .astral-person-mark {
   height: 20px;
 }
 
+/* Settings > Presets. Both parts' lists are drawn in one grid cell, so switching tabs never moves the page. */
+.astral-presets-panels {
+  display: grid;
+}
+
+.astral-presets-panel {
+  grid-area: 1 / 1;
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+  align-content: start;
+}
+
+.astral-presets-panel[hidden] {
+  display: grid;
+  visibility: hidden;
+}
+
+.astral-presets-panel > .astral-breakdown-key,
+.astral-presets-group > .astral-breakdown-key {
+  margin: 0;
+}
+
+.astral-presets-group {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.astral-presets-group > .astral-setting-head,
+.astral-presets-group > p {
+  margin: 0;
+}
+
+.astral-presets-group > .astral-period-panel {
+  grid-row: auto;
+}
+
+.astral-presets-form {
+  display: grid;
+  gap: 24px;
+}
+
+.astral-presets-form > .astral-banner,
+.astral-presets-form > .astral-actions {
+  margin: 0;
+}
+
+.astral-presets-name {
+  max-width: 24rem;
+}
+
+.astral-presets-table .astral-table {
+  table-layout: fixed;
+}
+
+.astral-presets-table col.astral-presets-col-name {
+  width: auto;
+}
+
+.astral-presets-table col.astral-presets-col-kind {
+  width: 5rem;
+}
+
+.astral-presets-table col.astral-presets-col-times {
+  width: 13rem;
+}
+
+.astral-presets-table col.astral-presets-col-use {
+  width: 10rem;
+}
+
+.astral-presets-table col.astral-people-col-more {
+  width: 2.75rem;
+}
+
+.astral-presets-table th.astral-presets-col-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.astral-presets-table th.astral-presets-col-name > .astral-text {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.astral-presets-table .astral-preset-line {
+  justify-content: flex-start;
+}
+
+.astral-presets-table .astral-people-col-more,
+.astral-presets-table td:has(.astral-people-menu:not([hidden])) {
+  overflow: visible;
+}
+
+.astral-presets-empty {
+  min-height: 0;
+  padding: 24px;
+}
+
+.astral-presets-empty h5 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.astral-presets-empty p {
+  margin: 4px 0 0;
+}
+
+.astral-select-manage {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.astral-select-manage svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
 /* Hovering a day uses the chart tooltip layout, so a preset reads like a point on a graph.
    Each row is only the status mark and its times, as the key above the list names the marks. */
 .astral-icon-tip.is-reading {
