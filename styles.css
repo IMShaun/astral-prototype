@@ -7251,6 +7251,45 @@ button.astral-state {
   margin-top: 2px;
 }
 
+.astral-attr-list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+
+.astral-attr-list > span {
+  white-space: nowrap;
+}
+
+.astral-attr-list > span:not(:last-child)::after {
+  content: "·";
+  margin: 0 6px;
+}
+
+.astral-profile-table {
+  table-layout: fixed;
+}
+
+.astral-profile-table th:nth-child(1) {
+  width: 18%;
+}
+
+.astral-profile-table th:nth-child(2) {
+  width: 15%;
+}
+
+.astral-profile-table th:nth-child(4) {
+  width: 26%;
+}
+
+.astral-profile-table td {
+  vertical-align: middle;
+}
+
+.astral-profile-table .astral-value-pills {
+  margin-top: 0;
+}
+
 .astral-value-pill {
   display: inline-flex;
   align-items: center;

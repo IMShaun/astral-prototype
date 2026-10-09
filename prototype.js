@@ -22582,17 +22582,28 @@ function protoMeterSettingsBtn(meter) {
   );
 }
 
-function protoSiteAttrSummary(meter) {
+function protoSiteAttrParts(meter) {
   const attrs = protoMeterProfile(meter?.id)?.attrs || {};
   const area = Number(attrs.area);
   const people = Number(attrs.employees);
   const kva = Number(attrs.capacity);
-  const parts = [
+  return [
     attrs.area && Number.isFinite(area) ? `${area.toLocaleString("en-GB")} m²` : "",
     attrs.employees && Number.isFinite(people) ? `${people.toLocaleString("en-GB")} ${people === 1 ? "person" : "people"}` : "",
     attrs.capacity && Number.isFinite(kva) ? `${kva.toLocaleString("en-GB")} kVA` : "",
   ].filter(Boolean);
+}
+
+function protoSiteAttrSummary(meter) {
+  const parts = protoSiteAttrParts(meter);
   return parts.length ? parts.join(" · ") : "Not set";
+}
+
+// Each attribute stays whole, so a narrow column wraps between values and never inside one.
+function protoSiteAttrList(meter) {
+  const parts = protoSiteAttrParts(meter);
+  if (!parts.length) return `<span class="astral-muted">Not set</span>`;
+  return `<span class="astral-attr-list">${parts.map((part) => `<span>${escapeHtml(part)}</span>`).join("")}</span>`;
 }
 
 function protoSiteAddress(meter) {
@@ -22747,7 +22758,7 @@ function protoMeterOverview(meter) {
           </div>
           <div>
             <dt>${protoProfileFactMark("rates")}Attributes</dt>
-            <dd>${escapeHtml(protoSiteAttrSummary(meter))}</dd>
+            <dd>${protoSiteAttrList(meter)}</dd>
           </div>
         </dl>
       </div>
@@ -23743,11 +23754,11 @@ function protoProfileListMeters(site, all = false) {
 
 function protoProfilePane(sites) {
   const rows = protoSortedRows("site-profile", (sites || []).filter(Boolean), (site, key) => {
-    const facts = protoSiteFacts(site);
+    const profile = protoSiteProfile(site.meters?.[0]?.id);
     if (key === "site") return site.name;
-    if (key === "hours") return facts.hours;
-    if (key === "time-of-use") return facts.tou;
-    if (key === "rates") return facts.attrs;
+    if (key === "hours") return protoPresetSummary("hours", profile) || "Custom week";
+    if (key === "time-of-use") return protoPresetSummary("tou", profile) || "Custom week";
+    if (key === "rates") return Number(profile?.attrs?.area) || 0;
     return "";
   });
   if (!rows.length) {
@@ -23765,7 +23776,7 @@ function protoProfilePane(sites) {
   return `
     <p class="astral-muted">Hours, time of use, and attributes for each site. Meters follow their site unless they set their own. Open a site to change them.</p>
     <div class="astral-table-wrap">
-      <table class="astral-table">
+      <table class="astral-table astral-profile-table">
         <thead>
           <tr>
             ${protoSortHead("site-profile", "site", "Site")}
@@ -23776,14 +23787,16 @@ function protoProfilePane(sites) {
         </thead>
         <tbody>
           ${rows
-            .map((site) => {
-              const facts = protoSiteFacts(site);
+            .map((row) => {
+              const meter = row.meters?.[0];
+              const site = protoSiteByMeter(meter?.id) || row;
+              const profile = protoSiteProfile(meter?.id);
               return `
-                <tr data-proto-site="${escapeHtml(protoSiteId(site))}">
-                  <td>${escapeHtml(site.name)}</td>
-                  <td>${escapeHtml(facts.hours)}</td>
-                  <td>${escapeHtml(facts.tou)}</td>
-                  <td>${escapeHtml(facts.attrs)}</td>
+                <tr data-proto-site="${escapeHtml(protoSiteId(row))}" data-proto-drill>
+                  <td class="astral-profile-site">${escapeHtml(row.name)}</td>
+                  <td>${protoMeterValuePills(site, "hours", profile)}</td>
+                  <td>${protoMeterValuePills(site, "tou", profile)}</td>
+                  <td>${protoSiteAttrList(meter)}</td>
                 </tr>
               `;
             })
