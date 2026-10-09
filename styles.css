@@ -6673,7 +6673,7 @@ button.astral-state {
 .astral-meter-list-head,
 .astral-meter-row-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 6rem 11rem 12rem 9rem;
+  grid-template-columns: minmax(0, 1fr) 6rem 11rem 9rem 12rem;
   gap: 8px;
   align-items: center;
   width: 100%;
@@ -6697,16 +6697,22 @@ button.astral-state {
 }
 
 .astral-meter-list .astral-meter-ref > span:last-child,
-.astral-meter-hours,
-.astral-meter-use {
+.astral-meter-read,
+.astral-meter-use-value {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.astral-meter-hours,
+.astral-meter-read,
 .astral-meter-use {
   min-width: 0;
+}
+
+.astral-meter-use {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .astral-meter-row {

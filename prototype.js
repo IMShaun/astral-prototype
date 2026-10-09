@@ -23613,6 +23613,26 @@ function protoMeterOwnEditor(meter, part, draft) {
     .join("")}</div></div>`;
 }
 
+// Use for the dates picked at the top of the page, summed from the same readings as the Consumption chart.
+// A gap in the readings keeps the total and adds a Partial tag, so the number still reads as a number.
+function protoMeterUseCell(meter) {
+  if (!protoMeterHasReadings(meter)) return `<span class="astral-muted">No data</span>`;
+  const points = protoSiteSeries(meter);
+  const total = points.reduce((n, p) => n + (Number.isFinite(p.value) ? p.value : 0), 0);
+  const partial = meter.use24h === "Partial" || points.some((p) => p.quality === "missing");
+  const water = protoMeterKind(meter) === "water";
+  const num = (value, places) => value.toLocaleString("en-GB", { maximumFractionDigits: places });
+  const text = water
+    ? `${num(total, total < 100 ? 1 : 0)} m³`
+    : total >= 1e6
+      ? `${num(total / 1e6, 2)} GWh`
+      : total >= 1000
+        ? `${num(total / 1000, 1)} MWh`
+        : `${num(total, 0)} kWh`;
+  const tag = partial ? ` ${protoTag("Partial", "Some readings are missing for these dates.", "is-quiet")}` : "";
+  return `<span class="astral-meter-use-value">${escapeHtml(text)}</span>${tag}`;
+}
+
 function protoMeterRow(meter) {
   const facts = protoMeterFacts(meter);
   const channel = facts.channel;
@@ -23624,8 +23644,8 @@ function protoMeterRow(meter) {
         <span class="astral-meter-ref">${protoMeterMark(meter.commodity)}<span>${escapeHtml(title)}</span></span>
         <span class="astral-meter-channel">${protoFlowPill(protoFlowKind(channel) || "in")}</span>
         <span class="astral-meter-src-cell">${source}</span>
-        <span class="astral-meter-hours">${escapeHtml(protoMeterRateSummary(meter))}</span>
-        <span class="astral-meter-use">${escapeHtml(facts.use === "Partial" ? "Partial data" : facts.use)}</span>
+        <span class="astral-meter-read">${escapeHtml(meter.lastReading || "None")}</span>
+        <span class="astral-meter-use">${protoMeterUseCell(meter)}</span>
   `;
   // Settings live in Site settings only, so a meter row is a record, not a link.
   return `<article class="astral-meter-row is-static"><div class="astral-meter-row-head">${cells}</div></article>`;
@@ -23643,8 +23663,8 @@ function protoMeterList(meters) {
         <span>Meter</span>
         <span>Channel</span>
         <span>Settings</span>
-        <span>Unit rate</span>
-        <span>Use, last 24 hours</span>
+        <span>Last reading</span>
+        <span>Use</span>
       </div>
       ${rows.map((meter) => protoMeterRow(meter)).join("")}
     </div>
