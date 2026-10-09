@@ -10713,6 +10713,27 @@ button.astral-state {
   white-space: normal;
 }
 
+/* A day edited from a preset names it under the select, with Undo beside it. */
+.astral-period-base {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 20px;
+  white-space: normal;
+}
+
+.astral-period-base[hidden] {
+  display: none;
+}
+
+.astral-period-lead {
+  vertical-align: top;
+}
+
 .astral-period-note.is-error {
   color: var(--color-text-danger);
 }
