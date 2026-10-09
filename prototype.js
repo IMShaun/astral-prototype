@@ -749,6 +749,7 @@ function protoPageFilterReset() {
     prototypeSiteOwnPick: null,
     prototypeMeterUpload: null,
     prototypeSiteImport: null,
+    prototypeSiteAdd: null,
     prototypeDrillBack: null,
     prototypeSummaryOpen: true,
     prototypeBreakdownOpen: false,
@@ -816,6 +817,7 @@ function protoPortfolioHomePatch() {
     prototypeSiteOwnPick: null,
     prototypeMeterUpload: null,
     prototypeSiteImport: null,
+    prototypeSiteAdd: null,
     prototypeDrillBack: null,
     prototypeGroupSites: [],
     prototypeSiteMeters: [],
@@ -10376,6 +10378,10 @@ function protoPickSelect(id, value) {
   }
   if (String(id).startsWith("tpl-")) {
     protoTemplatePick(id, value);
+    return;
+  }
+  if (String(id).startsWith("site-add-field:")) {
+    protoSiteAddPickField(id, value);
     return;
   }
   if (String(id).startsWith("import-site:") || String(id).startsWith("import-meter:")) {
@@ -22648,7 +22654,7 @@ function protoSiteSettingsCsvName(meter) {
   return `${slug}-site-settings.csv`;
 }
 
-function protoParseCsv(text) {
+function protoParseCsv(text, sep = ",") {
   const rows = [];
   let row = [];
   let cell = "";
@@ -22667,7 +22673,7 @@ function protoParseCsv(text) {
       }
     } else if (ch === '"') {
       quoted = true;
-    } else if (ch === ",") {
+    } else if (ch === sep) {
       row.push(cell);
       cell = "";
     } else if (ch === "\n" || ch === "\r") {
@@ -22787,6 +22793,7 @@ function protoImportColumns(head) {
 }
 
 // Lines are grouped by site, meter point and section. A line that cannot be read is left out, with the reason.
+// A row can carry its own line number, so rows rebuilt from matched columns still point back to the source.
 function protoImportBuild(rows, fallbackId = "") {
   const cols = protoImportColumns(rows[0]);
   const body = cols ? rows.slice(1) : rows;
@@ -22794,12 +22801,23 @@ function protoImportBuild(rows, fallbackId = "") {
   const fallback = fallbackId ? protoSiteByMeter(fallbackId) : null;
   const entries = new Map();
   const lost = [];
+  const seen = new Map();
   const kinds = ["site", "electricity", "gas", "water"];
   body.forEach((cells, i) => {
     const get = (key) => (c[key] >= 0 ? String(cells[c[key]] ?? "").trim() : "");
-    const line = i + (cols ? 2 : 1);
-    const leave = (why) => lost.push({ line, why, text: cells.map((value) => String(value ?? "").trim()).filter(Boolean).join(", ").slice(0, 160) });
-    const where = protoImportNorm(get("section"));
+    const line = cells.line || i + (cols ? 2 : 1);
+    const text = cells.map((value) => String(value ?? "").trim()).filter(Boolean).join(", ").slice(0, 160);
+    const leave = (why) => lost.push({ line, why, text });
+    // The same setting twice keeps the later line. The earlier one is listed as left out.
+    const once = (id) => {
+      const prev = seen.get(id);
+      if (prev && prev.line !== line) lost.push({ line: prev.line, why: `Set again on line ${line}`, text: prev.text });
+      seen.set(id, { line, text });
+    };
+    const groupName = protoImportNorm(get("group"));
+    const where =
+      protoImportNorm(get("section")) ||
+      (kinds.some((item) => protoImportNorm(protoMeterAttrGroupName(item)) === groupName) ? "attributes" : "");
     const part = where === "operational hours" ? "hours" : where === "time of use" ? "tou" : where === "attributes" ? "attrs" : "";
     if (!part) return leave("Section not recognised");
     const meter = get("meter");
@@ -22812,6 +22830,7 @@ function protoImportBuild(rows, fallbackId = "") {
       const kind = kinds.find((item) => protoImportNorm(protoMeterAttrGroupName(item)) === protoImportNorm(get("group")));
       const item = kind ? protoMeterAttrSpec(kind).find((spec) => protoImportNorm(spec.label) === protoImportNorm(get("setting"))) : null;
       if (!item) return leave("Setting not recognised");
+      once(`${key}|${item.key}`);
       entry.attrs[item.key] = { kind, value: value.slice(0, 160) };
     } else {
       const d = PROTO_WEEKDAYS.findIndex((day) => protoImportNorm(day) === protoImportNorm(get("group")));
@@ -22824,13 +22843,20 @@ function protoImportBuild(rows, fallbackId = "") {
           ? PROTO_PERIOD_SPEC[part].statuses.find((item) => protoImportNorm(item.name) === protoImportNorm(value) || item.id === protoImportNorm(value))?.id
           : protoImportClock(value);
       if (!next) return leave(field[2] === "status" ? "Status not recognised" : "Time not recognised");
+      once(`${key}|${d}|${n}|${field[2]}`);
       const list = entry.days[d] || [];
       list[n - 1] = { ...(list[n - 1] || {}), [field[2]]: next };
       entry.days[d] = Array.from(list, (p) => p || null);
     }
     entries.set(key, entry);
   });
-  return { entries: [...entries.values()], lost, read: body.length };
+  const kept = new Set();
+  lost.sort((a, b) => a.line - b.line);
+  return {
+    entries: [...entries.values()],
+    lost: lost.filter((item) => !kept.has(`${item.line}|${item.why}`) && kept.add(`${item.line}|${item.why}`)),
+    read: body.length,
+  };
 }
 
 function protoSiteImport() {
@@ -22945,9 +22971,20 @@ function protoImportEval(imp, entry, index) {
   return { ...base, status, need: status === "needs" ? "value" : "", fields, changed };
 }
 
+// A blank setting is always filled in. So a change that also fills blanks is split, and only the part
+// that replaces a value waits for a tick.
 function protoImportEvalAll(imp) {
   const index = protoImportIndex();
-  return imp.entries.map((entry) => protoImportEval(imp, entry, index));
+  return imp.entries.flatMap((entry) => {
+    const ev = protoImportEval(imp, entry, index);
+    if (entry.part !== "attrs" || ev.meter || ev.status !== "change") return [ev];
+    const blank = ev.changed.filter((field) => !field.now);
+    if (!blank.length) return [ev];
+    return [
+      { ...ev, fields: ev.fields.filter((field) => !blank.includes(field)), changed: ev.changed.filter((field) => field.now) },
+      { ...ev, entry: { ...entry, id: `${entry.id}-fill` }, status: "new", fields: blank, changed: blank },
+    ];
+  });
 }
 
 // New entries start ticked. Changes wait for a tick, so nothing set is replaced by accident.
@@ -22985,23 +23022,31 @@ function protoImportWeekName(part, rows) {
   return protoPresetLabel(part, { [part]: rows });
 }
 
+// Pasted settings have no file, so the review speaks of them as the person's own.
+function protoImportWords() {
+  return protoSiteImport()?.pasted
+    ? { from: "Pasted", in: "in your settings", as: "In your settings as", them: "your settings replace", out: "Anything your settings leave out" }
+    : { from: "From file", in: "in this file", as: "In the file as", them: "the file replaces", out: "Anything the file leaves out" };
+}
+
 function protoImportDetail(ev) {
   const part = ev.entry.part;
+  const words = protoImportWords();
   if (part !== "attrs") {
     if (!ev.next) {
       const rows = protoImportFileRows(ev.entry);
-      return protoImportWeek(part, rows, "From file", protoImportWeekName(part, rows));
+      return protoImportWeek(part, rows, words.from, protoImportWeekName(part, rows));
     }
     const fileName = protoImportWeekName(part, ev.next);
-    if (ev.status === "same") return protoImportWeek(part, ev.next, "From file", `${fileName}, as now`);
+    if (ev.status === "same") return protoImportWeek(part, ev.next, words.from, `${fileName}, as now`);
     const now = ev.cur
       ? protoImportWeek(part, ev.cur, "Now", protoImportWeekName(part, ev.cur))
       : protoImportWeek(part, ev.follow, "Now", "Follows the site");
-    return `${now}${protoImportWeek(part, ev.next, "From file", fileName)}`;
+    return `${now}${protoImportWeek(part, ev.next, words.from, fileName)}`;
   }
   if (!ev.fields) {
     const n = Object.keys(ev.entry.attrs || {}).length;
-    return `<p class="astral-muted">${n} ${n === 1 ? "setting" : "settings"} in the file.</p>`;
+    return `<p class="astral-muted">${n} ${n === 1 ? "setting" : "settings"} ${words.in}.</p>`;
   }
   const shown = ev.fields.filter((field) => field.error || field.value !== field.now);
   if (!shown.length) {
@@ -23131,7 +23176,7 @@ function protoImportTargetHtml(imp, list) {
   const { entry, site, meter } = list[0];
   const picked = Boolean(imp.sites?.[protoImportNorm(entry.site)]);
   const pointPicked = Boolean(imp.meters?.[list[0].key]);
-  const asFile = (text) => `<p class="astral-muted">In the file as ${escapeHtml(text)}.</p>`;
+  const asFile = (text) => `<p class="astral-muted">${protoImportWords().as} ${escapeHtml(text)}.</p>`;
   let head;
   if (!site || picked) {
     head = `
@@ -23189,7 +23234,7 @@ function protoImportPatterns(evals) {
   const list = [...groups.values()].sort((a, b) => (a.part === b.part ? b.n - a.n : a.part === "hours" ? -1 : 1));
   return `
     <section class="astral-import-box">
-      <h4>Patterns in this file</h4>
+      <h4>Patterns ${protoImportWords().in}</h4>
       <div class="astral-table-wrap">
         <table class="astral-table astral-import-patterns">
           <thead><tr><th>Setting</th><th>Week</th><th>Pattern</th><th>Used by</th></tr></thead>
@@ -23216,6 +23261,8 @@ function protoImportPatterns(evals) {
 
 function protoSiteImportPage() {
   const imp = protoSiteImport();
+  const words = protoImportWords();
+  const flow = Boolean(protoSiteAdd());
   const evals = protoImportEvalAll(imp);
   const filter = protoImportFilter(imp);
   const count = (id) => (id === "all" ? evals.length : evals.filter((ev) => ev.status === id).length);
@@ -23245,15 +23292,15 @@ function protoSiteImportPage() {
         <div class="astral-detail-lead">
           ${protoIconBtn("prev", "Back", "data-proto-import-close")}
           <div>
-            ${protoPaneKicker("Upload")}
-            <h3>${escapeHtml(imp.name || "Your file")}</h3>
+            ${protoPaneKicker(flow && !imp.pasted ? imp.name : flow ? "Add site settings" : "Upload")}
+            <h3 class="astral-site-add-title" tabindex="-1">${escapeHtml(flow ? "Check your settings" : imp.name || "Your file")}</h3>
           </div>
         </div>
       </div>
     `,
     `
       <div class="astral-import">
-        <p class="astral-muted">${siteN} ${siteN === 1 ? "site" : "sites"} in this file. Tick what to save. Anything the file leaves out stays as it is.</p>
+        <p class="astral-muted">${siteN} ${siteN === 1 ? "site" : "sites"} ${words.in}. Tick what to save. ${words.out} stays as it is.</p>
         ${protoImportPatterns(evals)}
         ${protoSummaryCards(
           "Show entries by kind",
@@ -23274,7 +23321,7 @@ function protoSiteImportPage() {
             ${protoCheck(allOn)}
             <span class="astral-report-consent-copy">
               <span>Replace all current settings</span>
-              <span class="astral-muted">Ticks all ${changes.length} ${changes.length === 1 ? "change" : "changes"}, so the file replaces what is set now.</span>
+              <span class="astral-muted">Ticks all ${changes.length} ${changes.length === 1 ? "change" : "changes"}, so ${words.them} what is set now.</span>
             </span>
           </button>`
             : ""
@@ -23291,7 +23338,7 @@ function protoSiteImportPage() {
             ? `
           <details class="astral-import-box astral-import-lost">
             <summary>${lost.length} ${lost.length === 1 ? "line" : "lines"} left out</summary>
-            <p class="astral-muted">These lines do not match the template. Fix them in the file and upload it again.</p>
+            <p class="astral-muted">These lines are not saved. The reason is next to each one.</p>
             <ul>
               ${lost
                 .slice(0, 200)
@@ -23309,7 +23356,7 @@ function protoSiteImportPage() {
         <div class="astral-card astral-report-page-foot astral-import-foot">
           <div class="astral-actions">
             ${protoBtn("Save settings", "data-proto-import-apply", { disabled: Boolean(blocked) || !ready })}
-            ${protoGhost("Cancel", "data-proto-import-close")}
+            ${protoGhost("Cancel", flow ? "data-proto-site-add-exit" : "data-proto-import-close")}
             <p class="astral-muted astral-report-issue" role="status">${escapeHtml(issue)}</p>
           </div>
         </div>
@@ -23421,65 +23468,855 @@ function protoImportApply() {
     profiles[key] = item.saved;
     if (item.draft) drafts[key] = item.draft;
   });
+  const add = protoSiteAdd();
   setProto({
     prototypeMeterProfiles: profiles,
     prototypeMeterDrafts: drafts,
     prototypeMeterOverrides: overrides,
     prototypeMeterOwnDrafts: ownDrafts,
     prototypeSiteImport: null,
-    prototypeMeterUpload: { name: imp.name, saved: sites.size },
+    prototypeMeterUpload: null,
+    prototypeSiteAdd: {
+      ...(add || protoSiteAddStart("")),
+      step: "done",
+      saved: sites.size,
+      name: imp.pasted ? "" : imp.name,
+      tried: false,
+    },
     prototypeSelectOpen: "",
+  });
+  protoSiteAddFocus();
+}
+
+// Add site settings. Pick a way in, paste or upload, match the columns, then save. Settings that clash
+// with what is set now, or lines that cannot be read, open the review page first.
+// Parsed rows stay out of the store, so a big file is never saved with the board.
+const PROTO_SITE_ADD_STEPS = ["choose", "paste", "upload", "match", "done"];
+const PROTO_SITE_ADD_ACCEPT =
+  ".csv,.txt,.xlsx,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const PROTO_SITE_ADD_SIZES = "Up to 200 MB for CSV or TXT. Up to 50 MB for XLSX.";
+const PROTO_SITE_ADD_BASE = [
+  { id: "site", label: "Site", names: ["site", "site name", "site names", "building", "building name"] },
+  { id: "meter", label: "Meter point", names: ["meter point", "meter", "mpan", "mprn", "meter point number", "meter point reference", "supply number"] },
+  { id: "section", label: "Section", names: ["section"] },
+  { id: "group", label: "Group", names: ["group", "day", "weekday"] },
+  { id: "setting", label: "Setting", names: ["setting", "setting name"] },
+  { id: "value", label: "Value", names: ["value"] },
+  { id: "unit", label: "Unit", names: ["unit", "units"] },
+];
+const PROTO_SITE_ADD_KINDS = ["site", "electricity", "gas", "water"];
+let protoSiteAddData = { paste: null, upload: null };
+let protoSiteAddText = "";
+
+function protoSiteAddRowsOf(add) {
+  return protoSiteAddData[add?.from === "upload" ? "upload" : "paste"];
+}
+
+function protoSiteAdd() {
+  const raw = store.prototypeSiteAdd;
+  if (!raw || typeof raw !== "object" || !PROTO_SITE_ADD_STEPS.includes(raw.step)) return null;
+  let add = raw;
+  // After a reload the rows are gone, so the person adds them again.
+  if (add.file && !protoSiteAddData.upload) add = { ...add, file: null };
+  if (add.step === "match" && !protoSiteAddRowsOf(add)) add = { ...add, step: add.from === "upload" ? "upload" : "paste" };
+  return add;
+}
+
+function protoSiteAddWhere() {
+  const settings = protoMeterSettingsId();
+  if (settings && !protoCompareOn()) return `settings:${settings}`;
+  const state = protoState();
+  return [protoCompareOn() ? "compare" : "", state.scope || "", state.scope === "group" ? state.group || "" : state.meter || ""].join(":");
+}
+
+function protoSiteAddStart(meterId) {
+  const state = protoState();
+  return {
+    meter: meterId || "",
+    group: meterId ? "" : String(state.scope === "group" ? state.group || "" : ""),
+    where: protoSiteAddWhere(),
+    step: "choose",
+  };
+}
+
+// The flow belongs to the page it was opened from, so it hides when the person moves elsewhere.
+function protoSiteAddHere(add) {
+  return protoPaneId() === "profile" && protoSiteAddWhere() === add.where;
+}
+
+function protoSiteAddPatch(patch) {
+  const add = protoSiteAdd();
+  if (!add) return;
+  setProto({ prototypeSiteAdd: { ...add, ...patch }, prototypeSelectOpen: "" });
+}
+
+function protoSiteAddFocus() {
+  protoRestoreFocus("#astral-fs .astral-site-add-title");
+}
+
+function protoSiteAddOpen(meterId) {
+  if (!protoCanAct()) return;
+  const meter = meterId ? protoMeter(meterId) : null;
+  if (meterId && !meter) return;
+  // Unsaved edits on Site settings are kept, so added settings go on top of them.
+  const form = meter && document.querySelector("#astral-fs [data-proto-meter-profile]");
+  if (form) {
+    store.prototypeMeterDrafts = { ...protoMeterDrafts(), [protoProfileKey(meter.id)]: protoReadMeterProfileForm(form, meter) };
+  }
+  protoSiteAddData = { paste: null, upload: null };
+  protoSiteAddText = "";
+  setProto({
+    prototypeSiteAdd: protoSiteAddStart(meterId),
+    prototypeSiteImport: null,
+    prototypeMeterUpload: null,
+    prototypeSelectOpen: "",
+  });
+  protoSiteAddFocus();
+}
+
+function protoSiteAddExit() {
+  const add = protoSiteAdd();
+  protoSiteAddData = { paste: null, upload: null };
+  protoSiteAddText = "";
+  setProto({ prototypeSiteAdd: null, prototypeSiteImport: null, prototypeSelectOpen: "" });
+  protoRestoreFocus(`#astral-fs [data-proto-site-add-open="${CSS.escape(add?.meter || "")}"]`);
+}
+
+function protoSiteAddAgain() {
+  const add = protoSiteAdd();
+  if (!add) return;
+  protoSiteAddData = { paste: null, upload: null };
+  protoSiteAddText = "";
+  setProto({ prototypeSiteAdd: { ...add, step: "choose", from: "", file: null, error: "", tried: false, saved: 0, name: "" }, prototypeSiteImport: null, prototypeSelectOpen: "" });
+  protoSiteAddFocus();
+}
+
+function protoSiteAddBack() {
+  const add = protoSiteAdd();
+  if (!add) return;
+  if (add.step === "paste" || add.step === "upload") protoSiteAddPatch({ step: "choose", error: "" });
+  else if (add.step === "match") protoSiteAddPatch({ step: add.from === "upload" ? "upload" : "paste", tried: false });
+  else {
+    protoSiteAddExit();
+    return;
+  }
+  protoSiteAddFocus();
+}
+
+function protoSiteAddWay(way) {
+  if (way !== "paste" && way !== "upload") return;
+  protoSiteAddPatch({ step: way, from: way, error: "" });
+  protoSiteAddFocus();
+}
+
+// Rows copied from a spreadsheet arrive split by tabs. Anything else is read as commas.
+function protoSiteAddParse(text) {
+  const src = String(text || "");
+  const first = src.split(/\r?\n/).find((line) => line.trim()) || "";
+  return protoParseCsv(src, first.includes("\t") ? "\t" : ",");
+}
+
+function protoSiteAddSize(bytes) {
+  const n = Number(bytes) || 0;
+  if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// Every field a column can go to. The template columns first, then each attribute by group.
+function protoSiteAddFields() {
+  return [
+    ...PROTO_SITE_ADD_BASE.map((item) => ({ ...item, group: "template" })),
+    ...PROTO_SITE_ADD_KINDS.flatMap((kind) =>
+      protoMeterAttrSpec(kind)
+        .filter((item) => !item.admin || protoCanRenameSite())
+        .map((item) => ({
+          id: `attr:${kind}:${item.key}`,
+          kind,
+          item,
+          group: kind,
+          label: kind === "site" ? item.label : `${protoMeterAttrGroupName(kind)} ${item.label.toLowerCase()}`,
+        }))
+    ),
+  ];
+}
+
+function protoSiteAddOptions(fields) {
+  const heads = { template: "Template columns", site: "Site attributes", electricity: "Electricity", gas: "Gas", water: "Water" };
+  const out = [];
+  let last = "";
+  fields.forEach((field) => {
+    if (field.group !== last) {
+      out.push({ heading: heads[field.group] });
+      last = field.group;
+    }
+    out.push({ value: field.id, label: field.label });
+  });
+  return out;
+}
+
+// Headings are compared without units or punctuation, so "Floor area (m²)" finds Floor area.
+const protoSiteAddKey = (text) =>
+  protoImportNorm(String(text ?? "").replace(/\([^)]*\)/g, " ").replace(/[^a-z0-9]+/gi, " "));
+
+const PROTO_SITE_ADD_ALSO = {
+  area: ["area", "floor space", "size"],
+  employees: ["employees", "occupants", "number of occupants", "staff", "headcount"],
+  street: ["street", "address", "address line 1"],
+  town: ["town", "city"],
+};
+
+const PROTO_SITE_ADD_KIND_WORDS = { electricity: ["electricity", "elec", "electric"], gas: ["gas"], water: ["water"] };
+
+function protoSiteAddByName(name, fields, meterId) {
+  const key = protoSiteAddKey(name);
+  if (!key) return "";
+  const base = PROTO_SITE_ADD_BASE.find((field) => field.names.includes(key));
+  if (base) return base.id;
+  const hits = fields.filter((field) => {
+    if (!field.item) return false;
+    const label = protoSiteAddKey(field.item.label);
+    const names = [label, protoSiteAddKey(field.label), protoImportNorm(field.item.key), ...(PROTO_SITE_ADD_ALSO[field.item.key] || [])];
+    if (names.includes(key)) return true;
+    if (field.kind === "site") return false;
+    const words = key.split(" ");
+    const word = PROTO_SITE_ADD_KIND_WORDS[field.kind].find((item) => words.includes(item));
+    return Boolean(word) && words.filter((item) => item !== word).join(" ") === label;
+  });
+  // A label shared by several meter types, such as Unit rate, is matched only when one type fits.
+  const named = hits.filter((field) => field.kind === "site" || PROTO_SITE_ADD_KIND_WORDS[field.kind].some((word) => key.split(" ").includes(word)));
+  if (named.length === 1) return named[0].id;
+  if (hits.length === 1) return hits[0].id;
+  if (hits.length > 1 && meterId) {
+    const own = ["site", ...protoMeterAttrKinds(meterId)];
+    const mine = hits.filter((field) => own.includes(field.kind));
+    if (mine.length === 1) return mine[0].id;
+  }
+  return "";
+}
+
+function protoSiteAddContext() {
+  const sections = ["operational hours", "time of use", "attributes"];
+  const groups = [...PROTO_WEEKDAYS, ...PROTO_SITE_ADD_KINDS.map(protoMeterAttrGroupName)].map(protoImportNorm);
+  const labels = new Set(PROTO_SITE_ADD_KINDS.flatMap((kind) => protoMeterAttrSpec(kind).map((item) => protoImportNorm(item.label))));
+  const units = new Set([
+    "hh:mm",
+    ...PROTO_SITE_ADD_KINDS.flatMap((kind) => protoMeterAttrSpec(kind).map((item) => protoImportNorm(item.unit))).filter(Boolean),
+  ]);
+  const statuses = new Set(
+    Object.values(PROTO_PERIOD_SPEC).flatMap((spec) => spec.statuses.flatMap((item) => [protoImportNorm(item.name), protoImportNorm(item.id)]))
+  );
+  return { sections, groups, labels, units, statuses, index: protoImportIndex() };
+}
+
+const protoSiteAddIsValue = (value, ctx) =>
+  Boolean(protoImportClock(value)) || /^-?\d+(\.\d+)?$/.test(value) || ctx.statuses.has(protoImportNorm(value));
+
+// A column with no known heading is matched by what is in it, when most of it reads one way.
+function protoSiteAddByValues(values, ctx) {
+  const list = values.map(protoImportNorm).filter(Boolean).slice(0, 50);
+  if (!list.length) return "";
+  const most = (test) => list.filter(test).length / list.length >= 0.6;
+  if (most((value) => ctx.sections.includes(value))) return "section";
+  if (most((value) => ctx.groups.includes(value))) return "group";
+  if (most((value) => /^period \d+ (from|to|status)$/.test(value) || ctx.labels.has(value))) return "setting";
+  if (most((value) => ctx.index.byName.has(value))) return "site";
+  if (most((value) => ctx.index.byPoint.has(value))) return "meter";
+  if (most((value) => ctx.units.has(value))) return "unit";
+  return "";
+}
+
+// A first row is headings when its cells name fields and none of them reads as data.
+function protoSiteAddHasHead(rows, fields, ctx) {
+  const head = (rows[0] || []).map((cell) => String(cell ?? "").trim()).filter(Boolean);
+  if (!head.length) return false;
+  const data = head.some((cell) => {
+    const key = protoImportNorm(cell);
+    return ctx.sections.includes(key) || /^period \d+/.test(key) || protoSiteAddIsValue(cell, ctx);
+  });
+  if (data) return false;
+  const named = head.filter((cell) => protoSiteAddByName(cell, fields)).length;
+  if (named && named >= Math.ceil(head.length / 2)) return true;
+  if (rows.length < 2) return false;
+  return head.every((cell) => !/\d/.test(cell)) && rows.slice(1, 20).some((row) => row.some((cell) => /\d/.test(String(cell ?? ""))));
+}
+
+function protoSiteAddWidth(rows) {
+  return Math.min(60, Math.max(0, ...rows.slice(0, 500).map((row) => row.length)));
+}
+
+function protoSiteAddAuto(rows, meterId) {
+  const fields = protoSiteAddFields();
+  const ctx = protoSiteAddContext();
+  const head = protoSiteAddHasHead(rows, fields, ctx);
+  const body = head ? rows.slice(1) : rows;
+  const width = protoSiteAddWidth(rows);
+  const map = Array(width).fill("");
+  const taken = new Set();
+  const take = (i, id) => {
+    if (!id || taken.has(id) || map[i]) return;
+    map[i] = id;
+    taken.add(id);
+  };
+  if (head) map.forEach((_, i) => take(i, protoSiteAddByName(rows[0][i], fields, meterId)));
+  const values = (i) => body.slice(0, 200).map((row) => String(row[i] ?? ""));
+  map.forEach((_, i) => take(i, protoSiteAddByValues(values(i), ctx)));
+  if ((taken.has("section") || taken.has("setting")) && !taken.has("value")) {
+    const i = map.findIndex((id, n) => {
+      if (id) return false;
+      const list = values(n).map((value) => value.trim()).filter(Boolean);
+      return list.length && list.filter((value) => protoSiteAddIsValue(value, ctx)).length / list.length >= 0.6;
+    });
+    if (i >= 0) take(i, "value");
+  }
+  return { head, map, use: map.map(Boolean) };
+}
+
+function protoSiteAddCols(add, rows) {
+  const body = add.head ? rows.slice(1) : rows;
+  return Array.from({ length: protoSiteAddWidth(rows) }, (_, i) => {
+    const name = add.head ? String(rows[0][i] ?? "").trim() : "";
+    const sample = body.map((row) => String(row[i] ?? "").trim()).find(Boolean) || "";
+    return { i, name: name || `Column ${i + 1}`, sample };
   });
 }
 
-// Read the file, then open the review page. Nothing is saved until Save settings.
-function protoImportFile(blob, fallbackId = "") {
-  const name = String(blob.name || "").slice(0, 120);
-  const xlsx = /\.xlsx$/i.test(name);
-  if (!xlsx && !/\.csv$/i.test(name) && blob.type !== "text/csv") {
-    setProto({ prototypeMeterUpload: { name, error: "type" }, prototypeSiteImport: null });
+// Matched columns become template lines, so the upload reads them the same way as the template.
+function protoSiteAddCanon(add, rows) {
+  const fields = new Map(protoSiteAddFields().map((field) => [field.id, field]));
+  const body = add.head ? rows.slice(1) : rows;
+  const at = {};
+  const attrs = [];
+  (add.map || []).forEach((id, i) => {
+    if (!id || !add.use?.[i]) return;
+    if (id.startsWith("attr:")) {
+      if (fields.has(id)) attrs.push({ i, field: fields.get(id) });
+    } else at[id] = i;
+  });
+  const cell = (row, i) => (i == null ? "" : String(row[i] ?? "").trim());
+  const parts = ["section", "group", "setting", "value"];
+  const out = [PROTO_SITE_CSV_HEAD.slice()];
+  body.forEach((row, n) => {
+    const line = n + (add.head ? 2 : 1);
+    const site = cell(row, at.site);
+    const meter = cell(row, at.meter);
+    const push = (cells) => {
+      cells.line = line;
+      out.push(cells);
+    };
+    if (parts.some((key) => cell(row, at[key]))) {
+      push([site, meter, cell(row, at.section), cell(row, at.group), cell(row, at.setting), cell(row, at.value), cell(row, at.unit)]);
+    }
+    attrs.forEach(({ i, field }) => {
+      const value = cell(row, i);
+      if (value) push([site, meter, "Attributes", protoMeterAttrGroupName(field.kind), field.item.label, value, field.item.unit]);
+    });
+  });
+  return out;
+}
+
+function protoSiteAddCheck(add, rows) {
+  const cols = protoSiteAddCols(add, rows);
+  const labels = new Map(protoSiteAddFields().map((field) => [field.id, field.label]));
+  const list = [];
+  const rowErr = {};
+  const used = cols.filter((col) => add.use?.[col.i]);
+  if (!used.length) {
+    list.push({ id: `astral-site-add-use-${cols[0]?.i ?? 0}`, text: "Select at least one column to use." });
+    return { list, rowErr, cols, found: null };
+  }
+  used
+    .filter((col) => !add.map?.[col.i])
+    .forEach((col) => {
+      const text = `Select a field for ${col.name}, or untick it.`;
+      rowErr[col.i] = text;
+      list.push({ id: `astral-site-add-field-${col.i}`, text });
+    });
+  const by = new Map();
+  used.forEach((col) => {
+    const id = add.map?.[col.i];
+    if (id) by.set(id, [...(by.get(id) || []), col]);
+  });
+  by.forEach((same, id) => {
+    if (same.length < 2) return;
+    const label = labels.get(id) || id;
+    same.forEach((col) => {
+      rowErr[col.i] = `${label} is matched to ${same.length} columns.`;
+    });
+    list.push({
+      id: `astral-site-add-field-${same[1].i}`,
+      text: `Each field can be matched to one column only. ${label} is matched to ${same.length} columns.`,
+    });
+  });
+  if (!list.length && !add.meter && !by.has("site") && !by.has("meter")) {
+    list.push({ id: `astral-site-add-field-${used[0].i}`, text: "Match a column to Site or Meter point." });
+  }
+  let found = null;
+  if (!list.length) {
+    found = protoImportBuild(protoSiteAddCanon(add, rows), add.meter);
+    if (!found.entries.length) {
+      list.push({
+        id: `astral-site-add-field-${used[0].i}`,
+        text: "No settings could be read from these columns. Check the field for each column.",
+      });
+    }
+  }
+  return { list, rowErr, cols, found };
+}
+
+// Clashes with what is set now, and lines that cannot be read, go to the review page before anything saves.
+function protoSiteAddDraft(add, found) {
+  const pasted = add.from !== "upload";
+  const draft = {
+    name: pasted ? "Pasted settings" : add.file?.name || "Your file",
+    pasted,
+    entries: found.entries,
+    lost: found.lost,
+    filter: "all",
+    picks: {},
+    sites: {},
+    meters: {},
+    values: {},
+  };
+  const evals = protoImportEvalAll(draft);
+  evals.forEach((ev) => {
+    if (ev.status === "change") draft.picks[ev.entry.id] = Boolean(add.replace);
+  });
+  draft.filter = ["needs", "change", "new"].find((id) => evals.some((ev) => ev.status === id)) || "all";
+  return {
+    draft,
+    review: found.lost.length > 0 || evals.some((ev) => ev.status === "needs" || ev.status === "change"),
+    save: evals.some((ev) => ev.status === "new" || ev.status === "change"),
+  };
+}
+
+function protoSiteAddFinish() {
+  const add = protoSiteAdd();
+  const rows = protoSiteAddRowsOf(add);
+  if (!add || !rows) return;
+  const check = protoSiteAddCheck(add, rows);
+  if (check.list.length) {
+    protoSiteAddPatch({ tried: true });
+    protoRestoreFocus("#astral-fs .astral-error-summary");
     return;
   }
-  const rows = xlsx ? blob.arrayBuffer().then(protoReadXlsx) : blob.text().then(protoParseCsv);
-  rows
+  const { draft, review, save } = protoSiteAddDraft(add, check.found);
+  if (review) {
+    setProto({ prototypeSiteImport: draft, prototypeSiteAdd: { ...add, tried: false }, prototypeSelectOpen: "" });
+    protoSiteAddFocus();
+    return;
+  }
+  if (!save) {
+    protoSiteAddPatch({ step: "done", saved: 0, name: draft.pasted ? "" : draft.name, tried: false });
+    protoSiteAddFocus();
+    return;
+  }
+  store.prototypeSiteImport = draft;
+  protoImportApply();
+}
+
+function protoSiteAddContinue() {
+  const add = protoSiteAdd();
+  if (!add) return;
+  const fail = (error) => {
+    protoSiteAddPatch({ error });
+    protoRestoreFocus("#astral-fs .astral-error-summary");
+  };
+  if (add.step === "paste") {
+    const field = document.querySelector("#astral-site-add-text");
+    if (field) protoSiteAddText = field.value;
+    const rows = protoSiteAddParse(protoSiteAddText);
+    if (!rows.length) return fail("Paste at least one row to continue.");
+    protoSiteAddData.paste = rows;
+    protoSiteAddPatch({ step: "match", from: "paste", error: "", tried: false, ...protoSiteAddAuto(rows, add.meter) });
+    protoSiteAddFocus();
+    return;
+  }
+  if (add.step === "upload") {
+    if (!add.file || !protoSiteAddData.upload) return fail("Select a file to continue.");
+    protoSiteAddPatch({ step: "match", from: "upload", error: "", tried: false, ...protoSiteAddAuto(protoSiteAddData.upload, add.meter) });
+    protoSiteAddFocus();
+    return;
+  }
+  if (add.step === "match") protoSiteAddFinish();
+}
+
+function protoSiteAddFile(blob) {
+  const add = protoSiteAdd();
+  if (!add || add.step !== "upload" || !blob) return;
+  const name = String(blob.name || "your file").slice(0, 120);
+  const ext = (name.match(/\.([a-z0-9]+)$/i)?.[1] || "").toLowerCase();
+  const kind = ["csv", "txt", "xlsx"].includes(ext) ? ext : "";
+  const fail = (error) => {
+    protoSiteAddData.upload = null;
+    protoSiteAddPatch({ file: null, error });
+    protoRestoreFocus("#astral-fs .astral-error-summary");
+  };
+  if (!kind) return fail("The file must be a CSV, TXT or XLSX file.");
+  if (blob.size > (kind === "xlsx" ? 50 : 200) * 1024 * 1024) {
+    return fail(kind === "xlsx" ? "An XLSX file must be 50 MB or smaller." : "A CSV or TXT file must be 200 MB or smaller.");
+  }
+  const read = kind === "xlsx" ? blob.arrayBuffer().then(protoReadXlsx) : blob.text().then(protoSiteAddParse);
+  read
     .catch(() => null)
-    .then((list) => {
-      if (!list) {
-        setProto({ prototypeMeterUpload: { name, error: "read" }, prototypeSiteImport: null });
-        return;
-      }
-      const found = protoImportBuild(list, fallbackId);
-      if (!found.entries.length) {
-        setProto({ prototypeMeterUpload: { name, error: "empty" }, prototypeSiteImport: null, prototypeSelectOpen: "" });
-        return;
-      }
-      const draft = { name, entries: found.entries, lost: found.lost, filter: "all", picks: {}, sites: {}, meters: {}, values: {} };
-      // Open on what needs a decision, so unchanged settings do not bury it.
-      const evals = protoImportEvalAll(draft);
-      draft.filter = ["needs", "change", "new"].find((id) => evals.some((ev) => ev.status === id)) || "all";
-      setProto({
-        prototypeMeterUpload: null,
-        prototypeSiteImport: draft,
-        prototypeSelectOpen: "",
-      });
-      document.querySelector("#astral-fs .astral-pane-body")?.scrollTo?.(0, 0);
+    .then((rows) => {
+      if (protoSiteAdd()?.step !== "upload") return;
+      if (!rows) return fail(`${name} could not be read. Save it again as CSV or XLSX, then upload it.`);
+      if (!rows.length) return fail(`${name} is empty. Choose a file with at least one row.`);
+      protoSiteAddData.upload = rows;
+      protoSiteAddPatch({ file: { name, size: Number(blob.size) || 0, kind }, error: "" });
+      protoRestoreFocus("#astral-fs .astral-site-add-file");
     });
 }
 
-function protoMeterUploadNote() {
-  const raw = store.prototypeMeterUpload;
-  if (!raw || typeof raw !== "object") return "";
-  const file = escapeHtml(String(raw.name || "your file"));
-  if (raw.error === "type") return `<p class="astral-banner" role="status">Upload a .csv or .xlsx file.</p>`;
-  if (raw.error === "read") {
-    return `<p class="astral-banner" role="status">${file} could not be read. Save it again as .xlsx or .csv, then upload it.</p>`;
+function protoSiteAddRemove() {
+  protoSiteAddData.upload = null;
+  protoSiteAddPatch({ file: null, error: "" });
+  protoRestoreFocus("#astral-site-add-file");
+}
+
+function protoSiteAddToggleUse(i) {
+  const add = protoSiteAdd();
+  if (!add || !Number.isInteger(i)) return;
+  const use = [...(add.use || [])];
+  use[i] = !use[i];
+  protoSiteAddPatch({ use });
+  protoRestoreFocus(`#astral-site-add-use-${i}`);
+}
+
+function protoSiteAddPickField(id, value) {
+  const add = protoSiteAdd();
+  const i = Number(String(id).split(":")[1]);
+  if (!add || !Number.isInteger(i)) return;
+  const map = [...(add.map || [])];
+  const use = [...(add.use || [])];
+  map[i] = String(value || "");
+  // Choosing a field says the column is wanted.
+  if (map[i]) use[i] = true;
+  protoSiteAddPatch({ map, use });
+  protoRestoreFocus(`#astral-fs [data-proto-select="${CSS.escape(id)}"] .astral-select-btn`);
+}
+
+// Errors on a page are listed first, each one linked to its field.
+function protoErrorSummary(list) {
+  if (!list.length) return "";
+  const n = list.length;
+  return `
+    <div class="astral-error-summary" tabindex="-1" aria-labelledby="astral-error-summary-title">
+      <h4 id="astral-error-summary-title">There ${n === 1 ? "is 1 error" : `are ${n} errors`} on this page</h4>
+      <ul>
+        ${list
+          .map(
+            (item) =>
+              `<li><button type="button" class="astral-error-summary-link" data-proto-error-go="${escapeHtml(item.id)}">${escapeHtml(
+                item.text
+              )}</button></li>`
+          )
+          .join("")}
+      </ul>
+    </div>
+  `;
+}
+
+function protoErrorGo(id) {
+  const host = document.getElementById(id);
+  if (!host) return;
+  const target = host.matches("input, textarea, button, select")
+    ? host
+    : host.querySelector("input, textarea, button, select");
+  target?.focus();
+  target?.scrollIntoView?.({ block: "center" });
+}
+
+function protoSiteAddHead(add, title) {
+  const site = add.meter ? protoSiteByMeter(add.meter) : null;
+  const kicker = site?.name || protoGroup(add.group)?.name || "Site profile";
+  return `
+    <div class="astral-detail-head">
+      <div class="astral-detail-lead">
+        ${protoIconBtn("prev", "Back", "data-proto-site-add-back")}
+        <div>
+          ${protoPaneKicker(kicker)}
+          <h3 class="astral-site-add-title" tabindex="-1">${escapeHtml(title)}</h3>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+const PROTO_SITE_ADD_LEAD = "Check for missing characters, extra spaces and other common mistakes.";
+
+function protoSiteAddHelp(add) {
+  return `
+    <div class="astral-site-add-help">
+      <p>Need help with the layout? The template has the right columns and your current settings.</p>
+      ${protoGhost(`${protoIconMark("export")}<span>Download template</span>`, `data-proto-meter-template="${escapeHtml(add.meter || "")}"`, {
+        html: true,
+        className: "astral-meter-upload",
+      })}
+    </div>
+  `;
+}
+
+function protoSiteAddActions(label) {
+  return `
+    <div class="astral-card astral-report-page-foot astral-import-foot">
+      <div class="astral-actions">
+        ${protoBtn(label, "data-proto-site-add-continue")}
+        ${protoGhost("Cancel", "data-proto-site-add-exit")}
+      </div>
+    </div>
+  `;
+}
+
+function protoSiteAddChoose() {
+  const way = (id, mark, name, hint) => `
+    <button
+      type="button"
+      class="astral-site-add-way"
+      aria-labelledby="astral-site-add-way-${id}"
+      aria-describedby="astral-site-add-way-${id}-hint"
+      data-proto-site-add-way="${id}"
+    >
+      <span class="astral-site-add-way-mark">${mark}</span>
+      <span class="astral-site-add-way-name" id="astral-site-add-way-${id}">${name}</span>
+      <span class="astral-muted" id="astral-site-add-way-${id}-hint">${hint}</span>
+    </button>
+  `;
+  return `
+    <div class="astral-site-add">
+      <p class="astral-muted">Paste rows from a spreadsheet or upload a file. Nothing is saved until you select Save settings.</p>
+      <div class="astral-site-add-ways">
+        ${way("paste", protoIconMark("paste"), "Paste your settings", "Separate values with commas. One row per line.")}
+        ${way("upload", protoIconMark("upload"), "Upload a file", PROTO_SITE_ADD_SIZES)}
+      </div>
+    </div>
+  `;
+}
+
+function protoSiteAddPaste(add) {
+  const err = add.error || "";
+  const describe = `astral-site-add-text-hint${err ? " astral-site-add-text-error" : ""}`;
+  return `
+    <div class="astral-site-add">
+      ${protoErrorSummary(err ? [{ id: "astral-site-add-text", text: err }] : [])}
+      <p class="astral-muted">${PROTO_SITE_ADD_LEAD}</p>
+      <div class="astral-field astral-site-add-field${err ? " is-error" : ""}">
+        <label class="astral-site-add-label" for="astral-site-add-text">Your settings</label>
+        <p class="astral-muted" id="astral-site-add-text-hint">Separate values with commas. One row per line. Rows copied from a spreadsheet work too.</p>
+        ${err ? `<p class="astral-export-error" id="astral-site-add-text-error">${escapeHtml(err)}</p>` : ""}
+        <textarea
+          id="astral-site-add-text"
+          class="astral-site-add-text"
+          rows="10"
+          spellcheck="false"
+          autocomplete="off"
+          aria-describedby="${describe}"
+          ${err ? `aria-invalid="true"` : ""}
+          data-proto-site-add-text
+        >${escapeHtml(protoSiteAddText)}</textarea>
+      </div>
+      ${protoSiteAddHelp(add)}
+      ${protoSiteAddActions("Continue")}
+    </div>
+  `;
+}
+
+function protoSiteAddFileCard(file) {
+  const kind = String(file.kind || "csv").toUpperCase();
+  return `
+    ${file.kind === "xlsx" ? `<p class="astral-banner astral-site-add-note">Only the first sheet of this file is used.</p>` : ""}
+    <div class="astral-site-add-file" tabindex="-1" role="group" aria-label="Selected file">
+      <span class="astral-site-add-file-type is-${escapeHtml(file.kind)}" aria-hidden="true">${protoIconMark("report")}<span>${escapeHtml(kind)}</span></span>
+      <span class="astral-site-add-file-copy">
+        <span class="astral-site-add-file-name">${escapeHtml(file.name)}</span>
+        <span class="astral-muted">${escapeHtml(kind)} file, ${protoSiteAddSize(file.size)}</span>
+      </span>
+      ${protoIconBtn("close", `Remove ${file.name}`, "data-proto-site-add-remove")}
+    </div>
+  `;
+}
+
+function protoSiteAddUpload(add) {
+  const err = add.error || "";
+  const errId = "astral-site-add-file-error";
+  const slot = add.file
+    ? protoSiteAddFileCard(add.file)
+    : `
+      <div class="astral-site-add-drop${err ? " is-error" : ""}" data-proto-site-add-drop>
+        <span class="astral-site-add-drop-mark">${protoIconMark("upload")}</span>
+        <p>Drag and drop a file here or</p>
+        <label class="astral-ghost astral-upload astral-site-add-pick">
+          <span>Select a file</span>
+          <input
+            id="astral-site-add-file"
+            class="sr-only"
+            type="file"
+            accept="${PROTO_SITE_ADD_ACCEPT}"
+            aria-describedby="astral-site-add-size${err ? ` ${errId}` : ""}"
+            ${err ? `aria-invalid="true"` : ""}
+            data-proto-site-add-file
+          />
+        </label>
+        <p class="astral-muted" id="astral-site-add-size">${PROTO_SITE_ADD_SIZES}</p>
+        ${err ? `<p class="astral-export-error" id="${errId}">${escapeHtml(err)}</p>` : ""}
+      </div>
+    `;
+  return `
+    <div class="astral-site-add">
+      ${protoErrorSummary(err ? [{ id: "astral-site-add-file", text: err }] : [])}
+      <p class="astral-muted">${PROTO_SITE_ADD_LEAD}</p>
+      <div class="astral-site-add-slot" aria-live="polite">${slot}</div>
+      ${protoSiteAddHelp(add)}
+      ${protoSiteAddActions("Continue")}
+    </div>
+  `;
+}
+
+function protoSiteAddMatch(add) {
+  const rows = protoSiteAddRowsOf(add);
+  const check = protoSiteAddCheck(add, rows);
+  const shown = add.tried ? check.list : [];
+  const rowErr = add.tried ? check.rowErr : {};
+  const cols = check.cols;
+  const used = cols.filter((col) => add.use?.[col.i]).length;
+  const options = protoSiteAddOptions(protoSiteAddFields());
+  const plan = check.found && !check.list.length ? protoSiteAddDraft(add, check.found) : null;
+  const label = plan && !plan.review && plan.save ? "Save settings" : "Continue";
+  const replace = Boolean(add.replace);
+  const row = (col) => {
+    const id = add.map?.[col.i] || "";
+    const on = Boolean(add.use?.[col.i]);
+    const err = rowErr[col.i] || "";
+    const headId = `astral-site-add-col-${col.i}`;
+    const mark = id
+      ? `<span class="astral-site-add-mark is-matched">${protoIconMark("next")}<span class="sr-only">Matched</span></span>`
+      : `<span class="astral-site-add-mark is-missing">${protoIconMark("warning")}<span class="sr-only">Not matched</span></span>`;
+    return `
+      <tr class="${on ? "is-on" : "is-off"}${err ? " is-error" : ""}">
+        <td>
+          <button
+            type="button"
+            role="checkbox"
+            id="astral-site-add-use-${col.i}"
+            class="astral-import-pick"
+            aria-checked="${on ? "true" : "false"}"
+            aria-label="${escapeHtml(`Use ${col.name}`)}"
+            data-proto-site-add-use="${col.i}"
+          >${protoCheck(on)}</button>
+        </td>
+        <th scope="row" id="${headId}">${escapeHtml(col.name)}</th>
+        <td>${mark}</td>
+        <td>
+          <div class="astral-site-add-pick-field" id="astral-site-add-field-${col.i}">
+            ${protoSelect({
+              id: `site-add-field:${col.i}`,
+              label: `Field for ${col.name}`,
+              labelledby: headId,
+              value: id,
+              placeholder: "Select a field",
+              options,
+              wide: true,
+            })}
+            ${err ? `<p class="astral-export-error">${escapeHtml(err)}</p>` : ""}
+          </div>
+        </td>
+        <td class="astral-site-add-preview">${
+          col.sample ? escapeHtml(col.sample.slice(0, 60)) : `<span class="astral-muted">No data</span>`
+        }</td>
+      </tr>
+    `;
+  };
+  return `
+    <div class="astral-site-add">
+      ${protoErrorSummary(shown)}
+      <p class="astral-muted">Make sure your settings go to the right place. Match each column to a field in Astral, and untick any column you do not want to use.</p>
+      <p class="astral-site-add-count" role="status"><strong>${used} of ${cols.length}</strong> ${
+        cols.length === 1 ? "column" : "columns"
+      } will be used</p>
+      <div class="astral-table-wrap astral-site-add-table">
+        <table class="astral-table astral-site-add-match">
+          <thead>
+            <tr>
+              <th scope="col">Use</th>
+              <th scope="col">${add.from === "upload" ? "Column in your file" : "Your column"}</th>
+              <th scope="col">Match</th>
+              <th scope="col">Field in Astral</th>
+              <th scope="col">Preview</th>
+            </tr>
+          </thead>
+          <tbody>${cols.map(row).join("")}</tbody>
+        </table>
+      </div>
+      <button type="button" role="checkbox" class="astral-report-consent" aria-checked="${replace ? "true" : "false"}" data-proto-site-add-replace>
+        ${protoCheck(replace)}
+        <span class="astral-report-consent-copy">
+          <span>Replace current settings that differ</span>
+          <span class="astral-muted">Leave this unticked to keep what is set now where it differs. Settings that are blank now are always filled in.</span>
+        </span>
+      </button>
+      ${protoSiteAddActions(label)}
+    </div>
+  `;
+}
+
+function protoSiteAddDone(add) {
+  const n = Number(add.saved) || 0;
+  const back = add.meter ? "Back to site settings" : "Back to site profile";
+  const text = n
+    ? `${add.name ? `Settings from ${add.name} are` : "Your settings are"} saved for ${n} ${n === 1 ? "site" : "sites"}.`
+    : "Every setting matches what is set now, so nothing has changed.";
+  return `
+    <div class="astral-site-add">
+      <div class="astral-site-add-done" role="status">
+        <span class="astral-site-add-done-mark${n ? "" : " is-same"}">${protoIconMark(n ? "expected" : "tick")}</span>
+        <p>${escapeHtml(text)}</p>
+      </div>
+      <div class="astral-actions">
+        ${protoBtn(back, "data-proto-site-add-exit")}
+        ${protoGhost("Add more settings", "data-proto-site-add-again")}
+      </div>
+    </div>
+  `;
+}
+
+function protoSiteAddPage() {
+  const add = protoSiteAdd();
+  const titles = {
+    choose: "Add site settings",
+    paste: "Paste your settings",
+    upload: "Upload a file",
+    match: "Match your columns",
+    done: Number(add.saved) ? "Settings saved" : "No changes to save",
+  };
+  const body =
+    add.step === "paste"
+      ? protoSiteAddPaste(add)
+      : add.step === "upload"
+        ? protoSiteAddUpload(add)
+        : add.step === "match"
+          ? protoSiteAddMatch(add)
+          : add.step === "done"
+            ? protoSiteAddDone(add)
+            : protoSiteAddChoose();
+  return protoPaneShell(protoSiteAddHead(add, titles[add.step]), body);
+}
+
+function protoSiteAddDrop(event) {
+  const zone = event.target.closest?.("[data-proto-site-add-drop]");
+  if (!zone) return;
+  event.preventDefault();
+  if (event.type === "dragover") {
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+    zone.classList.add("is-over");
+    return;
   }
-  if (raw.error === "empty") {
-    return `<p class="astral-banner" role="status">No settings found in ${file}. Download the template to see the layout.</p>`;
+  if (event.type === "dragleave") {
+    if (!zone.contains(event.relatedTarget)) zone.classList.remove("is-over");
+    return;
   }
-  const n = Number(raw.saved) || 0;
-  if (!n) return "";
-  return `<p class="astral-banner" role="status">Settings from ${file} saved for ${n} ${n === 1 ? "site" : "sites"}.</p>`;
+  zone.classList.remove("is-over");
+  const blob = event.dataTransfer?.files?.[0];
+  if (blob && protoCanAct()) protoSiteAddFile(blob);
 }
 
 // Site settings fills in its own site for lines with no site. The sites table reads every site from the file.
@@ -23492,15 +24329,10 @@ function protoMeterUploadBtn(meter, opts = {}) {
         html: true,
         className: "astral-meter-upload",
       })}
-      <label class="astral-ghost astral-upload astral-meter-upload">
-        ${protoIconMark("upload")}<span>Upload</span>
-        <input
-          class="sr-only"
-          type="file"
-          accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          data-proto-meter-upload="${id}"
-        />
-      </label>
+      ${protoGhost(`${protoIconMark("upload")}<span>Upload</span>`, `data-proto-site-add-open="${id}"`, {
+        html: true,
+        className: "astral-meter-upload",
+      })}
     </div>
   `;
 }
@@ -23533,6 +24365,7 @@ function protoMeterSettingsReset() {
     prototypeSiteOwnPick: null,
     prototypeMeterUpload: null,
     prototypeSiteImport: null,
+    prototypeSiteAdd: null,
   };
 }
 
@@ -23772,7 +24605,7 @@ function protoMeterSettingsPage(meter, site) {
           ${protoMeterUploadBtn(meter)}
         </div>
           `,
-    `${protoMeterUploadNote()}${protoMeterProfileForm(meter)}`
+    `${protoMeterProfileForm(meter)}`
   );
 }
 
@@ -25064,7 +25897,6 @@ function protoProfilePane(sites) {
   const tools = protoMeterUploadBtn(null, { sites: true });
   return `
     ${tools ? `<div class="astral-profile-tools">${tools}</div>` : ""}
-    ${protoMeterUploadNote()}
     <div class="astral-table-wrap">
       <table class="astral-table astral-profile-table">
         <thead>
@@ -27485,6 +28317,7 @@ function protoScrollPaneKey() {
     scope,
     scope === "site" ? store.activePrototypeMeter || "" : store.prototypeGroup || "",
     protoSiteImport() ? "import" : "",
+    protoSiteAdd() ? `add-${protoSiteAdd().step}` : "",
   ].join("|");
 }
 
@@ -27768,7 +28601,9 @@ function protoPortfolio() {
 }
 
 function protoPortfolioDetail() {
-  if (protoSiteImport() && protoPaneId() === "profile") return protoSiteImportPage();
+  const siteAdd = protoSiteAdd();
+  if (siteAdd && protoSiteAddHere(siteAdd)) return protoSiteImport() ? protoSiteImportPage() : protoSiteAddPage();
+  if (protoSiteImport() && protoPaneId() === "profile" && !siteAdd) return protoSiteImportPage();
   const state = protoState();
   const current = protoMeter(state.meter);
   const currentSite = current ? protoSiteByMeter(current.id) : null;
@@ -37723,6 +38558,7 @@ function onPrototype(event) {
         prototypeSiteOwnPick: null,
     prototypeMeterUpload: null,
     prototypeSiteImport: null,
+    prototypeSiteAdd: null,
         prototypePane: "profile",
       },
       { pane: true }
@@ -37824,6 +38660,55 @@ function onPrototype(event) {
   }
   if (event.target.closest("[data-proto-import-close]")) {
     setProto({ prototypeSiteImport: null, prototypeSelectOpen: "" });
+    if (protoSiteAdd()) protoSiteAddFocus();
+    return;
+  }
+  const siteAddOpen = event.target.closest("[data-proto-site-add-open]");
+  if (siteAddOpen) {
+    protoSiteAddOpen(String(siteAddOpen.dataset.protoSiteAddOpen || ""));
+    return;
+  }
+  if (event.target.closest("[data-proto-site-add-exit]")) {
+    protoSiteAddExit();
+    return;
+  }
+  if (event.target.closest("[data-proto-site-add-back]")) {
+    protoSiteAddBack();
+    return;
+  }
+  const siteAddWay = event.target.closest("[data-proto-site-add-way]");
+  if (siteAddWay) {
+    protoSiteAddWay(String(siteAddWay.dataset.protoSiteAddWay || ""));
+    return;
+  }
+  if (event.target.closest("[data-proto-site-add-continue]")) {
+    protoSiteAddContinue();
+    return;
+  }
+  if (event.target.closest("[data-proto-site-add-remove]")) {
+    protoSiteAddRemove();
+    return;
+  }
+  const siteAddUse = event.target.closest("[data-proto-site-add-use]");
+  if (siteAddUse) {
+    protoSiteAddToggleUse(Number(siteAddUse.dataset.protoSiteAddUse));
+    return;
+  }
+  if (event.target.closest("[data-proto-site-add-replace]")) {
+    const add = protoSiteAdd();
+    if (add) {
+      protoSiteAddPatch({ replace: !add.replace });
+      protoRestoreFocus("#astral-fs [data-proto-site-add-replace]");
+    }
+    return;
+  }
+  if (event.target.closest("[data-proto-site-add-again]")) {
+    protoSiteAddAgain();
+    return;
+  }
+  const errorGo = event.target.closest("[data-proto-error-go]");
+  if (errorGo) {
+    protoErrorGo(String(errorGo.dataset.protoErrorGo || ""));
     return;
   }
   const importFilter = event.target.closest("[data-proto-import-filter]");
@@ -39351,19 +40236,16 @@ function onPrototypeInput(event) {
     }
     return;
   }
-  const meterUpload = event.target.closest("[data-proto-meter-upload]");
-  if (meterUpload) {
-    if (event.type !== "change" || !meterUpload.files || !meterUpload.files[0] || !protoCanAct()) return;
-    const meterId = String(meterUpload.dataset.protoMeterUpload || "");
-    const meter = meterId ? protoMeter(meterId) : null;
-    const blob = meterUpload.files[0];
-    meterUpload.value = "";
-    if (meterId && !meter) return;
-    const form = meter && document.querySelector("#astral-fs [data-proto-meter-profile]");
-    if (form) {
-      store.prototypeMeterDrafts = { ...protoMeterDrafts(), [protoProfileKey(meter.id)]: protoReadMeterProfileForm(form, meter) };
-    }
-    protoImportFile(blob, meterId);
+  if (event.target.closest("[data-proto-site-add-text]")) {
+    protoSiteAddText = event.target.value;
+    return;
+  }
+  const siteAddFile = event.target.closest("[data-proto-site-add-file]");
+  if (siteAddFile) {
+    if (event.type !== "change" || !siteAddFile.files || !siteAddFile.files[0] || !protoCanAct()) return;
+    const blob = siteAddFile.files[0];
+    siteAddFile.value = "";
+    protoSiteAddFile(blob);
     return;
   }
   const pictureFile = event.target.closest("[data-proto-picture='file']");
@@ -40147,6 +41029,7 @@ document.addEventListener("pointermove", onPrototypePointerMove);
 document.addEventListener("pointerup", onPrototypePointerUp);
 document.addEventListener("pointercancel", onPrototypePointerUp);
 document.addEventListener("keydown", onPrototypeKey);
+["dragover", "dragleave", "drop"].forEach((type) => document.addEventListener(type, protoSiteAddDrop));
 document.addEventListener("paste", onPrototypePaste);
 
 const PROTO_SCROLL_SHOW_MS = 1000;
