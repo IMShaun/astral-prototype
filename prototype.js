@@ -2614,7 +2614,10 @@ function protoPresetPeriods(part, preset) {
 function protoPresetOptions(standard, own) {
   const pick = (item) => ({ value: item.id, label: item.name });
   if (!own.length) return standard.map(pick);
-  return [{ heading: "Standard presets" }, ...standard.map(pick), { heading: "Your presets" }, ...own.map(pick)];
+  return [
+    { group: "Standard presets", options: standard.map(pick) },
+    { group: "Your presets", options: own.map(pick) },
+  ];
 }
 
 function protoDayPresetOptions(part) {
@@ -9742,7 +9745,10 @@ function protoSelect(config) {
     : [];
   const value = config.value ?? "";
   const query = String(config.search?.value || "").trim().toLowerCase();
-  const allOptions = config.options || [];
+  // A group is a row that opens its own options beside the menu. A search lists them flat under headings.
+  const rawOptions = config.options || [];
+  const grouped = rawOptions.some((item) => item.group);
+  const allOptions = rawOptions.flatMap((item) => (item.group ? [{ heading: item.group }, ...(item.options || [])] : [item]));
   // A heading shows only when an option under it does. A search-only option waits for a query.
   const visible = allOptions
     .filter((item) => {
@@ -9787,8 +9793,7 @@ function protoSelect(config) {
   ]
     .filter(Boolean)
     .join(" ");
-  const options = visible
-    .map((item) => {
+  const optionHtml = (item) => {
       if (item.heading) {
         return `<p class="astral-select-heading" role="presentation">${escapeHtml(item.heading)}</p>`;
       }
@@ -9828,8 +9833,26 @@ function protoSelect(config) {
           data-proto-select-value="${escapeHtml(item.value)}"
         >${box}${inner}${count}${tip}</button>
       `;
-    })
-    .join("");
+  };
+  let subs = "";
+  const options =
+    grouped && !query
+      ? rawOptions
+          .map((item, g) => {
+            if (!item.group) return optionHtml(item);
+            const list = item.options || [];
+            if (!list.length) return "";
+            const subId = `${menuId}-sub-${g}`;
+            const has = list.some((opt) => (multi ? values.includes(String(opt.value)) : opt.value === value));
+            subs += `<div id="${escapeHtml(subId)}" class="astral-select-options astral-select-sub" role="listbox" aria-label="${escapeHtml(
+              item.group
+            )}" hidden>${list.map(optionHtml).join("")}</div>`;
+            return `<button type="button" class="astral-select-group${has ? " is-on" : ""}" aria-haspopup="listbox" aria-expanded="false" aria-controls="${escapeHtml(
+              subId
+            )}" data-proto-select-group><span>${escapeHtml(item.group)}</span>${protoIconMark("next", "astral-select-group-mark")}</button>`;
+          })
+          .join("")
+      : visible.map(optionHtml).join("");
   const allOn = choices.length > 0 && choices.every((item) => values.includes(String(item.value)));
   const allMix = !allOn && choices.some((item) => values.includes(String(item.value)));
   const allHtml =
@@ -9894,7 +9917,7 @@ function protoSelect(config) {
       <div
         class="astral-select-menu${open && !disabled ? protoMenuEnterClass(`select:${id}`) : ""}"
         ${open && !disabled ? "" : "hidden"}
-      >${searchHtml}${list}</div>
+      >${searchHtml}${list}${subs}</div>
     </div>
   `;
   if (config.tip) return protoIconTip(select, config.tip);
@@ -33846,6 +33869,141 @@ function protoPlaceFloatMenusSoon() {
     requestAnimationFrame(protoPlaceFloatMenus);
   });
 }
+
+// A group row in a select opens its options in a flyout beside the menu. Hover, focus, click, Right and Enter open it.
+// Left and Escape close it and go back to the row. It works on the page, so the select does not redraw.
+let protoSubTimer = 0;
+
+function protoSubOf(row) {
+  const id = row?.getAttribute("aria-controls");
+  return id ? document.getElementById(id) : null;
+}
+
+function protoSubClose(menu, except) {
+  window.clearTimeout(protoSubTimer);
+  menu?.querySelectorAll('[data-proto-select-group][aria-expanded="true"]').forEach((row) => {
+    if (row === except) return;
+    row.setAttribute("aria-expanded", "false");
+    const sub = protoSubOf(row);
+    if (sub) sub.hidden = true;
+  });
+}
+
+function protoSubPlace(row, sub, menu) {
+  const gap = 4;
+  const margin = 8;
+  const box = (document.getElementById("astral-fs") || document.documentElement).getBoundingClientRect();
+  const m = menu.getBoundingClientRect();
+  const r = row.getBoundingClientRect();
+  const w = sub.offsetWidth;
+  const h = sub.offsetHeight;
+  const left = m.right + gap + w > box.right - margin ? -(w + gap + menu.clientLeft) : menu.offsetWidth - menu.clientLeft + gap;
+  sub.classList.toggle("is-left", left < 0);
+  let top = r.top - sub.clientTop - parseFloat(getComputedStyle(sub).paddingTop);
+  if (top + h > box.bottom - margin) top = box.bottom - margin - h;
+  if (top < box.top + margin) top = box.top + margin;
+  sub.style.left = `${Math.round(left)}px`;
+  sub.style.top = `${Math.round(top - m.top - menu.clientTop)}px`;
+}
+
+function protoSubOpen(row) {
+  window.clearTimeout(protoSubTimer);
+  const menu = row.closest(".astral-select-menu");
+  const sub = protoSubOf(row);
+  if (!menu || !sub) return null;
+  protoSubClose(menu, row);
+  if (row.getAttribute("aria-expanded") !== "true" || sub.hidden) {
+    row.setAttribute("aria-expanded", "true");
+    sub.hidden = false;
+    protoSubPlace(row, sub, menu);
+  }
+  return sub;
+}
+
+function protoSubEnter(row) {
+  const sub = protoSubOpen(row);
+  const first = sub && (sub.querySelector('[role="option"].is-on') || sub.querySelector('[role="option"]'));
+  if (first) first.focus({ preventScroll: true });
+}
+
+function protoSubStep(event, list, items) {
+  const all = [...list.querySelectorAll(items)].filter(protoKeyShown);
+  const at = all.indexOf(event.target.closest(items));
+  if (!all.length) return;
+  event.preventDefault();
+  const next = event.key === "ArrowDown" ? (at + 1) % all.length : (at - 1 + all.length) % all.length;
+  all[next].focus({ preventScroll: false });
+}
+
+document.addEventListener("pointerover", (event) => {
+  const el = event.target;
+  if (!(el instanceof Element)) return;
+  const row = el.closest("[data-proto-select-group]");
+  if (row) {
+    protoSubOpen(row);
+    return;
+  }
+  if (el.closest(".astral-select-sub")) {
+    window.clearTimeout(protoSubTimer);
+    return;
+  }
+  const open = document.querySelector('[data-proto-select-group][aria-expanded="true"]');
+  if (!open || protoSubOf(open)?.contains(document.activeElement)) return;
+  window.clearTimeout(protoSubTimer);
+  protoSubTimer = window.setTimeout(() => protoSubClose(open.closest(".astral-select-menu")), 250);
+});
+
+document.addEventListener("focusin", (event) => {
+  const el = event.target;
+  if (!(el instanceof Element)) return;
+  const row = el.closest("[data-proto-select-group]");
+  if (row) {
+    protoSubOpen(row);
+    return;
+  }
+  const menu = el.closest(".astral-select-menu");
+  if (menu && !el.closest(".astral-select-sub")) protoSubClose(menu);
+});
+
+document.addEventListener("click", (event) => {
+  const row = event.target instanceof Element && event.target.closest("[data-proto-select-group]");
+  if (!row) return;
+  if (event.detail === 0) protoSubEnter(row);
+  else protoSubOpen(row);
+});
+
+window.addEventListener(
+  "keydown",
+  (event) => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const el = event.target;
+    if (!(el instanceof Element)) return;
+    const row = el.closest("[data-proto-select-group]");
+    if (row) {
+      const out = protoSubOf(row)?.classList.contains("is-left") ? "ArrowLeft" : "ArrowRight";
+      if (event.key === out || event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        protoSubEnter(row);
+      } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        protoSubStep(event, row.closest('[role="listbox"]'), '[data-proto-select-group], [role="option"]');
+      }
+      return;
+    }
+    const sub = el.closest(".astral-select-sub");
+    if (!sub) return;
+    const back = document.querySelector(`[aria-controls="${CSS.escape(sub.id)}"]`);
+    const home = sub.classList.contains("is-left") ? "ArrowRight" : "ArrowLeft";
+    if (event.key === home || event.key === "Escape") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (back) back.focus({ preventScroll: true });
+      protoSubClose(sub.closest(".astral-select-menu"));
+    } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      protoSubStep(event, sub, '[role="option"]');
+    }
+  },
+  true
+);
 
 function protoBindFloatMenus() {
   const layer = document.getElementById("astral-fs");

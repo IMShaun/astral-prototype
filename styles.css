@@ -7708,6 +7708,70 @@ button.astral-state {
   border-top: 1px solid var(--color-border-subtle);
 }
 
+/* A group row opens its options in a flyout beside the menu. */
+.astral-select-options .astral-select-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.astral-select-options .astral-select-group[aria-expanded="true"] {
+  background: var(--color-background-hover);
+}
+
+.astral-select-group-mark {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--color-text-muted);
+}
+
+.astral-select-menu > .astral-select-sub {
+  position: absolute;
+  z-index: 1;
+  width: max-content;
+  min-width: 200px;
+  padding: 8px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-sizing: border-box;
+}
+
+.astral-select-menu > .astral-select-sub[hidden] {
+  display: none;
+}
+
+.astral-select-menu > .astral-select-sub:not([hidden]) {
+  animation: astral-select-sub-in 120ms ease-out;
+}
+
+@keyframes astral-select-sub-in {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+}
+
+.astral-select-menu > .astral-select-sub.is-left:not([hidden]) {
+  animation-name: astral-select-sub-in-left;
+}
+
+@keyframes astral-select-sub-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .astral-select-menu > .astral-select-sub:not([hidden]) {
+    animation: none;
+  }
+}
+
 .astral-report-scope {
   display: flex;
   flex-wrap: wrap;
