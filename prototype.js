@@ -2879,8 +2879,28 @@ function protoSiteProfile(id) {
   const saved = protoMeterProfiles();
   const found = saved[protoProfileKey(id)] || meters.map((meter) => saved[meter.id]).find(Boolean);
   const profile = protoNormalProfile(protoCloneProfile(found || protoMeterProfileDefault(meters[0] || protoMeter(id))));
+  if (!found) protoDemoProfileGaps(id, profile);
   profile.attrs = { ...protoProfileAttrDefaults(id), ...(profile.attrs || {}) };
   return profile;
+}
+
+// Demo gaps, so the Incomplete and Missing tags show before anyone clears a setting.
+// Each number is how many days, counted back from Sunday, have no periods. All seven reads as Missing.
+const PROTO_DEMO_PROFILE_GAPS = { Stafford: { hours: 7 }, Preston: { hours: 2 }, Birmingham: { tou: 7 }, Chester: { tou: 3 } };
+
+function protoDemoProfileGaps(id, profile) {
+  const site = protoProfileSiteMap().get(id)?.site;
+  const gaps = PROTO_DEMO_PROFILE_GAPS[String(site?.baseName || site?.name || "")];
+  if (!gaps) return;
+  Object.entries(gaps).forEach(([part, count]) => {
+    if (!Array.isArray(profile[part])) return;
+    profile[part].forEach((row, d) => {
+      if (d < 7 - count) return;
+      row.periods = [];
+      row.profile = "";
+    });
+    if (profile.weeks) delete profile.weeks[part];
+  });
 }
 
 // Operational hours are the site's business hours, so every meter on a site shares them.
@@ -3204,6 +3224,24 @@ function protoPresetSummary(part, profile) {
   const days = protoDayPresets(part);
   const names = rows.map((row) => days.find((item) => item.id === row.profile)?.name || "");
   return names[0] && names.every((name) => name === names[0]) ? names[0] : "";
+}
+
+// Missing when no day has a period. Incomplete when a day has none, or a period has no start or end.
+function protoProfileFill(part, profile) {
+  const rows = Array.isArray(profile?.[part]) ? profile[part] : [];
+  const days = rows.map((row) => protoDayPeriods(row, part));
+  if (!days.some((list) => list.length)) return "missing";
+  const whole = (list) => list.length > 0 && list.every((p) => protoParseClock(p.from) != null && protoParseClock(p.to) != null);
+  return days.length === 7 && days.every(whole) ? "" : "incomplete";
+}
+
+const PROTO_PROFILE_FILL = { missing: "Missing", incomplete: "Incomplete" };
+
+// What a week reads as. The preset it follows, Custom when it follows none, or Incomplete or Missing when details are not set.
+function protoPresetLabel(part, profile) {
+  const fill = protoProfileFill(part, profile);
+  if (fill) return PROTO_PROFILE_FILL[fill];
+  return protoPresetSummary(part, profile) || "Custom";
 }
 
 // Hours read as the preset they follow. Otherwise as runs of days, such as Monday to Saturday, Weekday depot · Sunday, Closed.
@@ -22755,7 +22793,7 @@ function protoImportWeek(part, rows, when, name) {
 }
 
 function protoImportWeekName(part, rows) {
-  return protoPresetSummary(part, { [part]: rows }) || "Custom week";
+  return protoPresetLabel(part, { [part]: rows });
 }
 
 function protoImportDetail(ev) {
@@ -23435,17 +23473,19 @@ function protoMeterInheritOverview(meter, site) {
 }
 
 // Each preset is a pill led by the icons of the utilities that use it, so meters that differ from the site stand out.
-// When every meter shares one preset, the pill is just its name. Hovering a pill shows its week as day squares.
-// In a table, meters on different presets fold into one Mixed pill. Its tooltip lists each utility with its week.
+// When every meter shares one preset, the pill is just its name. Custom means no preset. Hovering a pill shows its week as day squares.
+// Incomplete (yellow) means some days or times are not set. Missing (red) means nothing is set.
+// In a table, one pill sums up the site. Any gap shows first, then Mixed when meters differ. Its tooltip lists each utility with its week.
 function protoMeterValuePills(site, key, siteProfile, { fold = false } = {}) {
   const meters = site?.meters || [];
   const groups = [];
   const groupFor = (profile) => {
-    const label = protoPresetSummary(key, profile) || "Custom week";
+    const fill = protoProfileFill(key, profile);
+    const label = protoPresetLabel(key, profile);
     const rows = profile?.[key] || [];
-    const id = `${label}|${protoDayRuns(key, profile).join("|")}`;
+    const id = `${fill}|${label}|${protoDayRuns(key, profile).join("|")}`;
     let group = groups.find((g) => g.id === id);
-    if (!group) groups.push((group = { id, label, rows, kinds: [] }));
+    if (!group) groups.push((group = { id, fill, label, rows, kinds: [] }));
     return group;
   };
   groupFor(siteProfile);
@@ -23475,14 +23515,21 @@ function protoMeterValuePills(site, key, siteProfile, { fold = false } = {}) {
       ${list.map((group) => tipRow(group)).join("")}
       ${protoBreakdownKey(Object.values(PROTO_PRESET_LINE[key] || {}))}
     </span>`;
-  if (fold && icons) {
-    return `<span class="astral-value-pills"><span class="astral-value-pill astral-tip-host" tabindex="0">Mixed${tip(
-      shown
-    )}</span></span>`;
+  const pill = (fill, body, tipList) => {
+    const cls = fill ? ` is-${fill}` : "";
+    // A missing week has nothing to show on hover.
+    if (!tipList) return `<span class="astral-value-pill${cls}">${body}</span>`;
+    return `<span class="astral-value-pill${cls} astral-tip-host" tabindex="0">${body}${tip(tipList)}</span>`;
+  };
+  if (fold) {
+    const fills = shown.map((group) => group.fill);
+    if (fills.every((fill) => fill === "missing")) return `<span class="astral-value-pills">${pill("missing", "Missing")}</span>`;
+    if (fills.some(Boolean)) return `<span class="astral-value-pills">${pill("incomplete", "Incomplete", shown)}</span>`;
+    if (icons) return `<span class="astral-value-pills">${pill("", "Mixed", shown)}</span>`;
   }
   const pills = shown.map((group) => {
     const lead = icons ? `${marksFor(group.kinds)}<span class="sr-only">${escapeHtml(wordsFor(group.kinds))}. </span>` : "";
-    return `<span class="astral-value-pill astral-tip-host" tabindex="0">${lead}${escapeHtml(group.label)}${tip([group])}</span>`;
+    return pill(group.fill, `${lead}${escapeHtml(group.label)}`, group.fill === "missing" ? null : [group]);
   });
   return `<span class="astral-value-pills">${pills.join("")}</span>`;
 }
@@ -24508,8 +24555,8 @@ function protoProfilePane(sites) {
   const rows = protoSortedRows("site-profile", (sites || []).filter(Boolean), (site, key) => {
     const profile = protoSiteProfile(site.meters?.[0]?.id);
     if (key === "site") return site.name;
-    if (key === "hours") return protoPresetSummary("hours", profile) || "Custom week";
-    if (key === "time-of-use") return protoPresetSummary("tou", profile) || "Custom week";
+    if (key === "hours") return protoPresetLabel("hours", profile);
+    if (key === "time-of-use") return protoPresetLabel("tou", profile);
     if (key === "rates") return Number(profile?.attrs?.area) || 0;
     return "";
   });
