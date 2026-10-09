@@ -10757,7 +10757,7 @@ button.astral-state {
 .astral-period-tab-flag {
   width: 8px;
   height: 8px;
-  margin-left: var(--space-4);
+  margin-left: var(--space-8);
   border-radius: 50%;
   background: var(--color-text-danger);
   flex: none;
@@ -10768,7 +10768,7 @@ button.astral-state {
 }
 
 .is-empty > .astral-period-tab-flag {
-  background: var(--color-status-warning);
+  background: var(--color-yellow-500);
 }
 
 /* Column headers: Body S in Infra Grey C on white, sentence case, over an Infra Grey B rule. */
