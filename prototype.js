@@ -23366,11 +23366,9 @@ function protoSiteAttrParts(meter) {
   const attrs = protoMeterProfile(meter?.id)?.attrs || {};
   const area = Number(attrs.area);
   const people = Number(attrs.employees);
-  const kva = Number(attrs.capacity);
   return [
     attrs.area && Number.isFinite(area) ? `${area.toLocaleString("en-GB")} m²` : "",
     attrs.employees && Number.isFinite(people) ? `${people.toLocaleString("en-GB")} ${people === 1 ? "person" : "people"}` : "",
-    attrs.capacity && Number.isFinite(kva) ? `${kva.toLocaleString("en-GB")} kVA` : "",
   ].filter(Boolean);
 }
 
