@@ -10362,7 +10362,7 @@ function protoPickSelect(id, value) {
     const name = document.querySelector("#astral-preset-name")?.value ?? save.name;
     const day = Number(value) || 0;
     setProto({
-      prototypePresetSave: { ...save, day, name, error: "", skipMatch: false },
+      prototypePresetSave: { ...save, day, name, error: "" },
       prototypeSelectOpen: "",
     });
     protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
@@ -24584,20 +24584,44 @@ function protoPresetSaveModal() {
   if (save.step === "update") {
     const base = protoDayPreset(save.part, save.target);
     const name = base?.name || "this preset";
-    const n = protoPresetUseCount(save.part, "day", save.target) || 0;
-    const uses = n ? `${n} ${n === 1 ? "site uses" : "sites use"} ${name}. Their times change too.` : "";
+    const users = protoPresetUsers(save.part, save.target, save.owner, save.day);
+    const where = [
+      users.days.length ? `${protoPresetUserList(users.days)} on this site` : "",
+      users.sites.length ? `the times at ${protoPresetUserList(users.sites)}` : "",
+    ].filter(Boolean);
+    const uses = where.length ? `Updating ${name} also changes ${where.join(", and ")}.` : "";
     return frame(
       `Update ${name}?`,
       `You changed ${dayName} after picking ${name}. Update the preset with the new times, or save them as a new preset.`,
-      uses ? `<p class="astral-muted">${escapeHtml(uses)}</p>` : "",
+      uses ? `<p class="astral-banner" role="status">${escapeHtml(uses)}</p>` : "",
       `${protoBtn("Update preset", 'data-proto-preset-save-go="1"')}${saveNew}${cancel}`
     );
   }
   if (save.step === "match") {
     const week = save.kind === "week";
-    const preset = week ? protoWeekPreset(save.part, save.match) : protoDayPreset(save.part, save.match);
-    const name = preset?.name || "a preset";
-    if (!week && rows[save.day]?.profile === save.match) {
+    const find = (id) => (week ? protoWeekPreset(save.part, id) : protoDayPreset(save.part, id));
+    const ids = (save.matches || [save.match]).filter((id) => find(id));
+    const current = week ? "" : rows[save.day]?.profile;
+    if (ids.length > 1) {
+      const cards = ids
+        .map((id) => {
+          const note = protoPresetStandard(save.part, save.kind, id) ? "Standard preset" : "Your preset";
+          return protoPresetPickCard("data-proto-preset-save-match", id, save.match === id, find(id).name, [
+            id === current ? `${note}. ${dayName} uses it now.` : `${note}.`,
+          ]);
+        })
+        .join("");
+      return frame(
+        "Use a preset you already have?",
+        week
+          ? `${ids.length} week presets match every day. Choose one to use instead of saving a copy.`
+          : `${ids.length} presets have the same times as ${dayName}. Choose one to use instead of saving a copy, so ${dayName} changes when the preset does.`,
+        `<div class="astral-report-types is-list" role="radiogroup" aria-label="Presets with the same times">${cards}</div>`,
+        `${protoBtn("Use preset", 'data-proto-preset-save-use="1"')}${saveNew}${cancel}`
+      );
+    }
+    const name = find(save.match)?.name || "a preset";
+    if (!week && current === save.match) {
       return frame(
         `${dayName} already uses ${name}`,
         `There is nothing new to save. To keep a copy under another name, save it as a new preset.`,
@@ -24655,18 +24679,31 @@ function protoPresetSaveModal() {
   );
 }
 
-// How many sites have a day that follows a day preset. Weeks are copied in, so nothing follows them.
-function protoPresetUseCount(part, kind, id) {
-  if (kind !== "day") return null;
-  const sites = new Set();
+// Where a day preset is in use: the other days on this site and every other site that follows it.
+function protoPresetUsers(part, id, owner, skipDay) {
+  const here = protoProfileKey(String(owner || "").replace(/^own~/, ""));
+  const names = new Map();
+  protoSites().forEach((site) => names.set(`site:${protoSiteId(site)}`, site.name));
   const follows = (rows) => Array.isArray(rows) && rows.some((row) => row?.profile === id);
+  const sites = new Set();
   Object.entries(protoMeterProfiles()).forEach(([key, profile]) => {
-    if (follows(profile?.[part])) sites.add(key);
+    if (key !== here && follows(profile?.[part])) sites.add(key);
   });
   Object.entries(protoMeterOverridesAll()).forEach(([meterId, own]) => {
-    if (follows(own?.[part])) sites.add(protoProfileKey(meterId));
+    const key = protoProfileKey(meterId);
+    if (key !== here && follows(own?.[part])) sites.add(key);
   });
-  return sites.size;
+  const days = protoSrcRows(owner, part)
+    .filter((row, d) => d !== skipDay && row?.profile === id)
+    .map((row) => row.day);
+  return { days, sites: [...sites].map((key) => names.get(key)).filter(Boolean).sort() };
+}
+
+// Crewe depot, Euston and Stafford, or Crewe depot, Euston, Stafford and 4 more sites.
+function protoPresetUserList(names) {
+  if (names.length <= 3) return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0] || "";
+  const more = names.length - 3;
+  return `${names.slice(0, 3).join(", ")} and ${more} more ${more === 1 ? "site" : "sites"}`;
 }
 
 // One of your own day presets that this day was edited from. Standard presets cannot change, so they never count.
@@ -24675,21 +24712,19 @@ function protoPresetSaveEdited(owner, part, day) {
   return base && protoSavedPresets(part, "day").some((item) => item.id === base) ? base : "";
 }
 
-// A preset with exactly these times, so the same times are not saved twice.
+// Every preset with exactly these times, so the same times are not saved twice.
 function protoPresetSaveMatch(part, kind, rows, day) {
   const key = (list) =>
     JSON.stringify((list || []).map((p) => [p.status, protoClockShow(p.from), protoClockShow(p.to)]));
   if (kind === "day") {
     const want = key(protoDayPeriods(rows[day], part));
-    if (want === "[]") return null;
-    return protoDayPresets(part).find((preset) => key(protoPresetPeriods(part, preset)) === want) || null;
+    if (want === "[]") return [];
+    return protoDayPresets(part).filter((preset) => key(protoPresetPeriods(part, preset)) === want);
   }
-  if (rows.length !== 7) return null;
+  if (rows.length !== 7) return [];
   const want = rows.map((row) => key(protoDayPeriods(row, part)));
-  if (want.includes("[]")) return null;
-  return (
-    protoWeekPresets(part).find((week) => protoWeekRows(part, week).every((row, d) => key(row.periods) === want[d])) || null
-  );
+  if (want.includes("[]")) return [];
+  return protoWeekPresets(part).filter((week) => protoWeekRows(part, week).every((row, d) => key(row.periods) === want[d]));
 }
 
 function protoPresetSaveOpen(owner, part) {
@@ -24708,12 +24743,54 @@ function protoPresetSaveOpen(owner, part) {
   );
 }
 
-// Save as new leaves the question behind and asks for a name. A match it came from is not offered again.
+// A name no other preset of this kind has, such as Early shift 2.
+function protoPresetFreeName(part, kind, name) {
+  const list = kind === "day" ? protoDayPresets(part) : protoWeekPresets(part);
+  const taken = (text) => list.some((item) => item.name.toLowerCase() === text.toLowerCase());
+  if (name && !taken(name)) return name;
+  const stem = String(name || "My preset").replace(/\s+\d+$/, "");
+  let n = 2;
+  while (taken(`${stem} ${n}`)) n += 1;
+  return `${stem} ${n}`;
+}
+
+// Save as new saves straight away and closes. The times are already set, so it does not ask again.
+// It keeps a name the user typed, or numbers the preset it came from, such as Early shift 2.
 function protoPresetSaveNew() {
   const save = store.prototypePresetSave;
   if (!save) return;
-  setProto({ prototypePresetSave: { ...save, step: "", error: "", skipMatch: save.step === "match" } });
-  protoRestoreFocus("#astral-fs #astral-preset-name");
+  const from = save.step === "update" ? save.target : save.match;
+  const source = save.kind === "week" ? protoWeekPreset(save.part, from) : protoDayPreset(save.part, from);
+  const name = protoPresetFreeName(save.part, save.kind, String(save.name || "").trim() || source?.name || "");
+  protoPresetSaveAdd(save, name);
+}
+
+// Adds the times as a new preset, closes the dialog and sets the saved day to follow it.
+function protoPresetSaveAdd(save, name) {
+  const rows = protoSrcRows(save.owner, save.part);
+  const periods = (row) => protoPresetPeriods(save.part, { periods: protoDayPeriods(row, save.part) });
+  const mine = protoCustomPresets(save.part);
+  const id = `own-${save.kind}-${Date.now().toString(36)}`;
+  if (save.kind === "day") mine.days = [...mine.days, { id, name, periods: periods(rows[save.day]) }];
+  else {
+    const next = rows.map((row) => ({ profile: row.profile || "", periods: periods(row) }));
+    mine.weeks = [...mine.weeks, { id, name, days: next.map((row) => row.profile), rows: next }];
+  }
+  store.prototypeCustomPresets = { ...(store.prototypeCustomPresets || {}), [save.part]: mine };
+  protoPresetSaveDone(save, id);
+}
+
+function protoPresetSaveDone(save, id) {
+  store.prototypePresetSave = null;
+  // The saved day now follows the preset, so the table shows its name instead of Custom.
+  protoPatchMeterDraft(save.owner, (draft) => {
+    if (save.kind !== "day" || !draft[save.part]) return;
+    const row = draft[save.part][save.day];
+    if (!row) return;
+    row.profile = id;
+    delete row.base;
+  });
+  protoRestoreFocus(`#astral-fs [data-proto-preset-save-open="${save.part}"]`);
 }
 
 // Use preset puts the matching preset on the day or week, as if it had been picked.
@@ -24743,54 +24820,39 @@ function protoPresetSaveGo() {
   const save = store.prototypePresetSave;
   if (!save) return;
   const rows = protoSrcRows(save.owner, save.part);
-  const periods = (row) => protoPresetPeriods(save.part, { periods: protoDayPeriods(row, save.part) });
-  const weekRows = () => rows.map((row) => ({ profile: row.profile || "", periods: periods(row) }));
-  let id = "";
   if (save.step === "update") {
     const listed = protoEditablePresets(save.part);
     const item = listed.days.find((entry) => entry.id === save.target);
     if (!item) return;
-    item.periods = periods(rows[save.day]);
+    item.periods = protoPresetPeriods(save.part, { periods: protoDayPeriods(rows[save.day], save.part) });
     protoStorePresets(save.part, listed);
-    id = item.id;
-  } else {
-    const name = String(document.querySelector("#astral-preset-name")?.value ?? save.name ?? "").trim();
-    const match = save.skipMatch ? null : protoPresetSaveMatch(save.part, save.kind, rows, save.day);
-    if (match) {
-      setProto({ prototypePresetSave: { ...save, name, error: "", step: "match", match: match.id } });
-      protoRestoreFocus("#astral-fs #astral-preset-save .astral-modal-foot .astral-btn");
-      return;
-    }
-    const list = save.kind === "day" ? protoDayPresets(save.part) : protoWeekPresets(save.part);
-    const error = !name
-      ? "Enter a name for the preset."
-      : list.some((item) => item.name.toLowerCase() === name.toLowerCase())
-        ? "A preset with this name already exists. Enter a different name."
-        : "";
-    if (error) {
-      setProto({ prototypePresetSave: { ...save, name, error } });
-      protoRestoreFocus("#astral-fs #astral-preset-name");
-      return;
-    }
-    const mine = protoCustomPresets(save.part);
-    id = `own-${save.kind}-${Date.now().toString(36)}`;
-    if (save.kind === "day") mine.days = [...mine.days, { id, name, periods: periods(rows[save.day]) }];
-    else {
-      const next = weekRows();
-      mine.weeks = [...mine.weeks, { id, name, days: next.map((row) => row.profile), rows: next }];
-    }
-    store.prototypeCustomPresets = { ...(store.prototypeCustomPresets || {}), [save.part]: mine };
+    protoPresetSaveDone(save, item.id);
+    return;
   }
-  store.prototypePresetSave = null;
-  // The saved day now follows the preset, so the table shows its name instead of Custom.
-  protoPatchMeterDraft(save.owner, (draft) => {
-    if (save.kind !== "day" || !draft[save.part]) return;
-    const row = draft[save.part][save.day];
-    if (!row) return;
-    row.profile = id;
-    delete row.base;
-  });
-  protoRestoreFocus(`#astral-fs [data-proto-preset-save-open="${save.part}"]`);
+  const name = String(document.querySelector("#astral-preset-name")?.value ?? save.name ?? "").trim();
+  const matches = protoPresetSaveMatch(save.part, save.kind, rows, save.day);
+  if (matches.length) {
+    // The day's own preset comes first, so it is the one already chosen.
+    const own = save.kind === "day" ? rows[save.day]?.profile : "";
+    const ids = matches.map((item) => item.id).sort((a, b) => (b === own) - (a === own));
+    setProto({ prototypePresetSave: { ...save, name, error: "", step: "match", matches: ids, match: ids[0] } });
+    protoRestoreFocus(
+      ids.length > 1 ? "#astral-fs [data-proto-preset-save-match].is-on" : "#astral-fs #astral-preset-save .astral-modal-foot .astral-btn"
+    );
+    return;
+  }
+  const list = save.kind === "day" ? protoDayPresets(save.part) : protoWeekPresets(save.part);
+  const error = !name
+    ? "Enter a name for the preset."
+    : list.some((item) => item.name.toLowerCase() === name.toLowerCase())
+      ? "A preset with this name already exists. Enter a different name."
+      : "";
+  if (error) {
+    setProto({ prototypePresetSave: { ...save, name, error } });
+    protoRestoreFocus("#astral-fs #astral-preset-name");
+    return;
+  }
+  protoPresetSaveAdd(save, name);
 }
 
 function protoMeterSrcGroup(meter, part, mode, siteName) {
@@ -37716,9 +37778,16 @@ function onPrototype(event) {
     const kind = String(presetSaveKind.dataset.protoPresetSaveKind || "");
     const name = document.querySelector("#astral-preset-name")?.value ?? save.name;
     setProto({
-      prototypePresetSave: { ...save, kind, name, error: "", skipMatch: false },
+      prototypePresetSave: { ...save, kind, name, error: "" },
     });
     protoRestoreFocus(`#astral-fs [data-proto-preset-save-kind="${CSS.escape(kind)}"]`);
+    return;
+  }
+  const presetSaveMatch = event.target.closest("[data-proto-preset-save-match]");
+  if (presetSaveMatch && store.prototypePresetSave) {
+    const match = String(presetSaveMatch.dataset.protoPresetSaveMatch || "");
+    setProto({ prototypePresetSave: { ...store.prototypePresetSave, match } });
+    protoRestoreFocus(`#astral-fs [data-proto-preset-save-match="${CSS.escape(match)}"]`);
     return;
   }
   if (event.target.closest("[data-proto-preset-save-new]")) {

@@ -7429,17 +7429,20 @@ button.astral-state {
   grid-auto-rows: max-content;
   gap: 4px;
   min-width: 0;
+  /* Show five options and half of the sixth, so a cut-off row says the list scrolls. */
+  --astral-option-row: 2.5rem;
+  --astral-option-frame: 0px;
   max-height: calc(
-    5 * var(--control-height-sm) + 4 * 4px
+    5.5 * var(--astral-option-row) + 5 * 4px + var(--astral-option-frame)
   );
   overflow: auto;
   overflow-x: clip;
   scrollbar-gutter: auto;
 }
 
-/* Options with a note are two lines tall; keep five in view before the list scrolls. */
+/* Options with a note are two lines tall. */
 .astral-select-options:has(.astral-select-option-copy > .astral-muted) {
-  max-height: calc(5 * 3.875rem + 4 * 4px);
+  --astral-option-row: 3.875rem;
 }
 
 .astral-select.is-multi .astral-select-menu {
@@ -7861,6 +7864,7 @@ button.astral-state {
   width: max-content;
   min-width: 200px;
   padding: 8px;
+  --astral-option-frame: 18px;
   border: 1px solid var(--color-border-strong);
   border-radius: 16px;
   background: #fff;
