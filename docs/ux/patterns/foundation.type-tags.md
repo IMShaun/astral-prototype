@@ -47,6 +47,9 @@ Any `astral-tag` built with a type mark (`protoTag(label, tip, className, mark)`
 | export-source (Source data, same as extract) | #d1e9ff | #194185 | about 9:1 |
 | export-image | #fce7f6 | #851651 | about 8:1 |
 | export-pdf (same as download-document) | #fdead7 | #932f19 | about 7.5:1 |
+| add-paste (Paste your settings, same as template) | #eaecf5 | #363f72 | about 8.5:1 |
+| add-upload, file-csv, file-txt (Upload a file and the file card, data like extract) | #d1e9ff | #194185 | about 9:1 |
+| file-xlsx (a spreadsheet, same as export-table) | #ccfbef | #134e48 | about 8.4:1 |
 
 A mark names the type and its colour. When it draws another icon, `PROTO_MARK_ICONS` in `astral-ui.js` maps it, for example `extract` draws `usage`.
 
@@ -79,7 +82,7 @@ The label names the type, so colour is never the only signal. Text contrast is a
 
 ## Product surfaces using it
 
-Alerts > Settings table (Type column). Reports table and cards. Downloads table (Type column). Inbox and Queries (Resolved as). Summary cards on Alerts, History, Reports and Downloads. Filter menus and pills where the type is not on a card, such as Type on History.
+Alerts > Settings table (Type column). Reports table and cards. Downloads table (Type column). Inbox and Queries (Resolved as). Summary cards on Alerts, History, Reports and Downloads. Add site settings (the two way cards and the uploaded file card). Filter menus and pills where the type is not on a card, such as Type on History.
 
 ## Evidence
 

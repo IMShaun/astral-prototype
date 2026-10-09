@@ -12874,11 +12874,12 @@ tr.is-off .astral-person-mark {
   margin: 16px 0;
 }
 
-/* Add site settings. A way in, then paste or upload, then match the columns. */
+/* Add site settings. A way in, then paste or upload, then match the columns.
+   The way cards are .astral-report-type cards with the badge above the name. */
 .astral-site-add {
   display: grid;
-  gap: 16px;
-  margin-top: 16px;
+  gap: var(--space-16);
+  margin-top: var(--space-16);
 }
 
 .astral-site-add > p,
@@ -12888,62 +12889,20 @@ tr.is-off .astral-person-mark {
 }
 
 .astral-site-add-ways {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-rows: 1fr;
-  gap: 16px;
+  gap: var(--space-16);
 }
 
-.astral-site-add-way {
-  display: grid;
-  align-content: start;
+.astral-report-type.astral-site-add-way {
   justify-items: start;
-  gap: 4px;
-  margin: 0;
-  padding: 24px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-card);
-  background: #fff;
-  color: #000;
-  font: inherit;
-  text-align: left;
-  white-space: normal;
-  cursor: pointer;
-  transition: background-color var(--motion-panel) ease, border-color var(--motion-panel) ease;
+  gap: var(--space-8);
 }
 
-.astral-site-add-way:hover {
-  border-color: #000;
-  background: var(--color-background-hover);
-}
-
-.astral-site-add-way:focus-visible {
-  outline: 2px solid #000;
-  outline-offset: 2px;
-}
-
-.astral-site-add-way-mark {
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
-  margin-bottom: 12px;
-  border-radius: var(--radius-lg);
-  background: var(--color-status-info-subtle);
-  color: var(--color-brand-primary);
-}
-
-.astral-site-add-way-mark svg {
-  width: 24px;
-  height: 24px;
-}
-
-.astral-site-add-way-name {
-  font-weight: 600;
+.astral-report-type.astral-site-add-way .astral-muted {
+  padding-left: 0;
 }
 
 @container astral-pane (max-width: 560px) {
-  .astral-site-add-ways {
+  .astral-report-types.astral-site-add-ways {
     grid-template-columns: minmax(0, 1fr);
     grid-auto-rows: auto;
   }
@@ -12952,15 +12911,15 @@ tr.is-off .astral-person-mark {
 /* Errors on the page, listed first and linked to each field. */
 .astral-error-summary {
   display: grid;
-  gap: 8px;
-  padding: 16px 20px;
+  gap: var(--space-8);
+  padding: var(--space-16) var(--space-24);
   border: 2px solid var(--color-border-danger);
   border-radius: var(--radius-card);
-  background: #fff;
+  background: var(--color-background-surface);
 }
 
 .astral-error-summary:focus-visible {
-  outline: 2px solid #000;
+  outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
 
@@ -12971,7 +12930,7 @@ tr.is-off .astral-person-mark {
 
 .astral-error-summary ul {
   display: grid;
-  gap: 4px;
+  gap: var(--space-4);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -12996,17 +12955,18 @@ tr.is-off .astral-person-mark {
 }
 
 .astral-error-summary-link:focus-visible {
-  outline: 2px solid #000;
+  outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
 
-.astral-site-add-label {
+.astral-site-add-field > label {
   font-weight: 600;
 }
 
+/* Monospace, so a missing comma or a stray space is easy to spot. */
 .astral-field .astral-site-add-text {
   min-height: 12rem;
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.875rem;
   resize: vertical;
 }
@@ -13016,11 +12976,16 @@ tr.is-off .astral-person-mark {
   border-color: var(--color-border-danger);
 }
 
+.astral-site-add-slot {
+  display: grid;
+  gap: var(--space-12);
+}
+
 .astral-site-add-drop {
   display: grid;
   justify-items: center;
-  gap: 8px;
-  padding: 32px 24px;
+  gap: var(--space-8);
+  padding: var(--space-32) var(--space-24);
   border: 2px dashed var(--color-border-strong);
   border-radius: var(--radius-card);
   background: var(--color-status-info-subtle);
@@ -13030,7 +12995,7 @@ tr.is-off .astral-person-mark {
 
 .astral-site-add-drop.is-over {
   border-color: var(--color-brand-primary);
-  background: #c4ebe7;
+  background: color-mix(in srgb, var(--color-status-info-subtle) 80%, var(--color-brand-primary));
 }
 
 .astral-site-add-drop p {
@@ -13044,61 +13009,29 @@ tr.is-off .astral-person-mark {
 }
 
 .astral-site-add-drop-mark svg {
-  width: 32px;
-  height: 32px;
-}
-
-.astral-site-add-pick {
-  cursor: pointer;
-}
-
-.astral-site-add-slot {
-  display: grid;
-  gap: 12px;
+  width: var(--space-32);
+  height: var(--space-32);
 }
 
 .astral-site-add-file {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
-  padding: 16px;
+  gap: var(--space-12);
+  padding: var(--space-16);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-card);
-  background: #fff;
+  background: var(--color-background-surface);
 }
 
 .astral-site-add-file:focus-visible {
-  outline: 2px solid #000;
+  outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
-}
-
-.astral-site-add-file-type {
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  min-width: 48px;
-  padding: 6px 8px;
-  border-radius: var(--radius-lg);
-  background: var(--color-status-info-subtle);
-  color: var(--color-brand-primary);
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-.astral-site-add-file-type.is-xlsx {
-  background: var(--color-status-success-subtle);
-  color: var(--color-text-success);
-}
-
-.astral-site-add-file-type.is-txt {
-  background: var(--color-background-subtle);
-  color: #000;
 }
 
 .astral-site-add-file-copy {
   display: grid;
-  gap: 2px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -13114,7 +13047,7 @@ tr.is-off .astral-person-mark {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px 24px;
+  gap: var(--space-12) var(--space-24);
 }
 
 .astral-site-add-help p {
@@ -13143,15 +13076,15 @@ tr.is-off .astral-person-mark {
 
 .astral-site-add-pick-field {
   display: grid;
-  gap: 4px;
+  gap: var(--space-4);
   min-width: 14rem;
 }
 
 .astral-site-add-mark {
   display: inline-grid;
   place-items: center;
-  width: 24px;
-  height: 36px;
+  width: var(--space-24);
+  height: var(--space-36);
 }
 
 .astral-site-add-mark.is-matched {
@@ -13167,14 +13100,15 @@ tr.is-off .astral-person-mark {
   overflow-wrap: anywhere;
 }
 
+/* Same box as .astral-site-overview and .astral-import-box. */
 .astral-site-add-done {
   display: grid;
   justify-items: start;
-  gap: 12px;
-  padding: 24px;
+  gap: var(--space-12);
+  padding: var(--space-24);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-card);
-  background: #fff;
+  background: var(--color-background-surface);
 }
 
 .astral-site-add-done p {
@@ -13192,8 +13126,8 @@ tr.is-off .astral-person-mark {
 }
 
 .astral-site-add-done-mark svg {
-  width: 32px;
-  height: 32px;
+  width: var(--space-32);
+  height: var(--space-32);
 }
 
 @media (max-width: 720px) {
@@ -14428,6 +14362,11 @@ tr.is-off .astral-person-mark {
 .astral-type-badge[data-mark="export-source"] { --mark-bg: #d1e9ff; --mark-ink: #194185; }
 .astral-type-badge[data-mark="export-image"] { --mark-bg: #fce7f6; --mark-ink: #851651; }
 .astral-type-badge[data-mark="export-pdf"] { --mark-bg: #fdead7; --mark-ink: #932f19; }
+
+/* Ways to add site settings, and the file someone adds. CSV and TXT are data, like Source data. XLSX is a spreadsheet, like a table. */
+.astral-type-badge[data-mark="add-paste"] { --mark-bg: #eaecf5; --mark-ink: #363f72; }
+.astral-type-badge:is([data-mark="add-upload"], [data-mark="file-csv"], [data-mark="file-txt"]) { --mark-bg: #d1e9ff; --mark-ink: #194185; }
+.astral-type-badge[data-mark="file-xlsx"] { --mark-bg: #ccfbef; --mark-ink: #134e48; }
 
 /* On a card the type is a boxed icon before the heading, not a pill. The tip names the type. */
 .astral-report-name {

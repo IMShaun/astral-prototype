@@ -106,6 +106,11 @@ const PROTO_MARK_ICONS = {
   "export-source": "database",
   "export-image": "image",
   "export-pdf": "report",
+  "add-paste": "paste",
+  "add-upload": "upload",
+  "file-csv": "report",
+  "file-txt": "report",
+  "file-xlsx": "table",
 };
 
 // A type icon in a light rounded box. Each type keeps one colour wherever it shows.

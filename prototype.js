@@ -23492,8 +23492,6 @@ function protoImportApply() {
 // with what is set now, or lines that cannot be read, open the review page first.
 // Parsed rows stay out of the store, so a big file is never saved with the board.
 const PROTO_SITE_ADD_STEPS = ["choose", "paste", "upload", "match", "done"];
-const PROTO_SITE_ADD_ACCEPT =
-  ".csv,.txt,.xlsx,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const PROTO_SITE_ADD_SIZES = "Up to 200 MB for CSV or TXT. Up to 50 MB for XLSX.";
 const PROTO_SITE_ADD_BASE = [
   { id: "site", label: "Site", names: ["site", "site name", "site names", "building", "building name"] },
@@ -23821,7 +23819,7 @@ function protoSiteAddCheck(add, rows) {
   const rowErr = {};
   const used = cols.filter((col) => add.use?.[col.i]);
   if (!used.length) {
-    list.push({ id: `astral-site-add-use-${cols[0]?.i ?? 0}`, text: "Select at least one column to use." });
+    list.push({ id: `astral-site-add-use-${cols[0]?.i ?? 0}`, text: "Tick at least one column to use." });
     return { list, rowErr, cols, found: null };
   }
   used
@@ -23961,11 +23959,87 @@ function protoSiteAddFile(blob) {
     .then((rows) => {
       if (protoSiteAdd()?.step !== "upload") return;
       if (!rows) return fail(`${name} could not be read. Save it again as CSV or XLSX, then upload it.`);
-      if (!rows.length) return fail(`${name} is empty. Choose a file with at least one row.`);
+      if (!rows.length) return fail(`${name} is empty. Select a file with at least one row.`);
       protoSiteAddData.upload = rows;
       protoSiteAddPatch({ file: { name, size: Number(blob.size) || 0, kind }, error: "" });
       protoRestoreFocus("#astral-fs .astral-site-add-file");
     });
+}
+
+// The prototype has no file picker. Select a file loads this sample, so anyone can walk the flow without a
+// file to hand. It is the template for the sites on screen with a few edits: some settings changed, a meter
+// rate that is not set yet, a value left out, and a Checked by column that Astral has no field for.
+function protoSiteAddSampleSites(add) {
+  if (protoImportViewSites.length) return protoImportViewSites;
+  return protoGroupViewSites(protoGroups().find((group) => group.id === add.group));
+}
+
+function protoSiteAddSample(add) {
+  const meter = add.meter ? protoMeter(add.meter) : null;
+  const lines = meter ? protoSiteSettingsCsv(meter) : protoSitesSettingsCsv(protoSiteAddSampleSites(add).slice(0, 8));
+  const rows = protoParseCsv(lines.join("\n"));
+  if (rows.length < 2) return null;
+  const names = [...new Set(rows.slice(1).map((row) => row[0]).filter(Boolean))];
+  const people = ["R Ahmed", "J Patel", "S Okafor", "L Walsh"];
+  const bump = (value, by) => {
+    const n = Number(value);
+    return Number.isFinite(n) && String(value).trim() ? String(Math.max(1, Math.round(n + by))) : value;
+  };
+  const out = [[...rows[0], "Checked by"]];
+  // Site 0 closes an hour earlier on Monday. The next period starts when it ends, so the day stays whole.
+  const monday = (setting) =>
+    rows.findIndex((row) => row[0] === names[0] && row[2] === "Operational hours" && row[3] === "Monday" && protoImportNorm(row[4]) === setting);
+  const early = {};
+  for (let p = 1; p < 6; p += 1) {
+    const status = rows[monday(`period ${p} status`)]?.[5];
+    const end = rows[monday(`period ${p} to`)]?.[5];
+    const nextFrom = monday(`period ${p + 1} from`);
+    const hour = Number(String(end || "").split(":")[0]);
+    if (status !== "Operational" || nextFrom < 0 || rows[nextFrom][5] !== end || !(hour > 1)) continue;
+    const time = `${String(hour - 1).padStart(2, "0")}:${String(end).split(":")[1] || "00"}`;
+    early[monday(`period ${p} to`)] = time;
+    early[nextFrom] = time;
+    break;
+  }
+  rows.slice(1).forEach((row, r) => {
+    const next = [...row];
+    const n = names.indexOf(row[0]);
+    const setting = protoImportNorm(row[4]);
+    if (row[2] === "Attributes" && !row[1]) {
+      if (setting === "number of employees" && n % 2 === 0) next[5] = bump(row[5], 6 + n);
+      if (setting === "floor area" && n === 0) next[5] = bump(row[5], 150);
+      if (setting === "street name" && n === 1) next[5] = "";
+    }
+    if (early[r + 1]) next[5] = early[r + 1];
+    next.push(row[2] === "Attributes" && !row[1] ? people[Math.max(0, n) % people.length] : "");
+    out.push(next);
+  });
+  const site = meter ? protoSiteByMeter(meter.id) : protoSiteAddSampleSites(add)[0];
+  const own = (site?.meters || []).find((item) => protoMeterRateSpec(item).length && !protoMeterOverride(item.id).rates);
+  if (own) {
+    const item = protoMeterRateSpec(own).find((spec) => /^on/.test(spec.key)) || protoMeterRateSpec(own)[0];
+    const now = Number(protoSiteProfile(own.id).attrs?.[item.key]) || 20;
+    out.push([
+      site.name,
+      protoMeterPointRef(own),
+      "Attributes",
+      protoMeterAttrGroupName(protoMeterKind(own)),
+      item.label,
+      (now + 1.5).toFixed(2),
+      item.unit,
+      people[0],
+    ]);
+  }
+  const text = out.map((row) => row.map(protoCsvCellOut).join(",")).join("\r\n");
+  return new File([text], meter ? protoSiteSettingsCsvName(meter) : "site-settings.csv", { type: "text/csv" });
+}
+
+function protoSiteAddPick() {
+  const add = protoSiteAdd();
+  if (!add || add.step !== "upload" || !protoCanAct()) return;
+  const file = protoSiteAddSample(add);
+  if (file) protoSiteAddFile(file);
+  else protoSiteAddPatch({ error: "There are no sites to add settings to." });
 }
 
 function protoSiteAddRemove() {
@@ -24069,25 +24143,25 @@ function protoSiteAddActions(label) {
 }
 
 function protoSiteAddChoose() {
-  const way = (id, mark, name, hint) => `
+  const way = (id, name, hint) => `
     <button
       type="button"
-      class="astral-site-add-way"
+      class="astral-report-type astral-site-add-way"
       aria-labelledby="astral-site-add-way-${id}"
       aria-describedby="astral-site-add-way-${id}-hint"
       data-proto-site-add-way="${id}"
     >
-      <span class="astral-site-add-way-mark">${mark}</span>
-      <span class="astral-site-add-way-name" id="astral-site-add-way-${id}">${name}</span>
+      ${protoTypeBadge(`add-${id}`)}
+      <span class="astral-report-type-head" id="astral-site-add-way-${id}">${name}</span>
       <span class="astral-muted" id="astral-site-add-way-${id}-hint">${hint}</span>
     </button>
   `;
   return `
     <div class="astral-site-add">
       <p class="astral-muted">Paste rows from a spreadsheet or upload a file. Nothing is saved until you select Save settings.</p>
-      <div class="astral-site-add-ways">
-        ${way("paste", protoIconMark("paste"), "Paste your settings", "Separate values with commas. One row per line.")}
-        ${way("upload", protoIconMark("upload"), "Upload a file", PROTO_SITE_ADD_SIZES)}
+      <div class="astral-report-types is-pair astral-site-add-ways">
+        ${way("paste", "Paste your settings", "Separate values with commas. One row per line.")}
+        ${way("upload", "Upload a file", PROTO_SITE_ADD_SIZES)}
       </div>
     </div>
   `;
@@ -24124,9 +24198,9 @@ function protoSiteAddPaste(add) {
 function protoSiteAddFileCard(file) {
   const kind = String(file.kind || "csv").toUpperCase();
   return `
-    ${file.kind === "xlsx" ? `<p class="astral-banner astral-site-add-note">Only the first sheet of this file is used.</p>` : ""}
+    ${file.kind === "xlsx" ? `<p class="astral-banner">Only the first sheet of this file is used.</p>` : ""}
     <div class="astral-site-add-file" tabindex="-1" role="group" aria-label="Selected file">
-      <span class="astral-site-add-file-type is-${escapeHtml(file.kind)}" aria-hidden="true">${protoIconMark("report")}<span>${escapeHtml(kind)}</span></span>
+      ${protoTypeBadge(`file-${file.kind || "csv"}`)}
       <span class="astral-site-add-file-copy">
         <span class="astral-site-add-file-name">${escapeHtml(file.name)}</span>
         <span class="astral-muted">${escapeHtml(kind)} file, ${protoSiteAddSize(file.size)}</span>
@@ -24145,18 +24219,10 @@ function protoSiteAddUpload(add) {
       <div class="astral-site-add-drop${err ? " is-error" : ""}" data-proto-site-add-drop>
         <span class="astral-site-add-drop-mark">${protoIconMark("upload")}</span>
         <p>Drag and drop a file here or</p>
-        <label class="astral-ghost astral-upload astral-site-add-pick">
-          <span>Select a file</span>
-          <input
-            id="astral-site-add-file"
-            class="sr-only"
-            type="file"
-            accept="${PROTO_SITE_ADD_ACCEPT}"
-            aria-describedby="astral-site-add-size${err ? ` ${errId}` : ""}"
-            ${err ? `aria-invalid="true"` : ""}
-            data-proto-site-add-file
-          />
-        </label>
+        ${protoGhost(
+          "Select a file",
+          `id="astral-site-add-file" aria-describedby="astral-site-add-size${err ? ` ${errId}` : ""}" data-proto-site-add-pick`
+        )}
         <p class="astral-muted" id="astral-site-add-size">${PROTO_SITE_ADD_SIZES}</p>
         ${err ? `<p class="astral-export-error" id="${errId}">${escapeHtml(err)}</p>` : ""}
       </div>
@@ -24250,8 +24316,8 @@ function protoSiteAddMatch(add) {
       <button type="button" role="checkbox" class="astral-report-consent" aria-checked="${replace ? "true" : "false"}" data-proto-site-add-replace>
         ${protoCheck(replace)}
         <span class="astral-report-consent-copy">
-          <span>Replace current settings that differ</span>
-          <span class="astral-muted">Leave this unticked to keep what is set now where it differs. Settings that are blank now are always filled in.</span>
+          <span>Replace settings that differ</span>
+          <span class="astral-muted">Leave this unticked to keep your current settings where they differ. Settings that are blank in Astral are always filled in.</span>
         </span>
       </button>
       ${protoSiteAddActions(label)}
@@ -24271,9 +24337,11 @@ function protoSiteAddDone(add) {
         <span class="astral-site-add-done-mark${n ? "" : " is-same"}">${protoIconMark(n ? "expected" : "tick")}</span>
         <p>${escapeHtml(text)}</p>
       </div>
-      <div class="astral-actions">
-        ${protoBtn(back, "data-proto-site-add-exit")}
-        ${protoGhost("Add more settings", "data-proto-site-add-again")}
+      <div class="astral-card astral-report-page-foot astral-import-foot">
+        <div class="astral-actions">
+          ${protoBtn(back, "data-proto-site-add-exit")}
+          ${protoGhost("Add more settings", "data-proto-site-add-again")}
+        </div>
       </div>
     </div>
   `;
@@ -38685,6 +38753,10 @@ function onPrototype(event) {
     protoSiteAddContinue();
     return;
   }
+  if (event.target.closest("[data-proto-site-add-pick]")) {
+    protoSiteAddPick();
+    return;
+  }
   if (event.target.closest("[data-proto-site-add-remove]")) {
     protoSiteAddRemove();
     return;
@@ -40238,14 +40310,6 @@ function onPrototypeInput(event) {
   }
   if (event.target.closest("[data-proto-site-add-text]")) {
     protoSiteAddText = event.target.value;
-    return;
-  }
-  const siteAddFile = event.target.closest("[data-proto-site-add-file]");
-  if (siteAddFile) {
-    if (event.type !== "change" || !siteAddFile.files || !siteAddFile.files[0] || !protoCanAct()) return;
-    const blob = siteAddFile.files[0];
-    siteAddFile.value = "";
-    protoSiteAddFile(blob);
     return;
   }
   const pictureFile = event.target.closest("[data-proto-picture='file']");
