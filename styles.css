@@ -11287,28 +11287,34 @@ tr.is-off .astral-person-mark {
 }
 
 /* A preset at a glance. Time runs left to right from 00:00 to 24:00 on each track.
-   Each period is its own rounded segment, filled like the status marks in the key. */
+   Periods join inside the track, filled like the status marks in the key. */
 .astral-preset-line {
   display: grid;
   width: 100%;
 }
 
-/* A week is seven short tracks in a row, one for each day, with the day below. */
+/* A week is seven small squares, Monday to Sunday, with no labels. Time runs left to right inside each square.
+   Saturday and Sunday sit together on a shaded tray, as calendars shade the weekend. */
 .astral-preset-line.is-week {
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: var(--space-8);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
 }
 
-.astral-preset-line-cell {
-  display: grid;
-  gap: 6px;
+.astral-preset-line-weekend {
+  display: flex;
+  gap: 4px;
+  margin-left: 4px;
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--color-background-subtle);
 }
 
 .astral-preset-line.is-day {
   gap: 6px;
 }
 
-.astral-preset-line-day,
 .astral-preset-line-ticks {
   font-size: var(--font-size-12, 12px);
   font-weight: 400;
@@ -11316,17 +11322,11 @@ tr.is-off .astral-person-mark {
   color: var(--color-text-secondary);
 }
 
-.astral-preset-line-day {
-  text-align: center;
-}
-
-/* One continuous pill per day. The periods join inside it, and one hairline frames the whole day. */
+/* One track per day. The periods join inside it, and one hairline frames the whole day. */
 .astral-preset-line-track {
   position: relative;
   display: flex;
-  height: 8px;
   overflow: hidden;
-  border-radius: var(--radius-button);
   background: #fff;
 }
 
@@ -11339,10 +11339,16 @@ tr.is-off .astral-person-mark {
   pointer-events: none;
 }
 
-.astral-preset-line.is-day .astral-preset-line-track {
-  height: 12px;
+.astral-preset-line.is-week .astral-preset-line-track {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-xs);
 }
 
+.astral-preset-line.is-day .astral-preset-line-track {
+  height: 12px;
+  border-radius: var(--radius-button);
+}
 .astral-preset-seg {
   flex: 0 1 0;
   min-width: 2px;

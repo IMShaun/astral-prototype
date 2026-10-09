@@ -23006,17 +23006,14 @@ function protoPresetLine(part, rows, week) {
       .join("");
   const spoken = week ? protoWeekNote(part, rows) : rows.map((row) => protoPresetTimes(part, row));
   if (week) {
-    const days = rows
-      .map(
-        (row, d) => `
+    const cell = (row, d) => `
           <span class="astral-preset-line-cell" title="${escapeHtml(`${PROTO_WEEKDAYS[d]}, ${protoTimesInline(protoPresetTimes(part, row))}`)}">
             <span class="astral-preset-line-track">${fill(row)}</span>
-            <span class="astral-preset-line-day">${PROTO_WEEKDAYS[d].slice(0, 3)}</span>
-          </span>`,
-      )
-      .join("");
+          </span>`;
+    const weekdays = rows.slice(0, 5).map((row, d) => cell(row, d)).join("");
+    const weekend = rows.slice(5).map((row, d) => cell(row, d + 5)).join("");
     return `
-      <span class="astral-preset-line is-week" aria-hidden="true">${days}</span>
+      <span class="astral-preset-line is-week" aria-hidden="true">${weekdays}<span class="astral-preset-line-weekend">${weekend}</span></span>
       <span class="sr-only">${escapeHtml(spoken.join(". "))}</span>
     `;
   }
