@@ -10746,6 +10746,10 @@ button.astral-state {
   display: none;
 }
 
+.is-empty > .astral-period-tab-flag {
+  background: var(--color-status-warning);
+}
+
 /* Column headers: Body S in Infra Grey C on white, sentence case, over an Infra Grey B rule. */
 .astral-table thead th {
   color: var(--color-text-secondary);

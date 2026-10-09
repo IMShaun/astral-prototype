@@ -2667,6 +2667,7 @@ function protoClockOf(hours) {
 // What is wrong with a day's periods. An error blocks Save. A note says what the gaps count as.
 function protoPeriodIssues(periods, part) {
   const list = (periods || []).map((p) => ({ start: protoParseClock(p.from), end: protoParseClock(p.to) }));
+  if (!list.length) return { empty: true, note: "No times set for this day. Select a preset or add a period." };
   if (list.some((p) => p.start == null || p.end == null)) return { error: "Enter a start and end time for every period." };
   if (list.some((p) => p.end <= p.start || p.end > 24)) {
     return { error: "Each period must end after it starts. Use 24:00 for midnight at the end of the day." };
@@ -2887,8 +2888,15 @@ function protoSiteProfile(id) {
 }
 
 // Demo gaps, so the Incomplete and Missing tags show before anyone clears a setting.
-// Each number is how many days, counted back from Sunday, have no periods. All seven reads as Missing.
-const PROTO_DEMO_PROFILE_GAPS = { Stafford: { hours: 7 }, Preston: { hours: 2 }, Birmingham: { tou: 7 }, Chester: { tou: 3 } };
+// A number is how many days, counted back from Sunday, have no periods. All seven reads as Missing.
+// A list names the days instead, Monday as 0.
+const PROTO_DEMO_PROFILE_GAPS = {
+  Stafford: { hours: 7 },
+  Preston: { hours: 2 },
+  "Northampton depot": { hours: [0] },
+  Birmingham: { tou: 7 },
+  Chester: { tou: 3 },
+};
 
 function protoDemoProfileGaps(id, profile) {
   const site = protoProfileSiteMap().get(id)?.site;
@@ -23631,9 +23639,9 @@ function protoMeterPeriodTable(id, rows, part, opts = {}) {
         <td rowspan="${span}">
           ${protoSelect({
             id: `meter-${part}-profile-${id}-${d}`,
-            label: `Select profile for ${row.day} ${spec.noun}`,
+            label: `Select preset for ${row.day} ${spec.noun}`,
             value: row.profile || "",
-            placeholder: "Select profile",
+            placeholder: "Select preset",
             disabled: Boolean(lock),
             options: protoDayPresetOptions(part),
           })}
@@ -23703,7 +23711,7 @@ function protoMeterPeriodTable(id, rows, part, opts = {}) {
             </colgroup>
             <thead>
               <tr>
-                <th scope="col">Select profile</th>
+                <th scope="col">Select preset</th>
                 <th scope="col">From</th>
                 <th scope="col">To</th>
                 <th scope="col">Status</th>
@@ -23726,22 +23734,24 @@ function protoPeriodDomId(id, part, d) {
   return `astral-period-${String(id).replace(/[^\w-]/g, "-")}-${part}-${d}`;
 }
 
-// One tab a day, Monday to Sunday. A flag marks a day that needs a fix, since Save waits on every day.
+// One tab a day, Monday to Sunday. A red flag marks a day that needs a fix, since Save waits on every day.
+// A yellow flag marks a day with no times set, matching the Incomplete tag.
 function protoPeriodDays(id, rows, part, panels, issues = []) {
   const active = protoPeriodDayId(part, rows.length);
   const tabs = rows
     .map((row, d) => {
       const on = d === active;
       const bad = Boolean(issues[d]?.error);
+      const empty = !bad && Boolean(issues[d]?.empty);
       return `<button type="button" role="tab" id="${protoPeriodDomId(id, part, d)}-tab" aria-controls="${protoPeriodDomId(
         id,
         part,
         d
-      )}" class="${on ? "is-on" : ""}${bad ? " has-error" : ""}" data-proto-period-tab="${part}" data-proto-period-tab-day="${d}" aria-selected="${
+      )}" class="${on ? "is-on" : ""}${bad ? " has-error" : ""}${empty ? " is-empty" : ""}" data-proto-period-tab="${part}" data-proto-period-tab-day="${d}" aria-selected="${
         on ? "true" : "false"
       }" tabindex="${on ? "0" : "-1"}">${escapeHtml(row.day)}<span class="astral-period-tab-flag"${
-        bad ? "" : " hidden"
-      }><span class="sr-only"> needs a fix</span></span></button>`;
+        bad || empty ? "" : " hidden"
+      }><span class="sr-only">${empty ? " has no times set" : " needs a fix"}</span></span></button>`;
     })
     .join("");
   return `
@@ -23813,8 +23823,13 @@ function protoSyncPeriodNotes(form, draft) {
       const tab = protoScopeFind(form, `[data-proto-period-tab="${part}"][data-proto-period-tab-day="${d}"]`);
       if (!tab) return;
       tab.classList.toggle("has-error", Boolean(issue.error));
+      tab.classList.toggle("is-empty", Boolean(issue.empty));
       const flag = tab.querySelector(".astral-period-tab-flag");
-      if (flag) flag.hidden = !issue.error;
+      if (flag) {
+        flag.hidden = !issue.error && !issue.empty;
+        const words = flag.querySelector(".sr-only");
+        if (words) words.textContent = issue.error ? " needs a fix" : " has no times set";
+      }
     });
   });
 }
