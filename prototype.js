@@ -22805,13 +22805,14 @@ function protoMeterProfileForm(meter) {
     )}</span><span class="astral-muted">${escapeHtml(note)}</span></span>${flag}</span>`,
   });
   const section = (part) => {
+    // Attributes are already split by Site and each utility, so they need no Settings for picker.
+    if (part === "rates") return { tag: "", html: protoTimesPanel(id, part, "own", siteBodies.rates) };
     const ownCount = protoSiteOwnList(site, part).length;
     const tag = ownCount ? protoTag("Mixed", "", "is-own") : "";
-    const timed = part !== "rates";
-    const siteMode = timed ? protoSrcMode(draft, part, false) : "own";
+    const siteMode = protoSrcMode(draft, part, false);
     const siteBody =
       siteMode === "preset" ? protoWeekPresetView(id, part, draft[part], draft.weeks[part]) : siteBodies[part];
-    const siteCards = timed ? panel(protoSiteSrcGroup(id, part, siteMode)) : "";
+    const siteCards = panel(protoSiteSrcGroup(id, part, siteMode));
     const sitePanel = protoTimesPanel(id, part, siteMode, siteBody);
     if (meters.length < 2 && !ownCount) return { tag, html: `${siteCards}${sitePanel}` };
     const pick = protoSiteOwnPick(site, part);
@@ -22839,8 +22840,7 @@ function protoMeterProfileForm(meter) {
         })}
       </div>
     `);
-    // With a picker, rates get the site's one card too, so the fields sit in the same place for the site and a meter.
-    if (!pick) return { tag, html: `${select}${panel(protoSiteSrcGroup(id, part, siteMode))}${sitePanel}` };
+    if (!pick) return { tag, html: `${select}${siteCards}${sitePanel}` };
     const own = protoMeter(pick);
     const ownDraft = protoMeterOwnDraft(own.id);
     const mode = protoSrcMode(ownDraft, part, true);
