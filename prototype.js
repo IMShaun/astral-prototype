@@ -748,6 +748,7 @@ function protoPageFilterReset() {
     prototypePeriodDay: null,
     prototypeSiteOwnPick: null,
     prototypeMeterUpload: null,
+    prototypeSiteImport: null,
     prototypeSummaryOpen: true,
     prototypeBreakdownOpen: false,
     prototypeMeterBreakdownOpen: false,
@@ -813,6 +814,7 @@ function protoPortfolioHomePatch() {
     prototypePeriodDay: null,
     prototypeSiteOwnPick: null,
     prototypeMeterUpload: null,
+    prototypeSiteImport: null,
     prototypeGroupSites: [],
     prototypeSiteMeters: [],
     prototypePaneMeterKinds: null,
@@ -10147,6 +10149,10 @@ function protoPickSelect(id, value) {
   }
   if (String(id).startsWith("tpl-")) {
     protoTemplatePick(id, value);
+    return;
+  }
+  if (String(id).startsWith("import-site:") || String(id).startsWith("import-meter:")) {
+    protoImportPickTarget(id, value);
     return;
   }
   if (String(id).startsWith("report-tpl:")) {
@@ -22338,35 +22344,75 @@ function protoMeterAttrGroupName(kind) {
   return kind === "site" ? "Site" : kind === "water" ? "Water" : kind === "gas" ? "Gas" : "Electricity";
 }
 
-const PROTO_SITE_CSV_HEAD = ["Section", "Group", "Setting", "Value", "Unit"];
+// One file can hold many sites. Site and Meter point say where each line goes. A blank Meter point is the site's own setting.
+const PROTO_SITE_CSV_HEAD = ["Site", "Meter point", "Section", "Group", "Setting", "Value", "Unit"];
 
 function protoCsvCellOut(value) {
   const text = String(value ?? "");
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
-function protoSiteSettingsCsv(meter) {
-  const draft = protoMeterDraft(meter.id);
-  const rows = [PROTO_SITE_CSV_HEAD];
+function protoMeterPointRef(meter) {
+  return String(meter?.mpan || meter?.mprn || meter?.serial || meter?.id || "");
+}
+
+// A meter's own settings follow its site's, under its meter point.
+function protoSettingsCsvRows(site, profile) {
+  const out = [];
+  const name = site.name;
   const statusName = (part, id) => PROTO_PERIOD_SPEC[part].statuses.find((item) => item.id === id)?.name || id;
-  [
-    ["Operational hours", "hours"],
-    ["Time of use", "tou"],
-  ].forEach(([section, part]) => {
-    draft[part].forEach((row) => {
+  const periods = (point, rows, part) => {
+    const section = PROTO_METER_PART_NAMES[part];
+    (rows || []).forEach((row) => {
       protoDayPeriods(row, part).forEach((p, i) => {
-        rows.push([section, row.day, `Period ${i + 1} from`, protoClockShow(p.from), "HH:MM"]);
-        rows.push([section, row.day, `Period ${i + 1} to`, protoClockShow(p.to), "HH:MM"]);
-        rows.push([section, row.day, `Period ${i + 1} status`, statusName(part, p.status), ""]);
+        out.push([name, point, section, row.day, `Period ${i + 1} from`, protoClockShow(p.from), "HH:MM"]);
+        out.push([name, point, section, row.day, `Period ${i + 1} to`, protoClockShow(p.to), "HH:MM"]);
+        out.push([name, point, section, row.day, `Period ${i + 1} status`, statusName(part, p.status), ""]);
       });
     });
-  });
-  ["site", ...protoMeterAttrKinds(meter.id)].forEach((kind) => {
+  };
+  periods("", profile.hours, "hours");
+  periods("", profile.tou, "tou");
+  ["site", ...protoMeterAttrKinds(site.meters?.[0]?.id)].forEach((kind) => {
     protoMeterAttrSpec(kind).forEach((item) => {
-      rows.push(["Attributes", protoMeterAttrGroupName(kind), item.label, draft.attrs[item.key] ?? "", item.unit]);
+      out.push([name, "", "Attributes", protoMeterAttrGroupName(kind), item.label, profile.attrs?.[item.key] ?? "", item.unit]);
     });
   });
-  return rows.map((row) => row.map(protoCsvCellOut).join(","));
+  (site.meters || []).forEach((meter) => {
+    const own = protoMeterOverride(meter.id);
+    const point = protoMeterPointRef(meter);
+    if (Array.isArray(own.hours)) periods(point, own.hours, "hours");
+    if (Array.isArray(own.tou)) periods(point, own.tou, "tou");
+    if (own.rates && typeof own.rates === "object") {
+      protoMeterRateSpec(meter).forEach((item) => {
+        const value = own.rates[item.key];
+        if (value == null || value === "") return;
+        out.push([name, point, "Attributes", protoMeterAttrGroupName(protoMeterKind(meter)), item.label, value, item.unit]);
+      });
+    }
+  });
+  return out;
+}
+
+function protoSettingsCsvLines(list) {
+  return [PROTO_SITE_CSV_HEAD, ...list.flatMap(({ site, profile }) => protoSettingsCsvRows(site, profile))].map((row) =>
+    row.map(protoCsvCellOut).join(",")
+  );
+}
+
+// Site settings hands over what is on screen, saved or not.
+function protoSiteSettingsCsv(meter) {
+  const site = protoSiteByMeter(meter.id);
+  return protoSettingsCsvLines(site ? [{ site, profile: protoMeterDraft(meter.id) }] : []);
+}
+
+function protoSitesSettingsCsv(sites) {
+  return protoSettingsCsvLines(
+    (sites || [])
+      .map((row) => protoSiteByMeter(row?.meters?.[0]?.id) || row)
+      .filter((site) => site?.meters?.length)
+      .map((site) => ({ site, profile: protoSiteProfile(site.meters[0].id) }))
+  );
 }
 
 function protoSiteSettingsCsvName(meter) {
@@ -22423,121 +22469,810 @@ function protoCsvClock(raw) {
   return `${String(hour).padStart(2, "0")}.${match[2]}`;
 }
 
-// Fill the draft from a CSV in the template layout. Returns how many settings changed and how many lines were skipped.
-function protoApplySiteSettingsCsv(meter, text) {
-  const rows = protoParseCsv(text);
-  const norm = (value) => String(value || "").trim().toLowerCase();
-  if (rows.length && norm(rows[0][0]) === "section") rows.shift();
-  if (!rows.length) return { changed: 0, skipped: 0, read: 0 };
-  const draft = protoMeterDraft(meter.id);
-  const kinds = ["site", ...protoMeterAttrKinds(meter.id)];
-  const imported = new Map();
-  let changed = 0;
-  let skipped = 0;
-  rows.forEach((cells) => {
-    const [section, group, setting, rawValue] = cells;
-    const value = String(rawValue ?? "").trim();
-    const where = norm(section);
-    if (where === "operational hours" || where === "time of use") {
-      const part = where === "time of use" ? "tou" : "hours";
-      const d = draft[part].findIndex((item) => norm(item.day) === norm(group));
-      const field = norm(setting).match(/^period (\d+) (from|to|status)$/);
-      const n = field ? Number(field[1]) : 0;
-      if (d < 0 || !field || n < 1 || n > 48) {
-        skipped += 1;
-        return;
-      }
-      let next;
-      if (field[2] === "status") {
-        next = PROTO_PERIOD_SPEC[part].statuses.find((item) => norm(item.name) === norm(value) || item.id === norm(value))?.id;
-      } else {
-        next = protoCsvClock(value);
-      }
-      if (!next) {
-        skipped += 1;
-        return;
-      }
-      const key = `${part}|${d}`;
-      if (!imported.has(key)) imported.set(key, { part, d, periods: [] });
-      const list = imported.get(key).periods;
-      list[n - 1] = { ...(list[n - 1] || {}), [field[2]]: next };
-      return;
+// A spreadsheet keeps a time as part of a day, so 0.5 is 12:00 and 1 is 24:00.
+function protoImportClock(raw) {
+  const text = String(raw ?? "").trim();
+  const clock = protoCsvClock(text);
+  if (clock) return clock;
+  const n = Number(text);
+  if (!text || !Number.isFinite(n) || n < 0 || n > 1) return null;
+  if (!/[.e]/i.test(text) && n !== 0 && n !== 1) return null;
+  const mins = Math.round(n * 1440);
+  return `${String(Math.floor(mins / 60)).padStart(2, "0")}.${String(mins % 60).padStart(2, "0")}`;
+}
+
+// An .xlsx file is a zip of XML. Read the first sheet into rows of text, as a CSV would give.
+async function protoReadXlsx(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+  let end = -1;
+  for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65557); i -= 1) {
+    if (view.getUint32(i, true) === 0x06054b50) {
+      end = i;
+      break;
     }
-    if (where === "attributes") {
-      const kind = kinds.find((item) => norm(protoMeterAttrGroupName(item)) === norm(group));
-      const item = kind ? protoMeterAttrSpec(kind).find((spec) => norm(spec.label) === norm(setting)) : null;
-      const bad = item?.text
-        ? (item.admin && !protoCanRenameSite() && value !== String(draft.attrs[item.key] ?? "")) ||
-          protoMeterAttrError(item, value) ||
-          value.length > (item.max || 120)
-        : value && !/^\d+(\.\d+)?$/.test(value);
-      if (!item || bad) {
-        skipped += 1;
-        return;
-      }
-      if (String(draft.attrs[item.key] ?? "") !== value) {
-        draft.attrs[item.key] = value;
-        changed += 1;
-      }
-      return;
-    }
-    skipped += 1;
+  }
+  if (end < 0) return null;
+  const files = new Map();
+  const text = new TextDecoder();
+  let at = view.getUint32(end + 16, true);
+  for (let n = view.getUint16(end + 10, true); n > 0; n -= 1) {
+    if (view.getUint32(at, true) !== 0x02014b50) return null;
+    const nameLen = view.getUint16(at + 28, true);
+    files.set(text.decode(bytes.subarray(at + 46, at + 46 + nameLen)), {
+      method: view.getUint16(at + 10, true),
+      size: view.getUint32(at + 20, true),
+      local: view.getUint32(at + 42, true),
+    });
+    at += 46 + nameLen + view.getUint16(at + 30, true) + view.getUint16(at + 32, true);
+  }
+  const read = async (name) => {
+    const file = files.get(name);
+    if (!file) return "";
+    const start = file.local + 30 + view.getUint16(file.local + 26, true) + view.getUint16(file.local + 28, true);
+    const raw = bytes.subarray(start, start + file.size);
+    if (file.method === 0) return text.decode(raw);
+    if (file.method !== 8 || typeof DecompressionStream !== "function") return "";
+    return new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).text();
+  };
+  const xml = (src) => (src ? new DOMParser().parseFromString(src, "application/xml") : null);
+  const tags = (node, tag) => (node ? [...node.getElementsByTagName(tag)] : []);
+  const book = xml(await read("xl/workbook.xml"));
+  const rels = xml(await read("xl/_rels/workbook.xml.rels"));
+  const first = tags(book, "sheet")[0];
+  const relId = first?.getAttribute("r:id") || "";
+  const target = tags(rels, "Relationship").find((rel) => rel.getAttribute("Id") === relId)?.getAttribute("Target") || "";
+  const sheetPath = target ? (target.startsWith("/") ? target.slice(1) : `xl/${target.replace(/^\.\//, "")}`) : "xl/worksheets/sheet1.xml";
+  const sheet = xml((await read(sheetPath)) || (await read("xl/worksheets/sheet1.xml")));
+  if (!sheet) return null;
+  const shared = tags(xml(await read("xl/sharedStrings.xml")), "si").map((si) => tags(si, "t").map((t) => t.textContent).join(""));
+  const column = (ref) => [...String(ref || "").replace(/\d+/g, "")].reduce((sum, ch) => sum * 26 + ch.charCodeAt(0) - 64, 0) - 1;
+  const rows = tags(sheet, "row").map((row) => {
+    const cells = [];
+    tags(row, "c").forEach((c, i) => {
+      const type = c.getAttribute("t");
+      const value = tags(c, "v")[0]?.textContent ?? "";
+      const col = c.getAttribute("r") ? column(c.getAttribute("r")) : i;
+      cells[col] =
+        type === "s" ? shared[Number(value)] ?? "" : type === "inlineStr" ? tags(c, "t").map((t) => t.textContent).join("") : value;
+    });
+    return Array.from(cells, (value) => value ?? "");
   });
-  // A day in the file replaces that day's periods. Days the file leaves out stay as they were.
-  imported.forEach(({ part, d, periods }) => {
-    const row = draft[part][d];
-    const old = protoDayPeriods(row, part);
-    const fallback = PROTO_PERIOD_SPEC[part].statuses[0].id;
-    const next = periods
-      .map((p, i) => (p ? { status: p.status || old[i]?.status || fallback, from: p.from || old[i]?.from || "", to: p.to || old[i]?.to || "" } : null))
-      .filter(Boolean);
-    next.forEach((p, i) => {
-      ["status", "from", "to"].forEach((field) => {
-        if (old[i]?.[field] !== p[field]) changed += 1;
+  return rows.filter((row) => row.some((value) => String(value).trim()));
+}
+
+const protoImportNorm = (value) => String(value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
+// Columns go by their headings, so they can sit in any order. A file with no headings is the older layout for one site.
+function protoImportColumns(head) {
+  const names = (head || []).map(protoImportNorm);
+  const find = (...keys) => names.findIndex((name) => keys.includes(name));
+  const section = find("section");
+  if (section < 0) return null;
+  return {
+    site: find("site", "site name"),
+    meter: find("meter point", "meter", "mpan", "mprn", "meter point number"),
+    section,
+    group: find("group", "day"),
+    setting: find("setting"),
+    value: find("value"),
+  };
+}
+
+// Lines are grouped by site, meter point and section. A line that cannot be read is left out, with the reason.
+function protoImportBuild(rows, fallbackId = "") {
+  const cols = protoImportColumns(rows[0]);
+  const body = cols ? rows.slice(1) : rows;
+  const c = cols || { site: -1, meter: -1, section: 0, group: 1, setting: 2, value: 3 };
+  const fallback = fallbackId ? protoSiteByMeter(fallbackId) : null;
+  const entries = new Map();
+  const lost = [];
+  const kinds = ["site", "electricity", "gas", "water"];
+  body.forEach((cells, i) => {
+    const get = (key) => (c[key] >= 0 ? String(cells[c[key]] ?? "").trim() : "");
+    const line = i + (cols ? 2 : 1);
+    const leave = (why) => lost.push({ line, why, text: cells.map((value) => String(value ?? "").trim()).filter(Boolean).join(", ").slice(0, 160) });
+    const where = protoImportNorm(get("section"));
+    const part = where === "operational hours" ? "hours" : where === "time of use" ? "tou" : where === "attributes" ? "attrs" : "";
+    if (!part) return leave("Section not recognised");
+    const meter = get("meter");
+    const site = get("site") || (meter ? "" : fallback?.name || "");
+    if (!site && !meter) return leave("No site given");
+    const key = `${protoImportNorm(site)}|${protoImportNorm(meter)}|${part}`;
+    const entry = entries.get(key) || { id: `e${entries.size + 1}`, site, meter, part, days: {}, attrs: {} };
+    const value = get("value");
+    if (part === "attrs") {
+      const kind = kinds.find((item) => protoImportNorm(protoMeterAttrGroupName(item)) === protoImportNorm(get("group")));
+      const item = kind ? protoMeterAttrSpec(kind).find((spec) => protoImportNorm(spec.label) === protoImportNorm(get("setting"))) : null;
+      if (!item) return leave("Setting not recognised");
+      entry.attrs[item.key] = { kind, value: value.slice(0, 160) };
+    } else {
+      const d = PROTO_WEEKDAYS.findIndex((day) => protoImportNorm(day) === protoImportNorm(get("group")));
+      if (d < 0) return leave("Day not recognised");
+      const field = protoImportNorm(get("setting")).match(/^period (\d+) (from|to|status)$/);
+      const n = field ? Number(field[1]) : 0;
+      if (!field || n < 1 || n > 48) return leave("Setting not recognised");
+      const next =
+        field[2] === "status"
+          ? PROTO_PERIOD_SPEC[part].statuses.find((item) => protoImportNorm(item.name) === protoImportNorm(value) || item.id === protoImportNorm(value))?.id
+          : protoImportClock(value);
+      if (!next) return leave(field[2] === "status" ? "Status not recognised" : "Time not recognised");
+      const list = entry.days[d] || [];
+      list[n - 1] = { ...(list[n - 1] || {}), [field[2]]: next };
+      entry.days[d] = Array.from(list, (p) => p || null);
+    }
+    entries.set(key, entry);
+  });
+  return { entries: [...entries.values()], lost, read: body.length };
+}
+
+function protoSiteImport() {
+  const raw = store.prototypeSiteImport;
+  return raw && typeof raw === "object" && Array.isArray(raw.entries) ? raw : null;
+}
+
+function protoImportIndex() {
+  const byName = new Map();
+  const byPoint = new Map();
+  protoSites().forEach((site) => {
+    [site.name, site.baseName].forEach((name) => {
+      const key = protoImportNorm(name);
+      if (key && !byName.has(key)) byName.set(key, site);
+    });
+    (site.meters || []).forEach((meter) => {
+      [meter.mpan, meter.mprn, meter.serial, meter.id].forEach((ref) => {
+        const key = protoImportNorm(ref);
+        if (key && !byPoint.has(key)) byPoint.set(key, { site, meter });
       });
     });
-    if (old.length > next.length) changed += old.length - next.length;
-    row.periods = next;
-    row.profile = protoPeriodProfile(part, next);
-    // Imported times are the site's own, so the part leaves its week preset.
-    protoDropWeek(draft, part);
   });
-  if (changed) {
-    store.prototypeMeterDrafts = { ...protoMeterDrafts(), [protoProfileKey(meter.id)]: draft };
+  return { byName, byPoint };
+}
+
+// A site is found by name, or by a meter point on it. A pick on the review page wins.
+function protoImportTarget(imp, entry, index) {
+  const siteKey = protoImportNorm(entry.site);
+  const pointKey = protoImportNorm(entry.meter);
+  const fixed = imp.sites?.[siteKey];
+  const hit = pointKey ? index.byPoint.get(pointKey) : null;
+  const site = (fixed ? protoSiteByMeter(fixed) : index.byName.get(siteKey)) || (fixed ? null : hit?.site) || null;
+  if (!site || !pointKey) return { site, meter: null };
+  const meterFix = imp.meters?.[`${siteKey}|${pointKey}`];
+  const meter =
+    (meterFix && site.meters.find((item) => item.id === meterFix)) ||
+    site.meters.find((item) => [item.mpan, item.mprn, item.serial, item.id, item.name].some((ref) => protoImportNorm(ref) === pointKey)) ||
+    null;
+  return { site, meter };
+}
+
+// The days in the file, with gaps where it has none.
+function protoImportFileRows(entry) {
+  const part = entry.part;
+  const fallback = PROTO_PERIOD_SPEC[part].statuses[0].id;
+  return PROTO_WEEKDAYS.map((day, d) => ({
+    day,
+    periods: (entry.days?.[d] || []).filter(Boolean).map((p) => ({ status: p.status || fallback, from: p.from || "", to: p.to || "" })),
+  }));
+}
+
+function protoImportAttrError(item, value) {
+  if (item.text) {
+    return protoMeterAttrError(item, value) || (value.length > (item.max || 120) ? `Use ${item.max || 120} characters or fewer.` : "");
   }
-  return { changed, skipped, read: rows.length };
+  return value && !/^\d+(\.\d+)?$/.test(value) ? "Enter a number, such as 1250." : "";
+}
+
+// Needs details: the site, meter point, or a value cannot be read. New: nothing set before. Change: replaces what is set.
+function protoImportEval(imp, entry, index) {
+  const { site, meter } = protoImportTarget(imp, entry, index);
+  const base = { entry, site, meter, key: `${protoImportNorm(entry.site)}|${protoImportNorm(entry.meter)}` };
+  if (!site) return { ...base, status: "needs", need: "site" };
+  if (entry.meter && !meter) return { ...base, status: "needs", need: "meter" };
+  const siteId = site.meters[0].id;
+  const profile = protoSiteProfile(siteId);
+  const own = meter ? protoMeterOverride(meter.id) : null;
+  const part = entry.part;
+  if (part !== "attrs") {
+    const cur = meter ? (Array.isArray(own[part]) ? own[part] : null) : profile[part];
+    const next = (cur || profile[part]).map((row, d) => {
+      const file = entry.days?.[d];
+      if (!file) return protoCloneProfile(row);
+      const old = protoDayPeriods(row, part);
+      const fallback = PROTO_PERIOD_SPEC[part].statuses[0].id;
+      const periods = file
+        .map((p, i) =>
+          p ? { status: p.status || old[i]?.status || fallback, from: p.from || old[i]?.from || "", to: p.to || old[i]?.to || "" } : null
+        )
+        .filter(Boolean);
+      return { day: row.day, profile: protoPeriodProfile(part, periods), periods };
+    });
+    const same =
+      cur && next.every((row, d) => JSON.stringify(protoDayPeriods(row, part)) === JSON.stringify(protoDayPeriods(cur[d], part)));
+    return { ...base, status: !cur ? "new" : same ? "same" : "change", cur, follow: profile[part], next };
+  }
+  const kinds = meter ? [protoMeterKind(meter)] : ["site", ...protoMeterAttrKinds(siteId)];
+  const rateKeys = meter ? new Set(protoMeterRateSpec(meter).map((item) => item.key)) : null;
+  const fields = Object.entries(entry.attrs || {})
+    .map(([key, raw]) => {
+      if (!kinds.includes(raw.kind) || (rateKeys && !rateKeys.has(key))) return null;
+      const item = protoMeterAttrSpec(raw.kind).find((spec) => spec.key === key);
+      if (!item) return null;
+      const value = String(imp.values?.[`${entry.id}|${key}`] ?? raw.value ?? "").trim();
+      const now = String((meter ? own.rates?.[key] ?? profile.attrs[key] : profile.attrs[key]) ?? "");
+      if (item.admin && !protoCanRenameSite() && value !== now) return null;
+      return { key, item, now, value, error: protoImportAttrError(item, value) };
+    })
+    .filter(Boolean);
+  const changed = fields.filter((field) => field.value !== field.now);
+  const status = fields.some((field) => field.error)
+    ? "needs"
+    : !changed.length
+      ? "same"
+      : meter
+        ? own.rates
+          ? "change"
+          : "new"
+        : changed.every((field) => !field.now)
+          ? "new"
+          : "change";
+  return { ...base, status, need: status === "needs" ? "value" : "", fields, changed };
+}
+
+function protoImportEvalAll(imp) {
+  const index = protoImportIndex();
+  return imp.entries.map((entry) => protoImportEval(imp, entry, index));
+}
+
+// New entries start ticked. Changes wait for a tick, so nothing set is replaced by accident.
+function protoImportOn(imp, ev) {
+  if (ev.status === "same") return false;
+  const pick = imp.picks?.[ev.entry.id];
+  return typeof pick === "boolean" ? pick : ev.status !== "change";
+}
+
+const PROTO_IMPORT_FILTERS = [
+  { id: "all", name: "All", mark: "all" },
+  { id: "needs", name: "Needs details", mark: "warning" },
+  { id: "change", name: "Changes", mark: "retry" },
+  { id: "new", name: "New", mark: "upload" },
+  { id: "same", name: "No change", mark: "tick" },
+];
+
+const PROTO_IMPORT_TAGS = { needs: "Needs details", change: "Change", new: "New", same: "No change" };
+
+function protoImportFilter(imp) {
+  return PROTO_IMPORT_FILTERS.some((item) => item.id === imp.filter) ? imp.filter : "all";
+}
+
+function protoImportWeek(part, rows, when, name) {
+  return `
+    <div class="astral-import-week">
+      <span class="astral-import-when">${escapeHtml(when)}</span>
+      ${protoPresetLine(part, rows, true)}
+      <span class="astral-import-week-name">${escapeHtml(name)}</span>
+    </div>
+  `;
+}
+
+function protoImportWeekName(part, rows) {
+  return protoPresetSummary(part, { [part]: rows }) || "Custom week";
+}
+
+function protoImportDetail(ev) {
+  const part = ev.entry.part;
+  if (part !== "attrs") {
+    if (!ev.next) {
+      const rows = protoImportFileRows(ev.entry);
+      return protoImportWeek(part, rows, "From file", protoImportWeekName(part, rows));
+    }
+    const fileName = protoImportWeekName(part, ev.next);
+    if (ev.status === "same") return protoImportWeek(part, ev.next, "From file", `${fileName}, as now`);
+    const now = ev.cur
+      ? protoImportWeek(part, ev.cur, "Now", protoImportWeekName(part, ev.cur))
+      : protoImportWeek(part, ev.follow, "Now", "Follows the site");
+    return `${now}${protoImportWeek(part, ev.next, "From file", fileName)}`;
+  }
+  if (!ev.fields) {
+    const n = Object.keys(ev.entry.attrs || {}).length;
+    return `<p class="astral-muted">${n} ${n === 1 ? "setting" : "settings"} in the file.</p>`;
+  }
+  const shown = ev.fields.filter((field) => field.error || field.value !== field.now);
+  if (!shown.length) {
+    const n = ev.fields.length;
+    return `<p class="astral-muted">${n} ${n === 1 ? "setting matches" : "settings match"} what is set now.</p>`;
+  }
+  const value = (text, unit) => (text ? `${escapeHtml(text)}${unit && !/^(£|HH)/.test(unit) ? ` ${escapeHtml(unit)}` : ""}` : "Not set");
+  return `
+    <dl class="astral-import-fields">
+      ${shown
+        .map((field) => {
+          const id = `astral-import-error-${ev.entry.id}-${field.key}`;
+          const to = field.error
+            ? `
+              <span class="astral-field astral-import-fix">
+                <input
+                  type="text"
+                  value="${escapeHtml(field.value)}"
+                  maxlength="${Number(field.item.max) || 120}"
+                  autocomplete="off"
+                  aria-label="${escapeHtml(field.item.label)}"
+                  aria-invalid="true"
+                  aria-describedby="${id}"
+                  data-proto-import-value="${escapeHtml(`${ev.entry.id}|${field.key}`)}"
+                />
+                <small class="astral-export-error" id="${id}" role="alert">${escapeHtml(field.error)}</small>
+              </span>`
+            : `<span>${value(field.value, field.item.unit)}</span>`;
+          return `
+            <div class="astral-import-field">
+              <dt>${escapeHtml(field.item.label)}</dt>
+              <dd>
+                <span class="astral-import-now">${value(field.now, field.item.unit)}</span>
+                ${protoIconMark("next", "astral-import-arrow")}
+                ${to}
+              </dd>
+            </div>
+          `;
+        })
+        .join("")}
+    </dl>
+  `;
+}
+
+function protoImportRow(imp, ev, siteName) {
+  const part = ev.entry.part;
+  const name = part === "attrs" ? (ev.entry.meter ? "Unit rates" : "Attributes") : PROTO_METER_PART_NAMES[part];
+  const on = protoImportOn(imp, ev);
+  const box =
+    ev.status === "same"
+      ? `<span class="astral-import-pick is-off" aria-hidden="true"></span>`
+      : `<button type="button" role="checkbox" class="astral-import-pick" aria-checked="${on ? "true" : "false"}" aria-label="${escapeHtml(
+          `Save ${name.toLowerCase()} for ${siteName}`
+        )}" data-proto-import-pick="${escapeHtml(ev.entry.id)}">${protoCheck(on)}</button>`;
+  return `
+    <div class="astral-import-row${on ? " is-on" : ""}${ev.status === "same" ? " is-same" : ""}">
+      ${box}
+      <div class="astral-import-what">
+        ${protoIconMark(part === "attrs" ? "rates" : part)}
+        <span>${escapeHtml(name)}</span>
+        <span class="astral-import-tag is-${ev.status}">${PROTO_IMPORT_TAGS[ev.status]}</span>
+      </div>
+      <div class="astral-import-detail">${protoImportDetail(ev)}</div>
+    </div>
+  `;
+}
+
+// Closest names first, so a typo in the file is one pick away.
+function protoImportSiteSelect(imp, entry) {
+  const id = `import-site:${entry.id}`;
+  const raw = protoImportNorm(entry.site);
+  const words = raw.split(/[^a-z0-9]+/).filter(Boolean);
+  const sites = protoSites();
+  const score = (site) => {
+    const names = protoImportNorm(site.name).split(/[^a-z0-9]+/).filter(Boolean);
+    const shared = (a, b) => {
+      let i = 0;
+      while (i < a.length && i < b.length && a[i] === b[i]) i += 1;
+      return i;
+    };
+    return words.reduce((sum, word) => {
+      const best = Math.max(0, ...names.map((name) => shared(word, name)));
+      return sum + (best >= 3 ? best : 0);
+    }, 0);
+  };
+  const close = sites
+    .map((site) => ({ site, n: score(site) }))
+    .filter((item) => item.n > 0)
+    .sort((a, b) => b.n - a.n)
+    .slice(0, 5)
+    .map((item) => item.site);
+  const rest = sites.filter((site) => !close.includes(site)).sort((a, b) => a.name.localeCompare(b.name));
+  const option = (site) => ({ value: String(site.meters[0].id), label: site.name });
+  return protoSelect({
+    id,
+    label: "Site",
+    wide: true,
+    value: String(imp.sites?.[raw] || ""),
+    placeholder: "Pick a site",
+    empty: "No sites match.",
+    search: {
+      name: "proto-report-site-query",
+      value: protoSelectOpen() === id ? String(store.prototypeReportSiteQuery || "") : "",
+      placeholder: "Search sites",
+      label: "Search sites",
+    },
+    options: [
+      ...(close.length ? [{ heading: "Closest matches" }, ...close.map(option), { heading: "Other sites" }] : []),
+      ...rest.map(option),
+    ],
+  });
+}
+
+function protoImportMeterSelect(imp, entry, site) {
+  const key = `${protoImportNorm(entry.site)}|${protoImportNorm(entry.meter)}`;
+  return protoSelect({
+    id: `import-meter:${entry.id}`,
+    label: "Meter point",
+    wide: true,
+    value: String(imp.meters?.[key] || ""),
+    placeholder: "Pick a meter point",
+    options: site.meters.map((meter) => ({ value: meter.id, label: meter.name, note: protoMeterPointRef(meter) })),
+  });
+}
+
+function protoImportTargetHtml(imp, list) {
+  const { entry, site, meter } = list[0];
+  const picked = Boolean(imp.sites?.[protoImportNorm(entry.site)]);
+  const pointPicked = Boolean(imp.meters?.[list[0].key]);
+  const asFile = (text) => `<p class="astral-muted">In the file as ${escapeHtml(text)}.</p>`;
+  let head;
+  if (!site || picked) {
+    head = `
+      <div class="astral-import-target-copy">
+        <h4>${escapeHtml(site?.name || entry.site || entry.meter)}</h4>
+        ${
+          site
+            ? asFile(entry.site)
+            : `<p class="astral-import-why">${protoIconMark("warning")}<span>No site has this name. Pick the site it belongs to.</span></p>`
+        }
+      </div>
+      ${protoImportSiteSelect(imp, entry)}
+    `;
+  } else if (entry.meter && (!meter || pointPicked)) {
+    head = `
+      <div class="astral-import-target-copy">
+        <h4>${escapeHtml(site.name)}${meter ? ` \u00b7 ${escapeHtml(meter.name)}` : ""}</h4>
+        ${
+          meter
+            ? asFile(entry.meter)
+            : `<p class="astral-import-why">${protoIconMark("warning")}<span>No meter point ${escapeHtml(entry.meter)} on this site. Pick the meter point.</span></p>`
+        }
+      </div>
+      ${protoImportMeterSelect(imp, entry, site)}
+    `;
+  } else {
+    head = `
+      <div class="astral-import-target-copy">
+        <h4>${escapeHtml(site.name)}${meter ? ` \u00b7 ${escapeHtml(meter.name)}` : ""}</h4>
+        ${meter ? `<p class="astral-muted">${escapeHtml(protoMeterPointRef(meter))}</p>` : ""}
+      </div>
+    `;
+  }
+  const siteName = site?.name || entry.site || entry.meter;
+  return `
+    <section class="astral-import-target">
+      <div class="astral-import-target-head">${head}</div>
+      ${list.map((ev) => protoImportRow(imp, ev, siteName)).join("")}
+    </section>
+  `;
+}
+
+// The weeks the file sets, with how many sites and meters share each one.
+function protoImportPatterns(evals) {
+  const groups = new Map();
+  evals.forEach((ev) => {
+    const part = ev.entry.part;
+    if (part === "attrs") return;
+    const rows = ev.next || protoImportFileRows(ev.entry);
+    const key = `${part}|${JSON.stringify(rows.map((row) => protoDayPeriods(row, part)))}`;
+    if (!groups.has(key)) groups.set(key, { part, rows, n: 0 });
+    groups.get(key).n += 1;
+  });
+  if (!groups.size) return "";
+  const list = [...groups.values()].sort((a, b) => (a.part === b.part ? b.n - a.n : a.part === "hours" ? -1 : 1));
+  return `
+    <section class="astral-import-box">
+      <h4>Patterns in this file</h4>
+      <div class="astral-table-wrap">
+        <table class="astral-table astral-import-patterns">
+          <thead><tr><th>Setting</th><th>Week</th><th>Pattern</th><th>Used by</th></tr></thead>
+          <tbody>
+            ${list
+              .map(
+                ({ part, rows, n }) => `
+                  <tr>
+                    <td><span class="astral-import-what">${protoIconMark(part)}<span>${escapeHtml(PROTO_METER_PART_NAMES[part])}</span></span></td>
+                    <td>${protoPresetLine(part, rows, true)}</td>
+                    <td>${escapeHtml(protoImportWeekName(part, rows))}</td>
+                    <td>${n} ${n === 1 ? "site or meter" : "sites or meters"}</td>
+                  </tr>
+                `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+      ${protoBreakdownKey([...new Set(list.flatMap(({ part }) => Object.values(PROTO_PRESET_LINE[part])))])}
+    </section>
+  `;
+}
+
+function protoSiteImportPage() {
+  const imp = protoSiteImport();
+  const evals = protoImportEvalAll(imp);
+  const filter = protoImportFilter(imp);
+  const count = (id) => (id === "all" ? evals.length : evals.filter((ev) => ev.status === id).length);
+  const shown = filter === "all" ? evals : evals.filter((ev) => ev.status === filter);
+  const targets = new Map();
+  shown.forEach((ev) => {
+    if (!targets.has(ev.key)) targets.set(ev.key, []);
+    targets.get(ev.key).push(ev);
+  });
+  const on = evals.filter((ev) => protoImportOn(imp, ev));
+  const blocked = on.filter((ev) => ev.status === "needs").length;
+  const ready = on.filter((ev) => ev.status !== "needs").length;
+  const changes = evals.filter((ev) => ev.status === "change");
+  const allOn = changes.length > 0 && changes.every((ev) => protoImportOn(imp, ev));
+  const siteN = new Set(evals.map((ev) => (ev.site ? ev.site.meters[0].id : protoImportNorm(ev.entry.site)))).size;
+  const issue = blocked
+    ? `${blocked} ticked ${blocked === 1 ? "entry needs" : "entries need"} details. Fill ${blocked === 1 ? "it" : "them"} in, or untick ${
+        blocked === 1 ? "it" : "them"
+      } to leave ${blocked === 1 ? "it" : "them"} out.`
+    : ready
+      ? `${ready} ${ready === 1 ? "entry" : "entries"} ready to save.`
+      : "Tick at least one entry to save.";
+  const lost = imp.lost || [];
+  return protoPaneShell(
+    `
+      <div class="astral-detail-head">
+        <div class="astral-detail-lead">
+          ${protoIconBtn("prev", "Back", "data-proto-import-close")}
+          <div>
+            ${protoPaneKicker("Upload")}
+            <h3>${escapeHtml(imp.name || "Your file")}</h3>
+          </div>
+        </div>
+      </div>
+    `,
+    `
+      <div class="astral-import">
+        <p class="astral-muted">${siteN} ${siteN === 1 ? "site" : "sites"} in this file. Tick what to save. Anything the file leaves out stays as it is.</p>
+        ${protoImportPatterns(evals)}
+        ${protoSummaryCards(
+          "Show entries by kind",
+          PROTO_IMPORT_FILTERS.map((item) => ({
+            attr: `data-proto-import-filter="${item.id}"`,
+            n: count(item.id),
+            name: item.name,
+            mark: item.mark,
+            on: filter === item.id,
+          }))
+        )}
+        ${
+          changes.length
+            ? `
+          <button type="button" role="checkbox" class="astral-report-consent astral-import-all" aria-checked="${
+            allOn ? "true" : "false"
+          }" data-proto-import-all>
+            ${protoCheck(allOn)}
+            <span class="astral-report-consent-copy">
+              <span>Replace all current settings</span>
+              <span class="astral-muted">Ticks all ${changes.length} ${changes.length === 1 ? "change" : "changes"}, so the file replaces what is set now.</span>
+            </span>
+          </button>`
+            : ""
+        }
+        <div class="astral-import-list">
+          ${
+            targets.size
+              ? [...targets.values()].map((list) => protoImportTargetHtml(imp, list)).join("")
+              : `<p class="astral-muted">Nothing in this view.</p>`
+          }
+        </div>
+        ${
+          lost.length
+            ? `
+          <details class="astral-import-box astral-import-lost">
+            <summary>${lost.length} ${lost.length === 1 ? "line" : "lines"} left out</summary>
+            <p class="astral-muted">These lines do not match the template. Fix them in the file and upload it again.</p>
+            <ul>
+              ${lost
+                .slice(0, 200)
+                .map(
+                  (item) =>
+                    `<li><span class="astral-import-line">Line ${item.line}</span><span>${escapeHtml(item.why)}</span><span class="astral-muted">${escapeHtml(
+                      item.text
+                    )}</span></li>`
+                )
+                .join("")}
+            </ul>
+          </details>`
+            : ""
+        }
+        <div class="astral-card astral-report-page-foot astral-import-foot">
+          <div class="astral-actions">
+            ${protoBtn("Save settings", "data-proto-import-apply", { disabled: Boolean(blocked) || !ready })}
+            ${protoGhost("Cancel", "data-proto-import-close")}
+            <p class="astral-muted astral-report-issue" role="status">${escapeHtml(issue)}</p>
+          </div>
+        </div>
+      </div>
+    `
+  );
+}
+
+function protoImportPatch(patch) {
+  const imp = protoSiteImport();
+  if (!imp) return;
+  setProto({ prototypeSiteImport: { ...imp, ...patch }, prototypeSelectOpen: "" });
+}
+
+function protoImportPick(id) {
+  const imp = protoSiteImport();
+  const ev = imp && protoImportEvalAll(imp).find((item) => item.entry.id === id);
+  if (!ev || ev.status === "same") return;
+  protoImportPatch({ picks: { ...(imp.picks || {}), [id]: !protoImportOn(imp, ev) } });
+  protoRestoreFocus(`#astral-fs [data-proto-import-pick="${CSS.escape(id)}"]`);
+}
+
+function protoImportPickAll() {
+  const imp = protoSiteImport();
+  if (!imp) return;
+  const changes = protoImportEvalAll(imp).filter((ev) => ev.status === "change");
+  const next = !changes.every((ev) => protoImportOn(imp, ev));
+  const picks = { ...(imp.picks || {}) };
+  changes.forEach((ev) => {
+    picks[ev.entry.id] = next;
+  });
+  protoImportPatch({ picks });
+  protoRestoreFocus("#astral-fs [data-proto-import-all]");
+}
+
+function protoImportPickTarget(id, value) {
+  const imp = protoSiteImport();
+  const match = String(id).match(/^import-(site|meter):(.+)$/);
+  const entry = match && imp?.entries.find((item) => item.id === match[2]);
+  if (!entry) return;
+  store.prototypeReportSiteQuery = "";
+  // Fixing an entry says it should be saved, so it stays ticked.
+  const siteKey = protoImportNorm(entry.site);
+  const picks = { ...(imp.picks || {}) };
+  imp.entries.forEach((item) => {
+    const same = protoImportNorm(item.site) === siteKey && (match[1] === "site" || protoImportNorm(item.meter) === protoImportNorm(entry.meter));
+    if (same && typeof picks[item.id] !== "boolean") picks[item.id] = true;
+  });
+  if (match[1] === "site") {
+    protoImportPatch({ picks, sites: { ...(imp.sites || {}), [siteKey]: value } });
+  } else {
+    const key = `${siteKey}|${protoImportNorm(entry.meter)}`;
+    protoImportPatch({ picks, meters: { ...(imp.meters || {}), [key]: value } });
+  }
+  protoRestoreFocus(`#astral-fs [data-proto-select="${CSS.escape(id)}"] .astral-select-btn`);
+}
+
+// Ticked entries save straight to each site and meter. A site with unsaved edits keeps them, with the file on top.
+function protoImportApply() {
+  const imp = protoSiteImport();
+  if (!imp || !protoCanAct()) return;
+  const evals = protoImportEvalAll(imp).filter((ev) => protoImportOn(imp, ev));
+  if (evals.some((ev) => ev.status === "needs")) return;
+  const list = evals.filter((ev) => ev.status === "new" || ev.status === "change");
+  if (!list.length) return;
+  const profiles = { ...protoMeterProfiles() };
+  const drafts = { ...protoMeterDrafts() };
+  const overrides = { ...protoMeterOverridesAll() };
+  const ownDrafts = { ...protoMeterOwnDrafts() };
+  const work = new Map();
+  const sites = new Set();
+  const patch = (profile, ev) => {
+    const part = ev.entry.part;
+    if (part === "attrs") ev.changed.forEach((field) => (profile.attrs[field.key] = field.value));
+    else {
+      profile[part] = protoCloneProfile(ev.next);
+      protoDropWeek(profile, part);
+    }
+  };
+  list.forEach((ev) => {
+    const siteId = ev.site.meters[0].id;
+    sites.add(siteId);
+    const part = ev.entry.part;
+    if (ev.meter) {
+      const id = ev.meter.id;
+      const own = protoCloneProfile(overrides[id] || {});
+      if (part === "attrs") {
+        const attrs = protoSiteProfile(siteId).attrs;
+        own.rates = {
+          ...Object.fromEntries(protoMeterRateSpec(ev.meter).map((item) => [item.key, String(attrs[item.key] ?? "")])),
+          ...(own.rates || {}),
+          ...Object.fromEntries(ev.changed.map((field) => [field.key, field.value])),
+        };
+      } else {
+        own[part] = protoCloneProfile(ev.next);
+        protoDropWeek(own, part);
+      }
+      overrides[id] = own;
+      delete ownDrafts[id];
+      return;
+    }
+    const key = protoProfileKey(siteId);
+    if (!work.has(key)) work.set(key, { siteId, saved: protoSiteProfile(siteId), draft: drafts[key] ? protoMeterDraft(siteId) : null });
+    const item = work.get(key);
+    patch(item.saved, ev);
+    if (item.draft) patch(item.draft, ev);
+  });
+  work.forEach((item, key) => {
+    profiles[key] = item.saved;
+    if (item.draft) drafts[key] = item.draft;
+  });
+  setProto({
+    prototypeMeterProfiles: profiles,
+    prototypeMeterDrafts: drafts,
+    prototypeMeterOverrides: overrides,
+    prototypeMeterOwnDrafts: ownDrafts,
+    prototypeSiteImport: null,
+    prototypeMeterUpload: { name: imp.name, saved: sites.size },
+    prototypeSelectOpen: "",
+  });
+}
+
+// Read the file, then open the review page. Nothing is saved until Save settings.
+function protoImportFile(blob, fallbackId = "") {
+  const name = String(blob.name || "").slice(0, 120);
+  const xlsx = /\.xlsx$/i.test(name);
+  if (!xlsx && !/\.csv$/i.test(name) && blob.type !== "text/csv") {
+    setProto({ prototypeMeterUpload: { name, error: "type" }, prototypeSiteImport: null });
+    return;
+  }
+  const rows = xlsx ? blob.arrayBuffer().then(protoReadXlsx) : blob.text().then(protoParseCsv);
+  rows
+    .catch(() => null)
+    .then((list) => {
+      if (!list) {
+        setProto({ prototypeMeterUpload: { name, error: "read" }, prototypeSiteImport: null });
+        return;
+      }
+      const found = protoImportBuild(list, fallbackId);
+      if (!found.entries.length) {
+        setProto({ prototypeMeterUpload: { name, error: "empty" }, prototypeSiteImport: null, prototypeSelectOpen: "" });
+        return;
+      }
+      const draft = { name, entries: found.entries, lost: found.lost, filter: "all", picks: {}, sites: {}, meters: {}, values: {} };
+      // Open on what needs a decision, so unchanged settings do not bury it.
+      const evals = protoImportEvalAll(draft);
+      draft.filter = ["needs", "change", "new"].find((id) => evals.some((ev) => ev.status === id)) || "all";
+      setProto({
+        prototypeMeterUpload: null,
+        prototypeSiteImport: draft,
+        prototypeSelectOpen: "",
+      });
+      document.querySelector("#astral-fs .astral-pane-body")?.scrollTo?.(0, 0);
+    });
 }
 
 function protoMeterUploadNote() {
   const raw = store.prototypeMeterUpload;
   if (!raw || typeof raw !== "object") return "";
   const file = escapeHtml(String(raw.name || "your file"));
-  const skipped = Number(raw.skipped) || 0;
-  const skipLine = skipped
-    ? ` Skipped ${skipped} ${skipped === 1 ? "line that doesn't" : "lines that don't"} match the template.`
-    : "";
-  if (raw.error === "type") return `<p class="astral-banner" role="status">Upload a CSV file. Save a spreadsheet as CSV first.</p>`;
+  if (raw.error === "type") return `<p class="astral-banner" role="status">Upload a .csv or .xlsx file.</p>`;
+  if (raw.error === "read") {
+    return `<p class="astral-banner" role="status">${file} could not be read. Save it again as .xlsx or .csv, then upload it.</p>`;
+  }
   if (raw.error === "empty") {
     return `<p class="astral-banner" role="status">No settings found in ${file}. Download the template to see the layout.</p>`;
   }
-  if (!raw.changed) {
-    return `<p class="astral-banner" role="status">${file} matches these settings. Nothing changed.${skipLine}</p>`;
-  }
-  const count = Number(raw.changed);
-  return `<p class="astral-banner" role="status">${count} ${count === 1 ? "setting" : "settings"} filled from ${file}. Check them, then Save changes.${skipLine}</p>`;
+  const n = Number(raw.saved) || 0;
+  if (!n) return "";
+  return `<p class="astral-banner" role="status">Settings from ${file} saved for ${n} ${n === 1 ? "site" : "sites"}.</p>`;
 }
 
-function protoMeterUploadBtn(meter) {
-  if (!meter?.id || !protoCanAct()) return "";
+// Site settings fills in its own site for lines with no site. The sites table reads every site from the file.
+function protoMeterUploadBtn(meter, opts = {}) {
+  if (!protoCanAct() || (!meter?.id && !opts.sites)) return "";
+  const id = escapeHtml(meter?.id || "");
   return `
     <div class="astral-detail-tools">
-      ${protoGhost(`${protoIconMark("export")}<span>Download template</span>`, `data-proto-meter-template="${escapeHtml(meter.id)}"`, {
+      ${protoGhost(`${protoIconMark("export")}<span>Download template</span>`, `data-proto-meter-template="${id}"`, {
         html: true,
         className: "astral-meter-upload",
       })}
       <label class="astral-ghost astral-upload astral-meter-upload">
-        ${protoIconMark("upload")}<span>Upload CSV</span>
-        <input class="sr-only" type="file" accept=".csv,text/csv" data-proto-meter-upload="${escapeHtml(meter.id)}" />
+        ${protoIconMark("upload")}<span>Upload</span>
+        <input
+          class="sr-only"
+          type="file"
+          accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          data-proto-meter-upload="${id}"
+        />
       </label>
     </div>
   `;
@@ -22570,6 +23305,7 @@ function protoMeterSettingsReset() {
     prototypePeriodDay: null,
     prototypeSiteOwnPick: null,
     prototypeMeterUpload: null,
+    prototypeSiteImport: null,
   };
 }
 
@@ -23765,6 +24501,9 @@ function protoProfileListMeters(site, all = false) {
   return meters.filter((item) => picked.has(item.id));
 }
 
+// The sites the table shows, so Download template gives the same list.
+let protoImportViewSites = [];
+
 function protoProfilePane(sites) {
   const rows = protoSortedRows("site-profile", (sites || []).filter(Boolean), (site, key) => {
     const profile = protoSiteProfile(site.meters?.[0]?.id);
@@ -23786,7 +24525,11 @@ function protoProfilePane(sites) {
         : protoSiteOverview(rows[0]);
     return `${lead}${protoMeterList(meters)}`;
   }
+  protoImportViewSites = rows;
+  const tools = protoMeterUploadBtn(null, { sites: true });
   return `
+    ${tools ? `<div class="astral-profile-tools">${tools}</div>` : ""}
+    ${protoMeterUploadNote()}
     <div class="astral-table-wrap">
       <table class="astral-table astral-profile-table">
         <thead>
@@ -26204,6 +26947,7 @@ function protoScrollPaneKey() {
     protoPaneId(),
     scope,
     scope === "site" ? store.activePrototypeMeter || "" : store.prototypeGroup || "",
+    protoSiteImport() ? "import" : "",
   ].join("|");
 }
 
@@ -26487,6 +27231,7 @@ function protoPortfolio() {
 }
 
 function protoPortfolioDetail() {
+  if (protoSiteImport() && protoPaneId() === "profile") return protoSiteImportPage();
   const state = protoState();
   const current = protoMeter(state.meter);
   const currentSite = current ? protoSiteByMeter(current.id) : null;
@@ -36440,6 +37185,7 @@ function onPrototype(event) {
         prototypePeriodDay: null,
         prototypeSiteOwnPick: null,
     prototypeMeterUpload: null,
+    prototypeSiteImport: null,
         prototypePane: "profile",
       },
       { pane: true }
@@ -36516,9 +37262,39 @@ function onPrototype(event) {
     if (!periodEdit.disabled) protoEditPeriods(periodEdit.dataset);
     return;
   }
+  if (event.target.closest("[data-proto-import-close]")) {
+    setProto({ prototypeSiteImport: null, prototypeSelectOpen: "" });
+    return;
+  }
+  const importFilter = event.target.closest("[data-proto-import-filter]");
+  if (importFilter) {
+    if (importFilter.disabled) return;
+    protoImportPatch({ filter: String(importFilter.dataset.protoImportFilter || "all") });
+    protoRestoreFocus(`#astral-fs [data-proto-import-filter="${CSS.escape(importFilter.dataset.protoImportFilter || "all")}"]`);
+    return;
+  }
+  const importPick = event.target.closest("[data-proto-import-pick]");
+  if (importPick) {
+    protoImportPick(String(importPick.dataset.protoImportPick || ""));
+    return;
+  }
+  if (event.target.closest("[data-proto-import-all]")) {
+    protoImportPickAll();
+    return;
+  }
+  const importApply = event.target.closest("[data-proto-import-apply]");
+  if (importApply) {
+    if (!importApply.disabled) protoImportApply();
+    return;
+  }
   const meterTemplate = event.target.closest("[data-proto-meter-template]");
   if (meterTemplate) {
-    const meter = protoMeter(String(meterTemplate.dataset.protoMeterTemplate || ""));
+    const meterId = String(meterTemplate.dataset.protoMeterTemplate || "");
+    if (!meterId) {
+      protoCsvDownload(protoSitesSettingsCsv(protoImportViewSites), "site-settings.csv");
+      return;
+    }
+    const meter = protoMeter(meterId);
     if (!meter) return;
     const form = document.querySelector("#astral-fs [data-proto-meter-profile]");
     if (form) {
@@ -37696,8 +38472,11 @@ function onPrototypeInput(event) {
     render();
     if (active) {
       const open = String(store.prototypeSelectOpen || "");
+      const scoped = open
+        ? document.querySelector(`#astral-fs [data-proto-select="${CSS.escape(open)}"] input[name='proto-report-site-query']`)
+        : null;
       protoRestoreFocus(
-        open
+        scoped
           ? `#astral-fs [data-proto-select="${CSS.escape(open)}"] input[name='proto-report-site-query']`
           : "#astral-fs input[name='proto-report-site-query']",
         start
@@ -37974,34 +38753,33 @@ function onPrototypeInput(event) {
     }
     return;
   }
+  const importValue = event.target.closest("[data-proto-import-value]");
+  if (importValue) {
+    const imp = protoSiteImport();
+    if (!imp) return;
+    const key = String(importValue.dataset.protoImportValue || "");
+    imp.values = { ...(imp.values || {}), [key]: importValue.value };
+    if (event.type === "change") {
+      const id = key.split("|")[0];
+      const picks = typeof imp.picks?.[id] === "boolean" ? imp.picks : { ...(imp.picks || {}), [id]: true };
+      protoImportPatch({ values: imp.values, picks });
+      protoRestoreFocus(`#astral-fs [data-proto-import-value="${CSS.escape(key)}"]`);
+    }
+    return;
+  }
   const meterUpload = event.target.closest("[data-proto-meter-upload]");
   if (meterUpload) {
     if (event.type !== "change" || !meterUpload.files || !meterUpload.files[0] || !protoCanAct()) return;
-    const meter = protoMeter(String(meterUpload.dataset.protoMeterUpload || ""));
+    const meterId = String(meterUpload.dataset.protoMeterUpload || "");
+    const meter = meterId ? protoMeter(meterId) : null;
     const blob = meterUpload.files[0];
-    const name = String(blob.name || "").slice(0, 120);
     meterUpload.value = "";
-    if (!meter) return;
-    if (!/\.csv$/i.test(name) && blob.type !== "text/csv") {
-      setProto({ prototypeMeterUpload: { name, error: "type" } });
-      return;
-    }
-    const form = document.querySelector("#astral-fs [data-proto-meter-profile]");
+    if (meterId && !meter) return;
+    const form = meter && document.querySelector("#astral-fs [data-proto-meter-profile]");
     if (form) {
       store.prototypeMeterDrafts = { ...protoMeterDrafts(), [protoProfileKey(meter.id)]: protoReadMeterProfileForm(form, meter) };
     }
-    blob.text().then((text) => {
-      const result = protoApplySiteSettingsCsv(meter, text);
-      if (!result.read || result.skipped === result.read) {
-        setProto({ prototypeMeterUpload: { name, error: "empty" }, prototypeSelectOpen: "" });
-        return;
-      }
-      setProto({
-        prototypeMeterUpload: { name, changed: result.changed, skipped: result.skipped },
-        prototypeMeterDrafts: protoMeterDrafts(),
-        prototypeSelectOpen: "",
-      });
-    });
+    protoImportFile(blob, meterId);
     return;
   }
   const pictureFile = event.target.closest("[data-proto-picture='file']");

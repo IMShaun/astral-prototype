@@ -12581,6 +12581,295 @@ tr.is-off .astral-person-mark {
   align-items: center;
 }
 
+/* Upload review. Each box matches .astral-site-overview. */
+.astral-import {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.astral-import > p {
+  margin: 0;
+}
+
+.astral-import-box,
+.astral-import-target {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 24px;
+  background: #fff;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-card);
+}
+
+.astral-import-box h4,
+.astral-import-target h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.astral-import-list {
+  display: grid;
+  gap: 16px;
+}
+
+.astral-import-target-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.astral-import-target-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.astral-import-target-copy p {
+  margin: 0;
+}
+
+.astral-import-target-head .astral-select {
+  width: min(320px, 100%);
+}
+
+.astral-import-why {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-danger);
+  font-size: 0.875rem;
+}
+
+.astral-import-row {
+  display: grid;
+  grid-template-columns: 24px minmax(160px, 220px) minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.astral-import-row.is-same {
+  color: var(--color-text-secondary);
+}
+
+.astral-import-pick {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.astral-import-pick.is-off {
+  cursor: default;
+}
+
+.astral-import-what {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  font-weight: 600;
+}
+
+.astral-import-what > svg,
+.astral-import-why > svg,
+.astral-import-arrow {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.astral-import-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-background-subtle);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.astral-import-tag.is-needs {
+  background: var(--color-status-danger-subtle);
+  color: var(--color-text-danger);
+}
+
+.astral-import-tag.is-change {
+  background: var(--color-status-warning-subtle);
+  color: var(--color-text-warning);
+}
+
+.astral-import-tag.is-new {
+  background: var(--color-status-info-subtle);
+  color: var(--color-brand-primary);
+}
+
+.astral-import-tag.is-same {
+  color: var(--color-text-secondary);
+}
+
+.astral-import-detail {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.astral-import-detail p {
+  margin: 0;
+}
+
+.astral-import-week {
+  display: grid;
+  grid-template-columns: 72px auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.astral-import-week > .astral-preset-line {
+  justify-content: flex-start;
+}
+
+.astral-import-when {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.astral-import-week-name {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.astral-import-fields {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.astral-import-field {
+  display: grid;
+  grid-template-columns: minmax(120px, 200px) minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+/* Text lines up with the middle of a 36px field. */
+.astral-import-field dt,
+.astral-import-now,
+.astral-import-field dd > span:not(.astral-import-fix) {
+  line-height: 36px;
+}
+
+.astral-import-field dt {
+  color: var(--color-text-secondary);
+}
+
+.astral-import-field dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+}
+
+.astral-import-now {
+  color: var(--color-text-secondary);
+  text-decoration: line-through;
+}
+
+.astral-import-arrow {
+  margin-top: 10px;
+  color: var(--color-text-secondary);
+}
+
+.astral-import-fix {
+  display: grid;
+  gap: 4px;
+  width: min(240px, 100%);
+}
+
+.astral-import-patterns td {
+  vertical-align: middle;
+}
+
+.astral-import-lost summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.astral-import-lost ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.astral-import-lost li {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 2px 12px;
+  font-size: 0.875rem;
+}
+
+.astral-import-lost li > .astral-muted {
+  grid-column: 2;
+  overflow-wrap: anywhere;
+}
+
+.astral-import-line {
+  color: var(--color-text-secondary);
+}
+
+.astral-profile-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin: 16px 0;
+}
+
+@media (max-width: 720px) {
+  .astral-import-row {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .astral-import-detail {
+    grid-column: 2;
+  }
+}
+
+.astral-import-now,
+.astral-import-field dd > span:not(.astral-import-fix),
+.astral-import-week-name {
+  white-space: nowrap;
+}
+
+/* In a narrow pane the detail sits under its heading, not beside it. */
+@container astral-pane (max-width: 820px) {
+  .astral-import-row {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .astral-import-detail {
+    grid-column: 2;
+  }
+
+  .astral-import-field {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .astral-import-field dt {
+    line-height: 1.5;
+  }
+}
+
 .astral-report-pair:not(:has(*)) {
   display: none;
 }
