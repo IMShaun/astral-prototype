@@ -22806,9 +22806,7 @@ function protoMeterProfileForm(meter) {
   });
   const section = (part) => {
     const ownCount = protoSiteOwnList(site, part).length;
-    const tag = ownCount
-      ? `<span class="astral-muted">${ownCount} ${ownCount === 1 ? "meter sets its own" : "meters set their own"}</span>`
-      : "";
+    const tag = ownCount ? protoTag("Mixed", "", "is-own") : "";
     const timed = part !== "rates";
     const siteMode = timed ? protoSrcMode(draft, part, false) : "own";
     const siteBody =
