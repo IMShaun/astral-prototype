@@ -9877,6 +9877,10 @@ function protoCloseModal(kind) {
     if (id) protoRestoreFocus(`#astral-fs [data-proto-alert-info="${CSS.escape(id)}"]`);
     return;
   }
+  if (kind === "import-entry") {
+    protoImportCloseEntry();
+    return;
+  }
   if (kind === "preset-save") {
     const part = store.prototypePresetSave?.part || "";
     setProto({ prototypePresetSave: null });
@@ -22974,18 +22978,22 @@ function protoImportEval(imp, entry, index) {
 
 // A blank setting is always filled in. So a change that also fills blanks is split, and only the part
 // that replaces a value waits for a tick.
+// Entries someone removes on review drop out of the list, the counts and the save.
 function protoImportEvalAll(imp) {
   const index = protoImportIndex();
-  return imp.entries.flatMap((entry) => {
-    const ev = protoImportEval(imp, entry, index);
-    if (entry.part !== "attrs" || ev.meter || ev.status !== "change") return [ev];
-    const blank = ev.changed.filter((field) => !field.now);
-    if (!blank.length) return [ev];
-    return [
-      { ...ev, fields: ev.fields.filter((field) => !blank.includes(field)), changed: ev.changed.filter((field) => field.now) },
-      { ...ev, entry: { ...entry, id: `${entry.id}-fill` }, status: "new", fields: blank, changed: blank },
-    ];
-  });
+  const removed = new Set(imp.removed || []);
+  return imp.entries
+    .flatMap((entry) => {
+      const ev = protoImportEval(imp, entry, index);
+      if (entry.part !== "attrs" || ev.meter || ev.status !== "change") return [ev];
+      const blank = ev.changed.filter((field) => !field.now);
+      if (!blank.length) return [ev];
+      return [
+        { ...ev, fields: ev.fields.filter((field) => !blank.includes(field)), changed: ev.changed.filter((field) => field.now) },
+        { ...ev, entry: { ...entry, id: `${entry.id}-fill` }, status: "new", fields: blank, changed: blank },
+      ];
+    })
+    .filter((ev) => !removed.has(ev.entry.id));
 }
 
 // New entries start ticked. Changes wait for a tick, so nothing set is replaced by accident.
@@ -23092,26 +23100,43 @@ function protoImportDetail(ev) {
   `;
 }
 
-function protoImportRow(imp, ev, siteName) {
+function protoImportPartName(ev) {
   const part = ev.entry.part;
-  const name = part === "attrs" ? (ev.entry.meter ? "Unit rates" : "Attributes") : PROTO_METER_PART_NAMES[part];
+  return part === "attrs" ? (ev.entry.meter ? "Unit rates" : "Attributes") : PROTO_METER_PART_NAMES[part];
+}
+
+function protoImportSiteName(ev) {
+  return ev.site?.name || ev.entry.site || ev.entry.meter;
+}
+
+// One row per entry. The row opens what changes, so the list stays short.
+function protoImportRow(imp, ev) {
+  const part = ev.entry.part;
+  const id = escapeHtml(ev.entry.id);
+  const name = protoImportPartName(ev);
+  const siteName = protoImportSiteName(ev);
+  const point = ev.meter?.name || ev.entry.meter || "";
   const on = protoImportOn(imp, ev);
   const box =
     ev.status === "same"
       ? `<span class="astral-import-pick is-off" aria-hidden="true"></span>`
       : `<button type="button" role="checkbox" class="astral-import-pick" aria-checked="${on ? "true" : "false"}" aria-label="${escapeHtml(
           `Save ${name.toLowerCase()} for ${siteName}`
-        )}" data-proto-import-pick="${escapeHtml(ev.entry.id)}">${protoCheck(on)}</button>`;
+        )}" data-proto-import-pick="${id}">${protoCheck(on)}</button>`;
   return `
-    <div class="astral-import-row${on ? " is-on" : ""}${ev.status === "same" ? " is-same" : ""}">
-      ${box}
-      <div class="astral-import-what">
-        ${protoIconMark(part === "attrs" ? "rates" : part)}
-        <span>${escapeHtml(name)}</span>
-        <span class="astral-import-tag is-${ev.status}">${PROTO_IMPORT_TAGS[ev.status]}</span>
-      </div>
-      <div class="astral-import-detail">${protoImportDetail(ev)}</div>
-    </div>
+    <tr class="is-link${on ? " is-on" : ""}${ev.status === "same" ? " is-same" : ""}" data-proto-import-row="${id}">
+      <td class="astral-import-pick-cell">${box}</td>
+      <th scope="row">
+        <span class="astral-import-site">
+          <button type="button" class="astral-text" aria-label="${escapeHtml(`${siteName}, ${name.toLowerCase()}`)}" data-proto-import-open="${id}">${escapeHtml(
+            siteName
+          )}</button>
+          ${point && point !== siteName ? `<span class="astral-muted">${escapeHtml(point)}</span>` : ""}
+        </span>
+      </th>
+      <td><span class="astral-import-what">${protoIconMark(part === "attrs" ? "rates" : part)}<span>${escapeHtml(name)}</span></span></td>
+      <td><span class="astral-import-tag is-${ev.status}">${PROTO_IMPORT_TAGS[ev.status]}</span></td>
+    </tr>
   `;
 }
 
@@ -23173,55 +23198,76 @@ function protoImportMeterSelect(imp, entry, site) {
   });
 }
 
-function protoImportTargetHtml(imp, list) {
-  const { entry, site, meter } = list[0];
+// Where the entry goes. When the file names a site or meter point Astral cannot find, a picker sits here.
+// The modal title already names the site, so only a meter point gets its own line.
+function protoImportTargetHead(imp, ev) {
+  const { entry, site, meter } = ev;
   const picked = Boolean(imp.sites?.[protoImportNorm(entry.site)]);
-  const pointPicked = Boolean(imp.meters?.[list[0].key]);
+  const pointPicked = Boolean(imp.meters?.[ev.key]);
   const asFile = (text) => `<p class="astral-muted">${protoImportWords().as} ${escapeHtml(text)}.</p>`;
-  let head;
+  const why = (text) => `<p class="astral-import-why">${protoIconMark("warning")}<span>${text}</span></p>`;
+  const point = meter ? `<h4>${escapeHtml(meter.name)}</h4>` : "";
   if (!site || picked) {
-    head = `
+    return `
       <div class="astral-import-target-copy">
-        <h4>${escapeHtml(site?.name || entry.site || entry.meter)}</h4>
-        ${
-          site
-            ? asFile(entry.site)
-            : `<p class="astral-import-why">${protoIconMark("warning")}<span>No site has this name. Pick the site it belongs to.</span></p>`
-        }
+        ${site ? asFile(entry.site) : why("No site has this name. Pick the site it belongs to.")}
       </div>
       ${protoImportSiteSelect(imp, entry)}
     `;
-  } else if (entry.meter && (!meter || pointPicked)) {
-    head = `
+  }
+  if (entry.meter && (!meter || pointPicked)) {
+    return `
       <div class="astral-import-target-copy">
-        <h4>${escapeHtml(site.name)}${meter ? ` \u00b7 ${escapeHtml(meter.name)}` : ""}</h4>
-        ${
-          meter
-            ? asFile(entry.meter)
-            : `<p class="astral-import-why">${protoIconMark("warning")}<span>No meter point ${escapeHtml(entry.meter)} on this site. Pick the meter point.</span></p>`
-        }
+        ${point}
+        ${meter ? asFile(entry.meter) : why(`No meter point ${escapeHtml(entry.meter)} on this site. Pick the meter point.`)}
       </div>
       ${protoImportMeterSelect(imp, entry, site)}
     `;
-  } else {
-    head = `
-      <div class="astral-import-target-copy">
-        <h4>${escapeHtml(site.name)}${meter ? ` \u00b7 ${escapeHtml(meter.name)}` : ""}</h4>
-        ${meter ? `<p class="astral-muted">${escapeHtml(protoMeterPointRef(meter))}</p>` : ""}
-      </div>
-    `;
   }
-  const siteName = site?.name || entry.site || entry.meter;
+  return meter
+    ? `
+    <div class="astral-import-target-copy">
+      ${point}
+      <p class="astral-muted">${escapeHtml(protoMeterPointRef(meter))}</p>
+    </div>
+  `
+    : "";
+}
+
+const PROTO_IMPORT_LEADS = {
+  needs: "Astral cannot tell where this goes yet.",
+  change: "What is set now, and what replaces it.",
+  new: "Nothing is set now. This is added.",
+  same: "This matches what is set now, so nothing changes.",
+};
+
+function protoImportEntryModal(imp, evals) {
+  const ev = imp.open && evals.find((item) => item.entry.id === imp.open);
+  if (!ev) return "";
+  const id = escapeHtml(ev.entry.id);
+  const title = `${protoImportPartName(ev)} for ${protoImportSiteName(ev)}`;
+  const head = protoImportTargetHead(imp, ev);
   return `
-    <section class="astral-import-target">
-      <div class="astral-import-target-head">${head}</div>
-      ${list.map((ev) => protoImportRow(imp, ev, siteName)).join("")}
-    </section>
+    <div class="astral-modal-back" data-proto-modal="import-entry">
+      <div class="astral-modal astral-import-entry" id="astral-import-entry" role="dialog" aria-modal="true" aria-labelledby="astral-import-entry-title">
+        ${protoModalHead("astral-import-entry-title", title, escapeHtml(PROTO_IMPORT_LEADS[ev.status]), "import-entry")}
+        <div class="astral-modal-body">
+          ${head ? `<div class="astral-import-target-head">${head}</div>` : ""}
+          <div class="astral-import-detail">${protoImportDetail(ev)}</div>
+        </div>
+        <div class="astral-modal-foot">
+          <div class="astral-actions">
+            ${protoBtn("Done", 'data-proto-modal-close="import-entry"')}
+            ${protoGhost("Remove entry", `data-proto-import-remove="${id}"`)}
+          </div>
+        </div>
+      </div>
+    </div>
   `;
 }
 
-// The weeks the file sets, with how many sites and meters share each one.
-function protoImportPatterns(evals) {
+// The weeks the file sets, with how many sites and meters share each one. A tab per setting when there are both.
+function protoImportPatterns(evals, imp) {
   const groups = new Map();
   evals.forEach((ev) => {
     const part = ev.entry.part;
@@ -23232,19 +23278,20 @@ function protoImportPatterns(evals) {
     groups.get(key).n += 1;
   });
   if (!groups.size) return "";
-  const list = [...groups.values()].sort((a, b) => (a.part === b.part ? b.n - a.n : a.part === "hours" ? -1 : 1));
-  return `
-    <section class="astral-import-box">
-      <h4>Patterns ${protoImportWords().in}</h4>
+  const list = [...groups.values()].sort((a, b) => b.n - a.n);
+  const parts = ["hours", "tou"].filter((part) => list.some((item) => item.part === part));
+  const active = parts.includes(imp.patternTab) ? imp.patternTab : parts[0];
+  const table = (part) => {
+    const own = list.filter((item) => item.part === part);
+    return `
       <div class="astral-table-wrap">
         <table class="astral-table astral-import-patterns">
-          <thead><tr><th>Setting</th><th>Week</th><th>Pattern</th><th>Used by</th></tr></thead>
+          <thead><tr><th>Week</th><th>Pattern</th><th>Used by</th></tr></thead>
           <tbody>
-            ${list
+            ${own
               .map(
-                ({ part, rows, n }) => `
+                ({ rows, n }) => `
                   <tr>
-                    <td><span class="astral-import-what">${protoIconMark(part)}<span>${escapeHtml(PROTO_METER_PART_NAMES[part])}</span></span></td>
                     <td>${protoPresetLine(part, rows, true)}</td>
                     <td>${escapeHtml(protoImportWeekName(part, rows))}</td>
                     <td>${n} ${n === 1 ? "site or meter" : "sites or meters"}</td>
@@ -23255,9 +23302,45 @@ function protoImportPatterns(evals) {
           </tbody>
         </table>
       </div>
-      ${protoBreakdownKey([...new Set(list.flatMap(({ part }) => Object.values(PROTO_PRESET_LINE[part])))])}
+      ${protoBreakdownKey(Object.values(PROTO_PRESET_LINE[part]))}
+    `;
+  };
+  const tabs = parts.map((part) => ({ id: part, name: PROTO_METER_PART_NAMES[part] }));
+  return `
+    <section class="astral-import-box">
+      <h4>Patterns ${protoImportWords().in}</h4>
+      ${
+        parts.length > 1
+          ? `<div class="astral-import-tabs">${protoTabs(tabs, active, "data-proto-import-pattern", "Patterns")}</div>`
+          : `<p class="astral-import-what">${protoIconMark(parts[0])}<span>${escapeHtml(PROTO_METER_PART_NAMES[parts[0]])}</span></p>`
+      }
+      ${parts
+        .map(
+          (part) => `
+        <div class="astral-import-pattern-panel" role="${parts.length > 1 ? "tabpanel" : "group"}" aria-label="${escapeHtml(
+            PROTO_METER_PART_NAMES[part]
+          )}" data-proto-import-pattern-panel="${part}"${part === active ? "" : " hidden"}>${table(part)}</div>`
+        )
+        .join("")}
     </section>
   `;
+}
+
+function protoImportPatternTab(part) {
+  const imp = protoSiteImport();
+  const root = document.querySelector("#astral-fs .astral-import-box");
+  if (!imp || !root) return;
+  imp.patternTab = part;
+  root.querySelectorAll("[data-proto-import-pattern]").forEach((tab) => {
+    const on = tab.dataset.protoImportPattern === part;
+    tab.classList.toggle("is-on", on);
+    tab.setAttribute("aria-selected", on ? "true" : "false");
+    tab.tabIndex = on ? 0 : -1;
+  });
+  root.querySelectorAll("[data-proto-import-pattern-panel]").forEach((panel) => {
+    panel.hidden = panel.dataset.protoImportPatternPanel !== part;
+  });
+  protoSlideHost(root.querySelector(".astral-import-tabs .astral-tabs"), "button.is-on", "importTabs", false);
 }
 
 function protoSiteImportPage() {
@@ -23268,11 +23351,6 @@ function protoSiteImportPage() {
   const filter = protoImportFilter(imp);
   const count = (id) => (id === "all" ? evals.length : evals.filter((ev) => ev.status === id).length);
   const shown = filter === "all" ? evals : evals.filter((ev) => ev.status === filter);
-  const targets = new Map();
-  shown.forEach((ev) => {
-    if (!targets.has(ev.key)) targets.set(ev.key, []);
-    targets.get(ev.key).push(ev);
-  });
   const on = evals.filter((ev) => protoImportOn(imp, ev));
   const blocked = on.filter((ev) => ev.status === "needs").length;
   const ready = on.filter((ev) => ev.status !== "needs").length;
@@ -23280,13 +23358,14 @@ function protoSiteImportPage() {
   const allOn = changes.length > 0 && changes.every((ev) => protoImportOn(imp, ev));
   const siteN = new Set(evals.map((ev) => (ev.site ? ev.site.meters[0].id : protoImportNorm(ev.entry.site)))).size;
   const issue = blocked
-    ? `${blocked} ticked ${blocked === 1 ? "entry needs" : "entries need"} details. Fill ${blocked === 1 ? "it" : "them"} in, or untick ${
+    ? `${blocked} ticked ${blocked === 1 ? "entry needs" : "entries need"} details. Open ${blocked === 1 ? "it" : "them"} to add the details, or untick ${
         blocked === 1 ? "it" : "them"
       } to leave ${blocked === 1 ? "it" : "them"} out.`
     : ready
       ? `${ready} ${ready === 1 ? "entry" : "entries"} ready to save.`
       : "Tick at least one entry to save.";
   const lost = imp.lost || [];
+  const gone = imp.gone || null;
   return protoPaneShell(
     `
       <div class="astral-detail-head">
@@ -23302,7 +23381,6 @@ function protoSiteImportPage() {
     `
       <div class="astral-import">
         <p class="astral-muted">${siteN} ${siteN === 1 ? "site" : "sites"} ${words.in}. Tick what to save. ${words.out} stays as it is.</p>
-        ${protoImportPatterns(evals)}
         ${protoSummaryCards(
           "Show entries by kind",
           PROTO_IMPORT_FILTERS.map((item) => ({
@@ -23327,13 +23405,23 @@ function protoSiteImportPage() {
           </button>`
             : ""
         }
-        <div class="astral-import-list">
-          ${
-            targets.size
-              ? [...targets.values()].map((list) => protoImportTargetHtml(imp, list)).join("")
-              : `<p class="astral-muted">Nothing in this view.</p>`
-          }
-        </div>
+        <p class="astral-import-gone" role="status">${
+          gone
+            ? `<span>${escapeHtml(gone.text)}</span>${protoTextBtn("Undo", `data-proto-import-undo="${escapeHtml(gone.id)}"`)}`
+            : ""
+        }</p>
+        ${
+          shown.length
+            ? `
+          <div class="astral-table-wrap astral-import-list">
+            <table class="astral-table astral-import-table">
+              <thead><tr><th class="astral-import-pick-cell"><span class="sr-only">Save</span></th><th>Site</th><th>Setting</th><th>Status</th></tr></thead>
+              <tbody>${shown.map((ev) => protoImportRow(imp, ev)).join("")}</tbody>
+            </table>
+          </div>`
+            : `<p class="astral-muted">Nothing in this view.</p>`
+        }
+        ${protoImportPatterns(evals, imp)}
         ${
           lost.length
             ? `
@@ -23361,6 +23449,7 @@ function protoSiteImportPage() {
             <p class="astral-muted astral-report-issue" role="status">${escapeHtml(issue)}</p>
           </div>
         </div>
+        ${protoImportEntryModal(imp, evals)}
       </div>
     `
   );
@@ -23370,6 +23459,40 @@ function protoImportPatch(patch) {
   const imp = protoSiteImport();
   if (!imp) return;
   setProto({ prototypeSiteImport: { ...imp, ...patch }, prototypeSelectOpen: "" });
+}
+
+function protoImportOpen(id) {
+  if (!protoSiteImport()) return;
+  protoImportPatch({ open: id });
+  protoRestoreFocus("#astral-fs #astral-import-entry .astral-modal-head [data-proto-modal-close]");
+}
+
+function protoImportCloseEntry() {
+  const id = protoSiteImport()?.open || "";
+  protoImportPatch({ open: "" });
+  if (id) protoRestoreFocus(`#astral-fs [data-proto-import-open="${CSS.escape(id)}"]`);
+}
+
+// Taking an entry out of the review leaves that setting as it is. Undo puts it back.
+function protoImportRemove(id) {
+  const imp = protoSiteImport();
+  const evals = imp ? protoImportEvalAll(imp) : [];
+  const ev = evals.find((item) => item.entry.id === id);
+  if (!ev) return;
+  const filter = protoImportFilter(imp);
+  const shown = filter === "all" ? evals : evals.filter((item) => item.status === filter);
+  const at = shown.indexOf(ev);
+  const next = shown[at + 1] || shown[at - 1];
+  const text = `${protoImportPartName(ev)} for ${protoImportSiteName(ev)} is removed from the list. What is set now stays.`;
+  protoImportPatch({ open: "", removed: [...(imp.removed || []), id], gone: { id, text } });
+  protoRestoreFocus(next ? `#astral-fs [data-proto-import-open="${CSS.escape(next.entry.id)}"]` : "#astral-fs [data-proto-import-undo]");
+}
+
+function protoImportUndo(id) {
+  const imp = protoSiteImport();
+  if (!imp) return;
+  protoImportPatch({ removed: (imp.removed || []).filter((item) => item !== id), gone: null });
+  protoRestoreFocus(`#astral-fs [data-proto-import-open="${CSS.escape(id)}"]`);
 }
 
 function protoImportPick(id) {
@@ -36601,6 +36724,7 @@ function protoSlideNavPills(options) {
   );
   protoSlideHost(root.querySelector("nav.astral-links"), ".astral-link[aria-current='page']", "links", snap);
   protoSlideHost(root.querySelector(".astral-meter-attr-tabs .astral-tabs"), "button.is-on", "attrTabs", snap);
+  protoSlideHost(root.querySelector(".astral-import-tabs .astral-tabs"), "button.is-on", "importTabs", snap);
   ["hours", "tou"].forEach((part) => {
     protoSlideHost(root.querySelector(`.astral-period-tabs .astral-tabs[data-part="${part}"]`), "button.is-on", `periodTabs-${part}`, snap);
   });
@@ -38837,6 +38961,31 @@ function onPrototype(event) {
   const importPick = event.target.closest("[data-proto-import-pick]");
   if (importPick) {
     protoImportPick(String(importPick.dataset.protoImportPick || ""));
+    return;
+  }
+  const importOpen = event.target.closest("[data-proto-import-open]");
+  if (importOpen) {
+    protoImportOpen(String(importOpen.dataset.protoImportOpen || ""));
+    return;
+  }
+  const importRow = event.target.closest("tr[data-proto-import-row]");
+  if (importRow && !event.target.closest("button, a, input, label")) {
+    protoImportOpen(String(importRow.dataset.protoImportRow || ""));
+    return;
+  }
+  const importRemove = event.target.closest("[data-proto-import-remove]");
+  if (importRemove) {
+    protoImportRemove(String(importRemove.dataset.protoImportRemove || ""));
+    return;
+  }
+  const importUndo = event.target.closest("[data-proto-import-undo]");
+  if (importUndo) {
+    protoImportUndo(String(importUndo.dataset.protoImportUndo || ""));
+    return;
+  }
+  const importPattern = event.target.closest("[data-proto-import-pattern]");
+  if (importPattern) {
+    protoImportPatternTab(String(importPattern.dataset.protoImportPattern || ""));
     return;
   }
   if (event.target.closest("[data-proto-import-all]")) {

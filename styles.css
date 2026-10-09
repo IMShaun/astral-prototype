@@ -12632,8 +12632,7 @@ tr.is-off .astral-person-mark {
   margin: 0;
 }
 
-.astral-import-box,
-.astral-import-target {
+.astral-import-box {
   display: grid;
   gap: 12px;
   margin: 0;
@@ -12644,14 +12643,59 @@ tr.is-off .astral-person-mark {
 }
 
 .astral-import-box h4,
-.astral-import-target h4 {
+.astral-import-target-head h4 {
   margin: 0;
   font-size: 1rem;
 }
 
-.astral-import-list {
+.astral-import-box > p.astral-import-what {
+  margin: 0;
+}
+
+.astral-import-table .astral-import-pick-cell {
+  width: 40px;
+  padding-right: 0;
+}
+
+.astral-import-table td,
+.astral-import-table th {
+  vertical-align: middle;
+}
+
+.astral-import-table tr.is-same td,
+.astral-import-table tr.is-same .astral-import-what {
+  color: var(--color-text-secondary);
+}
+
+.astral-import-table .astral-import-what {
+  font-weight: 400;
+}
+
+.astral-import-site {
   display: grid;
-  gap: 16px;
+  justify-items: start;
+  gap: 2px;
+}
+
+.astral-import-site .astral-muted {
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.astral-import-gone {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 0;
+}
+
+.astral-import-gone:empty {
+  display: none;
+}
+
+.astral-modal.astral-import-entry {
+  width: min(40rem, 100%);
 }
 
 .astral-import-target-head {
@@ -12682,19 +12726,6 @@ tr.is-off .astral-person-mark {
   gap: 6px;
   color: var(--color-text-danger);
   font-size: 0.875rem;
-}
-
-.astral-import-row {
-  display: grid;
-  grid-template-columns: 24px minmax(160px, 220px) minmax(0, 1fr);
-  align-items: start;
-  gap: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-border-subtle);
-}
-
-.astral-import-row.is-same {
-  color: var(--color-text-secondary);
 }
 
 .astral-import-pick {
@@ -12837,6 +12868,25 @@ tr.is-off .astral-person-mark {
 
 .astral-import-patterns td {
   vertical-align: middle;
+}
+
+.astral-import-patterns .astral-preset-line {
+  justify-content: flex-start;
+}
+
+.astral-import-tabs {
+  display: flex;
+  min-width: 0;
+}
+
+.astral-import-pattern-panel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.astral-import-pattern-panel[hidden] {
+  display: none;
 }
 
 .astral-import-lost summary {
@@ -13178,32 +13228,14 @@ tr.is-off .astral-person-mark {
   height: var(--space-32);
 }
 
-@media (max-width: 720px) {
-  .astral-import-row {
-    grid-template-columns: 24px minmax(0, 1fr);
-  }
-
-  .astral-import-detail {
-    grid-column: 2;
-  }
-}
-
 .astral-import-now,
 .astral-import-field dd > span:not(.astral-import-fix),
 .astral-import-week-name {
   white-space: nowrap;
 }
 
-/* In a narrow pane the detail sits under its heading, not beside it. */
+/* In a narrow pane each value sits under its label, not beside it. */
 @container astral-pane (max-width: 820px) {
-  .astral-import-row {
-    grid-template-columns: 24px minmax(0, 1fr);
-  }
-
-  .astral-import-detail {
-    grid-column: 2;
-  }
-
   .astral-import-field {
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
