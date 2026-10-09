@@ -10362,14 +10362,9 @@ function protoPickSelect(id, value) {
     const name = document.querySelector("#astral-preset-name")?.value ?? save.name;
     const day = Number(value) || 0;
     setProto({
-      prototypePresetSave: { ...save, day, name, ...protoPresetSaveDefaults(save.owner, save.part, save.kind, day) },
+      prototypePresetSave: { ...save, day, name, error: "", skipMatch: false },
       prototypeSelectOpen: "",
     });
-    protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
-    return;
-  }
-  if (id === "preset-save-target" && store.prototypePresetSave) {
-    setProto({ prototypePresetSave: { ...store.prototypePresetSave, target: value }, prototypeSelectOpen: "" });
     protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
     return;
   }
@@ -24564,16 +24559,64 @@ function protoSrcRows(owner, part) {
   return protoMeterDraft(owner)[part] || [];
 }
 
+// The dialog decides what Save does, so there is no Save as choice.
+// A day edited from one of your presets first asks whether to update that preset or save a new one.
+// Times that match a preset you already have offer that preset instead of saving a copy.
 function protoPresetSaveModal() {
   const save = store.prototypePresetSave;
   if (!save || !PROTO_PERIOD_SPEC[save.part]) return "";
   const rows = protoSrcRows(save.owner, save.part);
-  const title = `Save ${save.part === "tou" ? "time of use" : "operational hours"} as a preset`;
-  const radioCards = (list, attr, value, label) =>
-    `<div class="astral-report-types is-pair" role="radiogroup" aria-label="${escapeHtml(label)}">${list
-      .map(([key, name, note]) => protoPresetPickCard(attr, key, value === key, name, [note]))
-      .join("")}</div>`;
-  const cards = radioCards(PROTO_PRESET_SAVE_KINDS, "data-proto-preset-save-kind", save.kind, "What to save");
+  const words = save.part === "tou" ? "time of use" : "operational hours";
+  const dayName = rows[save.day]?.day || PROTO_WEEKDAYS[save.day] || "";
+  const frame = (title, lead, body, actions) => `
+    <div class="astral-modal-back" data-proto-modal="preset-save">
+      <div class="astral-modal astral-preset-pick" id="astral-preset-save" role="dialog" aria-modal="true" aria-labelledby="astral-preset-save-title">
+        ${protoModalHead("astral-preset-save-title", title, escapeHtml(lead), "preset-save")}
+        ${body ? `<div class="astral-modal-body astral-preset-save-body">${body}</div>` : ""}
+        <div class="astral-modal-foot">
+          <div class="astral-actions">${actions}</div>
+        </div>
+      </div>
+    </div>
+  `;
+  const cancel = protoGhost("Cancel", 'data-proto-modal-close="preset-save"');
+  const saveNew = protoGhost("Save as new", 'data-proto-preset-save-new="1"');
+  if (save.step === "update") {
+    const base = protoDayPreset(save.part, save.target);
+    const name = base?.name || "this preset";
+    const n = protoPresetUseCount(save.part, "day", save.target) || 0;
+    const uses = n ? `${n} ${n === 1 ? "site uses" : "sites use"} ${name}. Their times change too.` : "";
+    return frame(
+      `Update ${name}?`,
+      `You changed ${dayName} after picking ${name}. Update the preset with the new times, or save them as a new preset.`,
+      uses ? `<p class="astral-muted">${escapeHtml(uses)}</p>` : "",
+      `${protoBtn("Update preset", 'data-proto-preset-save-go="1"')}${saveNew}${cancel}`
+    );
+  }
+  if (save.step === "match") {
+    const week = save.kind === "week";
+    const preset = week ? protoWeekPreset(save.part, save.match) : protoDayPreset(save.part, save.match);
+    const name = preset?.name || "a preset";
+    if (!week && rows[save.day]?.profile === save.match) {
+      return frame(
+        `${dayName} already uses ${name}`,
+        `There is nothing new to save. To keep a copy under another name, save it as a new preset.`,
+        "",
+        `${protoBtn("Save as new", 'data-proto-preset-save-new="1"')}${cancel}`
+      );
+    }
+    return frame(
+      `Use ${name}?`,
+      week
+        ? `Every day matches ${name}. Use it instead of saving a copy.`
+        : `${dayName} has the same times as ${name}. Use it instead of saving a copy, so ${dayName} changes when the preset does.`,
+      "",
+      `${protoBtn("Use preset", 'data-proto-preset-save-use="1"')}${saveNew}${cancel}`
+    );
+  }
+  const cards = `<div class="astral-report-types is-pair" role="radiogroup" aria-label="What to save">${PROTO_PRESET_SAVE_KINDS.map(
+    ([key, name, note]) => protoPresetPickCard("data-proto-preset-save-kind", key, save.kind === key, name, [note])
+  ).join("")}</div>`;
   const dayPick =
     save.kind === "day"
       ? `
@@ -24588,83 +24631,29 @@ function protoPresetSaveModal() {
           })}
         </div>`
       : "";
-  const own = protoSavedPresets(save.part, save.kind);
-  const update = save.mode === "update" && own.length > 0;
-  const modes = own.length
-    ? `<div class="astral-field"><span id="astral-preset-save-mode-label">Save as</span>${radioCards(
-        PROTO_PRESET_SAVE_MODES,
-        "data-proto-preset-save-mode",
-        update ? "update" : "new",
-        "Save as"
-      )}</div>`
-    : "";
   const base = save.kind === "day" ? rows[save.day]?.base : "";
   const standard =
-    !update && base && protoPresetStandard(save.part, "day", base)
+    base && protoPresetStandard(save.part, "day", base)
       ? `<p class="astral-muted">${escapeHtml(
           `${protoDayPreset(save.part, base)?.name || "This"} is a standard preset, so it cannot be changed. Save your times as a new preset.`
         )}</p>`
       : "";
-  const uses = (id) => {
-    const n = protoPresetUseCount(save.part, save.kind, id);
-    return n == null ? "" : n ? `Used by ${n} ${n === 1 ? "site" : "sites"}` : "Not used by any site yet";
-  };
-  const target = own.find((item) => item.id === save.target) || own[0];
-  const targetUse = target ? protoPresetUseCount(save.part, save.kind, target.id) : null;
   const error = save.error || "";
-  const field = update
-    ? `
-        <div class="astral-field">
-          <span id="astral-preset-save-target-label">Preset to update</span>
-          ${protoSelect({
-            id: "preset-save-target",
-            label: "Preset to update",
-            labelledby: "astral-preset-save-target-label",
-            value: target?.id || "",
-            options: own.map((item) => ({ value: item.id, label: item.name, note: uses(item.id) })),
-          })}
-          ${
-            targetUse
-              ? `<p class="astral-muted">${escapeHtml(
-                  `${targetUse} ${targetUse === 1 ? "site uses" : "sites use"} this preset. Their times change too.`
-                )}</p>`
-              : ""
-          }
-        </div>`
-    : `
-          <label class="astral-field">
-            <span>Preset name</span>
-            <input type="text" id="astral-preset-name" maxlength="40" autocomplete="off" value="${escapeHtml(save.name || "")}"${
-              error ? ' aria-invalid="true" aria-describedby="astral-preset-name-error"' : ""
-            } />
-          </label>
-          ${error ? `<p class="astral-export-error" id="astral-preset-name-error" role="alert">${escapeHtml(error)}</p>` : ""}`;
-  return `
-    <div class="astral-modal-back" data-proto-modal="preset-save">
-      <div class="astral-modal astral-preset-pick" id="astral-preset-save" role="dialog" aria-modal="true" aria-labelledby="astral-preset-save-title">
-        ${protoModalHead("astral-preset-save-title", title, "Save these times so you can use them again.", "preset-save")}
-        <div class="astral-modal-body astral-preset-save-body">
-          ${cards}
-          ${dayPick}
-          ${modes}
-          ${standard}
-          ${field}
-        </div>
-        <div class="astral-modal-foot">
-          <div class="astral-actions">
-            ${protoBtn(update ? "Update preset" : "Save preset", 'data-proto-preset-save-go="1"')}
-            ${protoGhost("Cancel", 'data-proto-modal-close="preset-save"')}
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
+  const field = `
+    <label class="astral-field">
+      <span>Preset name</span>
+      <input type="text" id="astral-preset-name" maxlength="40" autocomplete="off" value="${escapeHtml(save.name || "")}"${
+        error ? ' aria-invalid="true" aria-describedby="astral-preset-name-error"' : ""
+      } />
+    </label>
+    ${error ? `<p class="astral-export-error" id="astral-preset-name-error" role="alert">${escapeHtml(error)}</p>` : ""}`;
+  return frame(
+    `Save ${words} as a preset`,
+    "Save these times so you can use them again.",
+    `${cards}${dayPick}${standard}${field}`,
+    `${protoBtn("Save preset", 'data-proto-preset-save-go="1"')}${cancel}`
+  );
 }
-
-const PROTO_PRESET_SAVE_MODES = [
-  ["new", "New preset", "Save the times under a new name."],
-  ["update", "Update a preset", "Replace the times in one of your presets."],
-];
 
 // How many sites have a day that follows a day preset. Weeks are copied in, so nothing follows them.
 function protoPresetUseCount(part, kind, id) {
@@ -24680,25 +24669,74 @@ function protoPresetUseCount(part, kind, id) {
   return sites.size;
 }
 
-// A day edited from one of your presets opens on Update, with that preset chosen. Anything else opens on New preset.
-function protoPresetSaveDefaults(owner, part, kind, day) {
-  const own = protoSavedPresets(part, kind);
-  const base = kind === "day" ? protoSrcRows(owner, part)[day]?.base : "";
-  if (base && own.some((item) => item.id === base)) return { mode: "update", target: base };
-  return { mode: "new", target: own[0]?.id || "" };
+// One of your own day presets that this day was edited from. Standard presets cannot change, so they never count.
+function protoPresetSaveEdited(owner, part, day) {
+  const base = protoSrcRows(owner, part)[day]?.base;
+  return base && protoSavedPresets(part, "day").some((item) => item.id === base) ? base : "";
+}
+
+// A preset with exactly these times, so the same times are not saved twice.
+function protoPresetSaveMatch(part, kind, rows, day) {
+  const key = (list) =>
+    JSON.stringify((list || []).map((p) => [p.status, protoClockShow(p.from), protoClockShow(p.to)]));
+  if (kind === "day") {
+    const want = key(protoDayPeriods(rows[day], part));
+    if (want === "[]") return null;
+    return protoDayPresets(part).find((preset) => key(protoPresetPeriods(part, preset)) === want) || null;
+  }
+  if (rows.length !== 7) return null;
+  const want = rows.map((row) => key(protoDayPeriods(row, part)));
+  if (want.includes("[]")) return null;
+  return (
+    protoWeekPresets(part).find((week) => protoWeekRows(part, week).every((row, d) => key(row.periods) === want[d])) || null
+  );
 }
 
 function protoPresetSaveOpen(owner, part) {
   if (!protoCanAct() || !PROTO_PERIOD_SPEC[part]) return;
   protoStashSrcForm(owner);
   const day = protoPeriodDayId(part, 7);
-  const edited = protoSrcRows(owner, part)[day]?.base;
-  const kind = edited ? "day" : "week";
+  const base = protoSrcRows(owner, part)[day]?.base;
+  const target = protoPresetSaveEdited(owner, part, day);
+  const kind = base ? "day" : "week";
   setProto({
-    prototypePresetSave: { owner, part, kind, day, name: "", error: "", ...protoPresetSaveDefaults(owner, part, kind, day) },
+    prototypePresetSave: { owner, part, kind, day, name: "", error: "", step: target ? "update" : "", target },
     prototypeSelectOpen: "",
   });
-  protoRestoreFocus("#astral-fs #astral-preset-save .astral-report-type.is-on");
+  protoRestoreFocus(
+    target ? "#astral-fs #astral-preset-save .astral-modal-foot .astral-btn" : "#astral-fs #astral-preset-save .astral-report-type.is-on"
+  );
+}
+
+// Save as new leaves the question behind and asks for a name. A match it came from is not offered again.
+function protoPresetSaveNew() {
+  const save = store.prototypePresetSave;
+  if (!save) return;
+  setProto({ prototypePresetSave: { ...save, step: "", error: "", skipMatch: save.step === "match" } });
+  protoRestoreFocus("#astral-fs #astral-preset-name");
+}
+
+// Use preset puts the matching preset on the day or week, as if it had been picked.
+function protoPresetSaveUse() {
+  const save = store.prototypePresetSave;
+  if (!save?.match) return;
+  const { owner, part, kind, day, match } = save;
+  store.prototypePresetSave = null;
+  protoPatchMeterDraft(owner, (draft) => {
+    if (!draft[part]) draft[part] = protoCloneProfile(protoSrcRows(owner, part));
+    if (kind === "week") {
+      const week = protoWeekPreset(part, match);
+      if (!week) return;
+      draft[part] = protoWeekRows(part, week).map((row) => ({ ...row, profile: row.profile || protoPeriodProfile(part, row.periods) }));
+    } else {
+      const preset = protoDayPreset(part, match);
+      const row = draft[part][day];
+      if (!preset || !row) return;
+      draft[part][day] = { day: row.day, profile: preset.id, periods: protoPresetPeriods(part, preset).map((p) => ({ ...p })) };
+    }
+    protoDropWeek(draft, part);
+  });
+  protoRestoreFocus(`#astral-fs [data-proto-preset-save-open="${part}"]`);
 }
 
 function protoPresetSaveGo() {
@@ -24707,22 +24745,22 @@ function protoPresetSaveGo() {
   const rows = protoSrcRows(save.owner, save.part);
   const periods = (row) => protoPresetPeriods(save.part, { periods: protoDayPeriods(row, save.part) });
   const weekRows = () => rows.map((row) => ({ profile: row.profile || "", periods: periods(row) }));
-  const own = protoSavedPresets(save.part, save.kind);
-  const target = save.mode === "update" ? own.find((item) => item.id === save.target) || own[0] : null;
-  let id = target?.id || "";
-  if (target) {
+  let id = "";
+  if (save.step === "update") {
     const listed = protoEditablePresets(save.part);
-    const list = save.kind === "day" ? listed.days : listed.weeks;
-    const item = list.find((entry) => entry.id === id);
+    const item = listed.days.find((entry) => entry.id === save.target);
     if (!item) return;
-    if (save.kind === "day") item.periods = periods(rows[save.day]);
-    else {
-      item.rows = weekRows();
-      item.days = item.rows.map((row) => row.profile);
-    }
+    item.periods = periods(rows[save.day]);
     protoStorePresets(save.part, listed);
+    id = item.id;
   } else {
     const name = String(document.querySelector("#astral-preset-name")?.value ?? save.name ?? "").trim();
+    const match = save.skipMatch ? null : protoPresetSaveMatch(save.part, save.kind, rows, save.day);
+    if (match) {
+      setProto({ prototypePresetSave: { ...save, name, error: "", step: "match", match: match.id } });
+      protoRestoreFocus("#astral-fs #astral-preset-save .astral-modal-foot .astral-btn");
+      return;
+    }
     const list = save.kind === "day" ? protoDayPresets(save.part) : protoWeekPresets(save.part);
     const error = !name
       ? "Enter a name for the preset."
@@ -37678,17 +37716,17 @@ function onPrototype(event) {
     const kind = String(presetSaveKind.dataset.protoPresetSaveKind || "");
     const name = document.querySelector("#astral-preset-name")?.value ?? save.name;
     setProto({
-      prototypePresetSave: { ...save, kind, name, error: "", ...protoPresetSaveDefaults(save.owner, save.part, kind, save.day) },
+      prototypePresetSave: { ...save, kind, name, error: "", skipMatch: false },
     });
     protoRestoreFocus(`#astral-fs [data-proto-preset-save-kind="${CSS.escape(kind)}"]`);
     return;
   }
-  const presetSaveMode = event.target.closest("[data-proto-preset-save-mode]");
-  if (presetSaveMode && store.prototypePresetSave) {
-    const mode = String(presetSaveMode.dataset.protoPresetSaveMode || "");
-    const name = document.querySelector("#astral-preset-name")?.value ?? store.prototypePresetSave.name;
-    setProto({ prototypePresetSave: { ...store.prototypePresetSave, mode, name, error: "" } });
-    protoRestoreFocus(`#astral-fs [data-proto-preset-save-mode="${CSS.escape(mode)}"]`);
+  if (event.target.closest("[data-proto-preset-save-new]")) {
+    protoPresetSaveNew();
+    return;
+  }
+  if (event.target.closest("[data-proto-preset-save-use]")) {
+    protoPresetSaveUse();
     return;
   }
   if (event.target.closest("[data-proto-preset-save-go]")) {
