@@ -23931,6 +23931,14 @@ function protoSiteAddContinue() {
   }
   if (add.step === "upload") {
     if (!add.file || !protoSiteAddData.upload) return fail("Select a file to continue.");
+    const left = protoSiteAddUploadLeft(add.file);
+    if (left > 0) {
+      const at = add.file.at;
+      setTimeout(() => {
+        if (protoSiteAdd()?.step === "upload" && protoSiteAdd()?.file?.at === at) protoSiteAddContinue();
+      }, left + 40);
+      return;
+    }
     protoSiteAddPatch({ step: "match", from: "upload", error: "", tried: false, ...protoSiteAddAuto(protoSiteAddData.upload, add.meter) });
     protoSiteAddFocus();
     return;
@@ -23961,8 +23969,16 @@ function protoSiteAddFile(blob) {
       if (!rows) return fail(`${name} could not be read. Save it again as CSV or XLSX, then upload it.`);
       if (!rows.length) return fail(`${name} is empty. Select a file with at least one row.`);
       protoSiteAddData.upload = rows;
-      protoSiteAddPatch({ file: { name, size: Number(blob.size) || 0, kind }, error: "" });
+      const at = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 0 : Date.now();
+      protoSiteAddPatch({ file: { name, size: Number(blob.size) || 0, kind, at }, error: "" });
       protoRestoreFocus("#astral-fs .astral-site-add-file");
+      if (!at) return;
+      setTimeout(() => {
+        if (protoSiteAdd()?.file?.at !== at) return;
+        const held = document.activeElement?.closest?.(".astral-site-add-file");
+        render();
+        if (held) protoRestoreFocus("#astral-fs .astral-site-add-file");
+      }, PROTO_SITE_ADD_UPLOAD_MS + 20);
     });
 }
 
@@ -24195,17 +24211,32 @@ function protoSiteAddPaste(add) {
   `;
 }
 
+// A new file shows a short upload before its details. The bar runs on a negative delay, so a re-render
+// part way through carries on from where it was instead of starting again.
+const PROTO_SITE_ADD_UPLOAD_MS = 1400;
+
+function protoSiteAddUploadLeft(file) {
+  if (!file?.at) return 0;
+  return Math.max(0, PROTO_SITE_ADD_UPLOAD_MS - (Date.now() - file.at));
+}
+
 function protoSiteAddFileCard(file) {
   const kind = String(file.kind || "csv").toUpperCase();
+  const left = protoSiteAddUploadLeft(file);
+  const busy = left > 0;
+  const delay = `--upload-delay:-${PROTO_SITE_ADD_UPLOAD_MS - left}ms`;
   return `
-    ${file.kind === "xlsx" ? `<p class="astral-banner">Only the first sheet of this file is used.</p>` : ""}
-    <div class="astral-site-add-file" tabindex="-1" role="group" aria-label="Selected file">
+    ${!busy && file.kind === "xlsx" ? `<p class="astral-banner">Only the first sheet of this file is used.</p>` : ""}
+    <div class="astral-site-add-file${busy ? " is-uploading" : ""}" tabindex="-1" role="group" aria-label="Selected file"${
+      busy ? ` style="${delay}" aria-busy="true"` : ""
+    }>
       ${protoTypeBadge(`file-${file.kind || "csv"}`)}
       <span class="astral-site-add-file-copy">
         <span class="astral-site-add-file-name">${escapeHtml(file.name)}</span>
-        <span class="astral-muted">${escapeHtml(kind)} file, ${protoSiteAddSize(file.size)}</span>
+        <span class="astral-muted">${busy ? "Uploading" : `${escapeHtml(kind)} file, ${protoSiteAddSize(file.size)}`}</span>
       </span>
-      ${protoIconBtn("close", `Remove ${file.name}`, "data-proto-site-add-remove")}
+      ${protoIconBtn("close", busy ? `Stop uploading ${file.name}` : `Remove ${file.name}`, "data-proto-site-add-remove")}
+      ${busy ? `<span class="astral-site-add-progress" aria-hidden="true"><span></span></span>` : ""}
     </div>
   `;
 }
