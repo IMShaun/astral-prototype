@@ -54,6 +54,7 @@ const PROTO_ICON_MARKS = {
   peak: `<path d="M12 19V5.5M6.5 11 12 5.5 17.5 11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />`,
   "off-peak": `<path d="M12 5v13.5M6.5 13 12 18.5 17.5 13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />`,
   rates: `<path d="M5.25 6.75h13.5v10.8l-3.3 2.7-3.45-2.25-3.45 2.25-3.3-2.7V6.75z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><path d="M9 10.8h6M9 14.4h3.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />`,
+  location: `<path d="M12 3.25c-3.6 0-6.5 2.8-6.5 6.3 0 4.8 6.5 11.2 6.5 11.2s6.5-6.4 6.5-11.2c0-3.5-2.9-6.3-6.5-6.3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><circle cx="12" cy="9.6" r="2.3" fill="none" stroke="currentColor" stroke-width="2" />`,
   tag: `<path d="M12.4 4.5 20 12.1l-7.6 7.6L4.8 12V4.5h7.6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><circle cx="9.2" cy="8.4" r="1.15" fill="currentColor" />`,
   analyse: `<circle cx="10.5" cy="10.5" r="6.25" fill="none" stroke="currentColor" stroke-width="2" /><path d="M15.2 15.2 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />`,
   menu: `<path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />`,

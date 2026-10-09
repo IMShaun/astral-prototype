@@ -22454,11 +22454,31 @@ function protoSiteAttrSummary(meter) {
   const attrs = protoMeterProfile(meter?.id)?.attrs || {};
   const area = Number(attrs.area);
   const people = Number(attrs.employees);
+  const kva = Number(attrs.capacity);
   const parts = [
     attrs.area && Number.isFinite(area) ? `${area.toLocaleString("en-GB")} m²` : "",
     attrs.employees && Number.isFinite(people) ? `${people.toLocaleString("en-GB")} ${people === 1 ? "person" : "people"}` : "",
+    attrs.capacity && Number.isFinite(kva) ? `${kva.toLocaleString("en-GB")} kVA` : "",
   ].filter(Boolean);
   return parts.length ? parts.join(" · ") : "Not set";
+}
+
+function protoSiteAddress(meter) {
+  const attrs = protoMeterProfile(meter?.id)?.attrs || {};
+  const country = String(attrs.country || "").trim();
+  const parts = [attrs.street, attrs.town, attrs.postcode, /^united kingdom$/i.test(country) ? "" : country]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean);
+  return parts.length ? parts.join(", ") : "Not set";
+}
+
+function protoSiteAddressRow(meter) {
+  return `
+    <div>
+      <dt>${protoProfileFactMark("location")}Address</dt>
+      <dd>${escapeHtml(protoSiteAddress(meter))}</dd>
+    </div>
+  `;
 }
 
 function protoMeterRateSummary(meter, profile = protoMeterProfile(meter?.id)) {
@@ -22519,6 +22539,7 @@ function protoMeterInheritOverview(meter, site) {
         ${protoMeterMap(site?.baseName || siteName, siteName)}
         <div class="astral-meter-summary">
           <dl class="astral-meter-meta">
+            ${protoSiteAddressRow(meter)}
             ${row("hours", "hours", facts.hours)}
             ${row("tou", "tou", facts.tou)}
             ${row("rates", "rates", protoMeterRateSummary(meter))}
@@ -22542,6 +22563,7 @@ function protoMeterOverview(meter) {
       ${protoMeterMap(site?.baseName || facts.site, site?.name || facts.site)}
       <div class="astral-meter-summary">
         <dl class="astral-meter-meta">
+          ${protoSiteAddressRow(meter)}
           <div>
             <dt>${protoProfileFactMark("hours")}Operational hours</dt>
             <dd>${escapeHtml(facts.hours)}</dd>
@@ -23506,7 +23528,7 @@ function protoMeterList(meters) {
 }
 
 function protoProfileFactMark(kind) {
-  if (kind !== "hours" && kind !== "tou" && kind !== "rates") return "";
+  if (kind !== "hours" && kind !== "tou" && kind !== "rates" && kind !== "location") return "";
   return protoIconMark(kind, "astral-meter-mark");
 }
 
