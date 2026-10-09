@@ -22995,7 +22995,7 @@ function protoPresetPickCard(attr, value, on, label, lines, extra = "") {
     <button type="button" role="radio" class="astral-report-type${on ? " is-on" : ""}" aria-checked="${on ? "true" : "false"}" tabindex="${
       on ? "0" : "-1"
     }" ${attr}="${escapeHtml(value)}">
-      <span class="astral-report-type-head">${protoRadio(on)}<span>${escapeHtml(label)}</span></span>
+      <span class="astral-report-type-head">${protoRadio(on)}<span title="${escapeHtml(label)}">${escapeHtml(label)}</span></span>
       ${lines.map((line) => `<span class="astral-muted">${escapeHtml(line)}</span>`).join("")}${extra}
     </button>
   `;
