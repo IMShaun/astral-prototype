@@ -22067,43 +22067,92 @@ function protoSiteLatLng(place) {
   return PROTO_SITE_GEO[shortened] || null;
 }
 
+// A stand-in map drawn in OpenStreetMap colours, as the live embed is blocked in the prototype.
+// Each site gets its own streets from its name, so sites do not all look the same. The pin sits in the middle.
+function protoMapSketch(seedText) {
+  let seed = [...String(seedText)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7);
+  const rand = () => {
+    seed = (seed + 0x6d2b79f5) >>> 0;
+    let t = seed;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const r = (n) => Math.round(n * 10) / 10;
+  const size = 54 + rand() * 18;
+  const angle = r(-24 + rand() * 48);
+  const ox = rand() * size;
+  const oy = rand() * size;
+  const lines = [];
+  for (let v = -120 + ox; v < 320; v += size) lines.push(r(v));
+  const rows = [];
+  for (let v = -120 + oy; v < 320; v += size) rows.push(r(v));
+  const mid = (list) => Math.max(0, list.findIndex((v) => v > 100) - 1);
+  const parkI = mid(lines) + Math.floor(rand() * 3) - 1;
+  const parkJ = mid(rows) + (rand() < 0.5 ? -1 : 1);
+  const blocks = [];
+  const parks = [];
+  lines.slice(0, -1).forEach((x, i) =>
+    rows.slice(0, -1).forEach((y, j) => {
+      const w = lines[i + 1] - x;
+      const h = rows[j + 1] - y;
+      if (i === parkI && j === parkJ) {
+        parks.push(`<rect x="${r(x + 3)}" y="${r(y + 3)}" width="${r(w - 6)}" height="${r(h - 6)}" rx="2" />`);
+        return;
+      }
+      // Each block holds a few buildings, and sometimes an empty yard.
+      const cx = r(x + w * (0.35 + rand() * 0.3));
+      const cy = r(y + h * (0.35 + rand() * 0.3));
+      [
+        [x + 4, y + 4, cx - 1.5, cy - 1.5],
+        [cx + 1.5, y + 4, x + w - 4, cy - 1.5],
+        [x + 4, cy + 1.5, cx - 1.5, y + h - 4],
+        [cx + 1.5, cy + 1.5, x + w - 4, y + h - 4],
+      ].forEach(([x1, y1, x2, y2]) => {
+        if (rand() < 0.18) return;
+        blocks.push(`<rect x="${r(x1)}" y="${r(y1)}" width="${r(x2 - x1)}" height="${r(y2 - y1)}" />`);
+      });
+    })
+  );
+  const streets = [
+    ...lines.map((x) => `M${x} -120V320`),
+    ...rows.map((y) => `M-120 ${y}H320`),
+  ].join("");
+  const mainY = r(rows[Math.floor(rows.length / 2)] ?? 100);
+  const bend = r(60 + rand() * 80);
+  const river =
+    rand() < 0.4
+      ? `<path class="is-water" d="M-20 ${r(20 + rand() * 40)}C60 ${bend} 140 ${r(bend - 70)} 220 ${r(150 + rand() * 40)}" />`
+      : "";
+  const railY = r(40 + rand() * 120);
+  const rail = `M-20 ${railY}C60 ${r(railY + 20 - rand() * 40)} 140 ${r(railY - 20 + rand() * 40)} 220 ${r(railY + 10)}`;
+  return `
+        <svg class="astral-meter-map-sketch" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+          <rect class="is-land" width="200" height="200" />
+          ${river}
+          <g transform="rotate(${angle} 100 100)">
+            <g class="is-park">${parks.join("")}</g>
+            <g class="is-block">${blocks.join("")}</g>
+            <path class="is-street-edge" d="${streets}" />
+            <path class="is-street" d="${streets}" />
+            <path class="is-main-edge" d="M-120 ${mainY}H320" />
+            <path class="is-main" d="M-120 ${mainY}H320" />
+          </g>
+          <path class="is-rail-edge" d="${rail}" />
+          <path class="is-rail" d="${rail}" />
+        </svg>`;
+}
+
 function protoMeterMap(place, label) {
   const name = String(label || place || "Site");
-  const at = protoSiteLatLng(place || name);
-  if (!at) {
-    return `
-    <div class="astral-meter-map" role="img" aria-label="${escapeHtml(name)}">
-      <div class="astral-meter-map-view"></div>
-      <p>${escapeHtml(name)}</p>
-    </div>
-  `;
-  }
-  const [lat, lng] = at;
-  const dLat = 0.006;
-  const dLng = 0.01;
-  const bbox = [lng - dLng, lat - dLat, lng + dLng, lat + dLat].map((n) => n.toFixed(5)).join("%2C");
-  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&amp;layer=mapnik`;
   return `
-    <div class="astral-meter-map" role="img" aria-label="${escapeHtml(name)}">
+    <div class="astral-meter-map" role="img" aria-label="${escapeHtml(`Map of ${name}`)}">
       <div class="astral-meter-map-view">
-        <iframe
-          src="${src}"
-          title=""
-          tabindex="-1"
-          aria-hidden="true"
-          loading="lazy"
-          sandbox="allow-scripts"
-        ></iframe>
+        ${protoMapSketch(protoSiteLatLng(place || name)?.join(",") || name)}
         <svg class="astral-meter-map-mark" viewBox="0 0 24 28" aria-hidden="true" focusable="false">
           <path d="M12 1.6c-4.4 0-8 3.5-8 7.8 0 5.9 8 14.4 8 14.4s8-8.5 8-14.4c0-4.3-3.6-7.8-8-7.8z" />
           <circle cx="12" cy="9.2" r="2.7" />
         </svg>
-        <a
-          class="astral-meter-map-copy"
-          href="https://www.openstreetmap.org/copyright"
-          target="_blank"
-          rel="noreferrer"
-        >© OpenStreetMap</a>
       </div>
       <p>${escapeHtml(name)}</p>
     </div>
