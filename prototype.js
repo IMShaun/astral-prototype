@@ -4156,7 +4156,7 @@ function protoRefRowsAt(refs, i, track) {
 
 function protoRefWords(rows, unit) {
   return rows
-    .map((row) => `. ${row.n}, ${row.v === "" ? "no reading" : unit === "PF" ? row.v : `${row.v} ${unit}`}`)
+    .map((row) => `. ${row.n}, ${row.v === "" ? "no reading" : `${row.v} ${unit}`}`)
     .join("");
 }
 
@@ -6437,7 +6437,7 @@ function protoRefTipHtml(point, baseHtml) {
       if (row.v !== "") {
         const plain = escapeHtml(row.v);
         const amount = row.q === "estimated" ? protoEstAmount(plain) : plain;
-        shown = unit === "£" ? `£${amount}` : unit === "PF" ? amount : `${amount} ${escapeHtml(unit)}`;
+        shown = unit === "£" ? `£${amount}` : `${amount} ${escapeHtml(unit)}`;
       }
       return `<p class="astral-query-pin-reading is-ref">${protoRefKeyMark(row.s, row.c)}<span class="astral-query-pin-series">${escapeHtml(
         row.n
@@ -6485,7 +6485,6 @@ function protoFormatReading(value, unit) {
   if (value == null || value === "") return "No reading";
   const u = String(unit || "").trim();
   const amount = protoFormatAmount(value, protoUnitPlaces(u));
-  if (u === "PF") return amount;
   if (u === "£") return `£${amount}`;
   if (u === "people" && amount === "1") return "1 person";
   return u ? `${amount} ${u}` : amount;
