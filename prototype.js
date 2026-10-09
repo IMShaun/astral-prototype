@@ -3212,15 +3212,28 @@ function protoReadMeterOwnForm(form, meter) {
   return draft;
 }
 
+// A meter's own times set aside when it switches to follow the site, so switching back by mistake loses nothing.
+// They last until the page reloads.
+const protoMeterOwnStash = new Map();
+
 function protoPickMeterSource(id, part, mode, focus = "", kind = "") {
   const meter = protoMeter(id);
   if (!meter || !PROTO_METER_OWN_PARTS.includes(part) || !protoCanAct()) return;
   const scope = document.querySelector(`#astral-fs [data-proto-own-scope="${CSS.escape(id)}"]`);
   const draft = scope ? protoReadMeterOwnForm(scope, meter) : protoMeterOwnDraft(id);
+  const key = `${id}|${part}`;
   if (mode === "site") {
+    if (draft[part]) {
+      protoMeterOwnStash.set(key, { value: protoCloneProfile(draft[part]), week: draft.weeks?.[part] || "" });
+    }
     delete draft[part];
     protoDropWeek(draft, part);
   } else {
+    const kept = !draft[part] && protoMeterOwnStash.get(key);
+    if (kept) {
+      draft[part] = protoCloneProfile(kept.value);
+      if (kept.week && mode === "preset") draft.weeks = { ...(draft.weeks || {}), [part]: kept.week };
+    }
     if (!draft[part]) {
       const site = protoSiteProfile(id);
       draft[part] =
@@ -24172,7 +24185,7 @@ function protoSaveSiteForm(meter, draft) {
 
 // What a meter that follows the site gets, drawn like the editor with every control off so nothing moves on a switch.
 function protoMeterSiteView(meter, part, site, siteName) {
-  const lockTip = `These follow ${siteName}. Choose Set for this meter to change them.`;
+  const lockTip = `These follow ${siteName}. Choose Set for this meter only to change them.`;
   if (part === "hours" || part === "tou") return protoMeterPeriodTable(`site~${meter.id}`, site[part], part, { lockTip });
   return `<div class="astral-meter-attrs"><div class="astral-meter-attr-grid">${protoMeterRateSpec(meter)
     .map((item) => protoMeterAttrField(item.key, item.label, site.attrs?.[item.key], item.unit, { locked: true }))
@@ -24716,7 +24729,7 @@ function protoPresetSaveGo() {
 function protoMeterSrcGroup(meter, part, mode, siteName) {
   return protoSrcCards(`own~${meter.id}`, part, mode, [
     ["site", `Follow ${siteName}`, "Updates when the site changes."],
-    ["own", "Set for this meter", "Only applies to this meter."],
+    ["own", "Set for this meter only", "Does not change with the site."],
   ]);
 }
 
