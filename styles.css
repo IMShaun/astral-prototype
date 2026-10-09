@@ -6839,6 +6839,15 @@ button.astral-state {
 
 .astral-meter-overview .astral-meter-map {
   width: 9rem;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+}
+
+.astral-meter-overview .astral-meter-map-view {
+  flex: 1;
+  aspect-ratio: auto;
+  min-height: 9rem;
 }
 
 .astral-meter-overview .astral-ghost {

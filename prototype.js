@@ -6360,7 +6360,9 @@ function protoSitePills(viewSites, allSites) {
 }
 
 function protoSiteStatus(site) {
-  const all = protoMetersForPane(site?.meters || []);
+  // List every meter the site has, so the row matches its meter count. Water starts off the graph.
+  const picked = protoPaneMeterKindIds() ? protoPaneFilterIds() : protoPaneEffectiveFilterIds();
+  const all = protoMetersListed(site?.meters || [], picked);
   const meters = protoSiteViewMeters(site);
   const pills = protoMeterPills(meters, { all, toggle: true });
   if (!pills) return "";
@@ -10009,7 +10011,25 @@ function protoToggleSiteMeter(value) {
   }
   const site = protoSiteByMeter(store.activePrototypeMeter);
   const ids = protoMetersForPane(site?.meters || []).map((item) => item.id);
-  if (!ids.includes(value)) return;
+  if (!ids.includes(value)) {
+    // A meter left off by default, such as water, joins the graph. Consumption cannot mix m³ with kWh, so water shows alone.
+    const meter = (site?.meters || []).find((item) => item.id === value);
+    if (!meter) return;
+    const kind = protoMeterKind(meter);
+    const consumption = protoPaneId() === "consumption";
+    const alone = kind === "water" && consumption;
+    const keep = ids.filter((id) => !(consumption && protoMeterKind(protoMeter(id)) === "water"));
+    const shown = keep.map((id) => protoMeterKind(protoMeter(id)));
+    const kinds = alone ? ["water"] : [...new Set([...shown, kind])];
+    const picked = alone ? [value] : [...protoSiteMeterIds(site).filter((id) => keep.includes(id)), value];
+    setProto({
+      prototypePaneMeterKinds: kinds,
+      ...protoSiteMeterPatch(picked, site),
+      prototypeChartPoint: null,
+    });
+    protoRestoreFocus(`#astral-fs [data-proto-meter-pill="${CSS.escape(value)}"]`);
+    return;
+  }
   const next = protoToggleSiteSet(
     value,
     ids,
