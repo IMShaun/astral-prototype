@@ -22593,20 +22593,28 @@ function protoMeterInheritOverview(meter, site) {
   `;
 }
 
-// Meters that set their own value for a setting, each as a quiet line under the site value.
-function protoMeterOwnNotes(site, key, siteValue) {
+// Each preset is a pill led by the icons of the utilities that use it, so meters that differ from the site stand out.
+function protoMeterValuePills(site, key, siteValue) {
   const meters = site?.meters || [];
-  const notes = meters
-    .filter((item) => protoMeterOwnParts(item.id).includes(key))
-    .map((item) => ({ item, value: protoMeterFacts(item)[key] }))
-    .filter(({ value }) => value && value !== siteValue)
-    .map(({ item, value }) => {
-      const utility = protoMeterUtility(item);
-      const shared = meters.filter((other) => protoMeterUtility(other) === utility).length > 1;
-      const who = shared ? `${utility} ${protoMeterRef(item)}` : `${utility} meter`;
-      return `<span class="astral-meter-own-note">${escapeHtml(`${who} uses ${value}`)}</span>`;
-    });
-  return notes.join("");
+  const groups = [{ value: siteValue, kinds: [] }];
+  meters.forEach((item) => {
+    const own = protoMeterOwnParts(item.id).includes(key);
+    const value = (own && protoMeterFacts(item)[key]) || siteValue;
+    let group = groups.find((g) => g.value === value);
+    if (!group) groups.push((group = { value, kinds: [] }));
+    const kind = protoMeterKind(item);
+    if (!group.kinds.includes(kind)) group.kinds.push(kind);
+  });
+  const used = groups.filter((g) => g.kinds.length);
+  if (!used.length) return escapeHtml(siteValue);
+  const pills = used.map(({ value, kinds }) => {
+    const names = kinds.map((kind) => protoMeterUtility({ commodity: kind }));
+    const words = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0];
+    return `<span class="astral-value-pill">${kinds
+      .map((kind) => protoIconMark(kind, "astral-meter-mark"))
+      .join("")}<span class="sr-only">${escapeHtml(words)}. </span>${escapeHtml(value)}</span>`;
+  });
+  return `<span class="astral-value-pills">${pills.join("")}</span>`;
 }
 
 function protoMeterOverview(meter) {
@@ -22620,11 +22628,11 @@ function protoMeterOverview(meter) {
           ${protoSiteAddressRow(meter)}
           <div>
             <dt>${protoProfileFactMark("hours")}Operational hours</dt>
-            <dd>${escapeHtml(facts.hours)}${protoMeterOwnNotes(site, "hours", facts.hours)}</dd>
+            <dd>${protoMeterValuePills(site, "hours", facts.hours)}</dd>
           </div>
           <div>
             <dt>${protoProfileFactMark("tou")}Time of use</dt>
-            <dd>${escapeHtml(facts.tou)}${protoMeterOwnNotes(site, "tou", facts.tou)}</dd>
+            <dd>${protoMeterValuePills(site, "tou", facts.tou)}</dd>
           </div>
           <div>
             <dt>${protoProfileFactMark("rates")}Attributes</dt>

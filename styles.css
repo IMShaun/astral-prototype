@@ -7199,13 +7199,36 @@ button.astral-state {
   font-weight: 600;
 }
 
-/* A meter that sets its own value, under the site value. */
-.astral-meter-own-note {
-  display: block;
+/* One pill per value, led by the utility icons that use it. */
+.astral-value-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   margin-top: 2px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--color-text-muted);
+}
+
+.astral-value-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border-control);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.astral-value-pill .astral-meter-mark {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.astral-value-pill .astral-meter-mark + .astral-meter-mark {
+  margin-left: -2px;
 }
 
 .astral-meter-ref {
