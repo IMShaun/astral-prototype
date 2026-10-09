@@ -22990,7 +22990,7 @@ const PROTO_PRESET_LINE = {
 
 // A preset at a glance, coloured by status. Time runs left to right from 00:00 to 24:00.
 // A week is one row of day squares. A day is one wider bar. Screen readers get the same as text.
-// Hovering a day shows the chart tooltip layout. The day heads it and each period is a row with its key mark.
+// Hovering a day shows the chart tooltip layout. The day heads it and each period is its key mark and times.
 function protoPresetLine(part, rows, week, name = "") {
   const marks = PROTO_PRESET_LINE[part] || {};
   const mins = (value) => {
@@ -23009,9 +23009,7 @@ function protoPresetLine(part, rows, week, name = "") {
     const lines = periods(row)
       .map(
         (p) =>
-          `<span class="astral-query-pin-reading">${protoZoneBadges(marks[p.status])}<span class="astral-query-pin-series">${escapeHtml(
-            PROTO_ZONE_BADGES[marks[p.status]]?.name || ""
-          )}</span><span class="astral-query-pin-kwh">${escapeHtml(
+          `<span class="astral-query-pin-reading">${protoZoneBadges(marks[p.status])}<span class="astral-query-pin-kwh">${escapeHtml(
             `${protoClockShow(p.from)} to ${protoClockShow(p.to)}`
           )}</span></span>`
       )

@@ -11347,11 +11347,11 @@ tr.is-off .astral-person-mark {
   width: auto;
 }
 
-/* Hovering a day uses the chart tooltip layout, so a preset reads like a point on a graph. */
+/* Hovering a day uses the chart tooltip layout, so a preset reads like a point on a graph.
+   Each row is only the status mark and its times, as the key above the list names the marks. */
 .astral-icon-tip.is-reading {
   display: grid;
   gap: 8px;
-  min-width: 16rem;
   max-width: 20rem;
   padding: 12px;
   font-weight: 400;
