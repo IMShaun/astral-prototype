@@ -10381,6 +10381,7 @@ function protoPickSelect(id, value) {
     return;
   }
   if (String(id).startsWith("site-add-field:")) {
+    store.prototypeReportSiteQuery = "";
     protoSiteAddPickField(id, value);
     return;
   }
@@ -23638,16 +23639,17 @@ function protoSiteAddFields() {
   ];
 }
 
+// Each group opens its own list beside the menu. A search lists every match flat under group headings.
 function protoSiteAddOptions(fields) {
   const heads = { template: "Template columns", site: "Site attributes", electricity: "Electricity", gas: "Gas", water: "Water" };
   const out = [];
-  let last = "";
   fields.forEach((field) => {
-    if (field.group !== last) {
-      out.push({ heading: heads[field.group] });
-      last = field.group;
+    let group = out.find((item) => item.key === field.group);
+    if (!group) {
+      group = { key: field.group, group: heads[field.group], options: [] };
+      out.push(group);
     }
-    out.push({ value: field.id, label: field.label });
+    group.options.push({ value: field.id, label: field.label });
   });
   return out;
 }
@@ -24311,6 +24313,13 @@ function protoSiteAddMatch(add) {
               labelledby: headId,
               value: id,
               placeholder: "Select a field",
+              empty: "No fields match.",
+              search: {
+                name: "proto-report-site-query",
+                value: protoSelectOpen() === `site-add-field:${col.i}` ? String(store.prototypeReportSiteQuery || "") : "",
+                placeholder: "Search fields",
+                label: "Search fields",
+              },
               options,
               wide: true,
             })}
@@ -37466,6 +37475,7 @@ function onPrototype(event) {
     const id = selectToggle.dataset.protoSelectToggle;
     const open = protoSelectOpen() === id;
     if (id === "chart-zone-for") store.prototypeZoneQuery = "";
+    if (String(id).startsWith("site-add-field:")) store.prototypeReportSiteQuery = "";
     setProto({
       prototypeSelectOpen: open ? "" : id,
       prototypeDateOpen: false,
@@ -37488,6 +37498,9 @@ function onPrototype(event) {
     if (!open && String(id).startsWith("user-sites:")) {
       protoRestoreFocus("#astral-fs input[name='proto-person-sites-query']");
       protoScrollSelectInPane(id, "start");
+    }
+    if (!open && String(id).startsWith("site-add-field:")) {
+      protoRestoreFocus("#astral-fs .astral-float-menu input[name='proto-report-site-query']");
     }
     return;
   }
@@ -40039,14 +40052,18 @@ function onPrototypeInput(event) {
     store.prototypeReportSiteQuery = reportSiteSearch.value.slice(0, 120);
     const active = document.activeElement === reportSiteSearch;
     const start = reportSiteSearch.selectionStart;
+    const floated = Boolean(reportSiteSearch.closest(".astral-float-menu"));
     render();
     if (active) {
       const open = String(store.prototypeSelectOpen || "");
+      const float = "#astral-fs .astral-float-menu input[name='proto-report-site-query']";
       const scoped = open
         ? document.querySelector(`#astral-fs [data-proto-select="${CSS.escape(open)}"] input[name='proto-report-site-query']`)
         : null;
       protoRestoreFocus(
-        scoped
+        floated
+          ? float
+          : scoped
           ? `#astral-fs [data-proto-select="${CSS.escape(open)}"] input[name='proto-report-site-query']`
           : "#astral-fs input[name='proto-report-site-query']",
         start
