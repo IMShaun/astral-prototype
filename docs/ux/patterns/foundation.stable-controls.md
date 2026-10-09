@@ -34,6 +34,7 @@ A control may move when the person asks for it, for example by scrolling, resizi
 - When something is taken out of a pane, such as a removed period row, nothing above it moves. A pane scrolled to the bottom keeps the lost height as bottom padding and gives it back only as it scrolls out of view (`protoScrollHold`, used by every render for `.astral-pane-body` and the stage).
 - Treat a picker or choice that swaps the view below it, such as Settings for or the source cards (Follow the site, Set for this meter only), as a control under this rule. Every element the views share must sit at the same left and top in every view.
 - Fix the column widths of a table that switches content under tabs, with `table-layout: fixed` and a `colgroup`. The period tables do this, so From, To and Status stay put on every day, whatever each day holds.
+- Stack tab panels that switch without a render in one grid cell, and hide the others with `visibility: hidden`, so the area keeps the tallest panel's height. The day tabs in Site settings do this, so a shorter Saturday never shrinks the pane and pulls a page scrolled to the bottom upwards.
 - Give every row in a list of choices the same height. A name that is too long stays on one line and ends with an ellipsis, with the full name in a `title` and in the accessible name. Use a preset does this, so every saved week and day is 60px, whatever its name. This is the one place a single line may be cut short. Wrapping text elsewhere still grows its element.
 - Show read-only and editable states of the same content with the same markup, and turn the controls off. A meter that follows the site shows the period table with disabled inputs and a disabled Add a period, so its header, rows and foot match the editor.
 - When one view has a part the others do not, give every view the same part with its own choices. In Site settings, the site and every meter have a source cards panel in the same grid. The site has one card (Set for this site) and a meter two, so each card keeps its width and place. In Attributes the site has one card, Set for this site, so the fields start at the same place.
@@ -77,6 +78,7 @@ In Attributes on Site settings, the site view has group tabs and the full site f
 - User correction, repeated: switching Settings for between the site and a meter made the schedule jump, and this rule had been asked for before (commit `2044e20`).
 - User correction, repeated: the From column jumped between Saturday and Sunday because the period tables sized columns to their content (commit `7d9a422`). Every day now measures 272, 175, 175, 298, 52.
 - User correction: list items in Use a preset must always be the same height (commits `05ec7f8`, `083d541`).
+- User correction: going from Friday to Saturday made the page jump, and clicking a sub-tab must never change where the user is. Saturday's panel was 88px shorter, so a pane scrolled to the bottom was pulled up. With the panels stacked, the scroll stays at 493 across every day.
 
 ## Related patterns / decisions
 

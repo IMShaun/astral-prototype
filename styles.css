@@ -10754,8 +10754,16 @@ button.astral-state {
   min-width: 0;
 }
 
+/* Every day shares one cell, so the area keeps the tallest day's height and switching days never moves the page. */
+.astral-period-panel {
+  grid-row: 2;
+  grid-column: 1;
+  align-self: start;
+}
+
 .astral-period-panel[hidden] {
-  display: none;
+  display: block;
+  visibility: hidden;
 }
 
 .astral-period-tab-flag {
