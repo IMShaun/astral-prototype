@@ -8144,13 +8144,6 @@ function protoChartProfileKey() {
   return `<div class="astral-chart-key is-profile" role="list" aria-label="Operating state and tariff">${items}</div>`;
 }
 
-function protoChartLimitNote() {
-  return `<p class="astral-chart-limit">Too many sites to chart clearly. ${protoTextBtn(
-    "See the site breakdown below",
-    "data-proto-zone-table"
-  )}</p>`;
-}
-
 // Says whose hours the overlay shows, for an exported image that has no Chart settings.
 function protoChartBoundsWords(set) {
   const group = set?.pick || set?.groups?.[0];
@@ -8190,7 +8183,6 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
               ? `<p class="astral-chart-when">Compared with ${escapeHtml(protoSpanWords(protoDateCompareSpan()))}</p>`
               : ""
           }
-          ${protoChartOverlayHeld() ? protoChartLimitNote() : ""}
         </div>`
             : ""
         }
@@ -37817,18 +37809,6 @@ function onPrototype(event) {
       prototypeChartPoint: null,
     });
     protoRestoreFocus('#astral-fs [data-proto-chart-pan="prev"]');
-    return;
-  }
-  if (event.target.closest("[data-proto-zone-table]")) {
-    const head = document.querySelector('#astral-fs [data-proto-breakdown="toggle"]');
-    if (!head) return;
-    const toTop = () => head.closest(".astral-breakdown")?.scrollIntoView({ block: "start", behavior: "smooth" });
-    if (head.getAttribute("aria-expanded") !== "true") {
-      protoToggleBreakdown(head);
-      // Wait for the fold to finish opening (its own reveal would cancel a smooth scroll), then lift the head to the top.
-      setTimeout(toTop, PROTO_FOLD_MS + 60);
-    } else toTop();
-    head.focus({ preventScroll: true });
     return;
   }
   if (event.target.closest("[data-proto-chart-reset]")) {
