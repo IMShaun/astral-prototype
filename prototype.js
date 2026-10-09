@@ -2836,11 +2836,35 @@ function protoProfileMeters(id) {
   return meter ? [meter] : [];
 }
 
+// Dummy addresses so the prototype shows filled fields. Each site always gets the same one.
+const PROTO_DEMO_STREETS = ["Station Road", "Railway Street", "Mill Lane", "Victoria Road", "Depot Way", "Canal Side", "Church Street", "Wharf Road"];
+const PROTO_DEMO_LONDON = /^(Euston|Waterloo|Clapham|London|King's Cross|Paddington|Wimbledon|East Croydon|Richmond)/;
+
+function protoDemoAddress(site) {
+  const name = String(site?.baseName || site?.name || "");
+  const id = String(protoSiteId(site) || name);
+  let hash = 0;
+  for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  const town = PROTO_DEMO_LONDON.test(name)
+    ? "London"
+    : name.replace(/\s+(depot|traction|station|retail|central|parkway|international|airport|harbour|junction|high|spa|north( western| gate)?|temple meads|lime street|piccadilly|st davids|foregate street|gilmour street|queen street|waverley)$/i, "").trim() || name;
+  const letters = "ABDEFGHJLNPQRSTUWXYZ";
+  const area = town.replace(/[^A-Za-z]/g, "").slice(0, 2).toUpperCase().padEnd(2, "X");
+  const pick = (shift, n) => (((hash >>> shift) ^ (hash >>> (shift + 11))) >>> 0) % n;
+  const postcode = `${area}${pick(0, 9) + 1} ${pick(4, 10)}${letters[pick(8, letters.length)]}${letters[pick(13, letters.length)]}`;
+  return {
+    street: `${pick(2, 180) + 2} ${PROTO_DEMO_STREETS[pick(6, PROTO_DEMO_STREETS.length)]}`,
+    town,
+    postcode,
+  };
+}
+
 function protoProfileAttrDefaults(id) {
   const site = protoProfileSiteMap().get(id)?.site;
   const meters = protoProfileMeters(id);
+  const address = site ? protoDemoAddress(site) : { street: "", town: "", postcode: "" };
   return Object.assign(
-    { name: site?.baseName || site?.name || "", street: "", town: "", postcode: "", country: "United Kingdom" },
+    { name: site?.baseName || site?.name || "", ...address, country: "United Kingdom" },
     ...meters.map((meter) => protoMeterAttrDefaults(meter))
   );
 }
