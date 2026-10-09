@@ -23372,6 +23372,12 @@ function protoSiteAttrList(meter) {
   return `<span class="astral-attr-list">${parts.map((part) => `<span>${escapeHtml(part)}</span>`).join("")}</span>`;
 }
 
+function protoSiteAttrCell(profile, key, unit) {
+  const n = Number(profile?.attrs?.[key]);
+  if (!profile?.attrs?.[key] || !Number.isFinite(n)) return `<span class="astral-muted">Not set</span>`;
+  return escapeHtml(`${n.toLocaleString("en-GB")} ${unit === "people" && n === 1 ? "person" : unit}`);
+}
+
 function protoSiteAddress(meter) {
   const attrs = protoMeterProfile(meter?.id)?.attrs || {};
   const country = String(attrs.country || "").trim();
@@ -24562,7 +24568,8 @@ function protoProfilePane(sites) {
     if (key === "site") return site.name;
     if (key === "hours") return protoPresetLabel("hours", profile);
     if (key === "time-of-use") return protoPresetLabel("tou", profile);
-    if (key === "rates") return Number(profile?.attrs?.area) || 0;
+    if (key === "area") return Number(profile?.attrs?.area) || 0;
+    if (key === "occupants") return Number(profile?.attrs?.employees) || 0;
     return "";
   });
   if (!rows.length) {
@@ -24589,7 +24596,8 @@ function protoProfilePane(sites) {
             ${protoSortHead("site-profile", "site", "Site")}
             ${protoSortHead("site-profile", "hours", "Operational hours")}
             ${protoSortHead("site-profile", "time-of-use", "Time of use")}
-            ${protoSortHead("site-profile", "rates", "Attributes")}
+            ${protoSortHead("site-profile", "area", "Floor area")}
+            ${protoSortHead("site-profile", "occupants", "Occupants")}
           </tr>
         </thead>
         <tbody>
@@ -24603,7 +24611,8 @@ function protoProfilePane(sites) {
                   <td class="astral-profile-site">${escapeHtml(row.name)}</td>
                   <td>${protoMeterValuePills(site, "hours", profile, { fold: true })}</td>
                   <td>${protoMeterValuePills(site, "tou", profile, { fold: true })}</td>
-                  <td>${protoSiteAttrList(meter)}</td>
+                  <td>${protoSiteAttrCell(profile, "area", "m²")}</td>
+                  <td>${protoSiteAttrCell(profile, "employees", "people")}</td>
                 </tr>
               `;
             })
