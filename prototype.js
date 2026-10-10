@@ -24746,6 +24746,7 @@ function protoMeterInheritOverview(meter, site) {
 // When every meter shares one preset, the pill is just its name. Custom means no preset. Hovering a pill shows its week as day squares.
 // Incomplete (yellow) means some days or times are not set. Missing (red) means nothing is set.
 // In a table, one pill sums up the site. Any gap shows first, then Mixed when meters differ. Its tooltip lists each utility with its week.
+// Anyone who can change settings can click a pill to open that section of Site settings, set to the meter the pill is for.
 function protoMeterValuePills(site, key, siteProfile, { fold = false } = {}) {
   const meters = site?.meters || [];
   const groups = [];
@@ -24755,16 +24756,19 @@ function protoMeterValuePills(site, key, siteProfile, { fold = false } = {}) {
     const rows = profile?.[key] || [];
     const id = `${fill}|${label}|${protoDayRuns(key, profile).join("|")}`;
     let group = groups.find((g) => g.id === id);
-    if (!group) groups.push((group = { id, fill, label, rows, kinds: [] }));
+    if (!group) groups.push((group = { id, fill, label, rows, kinds: [], own: [] }));
     return group;
   };
-  groupFor(siteProfile);
+  const siteGroup = groupFor(siteProfile);
   meters.forEach((item) => {
     const own = protoMeterOwnParts(item.id).includes(key);
     const group = groupFor(own ? protoMeterProfile(item.id) : siteProfile);
     const kind = protoMeterKind(item);
     if (!group.kinds.includes(kind)) group.kinds.push(kind);
+    if (own) group.own.push(item.id);
   });
+  const settingsId = meters[0]?.id && protoCanAct() ? meters[0].id : "";
+  const partName = PROTO_METER_PART_NAMES[key];
   const used = groups.filter((g) => g.kinds.length);
   const shown = used.length ? used : groups.slice(0, 1);
   const icons = shown.length > 1;
@@ -24785,21 +24789,33 @@ function protoMeterValuePills(site, key, siteProfile, { fold = false } = {}) {
       ${list.map((group) => tipRow(group)).join("")}
       ${protoBreakdownKey(Object.values(PROTO_PRESET_LINE[key] || {}))}
     </span>`;
-  const pill = (fill, body, tipList) => {
+  const pill = (fill, body, tipList, group = null, name = "") => {
     const cls = fill ? ` is-${fill}` : "";
+    if (settingsId) {
+      // A pill for meters that set their own opens Settings for on the first of them. Any other pill opens the site's settings.
+      const meter = group && group !== siteGroup ? group.own[0] || "" : "";
+      const label = `${name}. Open ${partName.toLowerCase()} in site settings`;
+      return `<button type="button" class="astral-value-pill${cls}${tipList ? " astral-tip-host" : ""}" data-proto-value-pill="${escapeHtml(
+        settingsId
+      )}" data-proto-value-part="${key}" data-proto-value-meter="${escapeHtml(meter)}" aria-label="${escapeHtml(label)}">${body}${
+        tipList ? tip(tipList) : ""
+      }</button>`;
+    }
     // A missing week has nothing to show on hover.
     if (!tipList) return `<span class="astral-value-pill${cls}">${body}</span>`;
     return `<span class="astral-value-pill${cls} astral-tip-host" tabindex="0">${body}${tip(tipList)}</span>`;
   };
   if (fold) {
     const fills = shown.map((group) => group.fill);
-    if (fills.every((fill) => fill === "missing")) return `<span class="astral-value-pills">${pill("missing", "Missing")}</span>`;
-    if (fills.some(Boolean)) return `<span class="astral-value-pills">${pill("incomplete", "Incomplete", shown)}</span>`;
-    if (icons) return `<span class="astral-value-pills">${pill("", "Mixed", shown)}</span>`;
+    if (fills.every((fill) => fill === "missing")) return `<span class="astral-value-pills">${pill("missing", "Missing", null, null, "Missing")}</span>`;
+    if (fills.some(Boolean)) return `<span class="astral-value-pills">${pill("incomplete", "Incomplete", shown, null, "Incomplete")}</span>`;
+    if (icons) return `<span class="astral-value-pills">${pill("", "Mixed", shown, null, "Mixed")}</span>`;
   }
   const pills = shown.map((group) => {
-    const lead = icons ? `${marksFor(group.kinds)}<span class="sr-only">${escapeHtml(wordsFor(group.kinds))}. </span>` : "";
-    return pill(group.fill, `${lead}${escapeHtml(group.label)}`, group.fill === "missing" ? null : [group]);
+    const words = icons ? wordsFor(group.kinds) : "";
+    const lead = icons ? `${marksFor(group.kinds)}<span class="sr-only">${escapeHtml(words)}. </span>` : "";
+    const name = words ? `${words}. ${group.label}` : group.label;
+    return pill(group.fill, `${lead}${escapeHtml(group.label)}`, group.fill === "missing" ? null : [group], group, name);
   });
   return `<span class="astral-value-pills">${pills.join("")}</span>`;
 }
@@ -37684,6 +37700,18 @@ function protoRestoreFocus(selector, start) {
   protoGrowComment(next);
 }
 
+// A new screen loads behind a skeleton first, so focus waits until the real control is drawn.
+function protoFocusWhenDrawn(selector, tries = 40) {
+  if (!protoSkel) {
+    const next = document.querySelector(selector);
+    if (next) {
+      next.focus({ preventScroll: true });
+      return;
+    }
+  }
+  if (tries > 0) window.setTimeout(() => protoFocusWhenDrawn(selector, tries - 1), 50);
+}
+
 function protoScrollSelectInPane(id, block) {
   const place = () => {
     const host = document.querySelector(`#astral-fs [data-proto-select="${CSS.escape(id)}"]`);
@@ -39452,6 +39480,50 @@ function onPrototype(event) {
       },
       { pane: true }
     );
+    return;
+  }
+  const valuePill = event.target.closest("[data-proto-value-pill]");
+  if (valuePill) {
+    const id = String(valuePill.dataset.protoValuePill || "");
+    const part = String(valuePill.dataset.protoValuePart || "");
+    const own = String(valuePill.dataset.protoValueMeter || "");
+    if (!id) return;
+    const settings = {
+      ...protoMeterSettingsReset(),
+      prototypeMeterSettings: id,
+      prototypeMeterOpen: id,
+      prototypeMeterFold: part,
+      prototypeSiteOwnPick: own ? { [part]: own } : null,
+      prototypePane: "profile",
+    };
+    const row = valuePill.closest("tr[data-proto-site]");
+    // From a group's table, go to the site first, with Back to return to the table, as a row click does.
+    if (row && !(store.prototypeScope === "site" && store.activePrototypeMeter === row.dataset.protoSite)) {
+      const meterId = String(row.dataset.protoSite || "");
+      const site = protoSiteByMeter(meterId);
+      const parent = protoGroupForSite(site);
+      setProto({
+        activePrototypeMeter: meterId,
+        prototypeScope: "site",
+        prototypeGroup: parent?.id || "",
+        prototypeGroupClosed: parent ? protoClosedExcept(parent.id) : protoGroupClosed(),
+        prototypeCompanyOpen: null,
+        prototypeChannel: "all",
+        ...protoSiteMeterPatch([], site, { empty: false }),
+        prototypeChartPoint: null,
+        activePrototypeView: "portfolio",
+        prototypeFullscreen: true,
+        ...protoComparePatch("site", meterId),
+        prototypeDrillBack:
+          store.prototypeScope === "group" ? protoDrillBackStash(protoDrillFromLabel(), `site:${meterId}`) : null,
+        ...settings,
+      });
+      requestAnimationFrame(protoRevealTreeSite);
+      protoFocusWhenDrawn(`#astral-fs [data-proto-meter-fold="${CSS.escape(part)}"]`);
+      return;
+    }
+    protoCommitPortfolioTree(settings, { pane: true });
+    protoRestoreFocus(`#astral-fs [data-proto-meter-fold="${CSS.escape(part)}"]`);
     return;
   }
   const presetOpen = event.target.closest("[data-proto-preset-open]");

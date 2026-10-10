@@ -7364,9 +7364,28 @@ button.astral-state {
   cursor: default;
 }
 
-.astral-value-pill.astral-tip-host:focus-visible {
+.astral-value-pill.astral-tip-host:focus-visible,
+button.astral-value-pill:focus-visible {
   outline: 2px solid var(--color-focus-contrast);
   outline-offset: 2px;
+}
+
+/* A pill that opens Site settings. The border takes the text colour on hover, so each status keeps its own look. */
+button.astral-value-pill {
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: inherit;
+  transition: border-color 150ms ease;
+}
+
+button.astral-value-pill,
+button.astral-value-pill.astral-tip-host {
+  cursor: pointer;
+}
+
+button.astral-value-pill:hover {
+  border-color: currentColor;
 }
 
 .astral-meter-ref {
