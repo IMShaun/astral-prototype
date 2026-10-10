@@ -24746,7 +24746,7 @@ function protoMeterInheritOverview(meter, site) {
 // When every meter shares one preset, the pill is just its name. Custom means no preset. Hovering a pill shows its week as day squares.
 // Incomplete (yellow) means some days or times are not set. Missing (red) means nothing is set.
 // In a table, one pill sums up the site. Any gap shows first, then Mixed when meters differ. Its tooltip lists each utility with its week.
-// Anyone who can change settings can click a pill to open that section of Site settings, set to the meter the pill is for.
+// Anyone who can change settings can click a pill to open that section of Site settings. A pill led by a utility picks that utility's meter.
 function protoMeterValuePills(site, key, siteProfile, { fold = false } = {}) {
   const meters = site?.meters || [];
   const groups = [];
@@ -24756,16 +24756,17 @@ function protoMeterValuePills(site, key, siteProfile, { fold = false } = {}) {
     const rows = profile?.[key] || [];
     const id = `${fill}|${label}|${protoDayRuns(key, profile).join("|")}`;
     let group = groups.find((g) => g.id === id);
-    if (!group) groups.push((group = { id, fill, label, rows, kinds: [], own: [] }));
+    if (!group) groups.push((group = { id, fill, label, rows, kinds: [], own: [], meters: [] }));
     return group;
   };
-  const siteGroup = groupFor(siteProfile);
+  groupFor(siteProfile);
   meters.forEach((item) => {
     const own = protoMeterOwnParts(item.id).includes(key);
     const group = groupFor(own ? protoMeterProfile(item.id) : siteProfile);
     const kind = protoMeterKind(item);
     if (!group.kinds.includes(kind)) group.kinds.push(kind);
     if (own) group.own.push(item.id);
+    group.meters.push(item.id);
   });
   const settingsId = meters[0]?.id && protoCanAct() ? meters[0].id : "";
   const partName = PROTO_METER_PART_NAMES[key];
@@ -24792,8 +24793,8 @@ function protoMeterValuePills(site, key, siteProfile, { fold = false } = {}) {
   const pill = (fill, body, tipList, group = null, name = "") => {
     const cls = fill ? ` is-${fill}` : "";
     if (settingsId) {
-      // A pill for meters that set their own opens Settings for on the first of them. Any other pill opens the site's settings.
-      const meter = group && group !== siteGroup ? group.own[0] || "" : "";
+      // A pill led by a utility opens Settings for on that utility's meter, preferring one that sets its own. A plain pill opens the site's settings.
+      const meter = group && icons ? group.own[0] || group.meters[0] || "" : "";
       const label = `${name}. Open ${partName.toLowerCase()} in site settings`;
       return `<button type="button" class="astral-value-pill${cls}${tipList ? " astral-tip-host" : ""}" data-proto-value-pill="${escapeHtml(
         settingsId
