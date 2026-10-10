@@ -6697,6 +6697,7 @@ button.astral-state {
 }
 
 .astral-meter-list .astral-meter-ref > span:last-child,
+.astral-meter-list .astral-meter-ref > .astral-meter-row-link,
 .astral-meter-read,
 .astral-meter-use-value {
   overflow: hidden;
@@ -6745,6 +6746,25 @@ button.astral-state {
 
 .astral-meter-list .astral-meter-row.is-static > .astral-meter-row-head:hover {
   background: transparent;
+}
+
+/* The meter name opens the row, so it reads as the name, not a link. */
+.astral-meter-row-link {
+  appearance: none;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.astral-meter-row-link:focus-visible {
+  outline: 2px solid var(--color-focus-contrast);
+  outline-offset: 2px;
 }
 
 /* The same padded card as the meters list below, so the sections read as matching cards. */

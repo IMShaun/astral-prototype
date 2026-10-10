@@ -26665,14 +26665,28 @@ function protoMeterRow(meter) {
   const own = protoMeterOverride(meter.id);
   const modes = protoMeterOwnParts(meter.id).map((part) => protoSrcMode(own, part, true));
   const source = protoMeterSourceTag(modes.includes("own") ? "own" : modes[0] || "site");
+  const name = `<span>${escapeHtml(title)}</span>`;
+  const site = protoSiteByMeter(meter.id);
+  const settingsId = protoCanAct() ? site?.meters?.[0]?.id || "" : "";
+  // The meter name is the row's button, so the Partial tip keeps its own focus stop.
+  const ref = settingsId
+    ? `<button type="button" class="astral-meter-row-link" data-proto-meter-attrs="${escapeHtml(meter.id)}" aria-label="${escapeHtml(
+        `${title}. Open attributes in site settings`
+      )}">${escapeHtml(title)}</button>`
+    : name;
   const cells = `
-        <span class="astral-meter-ref">${protoMeterMark(meter.commodity)}<span>${escapeHtml(title)}</span></span>
+        <span class="astral-meter-ref">${protoMeterMark(meter.commodity)}${ref}</span>
         <span class="astral-meter-channel">${protoFlowPill(protoFlowKind(channel) || "in")}</span>
         <span class="astral-meter-src-cell">${source}</span>
         <span class="astral-meter-read">${escapeHtml(meter.lastReading || "None")}</span>
         <span class="astral-meter-use">${protoMeterUseCell(meter)}</span>
   `;
-  // Settings live in Site settings only, so a meter row is a record, not a link.
+  // A row opens Attributes in Site settings on this meter's utility. Without the right to change settings it is a record.
+  if (settingsId) {
+    return `<article class="astral-meter-row"><div class="astral-meter-row-head" data-proto-meter-attrs-row="${escapeHtml(
+      meter.id
+    )}">${cells}</div></article>`;
+  }
   return `<article class="astral-meter-row is-static"><div class="astral-meter-row-head">${cells}</div></article>`;
 }
 
@@ -39481,6 +39495,25 @@ function onPrototype(event) {
       },
       { pane: true }
     );
+    return;
+  }
+  const meterAttrs = event.target.closest("[data-proto-meter-attrs], [data-proto-meter-attrs-row]");
+  if (meterAttrs) {
+    const meter = protoMeter(String(meterAttrs.dataset.protoMeterAttrs || meterAttrs.dataset.protoMeterAttrsRow || ""));
+    const id = protoSiteByMeter(meter?.id)?.meters?.[0]?.id || "";
+    if (!id) return;
+    protoCommitPortfolioTree(
+      {
+        ...protoMeterSettingsReset(),
+        prototypeMeterSettings: id,
+        prototypeMeterOpen: id,
+        prototypeMeterFold: "rates",
+        prototypeMeterAttrTab: protoMeterKind(meter),
+        prototypePane: "profile",
+      },
+      { pane: true }
+    );
+    protoRestoreFocus(`#astral-fs [data-proto-meter-fold="rates"]`);
     return;
   }
   const valuePill = event.target.closest("[data-proto-value-pill]");
