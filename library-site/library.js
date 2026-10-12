@@ -371,10 +371,12 @@
     return featureStories(feature).filter((item) => item.section === section.id);
   }
 
+  const FACTOR_MAX = 5;
+
   function factorScore(value) {
     const n = Number(value);
     if (!Number.isFinite(n)) return 0;
-    return Math.max(1, Math.min(5, n));
+    return Math.max(1, Math.min(FACTOR_MAX, n));
   }
 
   // Each story has two estimates. Dev sizes the build and Test sizes the checks.
@@ -448,7 +450,7 @@
         ([key, label]) => `
           <li class="lib-estimate-factor">
             <span>${esc(label)}</span>
-            <span class="astral-count lib-count">${esc(factorScore(part[key]))}</span>
+            <span class="astral-count lib-count">${esc(factorScore(part[key]))}<span aria-hidden="true">/${FACTOR_MAX}</span><span class="sr-only"> out of ${FACTOR_MAX}</span></span>
           </li>
         `
       )
