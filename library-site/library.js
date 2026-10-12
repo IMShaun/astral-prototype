@@ -377,64 +377,110 @@
     return Math.max(1, Math.min(5, n));
   }
 
-  function estimateScore(story) {
+  // Each story has two estimates. Dev sizes the build and Test sizes the checks.
+  const ESTIMATES = {
+    dev: {
+      name: "Dev",
+      factors: [
+        ["complexity", "Complexity", 0.4],
+        ["effort", "Effort", 0.3],
+        ["risk", "Risk", 0.2],
+        ["dependencies", "Dependencies", 0.1],
+      ],
+    },
+    test: {
+      name: "Test",
+      factors: [
+        ["scenarios", "Scenarios", 0.4],
+        ["setup", "Setup", 0.3],
+        ["risk", "Risk", 0.2],
+        ["regression", "Regression", 0.1],
+      ],
+    },
+  };
+
+  function estimatePart(story, kind) {
     const estimate = story && story.estimate;
-    if (!estimate) return 0;
-    return (
-      factorScore(estimate.complexity) * 0.4 +
-      factorScore(estimate.effort) * 0.3 +
-      factorScore(estimate.risk) * 0.2 +
-      factorScore(estimate.dependencies) * 0.1
-    );
+    if (!estimate) return null;
+    if (kind === "dev" && !estimate.dev && estimate.complexity) return estimate;
+    return estimate[kind] || null;
   }
 
-  function storyPoints(story) {
-    if (story && story.estimate) {
-      const score = estimateScore(story);
-      if (score < 1.5) return 1;
-      if (score < 2.5) return 2;
-      if (score < 3.5) return 3;
-      if (score < 4.5) return 5;
-      if (score < 5.5) return 8;
-      return 13;
-    }
-    return Number(story && story.points) || 0;
+  function estimateScore(story, kind) {
+    const part = estimatePart(story, kind);
+    if (!part) return 0;
+    return ESTIMATES[kind].factors.reduce((sum, [key, , weight]) => sum + factorScore(part[key]) * weight, 0);
   }
 
-  function estimateHelp() {
+  function storyPoints(story, kind) {
+    if (!estimatePart(story, kind)) return kind === "dev" ? Number(story && story.points) || 0 : 0;
+    const score = estimateScore(story, kind);
+    if (score < 1.5) return 1;
+    if (score < 2.5) return 2;
+    if (score < 3.5) return 3;
+    if (score < 4.5) return 5;
+    if (score < 5.5) return 8;
+    return 13;
+  }
+
+  function pointsLabel(n, kind, title) {
+    const word = n === 1 ? "point" : "points";
+    const name = ESTIMATES[kind].name;
+    return title ? `${name} ${word}` : `${name.toLowerCase()} ${word}`;
+  }
+
+  function pointsMetrics(dev, test) {
+    return `${metric(dev, pointsLabel(dev, "dev"))}${metric(test, pointsLabel(test, "test"))}`;
+  }
+
+  function estimateHelp(kind) {
     const pack = featurePack().estimate || {};
+    if (kind) return (pack[kind] && pack[kind].help) || "";
     return pack.help || "Points are relative size, not days. Find a site or meter is the 2.";
   }
 
-  function estimateBlock(story) {
-    const estimate = story.estimate;
-    if (!estimate) return "";
-    const factors = [
-      ["Complexity", estimate.complexity],
-      ["Effort", estimate.effort],
-      ["Risk", estimate.risk],
-      ["Dependencies", estimate.dependencies],
-    ]
+  function estimatePartBlock(story, kind) {
+    const part = estimatePart(story, kind);
+    if (!part) return "";
+    const points = storyPoints(story, kind);
+    const factors = ESTIMATES[kind].factors
       .map(
-        ([label, value]) => `
-          <article class="lib-card lib-stat lib-factor">
-            <p class="lib-stat-figure">${esc(factorScore(value))}</p>
-            <p>${esc(label)}</p>
-          </article>
+        ([key, label]) => `
+          <li class="lib-estimate-factor">
+            <span>${esc(label)}</span>
+            <span class="astral-count lib-count">${esc(factorScore(part[key]))}</span>
+          </li>
         `
       )
       .join("");
-    const why = estimate.why || "";
-    const split =
-      storyPoints(story) >= 13
-        ? `<p class="lib-help">This is too big for one story. Split it.</p>`
-        : "";
+    const help = estimateHelp(kind);
+    const tipId = `lib-estimate-tip-${kind}`;
+    return `
+      <article class="lib-card lib-stat lib-estimate-part" data-estimate="${esc(kind)}" tabindex="0" aria-describedby="${tipId}">
+        <p class="lib-stat-figure">${esc(points)}</p>
+        <p>${esc(pointsLabel(points, kind, true))}</p>
+        ${points >= 13 ? `<p class="lib-help">This is too big for one story. Split it.</p>` : ""}
+        <div class="lib-estimate-tip" id="${tipId}" role="tooltip">
+          <p class="lib-estimate-tip-head">${esc(ESTIMATES[kind].name)} breakdown</p>
+          <ul class="lib-estimate-factors">${factors}</ul>
+          ${part.why ? `<p>${esc(endStop(part.why))}</p>` : ""}
+          ${help ? `<p class="lib-estimate-tip-help">${esc(help)}</p>` : ""}
+        </div>
+      </article>
+    `;
+  }
+
+  function estimateBlock(story) {
+    if (!story.estimate) return "";
     return `
       <h2 class="lib-block-title">Estimate</h2>
-      <p class="lib-help">${esc(estimateHelp())}</p>
-      <div class="lib-grid lib-stat-grid lib-factor-grid">${factors}</div>
-      ${why ? `<p class="lib-help">${esc(endStop(why))}</p>` : ""}
-      ${split}
+      <section class="lib-estimate">
+        <p class="lib-help">${esc(estimateHelp())} Hover over a total to see how it was scored.</p>
+        <div class="lib-grid lib-stat-grid lib-estimate-grid">
+          ${estimatePartBlock(story, "dev")}
+          ${estimatePartBlock(story, "test")}
+        </div>
+      </section>
     `;
   }
 
@@ -442,7 +488,8 @@
     const stories = list || featureStories(feature);
     return {
       stories: stories.length,
-      points: stories.reduce((sum, item) => sum + storyPoints(item), 0),
+      dev: stories.reduce((sum, item) => sum + storyPoints(item, "dev"), 0),
+      test: stories.reduce((sum, item) => sum + storyPoints(item, "test"), 0),
       stages: stories.reduce((sum, item) => sum + ((item.stages || []).length || 0), 0),
       scenarios: stories.reduce((sum, item) => sum + ((item.criteria || []).length || 0), 0),
       roles: ((feature && feature.roles) || []).length,
@@ -467,18 +514,43 @@
     `;
   }
 
-  function scenarioCard(item) {
+  // A scenario with a walk gets Play demo, which opens the walk in a modal.
+  function demoButton(story, index) {
+    const ui = window.AstralUI;
+    const label = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5.5v13l10.5-6.5z" /></svg><span>Play demo</span>`;
+    const attrs = `data-lib-demo="${esc(story.id)}" data-lib-demo-index="${index}" aria-haspopup="dialog" aria-label="Play demo, scenario ${index + 1}"`;
+    return ui && ui.ghost
+      ? ui.ghost(label, attrs, { html: true, className: "lib-demo-play" })
+      : `<button type="button" class="astral-ghost lib-demo-play" ${attrs}>${label}</button>`;
+  }
+
+  function scenarioCard(item, index, story) {
     if (!item) return "";
     if (typeof item === "string") {
       return `<article class="lib-card lib-scenario"><p>${esc(endStop(item))}</p></article>`;
     }
+    const play = story && (item.walk || []).length ? demoButton(story, index) : "";
     return `
       <article class="lib-card lib-scenario">
         <p><span class="lib-gwt">Given</span> ${esc(endStop(item.given))}</p>
         <p><span class="lib-gwt">When</span> ${esc(endStop(item.when))}</p>
         <p><span class="lib-gwt">Then</span> ${esc(endStop(item.then))}</p>
+        ${play ? `<div class="lib-scenario-foot">${play}</div>` : ""}
       </article>
     `;
+  }
+
+  function criteriaBlock(story) {
+    const list = story.criteria || [];
+    return list.length
+      ? `<div class="card-stack lib-scenarios">${list.map((item, i) => scenarioCard(item, i, story)).join("")}</div>`
+      : "";
+  }
+
+  // The shared copy inlines each frame once in media, keyed by its path.
+  function shotSrc(path) {
+    const media = featurePack().media || {};
+    return media[path] || path;
   }
 
   function statusLabel(status) {
@@ -530,8 +602,148 @@
     `;
   }
 
+  // A walk replays captured frames with a cursor that moves to each target and clicks, like a short film.
+  function stageWalk(stage) {
+    return `
+      <article class="lib-stage">
+        <h3>${esc(stage.name || "Stage")}</h3>
+        <p class="lib-help">${esc(stage.caption || "")}</p>
+        ${walkFigure(stage.walk, stage.caption || stage.name || "Stage")}
+      </article>
+    `;
+  }
+
+  function walkFigure(walk, alt) {
+    const frames = walk.filter((frame) => frame.image);
+    const steps = frames.map((frame) => ({ x: frame.x, y: frame.y, do: frame.do || "", note: frame.note || "" }));
+    const imgs = frames
+      .map((frame, i) => `<img src="${esc(shotSrc(frame.image))}" alt="" class="${i === 0 ? "is-on" : ""}" ${i ? 'loading="lazy"' : ""} />`)
+      .join("");
+    return `
+        <figure class="lib-shot lib-walk" data-walk="${esc(JSON.stringify(steps))}">
+          <div class="lib-walk-frames" role="img" aria-label="${esc(alt)}">${imgs}</div>
+          <span class="lib-walk-cursor" aria-hidden="true">
+            <span class="lib-walk-ripple"></span>
+            <svg viewBox="0 0 24 24" focusable="false"><path d="M5 2.5v17.2l4.4-4.2 2.9 6.6 2.9-1.3-2.9-6.5h6.1z" /></svg>
+          </span>
+          <button type="button" class="lib-walk-toggle" data-walk-toggle aria-label="Pause">
+            <svg class="lib-walk-pause" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5v14M16 5v14" /></svg>
+            <svg class="lib-walk-play" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5.5v13l10.5-6.5z" /></svg>
+          </button>
+        </figure>
+    `;
+  }
+
+  const walkStill = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let walkSeen = null;
+
+  function walkObserver() {
+    if (!walkSeen) {
+      walkSeen = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => entry.target.libWalk?.seen(entry.isIntersecting));
+      });
+    }
+    return walkSeen;
+  }
+
+  function walkStart(fig) {
+    if (fig.libWalk) {
+      walkObserver().observe(fig);
+      return;
+    }
+    const steps = JSON.parse(fig.dataset.walk || "[]");
+    const imgs = [...fig.querySelectorAll(".lib-walk-frames img")];
+    const cursor = fig.querySelector(".lib-walk-cursor");
+    const toggle = fig.querySelector("[data-walk-toggle]");
+    const note = fig.parentElement?.querySelector("[data-walk-note]");
+    if (!steps.length || !imgs.length) return;
+    const st = { i: 0, phase: 0, timer: 0, on: !walkStill.matches, seen: false };
+    const show = (i) => {
+      imgs.forEach((img, k) => img.classList.toggle("is-on", k === i));
+      if (note) {
+        note.textContent = steps[i].note || "";
+        note.dataset.step = `${i + 1} of ${steps.length}`;
+      }
+    };
+    const place = (x, y, move) => {
+      cursor.classList.toggle("is-still", !move);
+      cursor.style.left = `${x}%`;
+      cursor.style.top = `${y}%`;
+    };
+    const later = (ms) => {
+      st.timer = window.setTimeout(tick, ms);
+    };
+    const press = () => {
+      cursor.classList.remove("is-press");
+      void cursor.offsetWidth;
+      cursor.classList.add("is-press");
+    };
+    function tick() {
+      window.clearTimeout(st.timer);
+      if (!st.on || !st.seen || !fig.isConnected) return;
+      const step = steps[st.i];
+      if (st.phase === 0) {
+        show(st.i);
+        if (st.i === 0) {
+          place(72, 78, false);
+          cursor.classList.remove("is-press");
+        }
+        st.phase = 1;
+        later(st.i === 0 ? 900 : 450);
+      } else if (st.phase === 1) {
+        if (step.do) {
+          place(step.x, step.y, true);
+          st.phase = 2;
+          later(1000);
+        } else {
+          st.phase = 3;
+          later(2600);
+        }
+      } else if (st.phase === 2) {
+        if (step.do !== "hover") press();
+        st.phase = 3;
+        later(step.do === "hover" ? 350 : 550);
+      } else {
+        st.i = (st.i + 1) % steps.length;
+        st.phase = 0;
+        tick();
+      }
+    }
+    const paint = () => {
+      fig.classList.toggle("is-paused", !st.on);
+      toggle.setAttribute("aria-label", st.on ? "Pause" : "Play");
+    };
+    // With reduced motion the walk waits on its last frame with the cursor on the last target.
+    if (!st.on) {
+      const last = [...steps].reverse().find((step) => step.do);
+      show(steps.length - 1);
+      if (last) place(last.x, last.y, false);
+    }
+    paint();
+    fig.libWalk = {
+      toggle() {
+        st.on = !st.on;
+        paint();
+        if (st.on) tick();
+        else window.clearTimeout(st.timer);
+      },
+      seen(on) {
+        st.seen = on;
+        if (on) tick();
+        else window.clearTimeout(st.timer);
+      },
+    };
+    walkObserver().observe(fig);
+  }
+
+  function walksStart() {
+    walkObserver().disconnect();
+    document.querySelectorAll(".lib-walk").forEach(walkStart);
+  }
+
   function stageShot(stage) {
-    const src = stage.image || "";
+    if (Array.isArray(stage.walk) && stage.walk.length) return stageWalk(stage);
+    const src = shotSrc(stage.image || "");
     const alt = stage.caption || stage.name || "Stage";
     const img = src
       ? `<img src="${esc(src)}" alt="${esc(alt)}" onerror="this.closest('.lib-shot').classList.add('is-empty'); this.remove();" />`
@@ -560,7 +772,7 @@
             <p>${esc(feature.summary || "")}</p>
             <span class="lib-metrics">
               ${metric(stats.stories, stats.stories === 1 ? "story" : "stories")}
-              ${metric(stats.points, stats.points === 1 ? "point" : "points")}
+              ${pointsMetrics(stats.dev, stats.test)}
               ${metric(stats.scenarios, stats.scenarios === 1 ? "scenario" : "scenarios")}
             </span>
           </button>
@@ -589,10 +801,10 @@
           <button type="button" class="lib-card lib-feature" data-feature-story="${esc(story.id)}">
             <span class="lib-card-top">
               <h2>${esc(story.name)}</h2>
-              ${countPill(storyPoints(story))}
             </span>
             <div class="lib-story-copy">${storyCardCopy(story)}</div>
             <span class="lib-metrics">
+              ${pointsMetrics(storyPoints(story, "dev"), storyPoints(story, "test"))}
               ${metric(scenarios, scenarios === 1 ? "scenario" : "scenarios")}
               ${metric(stages, stages === 1 ? "stage" : "stages")}
             </span>
@@ -617,20 +829,63 @@
     return STORY_STAGES.find((stage) => stage.id === story.stage) || STORY_STAGES[0];
   }
 
+  const STAGE_TAB_KEY = "astral-lib-stage-tab";
+  let storyStageTab = "review";
+  try {
+    storyStageTab = sessionStorage.getItem(STAGE_TAB_KEY) || "review";
+  } catch (err) {
+    /* Session storage can be blocked. */
+  }
+
+  // Stages show as Tabs. Only the open tab's stories show.
   function storyBoard(stories, empty) {
     if (!stories.length) return `<p class="lib-help">${esc(empty)}</p>`;
-    return STORY_STAGES.map((stage) => {
-      const list = stories.filter((story) => storyStage(story) === stage);
-      return `
-        <section class="lib-story-stage" data-story-stage="${esc(stage.id)}">
-          <div class="lib-card-top">
-            <h2 class="lib-block-title">${esc(stage.name)}</h2>
-            ${countPill(list.length)}
-          </div>
+    const active = STORY_STAGES.some((stage) => stage.id === storyStageTab) ? storyStageTab : STORY_STAGES[0].id;
+    const tabs = STORY_STAGES.map((stage) => {
+      const on = stage.id === active;
+      const n = stories.filter((story) => storyStage(story) === stage).length;
+      return `<button type="button" role="tab" id="lib-stage-tab-${esc(stage.id)}" class="${on ? "is-on" : ""}" data-story-stage-tab="${esc(
+        stage.id
+      )}" aria-selected="${on ? "true" : "false"}" aria-controls="lib-stage-panel" tabindex="${on ? "0" : "-1"}">${esc(
+        stage.name
+      )}${countPill(n)}</button>`;
+    }).join("");
+    const stage = STORY_STAGES.find((item) => item.id === active);
+    const list = stories.filter((story) => storyStage(story) === stage);
+    return `
+      <div class="lib-story-board">
+        <div class="astral-tabs lib-stage-tabs" role="tablist" aria-label="Story stage">${tabs}</div>
+        <section class="lib-story-stage" id="lib-stage-panel" role="tabpanel" aria-labelledby="lib-stage-tab-${esc(
+          stage.id
+        )}" data-story-stage="${esc(stage.id)}">
           ${storyGrid(list, stage.empty)}
         </section>
-      `;
-    }).join("");
+      </div>
+    `;
+  }
+
+  function pickStageTab(id, focus) {
+    storyStageTab = id;
+    try {
+      sessionStorage.setItem(STAGE_TAB_KEY, id);
+    } catch (err) {
+      /* Session storage can be blocked. */
+    }
+    const board = main.querySelector(".lib-story-board");
+    if (!board) return;
+    const feature = featureById(featureId);
+    if (!feature) return;
+    const section = sectionById(feature, featureSectionId);
+    const stories = section ? sectionStories(feature, section) : featureStories(feature);
+    const tmp = document.createElement("div");
+    tmp.innerHTML = storyBoard(stories, "").trim();
+    const next = tmp.firstElementChild;
+    if (!next) return;
+    board.replaceWith(next);
+    if (focus) {
+      const tab = next.querySelector(`[data-story-stage-tab="${id}"]`);
+      if (tab) tab.focus();
+    }
   }
 
   function sectionGrid(feature) {
@@ -646,7 +901,7 @@
             <p${section.summary ? "" : ' class="lib-help"'}>${esc(endStop(summary))}</p>
             <span class="lib-metrics">
               ${metric(stats.stories, stats.stories === 1 ? "story" : "stories")}
-              ${metric(stats.points, stats.points === 1 ? "point" : "points")}
+              ${pointsMetrics(stats.dev, stats.test)}
               ${metric(stats.scenarios, stats.scenarios === 1 ? "scenario" : "scenarios")}
             </span>
           </button>
@@ -671,7 +926,8 @@
       </section>
       <div class="lib-grid lib-stat-grid">
         ${statCard(stats.stories, stats.stories === 1 ? "Story" : "Stories")}
-        ${statCard(stats.points, stats.points === 1 ? "Point" : "Points")}
+        ${statCard(stats.dev, pointsLabel(stats.dev, "dev", true))}
+        ${statCard(stats.test, pointsLabel(stats.test, "test", true))}
         ${statCard(stats.scenarios, stats.scenarios === 1 ? "Scenario" : "Scenarios")}
         ${statCard(feature.screen || "Portfolio", "Screen")}
       </div>
@@ -697,7 +953,8 @@
       </section>
       <div class="lib-grid lib-stat-grid">
         ${statCard(stats.stories, stats.stories === 1 ? "Story" : "Stories")}
-        ${statCard(stats.points, stats.points === 1 ? "Point" : "Points")}
+        ${statCard(stats.dev, pointsLabel(stats.dev, "dev", true))}
+        ${statCard(stats.test, pointsLabel(stats.test, "test", true))}
         ${statCard(stats.scenarios, stats.scenarios === 1 ? "Scenario" : "Scenarios")}
       </div>
       ${section.notes ? `<p class="lib-help">${esc(endStop(section.notes))}</p>` : ""}
@@ -706,7 +963,7 @@
   }
 
   function storyPage(feature, story) {
-    const scenarios = (story.criteria || []).map(scenarioCard).join("");
+    const scenarios = criteriaBlock(story);
     const stages = (story.stages || []).map(stageShot).join("");
     const notes = story.notes || story.description || "";
     const section = sectionById(feature, story.section);
@@ -718,9 +975,13 @@
       <section class="lib-lead">
         <div class="lib-card-top">
           <h1>${esc(story.name)}</h1>
-          ${countPill(storyPoints(story))}
           ${tagPill(storyStage(story).name)}
+          <a class="astral-ghost lib-open-proto" href="${esc(storyPrototypeHref(story))}" target="_blank" rel="noopener">
+            <span>Open in prototype</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 5h5v5M19 5l-8 8M17 14v5H5V7h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </a>
         </div>
+        <span class="lib-metrics">${pointsMetrics(storyPoints(story, "dev"), storyPoints(story, "test"))}</span>
       </section>
       <article class="lib-card lib-story-card">
         ${storyCardCopy(story)}
@@ -729,11 +990,7 @@
       ${estimateBlock(story)}
       <h2 class="lib-block-title">Confirmation</h2>
       <p class="lib-help">What must be true for this to be done.</p>
-      ${
-        scenarios
-          ? `<div class="card-stack lib-scenarios">${scenarios}</div>`
-          : `<p class="lib-help">None yet.</p>`
-      }
+      ${scenarios || `<p class="lib-help">None yet.</p>`}
       <h2 class="lib-block-title">Stages</h2>
       ${
         stages
@@ -824,6 +1081,7 @@
   }
 
   function render() {
+    closeDemo();
     nav.querySelectorAll("button").forEach((button) => {
       button.classList.toggle("is-on", button.dataset.libPage === page);
     });
@@ -833,6 +1091,7 @@
     else if (page === "access") main.innerHTML = accessPage();
     else if (page === "files") main.innerHTML = filesPage();
     else main.innerHTML = startPage();
+    walksStart();
     window.scrollTo(0, 0);
   }
 
@@ -1094,7 +1353,100 @@
     closePackModal();
   });
 
+  let demoLastFocus = null;
+
+  function demoHost() {
+    return document.querySelector("[data-lib-demo-back]");
+  }
+
+  function closeDemo() {
+    const host = demoHost();
+    if (!host) return;
+    host.querySelectorAll(".lib-walk").forEach((fig) => {
+      fig.libWalk?.seen(false);
+      walkObserver().unobserve(fig);
+    });
+    host.remove();
+    if (demoLastFocus && demoLastFocus.isConnected) demoLastFocus.focus();
+    demoLastFocus = null;
+  }
+
+  function openDemo(storyId, index) {
+    const ui = window.AstralUI;
+    const story = featureList()
+      .flatMap((feature) => featureStories(feature))
+      .find((item) => item.id === storyId);
+    const list = story?.criteria || [];
+    const item = list[index];
+    if (!ui || !ui.modalHead || !item || !(item.walk || []).length) return;
+    const title = `Scenario ${index + 1} of ${list.length}`;
+    const lead = `When ${esc(item.when.replace(/\.$/, ""))}, ${esc(item.then.replace(/\.$/, ""))}.`;
+    closeDemo();
+    demoLastFocus = document.activeElement;
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      `
+      <div class="astral-modal-back lib-demo-back" data-lib-demo-back>
+        <div class="astral-modal lib-demo-modal" role="dialog" aria-modal="true" aria-labelledby="lib-demo-title">
+          ${ui.modalHead("lib-demo-title", title, lead, "demo")}
+          <div class="astral-modal-body lib-demo-body">
+            ${walkFigure(item.walk, title)}
+            <p class="lib-walk-note" data-walk-note></p>
+          </div>
+        </div>
+      </div>
+    `.trim()
+    );
+    const host = demoHost();
+    host.querySelectorAll(".lib-walk").forEach(walkStart);
+    host.querySelector('[data-proto-modal-close="demo"]')?.focus();
+  }
+
+  document.addEventListener("click", (event) => {
+    const walkToggle = event.target.closest("[data-walk-toggle]");
+    if (walkToggle) {
+      walkToggle.closest(".lib-walk")?.libWalk?.toggle();
+      return;
+    }
+    const play = event.target.closest("[data-lib-demo]");
+    if (play) {
+      openDemo(play.dataset.libDemo, Number(play.dataset.libDemoIndex));
+      return;
+    }
+    const host = demoHost();
+    if (host && (event.target === host || event.target.closest('[data-proto-modal-close="demo"]'))) {
+      event.preventDefault();
+      closeDemo();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !demoHost()) return;
+    event.preventDefault();
+    closeDemo();
+  });
+
+  main.addEventListener("keydown", (event) => {
+    const tab = event.target.closest("[data-story-stage-tab]");
+    if (!tab) return;
+    const ids = STORY_STAGES.map((stage) => stage.id);
+    const at = ids.indexOf(tab.dataset.storyStageTab);
+    let next = -1;
+    if (event.key === "ArrowRight") next = (at + 1) % ids.length;
+    else if (event.key === "ArrowLeft") next = (at - 1 + ids.length) % ids.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = ids.length - 1;
+    if (next < 0) return;
+    event.preventDefault();
+    pickStageTab(ids[next], true);
+  });
+
   main.addEventListener("click", (event) => {
+    const stageTab = event.target.closest("[data-story-stage-tab]");
+    if (stageTab) {
+      pickStageTab(stageTab.dataset.storyStageTab);
+      return;
+    }
     const sw = event.target.closest(".astral-switch");
     if (sw) {
       const on = !sw.classList.contains("is-on");
@@ -1236,8 +1588,16 @@
   }
 
   function prototypeHref() {
-    if (window.ASTRAL_PROTOTYPE_HREF) return window.ASTRAL_PROTOTYPE_HREF;
+    const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+    if (window.ASTRAL_PROTOTYPE_HREF && !local) return window.ASTRAL_PROTOTYPE_HREF;
     return new URL("../?preview=prototype", location.href).href;
+  }
+
+  // The prototype runs these steps after it loads, so the story opens where it starts.
+  function storyPrototypeHref(story) {
+    const url = new URL(prototypeHref(), location.href);
+    url.searchParams.set("open", JSON.stringify(Array.isArray(story.open) ? story.open : []));
+    return url.href;
   }
 
   function previewHtml() {

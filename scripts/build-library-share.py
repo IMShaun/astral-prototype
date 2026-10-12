@@ -561,21 +561,36 @@ def build_lib() -> dict:
         if features_path.exists()
         else {"lead": "", "items": []}
     )
+    def shot_uri(rel):
+        shot = SITE / rel if rel else None
+        if not shot or not shot.exists():
+            return None
+        mime = "image/png"
+        if shot.suffix.lower() in {".jpg", ".jpeg"}:
+            mime = "image/jpeg"
+        elif shot.suffix.lower() == ".webp":
+            mime = "image/webp"
+        return data_uri(shot, mime)
+
+    # Frames repeat across walks, so each image is inlined once and looked up by path.
+    media = {}
+
+    def keep(rel):
+        if rel and rel not in media:
+            uri = shot_uri(rel)
+            if uri:
+                media[rel] = uri
+
     for feature in features.get("items") or []:
         for story in feature.get("stories") or []:
             for stage in story.get("stages") or []:
-                rel = stage.get("image") or ""
-                if not rel:
-                    continue
-                shot = SITE / rel
-                if not shot.exists():
-                    continue
-                mime = "image/png"
-                if shot.suffix.lower() in {".jpg", ".jpeg"}:
-                    mime = "image/jpeg"
-                elif shot.suffix.lower() == ".webp":
-                    mime = "image/webp"
-                stage["image"] = data_uri(shot, mime)
+                keep(stage.get("image") or "")
+                for step in stage.get("walk") or []:
+                    keep(step.get("image") or "")
+            for item in story.get("criteria") or []:
+                for step in item.get("walk") or []:
+                    keep(step.get("image") or "")
+    features["media"] = media
 
     return {
         "product": "Astral",

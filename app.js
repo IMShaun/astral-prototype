@@ -5412,6 +5412,52 @@ function clampSection() {
   if (!sectionAllowed(store.activeSection)) store.activeSection = "prototype";
 }
 
+// A library story opens the prototype where the story starts. ?open= holds its steps as JSON.
+function readOpenQuery() {
+  try {
+    const url = new URL(location.href);
+    const raw = url.searchParams.get("open");
+    if (!raw) return null;
+    url.searchParams.delete("open");
+    history.replaceState({}, "", url.pathname + url.search + url.hash);
+    const steps = JSON.parse(raw);
+    return Array.isArray(steps) ? steps : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function openStepTarget(step) {
+  const host = document.querySelector("#astral-fs");
+  if (!host || !step) return null;
+  if (step.pane) return host.querySelector(`[data-proto-pane="${CSS.escape(step.pane)}"]`);
+  if (step.fold) return host.querySelector(`[data-proto-meter-fold="${CSS.escape(step.fold)}"]`);
+  if (step.button) {
+    return [...host.querySelectorAll("button, [role=tab]")].find((el) => el.innerText.trim() === step.button) || null;
+  }
+  if (step.row) {
+    return [...host.querySelectorAll(".astral-profile-table tbody tr")].find((el) => el.innerText.startsWith(step.row)) || null;
+  }
+  if (step.click) return host.querySelector(step.click);
+  return null;
+}
+
+async function runOpenSteps(steps) {
+  if (!steps || typeof setProto !== "function") return;
+  const wait = (ms) => new Promise((done) => setTimeout(done, ms));
+  const home = typeof protoPortfolioHomePatch === "function" ? protoPortfolioHomePatch() : {};
+  setProto({ ...home, activePrototypeView: "portfolio", prototypeFullscreen: true });
+  for (const step of steps) {
+    let target = null;
+    for (let i = 0; i < 40 && !target; i++) {
+      await wait(150);
+      target = openStepTarget(step);
+    }
+    if (!target) return;
+    target.click();
+  }
+}
+
 function applyPreviewQuery() {
   if (!store || sharePrototype()) return;
   let preview = "";
@@ -6561,9 +6607,11 @@ async function load() {
   await loadRoadmap();
   applyChrome();
   clampSection();
+  const openSteps = readOpenQuery();
   applyPreviewQuery();
   await probeWrite();
   render();
+  runOpenSteps(openSteps);
 }
 
 document.body.addEventListener("change", onCheck);

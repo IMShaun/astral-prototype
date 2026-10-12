@@ -539,12 +539,32 @@ button.lib-feature .lib-card-top {
   font-weight: 500;
 }
 
-.lib-story-stage > .lib-card-top {
-  margin: 32px 0 16px;
+.lib-open-proto {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
-.lib-story-stage > .lib-card-top .lib-block-title {
-  margin: 0;
+.lib-open-proto svg {
+  width: 16px;
+  height: 16px;
+}
+
+.lib-story-board {
+  margin: 32px 0 0;
+}
+
+.lib-stage-tabs {
+  margin: 0 0 16px;
+}
+
+.lib-stage-tabs [role="tab"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .lib-root .text-back {
@@ -597,6 +617,139 @@ button.lib-feature .lib-card-top {
   color: #737373;
 }
 
+.lib-walk {
+  position: relative;
+}
+
+.lib-walk-frames {
+  display: grid;
+}
+
+.lib-walk-frames img {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transition: opacity 280ms ease;
+}
+
+.lib-walk-frames img.is-on {
+  opacity: 1;
+}
+
+.lib-walk-cursor {
+  position: absolute;
+  left: 72%;
+  top: 78%;
+  width: 24px;
+  height: 24px;
+  margin: -3px 0 0 -5px;
+  pointer-events: none;
+  transition:
+    left 900ms cubic-bezier(0.45, 0, 0.2, 1),
+    top 900ms cubic-bezier(0.45, 0, 0.2, 1);
+}
+
+.lib-walk-cursor.is-still {
+  transition: none;
+}
+
+.lib-walk-cursor svg {
+  position: relative;
+  display: block;
+  width: 24px;
+  height: 24px;
+  fill: #000;
+  stroke: #fff;
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+  transform-origin: 5px 3px;
+}
+
+.lib-walk-cursor.is-press svg {
+  animation: lib-walk-press 420ms ease;
+}
+
+.lib-walk-ripple {
+  position: absolute;
+  left: 5px;
+  top: 3px;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border: 3px solid var(--color-action-primary, #028178);
+  border-radius: 50%;
+  opacity: 0;
+}
+
+.lib-walk-cursor.is-press .lib-walk-ripple {
+  animation: lib-walk-ripple 620ms ease-out;
+}
+
+@keyframes lib-walk-press {
+  40% {
+    transform: scale(0.78);
+  }
+}
+
+@keyframes lib-walk-ripple {
+  0% {
+    opacity: 1;
+    transform: scale(0.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.3);
+  }
+}
+
+.lib-walk-toggle {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid #dfdfdf;
+  border-radius: 50%;
+  background: #fff;
+  color: #000;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.lib-walk-toggle:focus-visible {
+  outline: 2px solid var(--color-action-primary, #028178);
+  outline-offset: 2px;
+}
+
+.lib-walk-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.lib-walk-play,
+.lib-walk.is-paused .lib-walk-pause {
+  display: none;
+}
+
+.lib-walk.is-paused .lib-walk-play {
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lib-walk-frames img,
+  .lib-walk-cursor {
+    transition: none;
+  }
+}
+
 .lib-story-copy,
 .lib-story-card {
   display: grid;
@@ -613,6 +766,54 @@ button.lib-feature .lib-card-top {
 
 .lib-scenarios {
   margin: 0 0 8px;
+}
+
+.lib-scenario-foot {
+  display: flex;
+  margin-top: 8px;
+}
+
+.lib-demo-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.lib-demo-play svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.lib-demo-back {
+  z-index: 1000;
+}
+
+.lib-demo-modal {
+  width: min(1120px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+}
+
+.lib-demo-body {
+  display: grid;
+  gap: 12px;
+  overflow: auto;
+}
+
+.lib-walk-note {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  min-height: 1.5rem;
+  margin: 0;
+}
+
+.lib-walk-note::before {
+  content: attr(data-step);
+  flex: none;
+  color: #737373;
+  font-size: 0.875rem;
 }
 
 .lib-gwt {
@@ -634,6 +835,88 @@ button.lib-feature .lib-card-top {
 
 .lib-factor .lib-stat-figure {
   font-size: 1.5rem;
+}
+
+.lib-estimate {
+  margin: 16px 0 24px;
+}
+
+.lib-estimate-grid {
+  margin: 0;
+}
+
+.lib-estimate-part {
+  position: relative;
+  cursor: default;
+}
+
+.lib-estimate-part:hover,
+.lib-estimate-part:focus-visible {
+  background: #f7f7f7;
+}
+
+.lib-estimate-part:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
+
+.lib-estimate-tip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 6;
+  display: none;
+  gap: 8px;
+  width: min(22rem, 100%);
+  min-width: 16rem;
+  padding: 12px;
+  border: 1px solid var(--color-border-strong, #b3b3b3);
+  border-radius: 12px;
+  background: #fff;
+  color: #000;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+}
+
+.lib-estimate-part:hover > .lib-estimate-tip,
+.lib-estimate-part:focus-visible > .lib-estimate-tip {
+  display: grid;
+}
+
+.lib-estimate-tip p {
+  margin: 0;
+  color: #000;
+  font-size: 0.875rem;
+}
+
+.lib-estimate-tip .lib-estimate-tip-head {
+  font-weight: 600;
+}
+
+.lib-estimate-tip .lib-estimate-tip-help {
+  color: #737373;
+}
+
+.lib-estimate-tip .lib-estimate-factors {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lib-estimate-factor {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  font-size: 0.875rem;
+}
+
+.lib-lead > .lib-metrics {
+  margin-top: 8px;
 }
 
 @media (max-width: 800px) {

@@ -67,31 +67,31 @@
           "id": "scan-estate",
           "name": "Scan the estate",
           "section": "tree",
-          "points": 3,
           "role": "User",
           "stage": "review",
-          "want": "see All and the named groups on the tree",
-          "benefit": "I can start from the collective before I pick a place",
-          "notes": "This is the first look at Portfolio. Tabs other than Consumption wait for their own stories.",
+          "open": [],
+          "want": "see All and the named groups in the Portfolio tree",
+          "benefit": "I can start from the whole estate before I pick a group or site",
+          "notes": "This is the first look at Portfolio. The pane opens on the Consumption tab. Other tabs have their own stories.",
           "criteria": [
             {
-              "given": "I am on Portfolio",
-              "when": "the tree loads",
-              "then": "All sits at the top with a grey site count"
+              "given": "I am on the Portfolio page",
+              "when": "the tree on the left loads",
+              "then": "All sits at the top of the tree with its site count in grey, such as 107 sites"
             },
             {
-              "given": "All is selected",
-              "when": "I look at the pane",
-              "then": "I see the collective overview"
+              "given": "All is selected in the Portfolio tree",
+              "when": "I look at the pane on the right",
+              "then": "the kicker reads the company, the heading reads All, and the line below gives the number of sites and meter points"
             },
             {
-              "given": "I click a group",
-              "when": "it opens",
-              "then": "its sites show and other groups hide"
+              "given": "I am on the Portfolio page",
+              "when": "I click a group in the tree",
+              "then": "the group opens with its sites under it, each with a grey meter count, and the other groups hide"
             },
             {
-              "given": "a group is open",
-              "when": "I click it again",
+              "given": "a group is open in the Portfolio tree",
+              "when": "I click the group again",
               "then": "its sites hide"
             }
           ],
@@ -110,38 +110,47 @@
             }
           ],
           "estimate": {
-            "complexity": 3,
-            "effort": 3,
-            "risk": 2,
-            "dependencies": 1,
-            "why": "More than Search. Tree, All, and group accordion."
+            "dev": {
+              "complexity": 3,
+              "effort": 3,
+              "risk": 2,
+              "dependencies": 1,
+              "why": "More than Search. Tree, All, and group accordion."
+            },
+            "test": {
+              "scenarios": 2,
+              "setup": 2,
+              "risk": 2,
+              "regression": 2,
+              "why": "Check All, each group, and a long tree that scrolls"
+            }
           }
         },
         {
           "id": "find-site",
           "name": "Find a site or meter",
           "section": "tree",
-          "points": 2,
           "role": "User",
           "stage": "review",
-          "want": "search for a site or meter",
-          "benefit": "I can reach it without walking the whole tree",
-          "notes": "Filter sits to the right. Filter behaviour sits on Filter the tree.",
+          "open": [],
+          "want": "search the Portfolio tree for a site or meter",
+          "benefit": "I can reach it without opening every group",
+          "notes": "The Filter icon button sits to the right of Search. Filter has its own story, Filter the tree.",
           "criteria": [
             {
-              "given": "I am on the tree",
-              "when": "I look at the search field",
-              "then": "the label is Search site or meter"
+              "given": "I am on the Portfolio page",
+              "when": "I look at the top of the tree",
+              "then": "a Search field reads Search site or meter, with the Filter icon button to its right"
             },
             {
-              "given": "I type a site name",
-              "when": "hits exist",
-              "then": "matching sites sit in the tree"
+              "given": "I am on the Portfolio page",
+              "when": "I type a site name or meter number in Search",
+              "then": "the tree shows only the matching sites and meters"
             },
             {
-              "given": "Search has a query",
-              "when": "I leave Portfolio",
-              "then": "Search starts again"
+              "given": "Search in the Portfolio tree has text in it",
+              "when": "I leave the Portfolio page and come back",
+              "then": "Search is empty and the tree shows every group"
             }
           ],
           "stages": [
@@ -153,43 +162,57 @@
             }
           ],
           "estimate": {
-            "complexity": 2,
-            "effort": 2,
-            "risk": 1,
-            "dependencies": 1,
-            "why": "This is the 2. Search, then hits in the tree."
+            "dev": {
+              "complexity": 2,
+              "effort": 2,
+              "risk": 1,
+              "dependencies": 1,
+              "why": "This is the 2. Search, then hits in the tree."
+            },
+            "test": {
+              "scenarios": 2,
+              "setup": 2,
+              "risk": 2,
+              "regression": 1,
+              "why": "This is the 2. Type a name, then check the hits in the tree"
+            }
           }
         },
         {
           "id": "filter-tree",
           "name": "Filter the tree",
           "section": "tree",
-          "points": 5,
           "role": "User",
           "stage": "review",
-          "want": "tick ownership, meter, and In or Out",
-          "benefit": "the tree only shows places that match",
-          "notes": "The same ticks sit on the pane Filter, to the right of Compare. Water on is Tick Water.",
+          "open": [],
+          "want": "filter the Portfolio tree by utility type and by incoming or outgoing",
+          "benefit": "the tree only shows sites and meters that match",
+          "notes": "The same filters sit behind the Filter icon button at the top right of the pane. The prototype has no ownership filter, so confirm whether it is needed. Confirm the component name for the removable filter Tag against the component library.",
           "criteria": [
             {
-              "given": "I open Filter on the tree",
-              "when": "the overlay shows",
-              "then": "I can tick Electricity, Gas, Water, In, and Out"
+              "given": "I am on the Portfolio page",
+              "when": "I pick the Filter icon button to the right of Search",
+              "then": "an overlay opens with a Utility type Select (All, Electricity, Gas, and Water) and an Incoming and outgoing Select (All, In, and Out), each option with its site count"
             },
             {
-              "given": "the overlay is open",
-              "when": "I have not ticked Water",
-              "then": "Water is off"
+              "given": "the Filter overlay is open in the Portfolio tree",
+              "when": "I pick Gas in Utility type",
+              "then": "the tree only shows sites with a gas meter"
             },
             {
-              "given": "a filter is on",
+              "given": "a filter is on in the Portfolio tree",
               "when": "I look under Search",
-              "then": "pills sit there and the Filter count is a cyan circle with no black rim"
+              "then": "each filter shows as a removable Tag with a Clear text button after them, and the Filter icon button shows a teal count"
             },
             {
-              "given": "pills are on",
-              "when": "I use the cross or Clear",
-              "then": "that one goes, or they all go"
+              "given": "filter Tags show under Search",
+              "when": "I pick the cross on a Tag, or pick Clear",
+              "then": "that filter goes, or every filter goes"
+            },
+            {
+              "given": "the Filter overlay is open in the Portfolio tree",
+              "when": "I pick Clear all at the bottom of the overlay",
+              "then": "every filter goes and the tree shows every site"
             }
           ],
           "stages": [
@@ -207,38 +230,56 @@
             }
           ],
           "estimate": {
-            "complexity": 4,
-            "effort": 4,
-            "risk": 3,
-            "dependencies": 1,
-            "why": "Overlay ticks, pills, count, and Clear."
+            "dev": {
+              "complexity": 4,
+              "effort": 4,
+              "risk": 3,
+              "dependencies": 1,
+              "why": "Overlay ticks, pills, count, and Clear."
+            },
+            "test": {
+              "scenarios": 3,
+              "setup": 3,
+              "risk": 3,
+              "regression": 2,
+              "why": "Each filter alone and together, the count, and Clear"
+            }
           }
         },
         {
           "id": "read-group",
           "name": "Read a group",
           "section": "consumption",
-          "points": 5,
           "role": "User",
           "stage": "review",
+          "open": [
+            {
+              "click": ".astral-tree [data-proto-group=\"london-north-western\"]"
+            }
+          ],
           "want": "see consumption for a group",
-          "benefit": "I can read the collective without opening each site",
-          "notes": "Cost, Carbon, Site profile, Alerts, and Queries are other stories. Pills on the group are sites.",
+          "benefit": "I can read the total for the group without opening each site",
+          "notes": "Cost, Carbon, Site profile, Alerts, and Queries have their own stories. Each pill under the group heading is a site.",
           "criteria": [
             {
-              "given": "I click a group",
-              "when": "the pane opens",
-              "then": "the kicker is the company and the heading is the group"
+              "given": "I am on the Portfolio page",
+              "when": "I click a group in the tree",
+              "then": "the pane kicker reads the company, such as EDF, and the heading reads the group name"
             },
             {
-              "given": "I am on the group",
-              "when": "Consumption is selected",
-              "then": "the graph is the collective for the sites that are on"
+              "given": "I am on a group in Portfolio",
+              "when": "the Consumption tab is selected",
+              "then": "the graph shows the total for the sites that are on"
             },
             {
-              "given": "site pills sit above the tabs",
-              "when": "I click a pill",
-              "then": "that site leaves the graph, and I can take the last one off"
+              "given": "I am on a group in Portfolio",
+              "when": "I look under the heading",
+              "then": "each site shows as a pill, with a Show more text button when there are many"
+            },
+            {
+              "given": "site pills show under the group heading",
+              "when": "I click a site pill",
+              "then": "that site leaves the graph and its name strikes through, and this works for the last site too"
             }
           ],
           "stages": [
@@ -250,43 +291,56 @@
             }
           ],
           "estimate": {
-            "complexity": 4,
-            "effort": 4,
-            "risk": 3,
-            "dependencies": 1,
-            "why": "Collective graph and site pills."
+            "dev": {
+              "complexity": 4,
+              "effort": 4,
+              "risk": 3,
+              "dependencies": 1,
+              "why": "Collective graph and site pills."
+            },
+            "test": {
+              "scenarios": 2,
+              "setup": 3,
+              "risk": 3,
+              "regression": 2,
+              "why": "Needs a group with sites of each utility. The group total must equal the sum of its sites"
+            }
           }
         },
         {
           "id": "read-site",
           "name": "Read a site",
           "section": "consumption",
-          "points": 5,
           "role": "User",
           "stage": "review",
-          "want": "see Incoming and Outgoing on a site",
-          "benefit": "import and export share one graph",
-          "notes": "Do not put All, In, or Out chips on the site head. Do not put a meter Select on the site head.",
+          "open": [
+            {
+              "click": ".astral-tree [data-proto-site=\"nr-crewe-in\"]"
+            }
+          ],
+          "want": "see incoming and outgoing on one graph for a site",
+          "benefit": "I can read import and export together",
+          "notes": "Do not put All, In, or Out chips in the site header. Do not put a meter Select in the site header.",
           "criteria": [
             {
-              "given": "I open a site with both channels",
-              "when": "the pane loads",
-              "then": "the title is Incoming and outgoing"
+              "given": "I am on a site in Portfolio that has In and Out channels",
+              "when": "the Consumption tab loads",
+              "then": "the graph title reads Incoming and outgoing"
             },
             {
-              "given": "Incoming and Outgoing sit together",
-              "when": "I look at the key",
-              "then": "In is cyan with an import mark and Out is black with an export mark"
+              "given": "I am on a site in Portfolio that has In and Out channels",
+              "when": "I look at the key under the graph",
+              "then": "In is teal with an import mark and Out is black with an export mark"
             },
             {
-              "given": "In and Out pills sit under the graph",
+              "given": "the key under the graph shows In and Out",
               "when": "I click one",
-              "then": "that series leaves, the name strikes through, and I can take the last one off"
+              "then": "that series leaves the graph and its name strikes through, and this works for the last one too"
             },
             {
-              "given": "the site has meters",
-              "when": "I look above the tabs",
-              "then": "each pill is a meter, even if there is only one"
+              "given": "I am on a site in Portfolio",
+              "when": "I look under the heading",
+              "then": "each meter shows as a pill with its number, even when there is only one"
             }
           ],
           "stages": [
@@ -298,38 +352,52 @@
             }
           ],
           "estimate": {
-            "complexity": 4,
-            "effort": 4,
-            "risk": 3,
-            "dependencies": 1,
-            "why": "Incoming and Outgoing, the key, and meter pills."
+            "dev": {
+              "complexity": 4,
+              "effort": 4,
+              "risk": 3,
+              "dependencies": 1,
+              "why": "Incoming and Outgoing, the key, and meter pills."
+            },
+            "test": {
+              "scenarios": 3,
+              "setup": 3,
+              "risk": 3,
+              "regression": 2,
+              "why": "Needs a site that both imports and exports"
+            }
           }
         },
         {
           "id": "change-window",
           "name": "Change the window",
           "section": "consumption",
-          "points": 3,
           "role": "User",
           "stage": "review",
-          "want": "change the date window",
-          "benefit": "I can read a preset or a custom from and to",
+          "open": [],
+          "want": "change the date window of the graph",
+          "benefit": "I can read a preset window or a custom from and to",
           "notes": "Gaps stay gaps. Zero is a reading.",
           "criteria": [
             {
-              "given": "I am on the graph",
-              "when": "I open the date Select",
+              "given": "I am on a graph tab in Portfolio, such as Consumption",
+              "when": "I open the date Select at the top right of the pane",
               "then": "I can pick Last 24 hours, Last 7 days, Last month, Last 12 months, or Custom"
             },
             {
-              "given": "I pick Custom",
-              "when": "the calendar opens",
-              "then": "I set from and to, and the title uses those dates"
+              "given": "the date Select is open",
+              "when": "I pick Custom",
+              "then": "a calendar opens where I set from and to, and the dates next to the graph title change to match"
             },
             {
-              "given": "a preset is on",
-              "when": "I use the arrows",
-              "then": "the window moves and the filter becomes Custom, then the preset again at the original window"
+              "given": "a preset is on in the date Select",
+              "when": "I use the previous and next arrows at the top right of the graph",
+              "then": "the window moves and the date Select reads Custom, then reads the preset again when I return to the first window"
+            },
+            {
+              "given": "the graph shows the latest window",
+              "when": "I look at the next arrow",
+              "then": "it is off"
             }
           ],
           "stages": [
@@ -341,42 +409,56 @@
             }
           ],
           "estimate": {
-            "complexity": 3,
-            "effort": 3,
-            "risk": 2,
-            "dependencies": 1,
-            "why": "Date Select, Custom calendar, and arrows."
+            "dev": {
+              "complexity": 3,
+              "effort": 3,
+              "risk": 2,
+              "dependencies": 1,
+              "why": "Date Select, Custom calendar, and arrows."
+            },
+            "test": {
+              "scenarios": 3,
+              "setup": 2,
+              "risk": 3,
+              "regression": 2,
+              "why": "The edges of each window, Custom ranges, and the arrows at each end"
+            }
           }
         },
         {
           "id": "switch-graph",
           "name": "Switch the graph",
           "section": "consumption",
-          "points": 3,
           "role": "User",
           "stage": "review",
-          "want": "switch Total or Individual, and Bar or Line",
-          "benefit": "I can add readings up or break them down, and pick a graph style",
-          "notes": "Cost and Carbon are their own stories. Incoming and Outgoing stay cyan and black bars when Total and Bar are on.",
+          "open": [],
+          "want": "change the view and the chart type of the graph",
+          "benefit": "I can add readings up or break them down, and pick bars or lines",
+          "notes": "Cost and Carbon have their own stories. In and Out stay teal and black bars when Total consumption and Bar are on. Overlay, Average profile, Highlight weekends, and Restore defaults also sit in Chart settings and wait for their own stories.",
           "criteria": [
             {
-              "given": "I am on Consumption",
-              "when": "Total and Bar are selected",
-              "then": "the graph adds the readings up as bars"
+              "given": "I am on the Consumption tab in Portfolio",
+              "when": "I pick Chart settings, the secondary pill button with a gear icon next to the graph title",
+              "then": "I see a View Select with Total consumption, Individual consumption, and Calendar, and a Chart type control with Bar and Line"
             },
             {
-              "given": "I pick Individual and Line",
-              "when": "I am on a group",
-              "then": "I see one line per site"
+              "given": "Total consumption and Bar are on in Chart settings",
+              "when": "I read the graph",
+              "then": "it adds the readings up as bars"
             },
             {
-              "given": "I pick Individual and Line",
-              "when": "I am on a site",
-              "then": "I see one line per meter"
+              "given": "I am on a group in Portfolio",
+              "when": "I pick Individual consumption and Line in Chart settings",
+              "then": "I see one line for each site"
             },
             {
-              "given": "I pick Total and Line",
-              "when": "I am on a group",
+              "given": "I am on a site in Portfolio",
+              "when": "I pick Individual consumption and Line in Chart settings",
+              "then": "I see one line for each meter"
+            },
+            {
+              "given": "I am on a group in Portfolio",
+              "when": "I pick Total consumption and Line in Chart settings",
               "then": "I see one line for the total"
             }
           ],
@@ -389,32 +471,45 @@
             }
           ],
           "estimate": {
-            "complexity": 3,
-            "effort": 3,
-            "risk": 2,
-            "dependencies": 1,
-            "why": "Bars or lines, and group vs site."
+            "dev": {
+              "complexity": 3,
+              "effort": 3,
+              "risk": 2,
+              "dependencies": 1,
+              "why": "Bars or lines, and group vs site."
+            },
+            "test": {
+              "scenarios": 3,
+              "setup": 2,
+              "risk": 2,
+              "regression": 2,
+              "why": "Bars and lines at group and site level"
+            }
           }
         },
         {
           "id": "see-cost",
           "name": "See Cost",
           "section": "cost",
-          "points": 2,
           "role": "User",
           "stage": "review",
-          "want": "see Cost for the same window",
+          "open": [
+            {
+              "pane": "cost"
+            }
+          ],
+          "want": "see the Cost tab for the same window",
           "benefit": "I can read spend in pounds",
-          "notes": "Rates on Site profile feed the walk numbers. Water uses £.",
+          "notes": "The rates in Attributes in Site settings feed the numbers. Water uses £ too.",
           "criteria": [
             {
-              "given": "I am on a group or a site",
-              "when": "I pick Cost",
-              "then": "the title is Cost and the unit is £"
+              "given": "I am on a group or a site in Portfolio",
+              "when": "I pick the Cost tab",
+              "then": "the graph title reads Cost and the axis reads £"
             },
             {
-              "given": "I am on Cost",
-              "when": "I open the graph Select",
+              "given": "I am on the Cost tab in Portfolio",
+              "when": "I open the View Select in Chart settings",
               "then": "I can pick Total cost or Individual cost"
             }
           ],
@@ -427,32 +522,45 @@
             }
           ],
           "estimate": {
-            "complexity": 2,
-            "effort": 2,
-            "risk": 2,
-            "dependencies": 1,
-            "why": "Same graph as Consumption. The unit is £."
+            "dev": {
+              "complexity": 2,
+              "effort": 2,
+              "risk": 2,
+              "dependencies": 1,
+              "why": "Same graph as Consumption. The unit is £."
+            },
+            "test": {
+              "scenarios": 2,
+              "setup": 2,
+              "risk": 2,
+              "regression": 1,
+              "why": "Check the ? figure against the tariff for a known day"
+            }
           }
         },
         {
           "id": "see-carbon",
           "name": "See Carbon",
           "section": "carbon",
-          "points": 2,
           "role": "User",
           "stage": "review",
-          "want": "see Carbon for the same window",
+          "open": [
+            {
+              "pane": "carbon"
+            }
+          ],
+          "want": "see the Carbon tab for the same window",
           "benefit": "I can read kgCO2e for the same places",
-          "notes": "Water uses the 2026 supply and wastewater factors, combined on the graph.",
+          "notes": "Water uses the 2026 supply and wastewater factors, added together on the graph.",
           "criteria": [
             {
-              "given": "I am on a group or a site",
-              "when": "I pick Carbon",
-              "then": "the title is Carbon and the unit is kgCO2e"
+              "given": "I am on a group or a site in Portfolio",
+              "when": "I pick the Carbon tab",
+              "then": "the graph title reads Carbon and the axis reads kgCO2e"
             },
             {
-              "given": "I am on Carbon",
-              "when": "I open the graph Select",
+              "given": "I am on the Carbon tab in Portfolio",
+              "when": "I open the View Select in Chart settings",
               "then": "I can pick Total carbon or Individual carbon"
             }
           ],
@@ -465,38 +573,57 @@
             }
           ],
           "estimate": {
-            "complexity": 2,
-            "effort": 2,
-            "risk": 2,
-            "dependencies": 1,
-            "why": "Same graph as Consumption. The unit is kgCO2e."
+            "dev": {
+              "complexity": 2,
+              "effort": 2,
+              "risk": 2,
+              "dependencies": 1,
+              "why": "Same graph as Consumption. The unit is kgCO2e."
+            },
+            "test": {
+              "scenarios": 2,
+              "setup": 2,
+              "risk": 2,
+              "regression": 1,
+              "why": "Check the kgCO2e figure against the factor for a known day"
+            }
           }
         },
         {
           "id": "compare-others",
           "name": "Compare others",
           "section": "consumption",
-          "points": 8,
           "role": "User",
           "stage": "review",
-          "want": "compare others at this level",
+          "open": [],
+          "want": "compare other places at the same level",
           "benefit": "I can add more than one place to the graph",
-          "notes": "On one meter, Compare lists other meters throughout the portfolio. The row is the site and the MPAN.",
+          "notes": "On a meter, Compare lists other meters across the portfolio. Each row shows the site and the MPAN.",
           "criteria": [
             {
-              "given": "I am on a group or a site",
-              "when": "I open Compare",
-              "then": "a modal lists others at that level"
+              "given": "I am on All or a group in Portfolio",
+              "when": "I look at the top right of the pane",
+              "then": "the Compare button reads Compare groups"
             },
             {
-              "given": "the modal is open",
-              "when": "I search and add",
-              "then": "I can add more than one"
+              "given": "I am on a site in Portfolio",
+              "when": "I look at the top right of the pane",
+              "then": "the Compare button reads Compare sites"
             },
             {
-              "given": "I have added others",
-              "when": "I look at Compare",
-              "then": "the count is a cyan circle with no black rim, and the cross clears it"
+              "given": "I am on a site in Portfolio",
+              "when": "I pick Compare sites",
+              "then": "a Modal opens with the line Search and add other sites at this level, a Search field, a Filter, and a row for each site with an Add button"
+            },
+            {
+              "given": "the Compare Modal is open",
+              "when": "I pick Add on two rows and then Done",
+              "then": "both sites join the graph"
+            },
+            {
+              "given": "I have added places to compare",
+              "when": "I look at the Compare button",
+              "then": "it shows a teal count, and its cross clears the comparison"
             }
           ],
           "stages": [
@@ -508,58 +635,186 @@
             }
           ],
           "estimate": {
-            "complexity": 5,
-            "effort": 5,
-            "risk": 4,
-            "dependencies": 2,
-            "why": "Modal, more than one place, and lines on the graph."
+            "dev": {
+              "complexity": 5,
+              "effort": 5,
+              "risk": 4,
+              "dependencies": 2,
+              "why": "Modal, more than one place, and lines on the graph."
+            },
+            "test": {
+              "scenarios": 3,
+              "setup": 3,
+              "risk": 4,
+              "regression": 3,
+              "why": "More than one place, the lines, and the Modal at each level"
+            }
           }
         },
         {
           "section": "profile",
           "id": "profile-sites",
           "name": "Compare site profiles",
-          "points": 5,
           "role": "User",
           "stage": "review",
-          "want": "see the hours, time of use, floor area, and occupants of every site in one table",
+          "open": [
+            {
+              "pane": "profile"
+            }
+          ],
+          "want": "see the operational hours, time of use, floor area, and occupants of every site in one table",
           "benefit": "I can spot gaps across a group without opening each site",
-          "notes": "Shows on All and on a group. Download template sits with Upload above the table. Upload is its own story. Custom means hours or time of use set by hand with no saved preset.",
+          "notes": "Shows on All and on a group. Download template and Upload are secondary pill buttons at the top right of the Site profile tab, above the table, with Upload on the right. Upload has its own story. A Custom Tag means the hours or time of use were set by hand with no saved preset.",
           "criteria": [
             {
-              "given": "I am on All or a group",
-              "when": "I pick Site profile",
-              "then": "a table lists each site with Operational hours, Time of use, Floor area, and Occupants"
+              "given": "I am on All or a group in Portfolio",
+              "when": "I pick the Site profile tab",
+              "then": "a table lists each site with the columns Site, Operational hours, Time of use, Floor area, and Occupants",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-1-1.webp",
+                  "x": 61.66,
+                  "y": 32.45,
+                  "do": "click",
+                  "note": "Pick Site profile"
+                },
+                {
+                  "image": "features/walks/demo-profile-sites-1-2.webp",
+                  "note": "A table lists each site with the columns Site, Operational hours, Time of use, Floor area, and Occupants."
+                }
+              ]
             },
             {
-              "given": "a site uses one week",
-              "when": "I look at its row",
-              "then": "the tag shows the preset name, or Custom if no preset is saved"
+              "given": "every meter on a site uses the same week preset",
+              "when": "I look at the Operational hours or Time of use column in its row",
+              "then": "the Tag shows the preset name, or Custom if no preset is saved",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-2-1.webp",
+                  "x": 45.27,
+                  "y": 65.26,
+                  "do": "hover",
+                  "note": "Hover a Tag with a preset name"
+                },
+                {
+                  "image": "features/walks/demo-profile-sites-2-2.webp",
+                  "x": 44.88,
+                  "y": 52.41,
+                  "do": "hover",
+                  "note": "Hover a Custom Tag"
+                },
+                {
+                  "image": "features/walks/demo-profile-sites-2-3.webp",
+                  "note": "The Tag shows the preset name, or Custom if no preset is saved."
+                }
+              ]
             },
             {
-              "given": "the meters on a site use different weeks",
-              "when": "I look at its row",
-              "then": "the tag reads Mixed"
+              "given": "the meters on a site use different week presets",
+              "when": "I look at the Operational hours or Time of use column in its row",
+              "then": "the Tag reads Mixed",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-1-2.webp",
+                  "x": 56.84,
+                  "y": 52.41,
+                  "do": "hover",
+                  "note": "Hover a Mixed Tag"
+                },
+                {
+                  "image": "features/walks/demo-profile-sites-3-2.webp",
+                  "note": "The Tag reads Mixed."
+                }
+              ]
             },
             {
-              "given": "some days have no times, or no week is set",
-              "when": "I look at its row",
-              "then": "the tag reads Incomplete or Missing"
+              "given": "some days on a site have no times, or no week is set",
+              "when": "I look at the Operational hours or Time of use column in its row",
+              "then": "an amber Tag reads Incomplete, or a red Tag reads Missing",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-1-2.webp",
+                  "x": 45.58,
+                  "y": 57.98,
+                  "do": "hover",
+                  "note": "Hover an Incomplete Tag"
+                },
+                {
+                  "image": "features/walks/demo-profile-sites-4-2.webp",
+                  "x": 44.8,
+                  "y": 74.71,
+                  "do": "hover",
+                  "note": "Hover a Missing Tag"
+                },
+                {
+                  "image": "features/walks/demo-profile-sites-4-3.webp",
+                  "note": "An amber Tag reads Incomplete, or a red Tag reads Missing."
+                }
+              ]
             },
             {
-              "given": "I hover a tag",
-              "when": "the tip opens",
-              "then": "I see each day of the week and its times"
+              "given": "I am on the Site profile tab at All or a group",
+              "when": "I hover a Tag in the Operational hours or Time of use column",
+              "then": "a Tooltip opens with each day of the week and its times",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-5-1.webp",
+                  "x": 45.69,
+                  "y": 65.17,
+                  "do": "hover",
+                  "note": "Hover a Tag"
+                },
+                {
+                  "image": "features/walks/demo-profile-sites-5-2.webp",
+                  "note": "A Tooltip opens with each day of the week and its times."
+                }
+              ]
             },
             {
-              "given": "I pick Download template",
-              "when": "the file downloads",
-              "then": "it holds the sites in the table, ready to fill in"
+              "given": "I am on the Site profile tab at All or a group",
+              "when": "I pick Download template, the secondary pill button at the top right of the tab, to the left of Upload",
+              "then": "a file downloads that lists the sites in the table, ready to fill in",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-1-2.webp",
+                  "x": 80.32,
+                  "y": 39.45,
+                  "do": "click",
+                  "note": "Pick Download template"
+                },
+                {
+                  "image": "features/walks/demo-profile-sites-1-2.webp",
+                  "note": "A file downloads that lists the sites in the table, ready to fill in."
+                }
+              ]
             },
             {
-              "given": "I click a site row",
-              "when": "it opens",
-              "then": "I see Site profile for that site"
+              "given": "I am on the Site profile tab at All or a group",
+              "when": "I click a site row in the table",
+              "then": "the Site profile tab opens for that site",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-1-2.webp",
+                  "x": 33.96,
+                  "y": 52.46,
+                  "do": "click",
+                  "note": "Click a site row"
+                },
+                {
+                  "image": "features/walks/demo-profile-sites-7-2.webp",
+                  "note": "The Site profile tab opens for that site."
+                }
+              ]
+            },
+            {
+              "given": "I am a Viewer on the Site profile tab at All or a group",
+              "when": "I look at the top right of the tab",
+              "then": "Download template and Upload do not show"
+            },
+            {
+              "given": "I am on the Site profile tab at All or a group",
+              "when": "I pick a column header in the table",
+              "then": "the table sorts by that column"
             }
           ],
           "stages": [
@@ -567,63 +822,189 @@
               "id": "sites",
               "name": "Sites table",
               "caption": "One row per site. Download template and Upload sit above the table.",
-              "image": "features/shots/profile-sites.png"
+              "image": "features/walks/profile-sites-2.webp",
+              "walk": [
+                {
+                  "image": "features/walks/profile-sites-1.webp",
+                  "x": 46.24,
+                  "y": 27.04,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-sites-2.webp"
+                }
+              ]
             },
             {
               "id": "sites-tip",
               "name": "Week on hover",
               "caption": "Hover a tag to see each day of the week.",
-              "image": "features/shots/profile-sites-tip.png"
+              "image": "features/walks/profile-sites-tip-2.webp",
+              "walk": [
+                {
+                  "image": "features/walks/profile-sites-tip-1.webp",
+                  "x": 39.66,
+                  "y": 43.67,
+                  "do": "hover"
+                },
+                {
+                  "image": "features/walks/profile-sites-tip-2.webp"
+                }
+              ]
             }
           ],
           "estimate": {
-            "complexity": 4,
-            "effort": 5,
-            "risk": 3,
-            "dependencies": 2,
-            "why": "A table of sites, tags that fold many meters into one, week tips, and the template"
+            "dev": {
+              "complexity": 4,
+              "effort": 5,
+              "risk": 3,
+              "dependencies": 2,
+              "why": "A table of sites, Tags that fold many meters into one, week Tooltips, and the template"
+            },
+            "test": {
+              "scenarios": 4,
+              "setup": 4,
+              "risk": 3,
+              "regression": 3,
+              "why": "Needs sites on a preset, on Custom, and with mixed meters. The template must match the table"
+            }
           }
         },
         {
           "section": "profile",
           "id": "profile-site",
           "name": "Read a site profile",
-          "points": 3,
           "role": "User",
           "stage": "review",
-          "want": "see where a site is and how its hours and time of use are set",
-          "benefit": "I can check a site at a glance before I change anything",
-          "notes": "Custom means hours or time of use set by hand with no saved preset. A preset on a meter shows its name and the icon for that meter's utility. Floor area and occupants sit under Attributes.",
-          "criteria": [
+          "open": [
             {
-              "given": "I click a site row, or pick a site on the tree",
-              "when": "Site profile opens",
-              "then": "I see a map of the site and its address"
+              "pane": "profile"
             },
             {
-              "given": "hours or time of use are set by hand with no saved preset",
-              "when": "I look at the tag",
-              "then": "it reads Custom"
+              "row": "Crewe"
+            }
+          ],
+          "want": "see where a site is and how its hours and time of use are set",
+          "benefit": "I can check a site at a glance before I change anything",
+          "notes": "A Custom Tag means the hours or time of use were set by hand with no saved preset. A preset on a meter shows its name and the icon for that meter's utility. Floor area and occupants sit under Attributes on the site card.",
+          "criteria": [
+            {
+              "given": "I click a site row on the Site profile tab, or pick a site in the Portfolio tree",
+              "when": "the Site profile tab opens for that site",
+              "then": "a site card shows a map with a pin on the left and the address beside it",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-1-2.webp",
+                  "x": 33.96,
+                  "y": 52.46,
+                  "do": "click",
+                  "note": "Click a site row"
+                },
+                {
+                  "image": "features/walks/demo-profile-sites-7-2.webp",
+                  "note": "A site card shows a map with a pin on the left and the address beside it."
+                }
+              ]
+            },
+            {
+              "given": "the hours or time of use on a site were set by hand with no saved preset",
+              "when": "I look at the Operational hours or Time of use Tag on the site card",
+              "then": "it reads Custom",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-7-2.webp",
+                  "x": 40.7,
+                  "y": 50.3,
+                  "do": "hover",
+                  "note": "Hover a Custom Tag"
+                },
+                {
+                  "image": "features/walks/demo-profile-site-2-2.webp",
+                  "note": "It reads Custom."
+                }
+              ]
             },
             {
               "given": "a meter uses a saved preset",
-              "when": "I look at the tag",
-              "then": "it shows the preset name with the icon for that meter's utility"
+              "when": "I look at the Time of use Tags on the site card",
+              "then": "the Tag shows the preset name with the icon for that meter's utility",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-7-2.webp",
+                  "x": 42.73,
+                  "y": 56.87,
+                  "do": "hover",
+                  "note": "Hover a Tag with a preset name"
+                },
+                {
+                  "image": "features/walks/demo-profile-site-3-2.webp",
+                  "note": "The Tag shows the preset name with the icon for that meter's utility."
+                }
+              ]
             },
             {
-              "given": "I hover a time of use tag such as Weekday peak",
-              "when": "the tip opens",
-              "then": "I see each day of the week with its on peak and off peak times"
+              "given": "I am on the Site profile tab for a site",
+              "when": "I hover a Time of use Tag such as Weekday peak",
+              "then": "a Tooltip opens with each day of the week and its on-peak and off-peak times",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-7-2.webp",
+                  "x": 42.73,
+                  "y": 56.87,
+                  "do": "hover",
+                  "note": "Hover Weekday peak"
+                },
+                {
+                  "image": "features/walks/demo-profile-site-3-2.webp",
+                  "note": "A Tooltip opens with each day of the week and its on-peak and off-peak times."
+                }
+              ]
             },
             {
-              "given": "I hover an operational hours tag",
-              "when": "the tip opens",
-              "then": "I see each day of the week with its open hours"
+              "given": "I am on the Site profile tab for a site",
+              "when": "I hover the Operational hours Tag",
+              "then": "a Tooltip opens with each day of the week and its operational hours",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-7-2.webp",
+                  "x": 40.7,
+                  "y": 50.3,
+                  "do": "hover",
+                  "note": "Hover the operational hours Tag"
+                },
+                {
+                  "image": "features/walks/demo-profile-site-2-2.webp",
+                  "note": "A Tooltip opens with each day of the week and its operational hours."
+                }
+              ]
             },
             {
-              "given": "I pick Site settings",
-              "when": "it opens",
-              "then": "I can dig deeper into the settings for that site"
+              "given": "I am on the Site profile tab for a site",
+              "when": "I pick Site settings, the secondary pill button at the top right of the site card",
+              "then": "Site settings opens for that site",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-7-2.webp",
+                  "x": 88.24,
+                  "y": 42.23,
+                  "do": "click",
+                  "note": "Pick Site settings"
+                },
+                {
+                  "image": "features/walks/demo-profile-site-6-2.webp",
+                  "note": "Site settings opens for that site."
+                }
+              ]
+            },
+            {
+              "given": "I am a Viewer on the Site profile tab for a site",
+              "when": "I hover a Tag on the site card",
+              "then": "no Tooltip opens"
+            },
+            {
+              "given": "I am on the Site profile tab for a site",
+              "when": "I look at Attributes on the site card",
+              "then": "I see the floor area and the occupants, such as 1,200 m² · 18 people"
             }
           ],
           "stages": [
@@ -631,68 +1012,211 @@
               "id": "site",
               "name": "Site profile",
               "caption": "The map, address, hours, time of use, and attributes. Site settings sits to the right.",
-              "image": "features/shots/profile-site.png"
+              "image": "features/walks/profile-site-2.webp",
+              "walk": [
+                {
+                  "image": "features/walks/profile-site-1.webp",
+                  "x": 57.45,
+                  "y": 43.72,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-site-2.webp"
+                }
+              ]
             },
             {
               "id": "site-tip",
               "name": "Week on hover",
               "caption": "Hover a preset to see on peak and off peak for each day.",
-              "image": "features/shots/profile-site-tip.png"
+              "image": "features/walks/profile-site-tip-2.webp",
+              "walk": [
+                {
+                  "image": "features/walks/profile-site-tip-1.webp",
+                  "x": 32.05,
+                  "y": 47.39,
+                  "do": "hover"
+                },
+                {
+                  "image": "features/walks/profile-site-tip-2.webp"
+                }
+              ]
             }
           ],
           "estimate": {
-            "complexity": 3,
-            "effort": 3,
-            "risk": 2,
-            "dependencies": 2,
-            "why": "Map, address, and tags. The tip reuses the week tip from the sites table"
+            "dev": {
+              "complexity": 3,
+              "effort": 3,
+              "risk": 2,
+              "dependencies": 2,
+              "why": "Map, address, and Tags. The Tooltip reuses the week Tooltip from the sites table"
+            },
+            "test": {
+              "scenarios": 3,
+              "setup": 3,
+              "risk": 2,
+              "regression": 2,
+              "why": "Needs a site with a map pin, an address, and a Tag in each column"
+            }
           }
         },
         {
           "section": "profile",
           "id": "profile-meters",
           "name": "Read the meters on a site",
-          "points": 3,
           "role": "User",
           "stage": "review",
+          "open": [
+            {
+              "pane": "profile"
+            },
+            {
+              "row": "Crewe"
+            }
+          ],
           "want": "see each meter on a site with its channel, settings, last reading, and use",
           "benefit": "I can tell which meters follow the site and which do not",
-          "notes": "From site means the meter takes the site settings, so three meters are set once, not three times. Change one meter and it becomes Custom. Do not invent a SPID.",
+          "notes": "From site means the meter takes the site settings, so three meters are set once, not three times. Change one meter and it becomes Custom. Use can also show a Partial Tag, so confirm what it means. Do not invent a SPID.",
           "criteria": [
             {
-              "given": "I am on Site profile for a site",
-              "when": "I look below the site",
-              "then": "Meters lists each meter with Meter, Channel, Settings, Last reading, and Use"
+              "given": "I am on the Site profile tab for a site",
+              "when": "I look at the Meters card below the site card",
+              "then": "it gives the number of meters and lists each one with the columns Meter, Channel, Settings, Last reading, and Use",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-1-2.webp",
+                  "x": 33.96,
+                  "y": 52.46,
+                  "do": "click",
+                  "note": "Open a site"
+                },
+                {
+                  "image": "features/walks/demo-profile-sites-7-2.webp",
+                  "x": 35.69,
+                  "y": 84.33,
+                  "do": "hover",
+                  "note": "Look at Meters below the site"
+                },
+                {
+                  "image": "features/walks/demo-profile-meters-1-3.webp",
+                  "note": "It gives the number of meters and lists each one with the columns Meter, Channel, Settings, Last reading, and Use."
+                }
+              ]
             },
             {
-              "given": "I look at a meter",
-              "when": "I read the Meter column",
-              "then": "I see its number, such as the MPAN, with the icon for its utility"
+              "given": "I am on the Site profile tab for a site",
+              "when": "I read the Meter column in the Meters card",
+              "then": "each row shows the meter number, such as the MPAN, with the icon for its utility",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-7-2.webp",
+                  "x": 28.47,
+                  "y": 84.27,
+                  "do": "hover",
+                  "note": "Read the Meter column"
+                },
+                {
+                  "image": "features/walks/demo-profile-meters-1-3.webp",
+                  "note": "Each row shows the meter number, such as the MPAN, with the icon for its utility."
+                }
+              ]
             },
             {
-              "given": "I look at a meter",
-              "when": "I read the Channel column",
-              "then": "it reads In, Out, or both"
+              "given": "I am on the Site profile tab for a site",
+              "when": "I read the Channel column in the Meters card",
+              "then": "a Tag reads In, Out, or both",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-7-2.webp",
+                  "x": 49.72,
+                  "y": 84.29,
+                  "do": "hover",
+                  "note": "Read the Channel column"
+                },
+                {
+                  "image": "features/walks/demo-profile-meters-1-3.webp",
+                  "note": "A Tag reads In, Out, or both."
+                }
+              ]
             },
             {
               "given": "a meter takes the site settings",
-              "when": "I read the Settings column",
-              "then": "it reads From site"
+              "when": "I read the Settings column in the Meters card",
+              "then": "a grey Tag reads From site",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-7-2.webp",
+                  "x": 58.54,
+                  "y": 83.94,
+                  "do": "hover",
+                  "note": "Read Settings for a meter that takes the site settings"
+                },
+                {
+                  "image": "features/walks/demo-profile-meters-1-3.webp",
+                  "note": "A grey Tag reads From site."
+                }
+              ]
             },
             {
               "given": "a meter has its own settings",
-              "when": "I read the Settings column",
-              "then": "it reads Custom"
+              "when": "I read the Settings column in the Meters card",
+              "then": "a teal Tag reads Custom",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-meters-5-1.webp",
+                  "x": 58.27,
+                  "y": 77.94,
+                  "do": "hover",
+                  "note": "Read Settings for a meter with its own settings"
+                },
+                {
+                  "image": "features/walks/demo-profile-meters-5-2.webp",
+                  "note": "A teal Tag reads Custom."
+                }
+              ]
             },
             {
-              "given": "I look at a meter",
-              "when": "I read Last reading and Use",
-              "then": "I see when the last reading came in and how much the meter used"
+              "given": "I am on the Site profile tab for a site",
+              "when": "I read the Last reading and Use columns in the Meters card",
+              "then": "I see when the last reading came in, such as 47 min ago, and how much the meter used, such as 144 kWh",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-7-2.webp",
+                  "x": 73.75,
+                  "y": 84.27,
+                  "do": "hover",
+                  "note": "Read Last reading"
+                },
+                {
+                  "image": "features/walks/demo-profile-meters-1-3.webp",
+                  "x": 81.52,
+                  "y": 84.27,
+                  "do": "hover",
+                  "note": "Read Use"
+                },
+                {
+                  "image": "features/walks/demo-profile-meters-1-3.webp",
+                  "note": "I see when the last reading came in, such as 47 min ago, and how much the meter used, such as 144 kWh."
+                }
+              ]
             },
             {
-              "given": "I click a meter row",
-              "when": "it opens",
-              "then": "Site settings opens with Attributes on the tab for that meter's utility"
+              "given": "I am on the Site profile tab for a site",
+              "when": "I click a meter row in the Meters card",
+              "then": "Site settings opens with Attributes on the tab for that meter's utility",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-meters-5-1.webp",
+                  "x": 35.69,
+                  "y": 78.33,
+                  "do": "click",
+                  "note": "Click a meter row"
+                },
+                {
+                  "image": "features/walks/demo-profile-meters-7-2.webp",
+                  "note": "Site settings opens with Attributes on the tab for that meter's utility."
+                }
+              ]
             }
           ],
           "stages": [
@@ -700,92 +1224,340 @@
               "id": "meters",
               "name": "Meters",
               "caption": "One row per meter, below the site.",
-              "image": "features/shots/profile-meters.png"
+              "image": "features/walks/profile-meters-2.webp",
+              "walk": [
+                {
+                  "image": "features/walks/profile-meters-1.webp",
+                  "x": 57.71,
+                  "y": 70.27,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-meters-2.webp"
+                }
+              ]
             }
           ],
           "estimate": {
-            "complexity": 3,
-            "effort": 3,
-            "risk": 2,
-            "dependencies": 2,
-            "why": "Five columns. From site has to compare each meter with the site settings"
+            "dev": {
+              "complexity": 3,
+              "effort": 3,
+              "risk": 2,
+              "dependencies": 2,
+              "why": "Five columns. From site has to compare each meter with the site settings"
+            },
+            "test": {
+              "scenarios": 4,
+              "setup": 3,
+              "risk": 3,
+              "regression": 2,
+              "why": "Needs meters that follow the site and meters with their own times"
+            }
           }
         },
         {
           "section": "profile",
           "id": "profile-settings",
           "name": "Open Site settings",
-          "points": 3,
           "role": "User",
           "stage": "review",
+          "open": [
+            {
+              "pane": "profile"
+            },
+            {
+              "row": "Crewe"
+            },
+            {
+              "button": "Site settings"
+            }
+          ],
           "want": "open the settings for a site",
           "benefit": "I can change its hours, time of use, and attributes in one place",
-          "notes": "Each accordion has its own story. Upload is its own story. Viewers can read Site settings but cannot change it. The prototype shows no message after Save changes and no prompt when you leave with changes. Both are gaps to close before build.",
+          "notes": "Each accordion has its own story. Upload has its own story. Viewers do not see the Site settings button. The prototype shows no message after Save changes and no prompt when you leave with changes. Both are gaps to close before build. Confirm where Save changes sits.",
           "criteria": [
             {
-              "given": "I am on Site profile for a site",
-              "when": "I pick Site settings",
-              "then": "Operational hours, Time of use, and Attributes sit as closed accordions"
+              "given": "I am on the Site profile tab for a site",
+              "when": "I pick Site settings at the top right of the site card",
+              "then": "Operational hours, Time of use, and Attributes show as closed accordions",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-7-2.webp",
+                  "x": 88.24,
+                  "y": 42.23,
+                  "do": "click",
+                  "note": "Pick Site settings"
+                },
+                {
+                  "image": "features/walks/demo-profile-site-6-2.webp",
+                  "note": "Operational hours, Time of use, and Attributes show as closed accordions."
+                }
+              ]
             },
             {
               "given": "Site settings is open",
-              "when": "I look at the top",
-              "then": "the group and site name sit on the left, with Download template and Upload on the right"
+              "when": "I look at the top of the page",
+              "then": "a Back icon button, the group name as a kicker, and the site name sit on the left, with the Download template and Upload secondary pill buttons on the right",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-site-6-2.webp",
+                  "x": 81.01,
+                  "y": 22.56,
+                  "do": "hover",
+                  "note": "Look at the top"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-2-2.webp",
+                  "x": 91.98,
+                  "y": 22.56,
+                  "do": "hover",
+                  "note": "Upload sits on the right"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-2-3.webp",
+                  "note": "A Back icon button, the group name as a kicker, and the site name sit on the left, with the Download template and Upload secondary pill buttons on the right."
+                }
+              ]
             },
             {
-              "given": "I pick Download template",
-              "when": "the file downloads",
-              "then": "site-settings.csv holds Site, Meter point, Section, Group, Setting, Value, and Unit for every period and attribute on the site"
+              "given": "Site settings is open",
+              "when": "I pick Download template at the top right of the page",
+              "then": "site-settings.csv downloads with the columns Site, Meter point, Section, Group, Setting, Value, and Unit, and a line for every period and attribute on the site",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-site-6-2.webp",
+                  "x": 81.01,
+                  "y": 22.56,
+                  "do": "click",
+                  "note": "Pick Download template"
+                },
+                {
+                  "image": "features/walks/demo-profile-site-6-2.webp",
+                  "note": "Site-settings.csv downloads with the columns Site, Meter point, Section, Group, Setting, Value, and Unit, and a line for every period and attribute on the site."
+                }
+              ]
             },
             {
               "given": "a meter has its own settings",
-              "when": "I download the template",
-              "then": "its lines follow the site lines under its meter point, and a blank meter point means the site"
+              "when": "I download the template from Site settings",
+              "then": "its lines follow the site lines under its meter point, and a blank meter point means the site",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-site-6-2.webp",
+                  "x": 81.01,
+                  "y": 22.56,
+                  "do": "click",
+                  "note": "Download the template for a site with meter settings"
+                },
+                {
+                  "image": "features/walks/demo-profile-site-6-2.webp",
+                  "note": "Its lines follow the site lines under its meter point, and a blank meter point means the site."
+                }
+              ]
             },
             {
               "given": "no meter on the site has times",
-              "when": "I read the accordion header",
-              "then": "it shows Missing"
+              "when": "I read the Operational hours or Time of use accordion header",
+              "then": "a red Tag reads Missing",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-5-1.webp",
+                  "x": 33.96,
+                  "y": 29.12,
+                  "do": "hover",
+                  "note": "Read the Operational hours header"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-5-2.webp",
+                  "note": "A red Tag reads Missing."
+                }
+              ]
             },
             {
               "given": "any day has a gap or a missing time",
-              "when": "I read the accordion header",
-              "then": "it shows Incomplete"
+              "when": "I read the Operational hours or Time of use accordion header",
+              "then": "an amber Tag reads Incomplete",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-6-1.webp",
+                  "x": 33.96,
+                  "y": 29.12,
+                  "do": "hover",
+                  "note": "Read the Operational hours header"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-6-2.webp",
+                  "note": "An amber Tag reads Incomplete."
+                }
+              ]
             },
             {
               "given": "the times are complete and some meters have their own",
-              "when": "I read the accordion header",
-              "then": "it shows Mixed"
+              "when": "I read the Operational hours or Time of use accordion header",
+              "then": "a Tag reads Mixed",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-site-6-2.webp",
+                  "x": 33.96,
+                  "y": 34.12,
+                  "do": "hover",
+                  "note": "Read the Time of use header"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-7-2.webp",
+                  "note": "A Tag reads Mixed."
+                }
+              ]
             },
             {
-              "given": "I have changed nothing",
-              "when": "I look at Save changes",
-              "then": "it is off"
+              "given": "I have changed nothing in Site settings",
+              "when": "I look at the Save changes button",
+              "then": "it is off",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-site-6-2.webp",
+                  "x": 30.1,
+                  "y": 45.45,
+                  "do": "hover",
+                  "note": "Look at Save changes"
+                },
+                {
+                  "image": "features/walks/demo-profile-site-6-2.webp",
+                  "note": "It is off."
+                }
+              ]
             },
             {
-              "given": "I have changed the site or any meter",
+              "given": "I have changed the site or any meter in Site settings",
               "when": "I pick Save changes",
-              "then": "the site and every changed meter save together"
+              "then": "the site and every changed meter save together",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-9-1.webp",
+                  "x": 61.21,
+                  "y": 75.56,
+                  "do": "type",
+                  "note": "Change a time"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-9-2.webp",
+                  "x": 30.1,
+                  "y": 50.01,
+                  "do": "click",
+                  "note": "Pick Save changes"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-9-3.webp",
+                  "note": "The site and every changed meter save together."
+                }
+              ]
             },
             {
-              "given": "a period has an error or the site name is empty",
-              "when": "I look at Save changes",
-              "then": "it stays off until I fix it"
+              "given": "a period has an error, or Site name is empty",
+              "when": "I look at the Save changes button",
+              "then": "it stays off until I fix it",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 61.21,
+                  "y": 70.68,
+                  "do": "type",
+                  "note": "Make two periods overlap"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-10-2.webp",
+                  "x": 30.1,
+                  "y": 50.01,
+                  "do": "hover",
+                  "note": "Look at Save changes"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-10-2.webp",
+                  "note": "It stays off until I fix it."
+                }
+              ]
             },
             {
               "given": "a day has a gap but no error",
               "when": "I pick Save changes",
-              "then": "it saves, since a gap is a warning"
+              "then": "it saves, since a gap is a warning",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 61.21,
+                  "y": 75.56,
+                  "do": "type",
+                  "note": "Leave a gap in the day"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-11-2.webp",
+                  "x": 30.1,
+                  "y": 50.01,
+                  "do": "click",
+                  "note": "Pick Save changes"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-11-3.webp",
+                  "note": "It saves, since a gap is a warning."
+                }
+              ]
             },
             {
-              "given": "I go back without saving",
+              "given": "I changed Site settings and picked the Back icon button without saving",
               "when": "I open Site settings again",
-              "then": "my changes are still there"
+              "then": "my changes are still there",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-12-1.webp",
+                  "x": 61.21,
+                  "y": 75.56,
+                  "do": "type",
+                  "note": "Change a time"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-12-2.webp",
+                  "x": 26.88,
+                  "y": 23.11,
+                  "do": "click",
+                  "note": "Go back without saving"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-12-3.webp",
+                  "x": 88.24,
+                  "y": 42.23,
+                  "do": "click",
+                  "note": "Open Site settings again"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-12-4.webp",
+                  "x": 33.96,
+                  "y": 29.12,
+                  "do": "click",
+                  "note": "Open Operational hours"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-12-5.webp",
+                  "note": "My changes are still there."
+                }
+              ]
             },
             {
-              "given": "I am a Viewer",
-              "when": "I open Site settings",
-              "then": "I can read every setting but cannot change one, and Download template and Upload do not show"
+              "given": "I am a Viewer on the Site profile tab for a site",
+              "when": "I look at the site card",
+              "then": "the Site settings button does not show, so I cannot change the settings, and Download template and Upload do not show",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-13-1.webp",
+                  "x": 33.96,
+                  "y": 43.84,
+                  "do": "click",
+                  "note": "Open a site as a Viewer"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-13-2.webp",
+                  "note": "The Site settings button does not show, so I cannot change the settings, and Download template and Upload do not show."
+                }
+              ]
             }
           ],
           "stages": [
@@ -793,92 +1565,365 @@
               "id": "profile-settings",
               "name": "Site settings",
               "caption": "Three accordions. Download template and Upload sit at the top.",
-              "image": "features/shots/profile-settings.png"
+              "image": "features/walks/profile-settings-2.webp",
+              "walk": [
+                {
+                  "image": "features/walks/profile-settings-1.webp",
+                  "x": 91.18,
+                  "y": 35.19,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-settings-2.webp"
+                }
+              ]
             }
           ],
           "estimate": {
-            "complexity": 3,
-            "effort": 3,
-            "risk": 2,
-            "dependencies": 2,
-            "why": "One save covers the site and every meter. Changes wait until saved. The template lists every setting"
+            "dev": {
+              "complexity": 3,
+              "effort": 3,
+              "risk": 2,
+              "dependencies": 2,
+              "why": "One save covers the site and every meter. Changes wait until saved. The template lists every setting"
+            },
+            "test": {
+              "scenarios": 5,
+              "setup": 3,
+              "risk": 3,
+              "regression": 3,
+              "why": "Thirteen scenarios. Leaving without saving, each role, and the template"
+            }
           }
         },
         {
           "section": "profile",
           "id": "profile-for",
           "name": "Choose who the settings are for",
-          "points": 5,
           "role": "User",
           "stage": "review",
+          "open": [
+            {
+              "pane": "profile"
+            },
+            {
+              "row": "Crewe"
+            },
+            {
+              "button": "Site settings"
+            },
+            {
+              "fold": "hours"
+            }
+          ],
           "want": "choose whether I set the whole site or one meter",
           "benefit": "I set most meters once at the site and only change the ones that differ",
-          "notes": "Operational hours and Time of use each have their own Settings for. Picking a meter in one does not pick it in the other. Attributes have no Settings for, since they split into Site and utility tabs. The site has nothing to follow, so it has no source cards.",
+          "notes": "Operational hours and Time of use each have their own Settings for Select. Picking a meter in one does not pick it in the other. Attributes have no Settings for, since they split into Site and utility tabs. The site has nothing to follow, so it has no source cards.",
           "criteria": [
             {
               "given": "a site has two or more meters, or a meter has its own settings",
-              "when": "I open Operational hours or Time of use",
-              "then": "Settings for sits at the top with the site first, then each meter"
+              "when": "I open the Operational hours or Time of use accordion in Site settings",
+              "then": "a Settings for Select sits at the top with the site first, then each meter",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-site-6-2.webp",
+                  "x": 33.96,
+                  "y": 29.12,
+                  "do": "click",
+                  "note": "Open Operational hours"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 35.69,
+                  "y": 41.34,
+                  "do": "click",
+                  "note": "Open Settings for"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-1-3.webp",
+                  "note": "A Settings for Select sits at the top with the site first, then each meter."
+                }
+              ]
             },
             {
               "given": "a site has one meter and it follows the site",
-              "when": "I open the accordion",
-              "then": "there is no Settings for and I set the site"
+              "when": "I open the Operational hours or Time of use accordion in Site settings",
+              "then": "there is no Settings for Select and I set the site"
             },
             {
-              "given": "I open Settings for",
-              "when": "I read the options",
-              "then": "the site reads Every meter that follows the site, and each meter shows its MPAN, MPRN, or serial, its utility, and From site or Custom"
+              "given": "I am in the Operational hours or Time of use accordion",
+              "when": "I open the Settings for Select",
+              "then": "the site reads Every meter that follows the site, and each meter shows its MPAN, MPRN, or serial, its utility, and a From site or Custom Tag",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 35.69,
+                  "y": 41.34,
+                  "do": "click",
+                  "note": "Open Settings for"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-1-3.webp",
+                  "x": 36.32,
+                  "y": 12.58,
+                  "do": "hover",
+                  "note": "Read the options"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-3-3.webp",
+                  "note": "The site reads Every meter that follows the site, and each meter shows its MPAN, MPRN, or serial, its utility, and a From site or Custom Tag."
+                }
+              ]
             },
             {
-              "given": "the site is picked",
-              "when": "I look below Settings for",
-              "then": "the times for each day show straight away, with no source cards"
+              "given": "the site is picked in Settings for",
+              "when": "I look below the Select",
+              "then": "the Times for each day card shows straight away, with no source cards",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-site-6-2.webp",
+                  "x": 33.96,
+                  "y": 29.12,
+                  "do": "click",
+                  "note": "Open Operational hours with the site picked"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "note": "The Times for each day card shows straight away, with no source cards."
+                }
+              ]
             },
             {
-              "given": "a meter is picked",
-              "when": "I look below Settings for",
-              "then": "Follow Crewe depot and Set for this meter only sit as single-select cards"
+              "given": "a meter is picked in Settings for",
+              "when": "I look below the Select",
+              "then": "Follow Crewe depot and Set for this meter only show as single-select cards",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 35.69,
+                  "y": 41.34,
+                  "do": "click",
+                  "note": "Open Settings for"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-1-3.webp",
+                  "x": 36.32,
+                  "y": 12.58,
+                  "do": "click",
+                  "note": "Pick a meter"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-5-3.webp",
+                  "note": "Follow Crewe depot and Set for this meter only show as single-select cards."
+                }
+              ]
             },
             {
               "given": "a meter follows the site",
               "when": "I read its times",
-              "then": "they match the site and are locked, with the tip These follow Crewe depot. Choose Set for this meter only to change them"
+              "then": "they match the site and are locked, with the Tooltip These follow Crewe depot. Choose Set for this meter only to change them",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-for-6-1.webp",
+                  "x": 61.21,
+                  "y": 50.01,
+                  "do": "hover",
+                  "note": "Hover a time that follows the site"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-6-1.webp",
+                  "note": "They match the site and are locked, with the Tooltip These follow Crewe depot. Choose Set for this meter only to change them."
+                }
+              ]
             },
             {
               "given": "a meter follows the site",
-              "when": "I pick Set for this meter only",
-              "then": "its times start as a copy of the site and I can change them"
+              "when": "I pick the Set for this meter only card",
+              "then": "its times start as a copy of the site and I can change them",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-for-7-1.webp",
+                  "x": 58.19,
+                  "y": 55.29,
+                  "do": "click",
+                  "note": "Pick Set for this meter only"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-7-2.webp",
+                  "x": 61.21,
+                  "y": 50.01,
+                  "do": "type",
+                  "note": "Change a time"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-7-3.webp",
+                  "note": "Its times start as a copy of the site and I can change them."
+                }
+              ]
             },
             {
               "given": "a meter has its own times",
-              "when": "I pick Follow Crewe depot",
-              "then": "it drops its own times and takes the site times again"
+              "when": "I pick the Follow Crewe depot card",
+              "then": "it drops its own times and takes the site times again",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-for-8-1.webp",
+                  "x": 35.69,
+                  "y": 51.73,
+                  "do": "click",
+                  "note": "Pick Follow Crewe depot"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-8-2.webp",
+                  "note": "It drops its own times and takes the site times again."
+                }
+              ]
             },
             {
-              "given": "I followed the site by mistake before saving",
+              "given": "I picked Follow Crewe depot by mistake before saving",
               "when": "I pick Set for this meter only again",
-              "then": "the meter gets back the times I set"
+              "then": "the meter gets back the times I set",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-for-8-1.webp",
+                  "x": 35.69,
+                  "y": 51.73,
+                  "do": "click",
+                  "note": "Follow the site by mistake"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-8-2.webp",
+                  "x": 58.19,
+                  "y": 51.73,
+                  "do": "click",
+                  "note": "Pick Set for this meter only again"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-8-1.webp",
+                  "note": "The meter gets back the times I set."
+                }
+              ]
             },
             {
               "given": "a meter follows the site",
               "when": "the site times change",
-              "then": "the meter changes with them"
+              "then": "the meter changes with them",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 61.21,
+                  "y": 75.56,
+                  "do": "type",
+                  "note": "Change a site time"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-10-2.webp",
+                  "x": 35.69,
+                  "y": 41.34,
+                  "do": "click",
+                  "note": "Open Settings for"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-10-3.webp",
+                  "x": 36.32,
+                  "y": 12.58,
+                  "do": "click",
+                  "note": "Pick a meter that follows the site"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-10-4.webp",
+                  "note": "The meter changes with them."
+                }
+              ]
             },
             {
               "given": "a meter has its own times",
               "when": "the site times change",
-              "then": "the meter keeps its own"
+              "then": "the meter keeps its own",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-for-11-1.webp",
+                  "x": 61.21,
+                  "y": 72.01,
+                  "do": "type",
+                  "note": "Change a site time"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-11-2.webp",
+                  "x": 35.69,
+                  "y": 37.79,
+                  "do": "click",
+                  "note": "Open Settings for"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-11-3.webp",
+                  "x": 36.32,
+                  "y": 12.58,
+                  "do": "click",
+                  "note": "Pick the meter with its own times"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-11-4.webp",
+                  "note": "The meter keeps its own."
+                }
+              ]
             },
             {
-              "given": "I opened Site settings from a meter row",
+              "given": "I opened Site settings from a meter row in the Meters card",
               "when": "I open Operational hours or Time of use",
-              "then": "that meter is already picked"
+              "then": "that meter is already picked in Settings for",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-sites-7-2.webp",
+                  "x": 35.69,
+                  "y": 84.33,
+                  "do": "click",
+                  "note": "Click a meter row"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-12-2.webp",
+                  "x": 33.96,
+                  "y": 29.12,
+                  "do": "click",
+                  "note": "Open Operational hours"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "note": "That meter is already picked in Settings for."
+                }
+              ]
             },
             {
               "given": "I saved a meter with its own times",
-              "when": "I read the Meters table",
-              "then": "its Settings reads Custom, and From site again once it follows the site"
+              "when": "I read the Settings column in the Meters card on the Site profile tab",
+              "then": "its Tag reads Custom, and reads From site again once it follows the site",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-for-13-1.webp",
+                  "x": 61.21,
+                  "y": 50.01,
+                  "do": "type",
+                  "note": "Set a time for this meter only"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-7-3.webp",
+                  "x": 30.1,
+                  "y": 82.9,
+                  "do": "click",
+                  "note": "Pick Save changes"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-13-3.webp",
+                  "x": 58.27,
+                  "y": 52.49,
+                  "do": "hover",
+                  "note": "Read Settings in Meters"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-13-4.webp",
+                  "note": "Its Tag reads Custom, and reads From site again once it follows the site."
+                }
+              ]
             }
           ],
           "stages": [
@@ -886,119 +1931,416 @@
               "id": "profile-for-site",
               "name": "The site",
               "caption": "The site is picked, so the times show with no source cards.",
-              "image": "features/shots/profile-for-site.png"
+              "image": "features/walks/profile-for-site-2.webp",
+              "walk": [
+                {
+                  "image": "features/walks/profile-for-site-1.webp",
+                  "x": 57.71,
+                  "y": 24.27,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-for-site-2.webp"
+                }
+              ]
             },
             {
               "id": "profile-for-meter",
               "name": "A meter that follows",
               "caption": "Follow Crewe depot is on, so the times are locked.",
-              "image": "features/shots/profile-for-meter.png"
+              "image": "features/walks/profile-for-meter-3.webp",
+              "walk": [
+                {
+                  "image": "features/walks/profile-for-meter-1.webp",
+                  "x": 28.02,
+                  "y": 34.45,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-for-meter-2.webp",
+                  "x": 29.07,
+                  "y": 10.49,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-for-meter-3.webp"
+                }
+              ]
             },
             {
               "id": "profile-for-own",
               "name": "A meter on its own",
               "caption": "Set for this meter only is on, so the times can change.",
-              "image": "features/shots/profile-for-own.png"
+              "image": "features/walks/profile-for-own-2.webp",
+              "walk": [
+                {
+                  "image": "features/walks/profile-for-own-1.webp",
+                  "x": 45.63,
+                  "y": 46.07,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-for-own-2.webp"
+                }
+              ]
             }
           ],
           "estimate": {
-            "complexity": 4,
-            "effort": 3,
-            "risk": 4,
-            "dependencies": 3,
-            "why": "Two parts with their own picker. Following and setting a meter on its own must not lose its times"
+            "dev": {
+              "complexity": 4,
+              "effort": 3,
+              "risk": 4,
+              "dependencies": 3,
+              "why": "Two parts with their own picker. Following and setting a meter on its own must not lose its times"
+            },
+            "test": {
+              "scenarios": 5,
+              "setup": 4,
+              "risk": 4,
+              "regression": 4,
+              "why": "Every switch between following the site and setting a meter on its own, for each part"
+            }
           }
         },
         {
           "section": "profile",
           "id": "profile-hours",
           "name": "Set operational hours for each day",
-          "points": 5,
           "role": "User",
           "stage": "review",
-          "want": "set the operational hours for each day of the week",
-          "benefit": "Astral knows when the site is operational and when it is not",
-          "notes": "A day runs from 00:00 to 24:00. 24:00 is midnight at the end of the day. The talk named Operational and Non-operational. The prototype also has Closed, so confirm whether it stays. Gaps warn but do not stop the save. Errors stop it.",
-          "criteria": [
+          "open": [
             {
-              "given": "Operational hours is open",
-              "when": "I look at Times for each day",
-              "then": "Monday to Sunday sit as tabs above a table with Select preset, From, To, Status, and Remove"
+              "pane": "profile"
             },
             {
-              "given": "I pick a day tab",
-              "when": "the table changes",
-              "then": "it shows the periods for that day only"
+              "row": "Crewe"
+            },
+            {
+              "button": "Site settings"
+            },
+            {
+              "fold": "hours"
+            }
+          ],
+          "want": "set the operational hours for each day of the week",
+          "benefit": "Astral knows when the site is operational and when it is not",
+          "notes": "A day runs from 00:00 to 24:00. 24:00 is midnight at the end of the day. The statuses are Operational and Non-operational. The prototype also has Closed, so confirm whether it stays. Gaps warn but do not stop the save. Errors stop it. Confirm where the error messages sit.",
+          "criteria": [
+            {
+              "given": "the Operational hours accordion is open in Site settings",
+              "when": "I look at the Times for each day card",
+              "then": "Monday to Sunday show as Tabs above a table with the columns Select preset, From, To, and Status, and a Remove icon button on each row",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-site-6-2.webp",
+                  "x": 33.96,
+                  "y": 29.12,
+                  "do": "click",
+                  "note": "Open Operational hours"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "note": "Monday to Sunday show as Tabs above a table with the columns Select preset, From, To, and Status, and a Remove icon button on each row."
+                }
+              ]
+            },
+            {
+              "given": "the Operational hours accordion is open in Site settings",
+              "when": "I pick a day tab",
+              "then": "the table shows the periods for that day only",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 60.92,
+                  "y": 58.79,
+                  "do": "click",
+                  "note": "Pick a day tab"
+                },
+                {
+                  "image": "features/walks/demo-profile-hours-2-2.webp",
+                  "note": "The table shows the periods for that day only."
+                }
+              ]
             },
             {
               "given": "a day has no periods",
               "when": "I open its tab",
-              "then": "one blank row shows with the note No times set for this day. Enter times or select a preset"
+              "then": "one blank row shows with the note No times set for this day. Enter times or select a preset",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-5-1.webp",
+                  "x": 33.96,
+                  "y": 29.12,
+                  "do": "click",
+                  "note": "Open a day with no periods"
+                },
+                {
+                  "image": "features/walks/demo-profile-hours-3-2.webp",
+                  "note": "One blank row shows with the note No times set for this day. Enter times or select a preset."
+                }
+              ]
             },
             {
-              "given": "I type in From or To",
-              "when": "I enter a time",
-              "then": "it takes 24-hour time such as 08:00, up to 24:00"
+              "given": "I am on a day in Times for each day",
+              "when": "I enter a time in From or To",
+              "then": "it takes 24-hour time such as 08:00, up to 24:00",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 61.21,
+                  "y": 75.56,
+                  "do": "type",
+                  "note": "Type a time"
+                },
+                {
+                  "image": "features/walks/demo-profile-hours-4-2.webp",
+                  "note": "It takes 24-hour time such as 08:00, up to 24:00."
+                }
+              ]
             },
             {
-              "given": "I open Status",
-              "when": "I read the options",
-              "then": "I can choose Operational, Non-operational, or Closed"
+              "given": "I am on a day in Times for each day",
+              "when": "I open the Status Select on a row",
+              "then": "I can choose Operational, Non-operational, or Closed",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 74.36,
+                  "y": 75.56,
+                  "do": "click",
+                  "note": "Open Status"
+                },
+                {
+                  "image": "features/walks/demo-profile-hours-5-2.webp",
+                  "note": "I can choose Operational, Non-operational, or Closed."
+                }
+              ]
             },
             {
               "given": "part of the day has no period",
-              "when": "I pick Add a period",
-              "then": "a new row fills the first gap with the opposite status to the period before it"
+              "when": "I pick Add a period under the table",
+              "then": "a new row fills the first gap with the opposite status to the period before it",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-for-10-2.webp",
+                  "x": 49.36,
+                  "y": 85.34,
+                  "do": "click",
+                  "note": "Pick Add a period"
+                },
+                {
+                  "image": "features/walks/demo-profile-hours-6-2.webp",
+                  "note": "A new row fills the first gap with the opposite status to the period before it."
+                }
+              ]
             },
             {
-              "given": "periods cover the whole day up to 24:00",
-              "when": "I look at Add a period",
-              "then": "it is off with the tip This day is covered up to 24:00. Shorten a period to add another"
+              "given": "the periods cover the whole day up to 24:00",
+              "when": "I look at Add a period under the table",
+              "then": "it is off with the Tooltip This day is covered up to 24:00. Shorten a period to add another",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 49.36,
+                  "y": 85.34,
+                  "do": "hover",
+                  "note": "Hover Add a period when the day is covered"
+                },
+                {
+                  "image": "features/walks/demo-profile-hours-7-2.webp",
+                  "note": "It is off with the Tooltip This day is covered up to 24:00. Shorten a period to add another."
+                }
+              ]
             },
             {
               "given": "a day has one period",
-              "when": "I look at Remove",
-              "then": "it is off with the tip A day needs at least one period. Change this one instead"
+              "when": "I look at the Remove icon button on the row",
+              "then": "it is off with the Tooltip A day needs at least one period. Change this one instead",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 60.92,
+                  "y": 58.79,
+                  "do": "click",
+                  "note": "Open a day with one period"
+                },
+                {
+                  "image": "features/walks/demo-profile-hours-2-2.webp",
+                  "x": 90.69,
+                  "y": 70.68,
+                  "do": "hover",
+                  "note": "Hover Remove"
+                },
+                {
+                  "image": "features/walks/demo-profile-hours-8-3.webp",
+                  "note": "It is off with the Tooltip A day needs at least one period. Change this one instead."
+                }
+              ]
             },
             {
               "given": "a day has more than one period",
-              "when": "I remove one",
-              "then": "the row goes and leaves a gap I can fill"
+              "when": "I pick the Remove icon button on a row",
+              "then": "the row goes and leaves a gap I can fill",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 90.69,
+                  "y": 75.56,
+                  "do": "click",
+                  "note": "Remove a period"
+                },
+                {
+                  "image": "features/walks/demo-profile-hours-9-2.webp",
+                  "note": "The row goes and leaves a gap I can fill."
+                }
+              ]
             },
             {
               "given": "a period has no start or no end",
               "when": "I read the table",
-              "then": "I see Enter a start and end time for every period"
+              "then": "I see Enter a start and end time for every period",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 61.21,
+                  "y": 75.56,
+                  "do": "type",
+                  "note": "Clear an end time"
+                },
+                {
+                  "image": "features/walks/demo-profile-hours-10-2.webp",
+                  "note": "I see Enter a start and end time for every period."
+                }
+              ]
             },
             {
               "given": "a period ends at or before its start",
               "when": "I read the table",
-              "then": "I see Each period must end after it starts. Use 24:00 for midnight at the end of the day"
+              "then": "I see Each period must end after it starts. Use 24:00 for midnight at the end of the day",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 61.21,
+                  "y": 75.56,
+                  "do": "type",
+                  "note": "End a period before it starts"
+                },
+                {
+                  "image": "features/walks/demo-profile-hours-11-2.webp",
+                  "note": "I see Each period must end after it starts. Use 24:00 for midnight at the end of the day."
+                }
+              ]
             },
             {
               "given": "two periods overlap",
               "when": "I read the table",
-              "then": "I see Periods overlap from 09:00 to 10:00. Change one so each time sits in only one period"
+              "then": "I see Periods overlap from 09:00 to 10:00. Change one so each time sits in only one period",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 61.21,
+                  "y": 70.68,
+                  "do": "type",
+                  "note": "Make two periods overlap"
+                },
+                {
+                  "image": "features/walks/demo-profile-hours-12-2.webp",
+                  "note": "I see Periods overlap from 09:00 to 10:00. Change one so each time sits in only one period."
+                }
+              ]
             },
             {
               "given": "no period covers part of the day",
               "when": "I read the table",
-              "then": "I see No period covers 17:00 to 18:00. Add a period so the whole day is set"
+              "then": "I see No period covers 17:00 to 18:00. Add a period so the whole day is set",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 61.21,
+                  "y": 75.56,
+                  "do": "type",
+                  "note": "Leave part of the day uncovered"
+                },
+                {
+                  "image": "features/walks/demo-profile-hours-13-2.webp",
+                  "note": "I see No period covers 17:00 to 18:00. Add a period so the whole day is set."
+                }
+              ]
             },
             {
               "given": "a day has an error",
-              "when": "I look at its tab",
-              "then": "a red flag marks it"
+              "when": "I look at its day tab",
+              "then": "a red flag marks it",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 61.21,
+                  "y": 70.68,
+                  "do": "type",
+                  "note": "Make two periods overlap"
+                },
+                {
+                  "image": "features/walks/demo-profile-hours-12-2.webp",
+                  "x": 30.57,
+                  "y": 58.79,
+                  "do": "hover",
+                  "note": "Look at the day tab"
+                },
+                {
+                  "image": "features/walks/demo-profile-hours-12-2.webp",
+                  "note": "A red flag marks it."
+                }
+              ]
             },
             {
               "given": "a day has a gap or no times",
-              "when": "I look at its tab",
-              "then": "a yellow flag marks it"
+              "when": "I look at its day tab",
+              "then": "an amber flag marks it",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 61.21,
+                  "y": 75.56,
+                  "do": "type",
+                  "note": "Leave a gap in the day"
+                },
+                {
+                  "image": "features/walks/demo-profile-hours-13-2.webp",
+                  "x": 30.57,
+                  "y": 58.79,
+                  "do": "hover",
+                  "note": "Look at the day tab"
+                },
+                {
+                  "image": "features/walks/demo-profile-hours-13-2.webp",
+                  "note": "An amber flag marks it."
+                }
+              ]
             },
             {
               "given": "any day has an error",
-              "when": "I look at Save changes",
-              "then": "it stays off until I fix it"
+              "when": "I look at the Save changes button",
+              "then": "it stays off until I fix it",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 61.21,
+                  "y": 70.68,
+                  "do": "type",
+                  "note": "Make two periods overlap"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-10-2.webp",
+                  "x": 30.1,
+                  "y": 50.01,
+                  "do": "hover",
+                  "note": "Look at Save changes"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-10-2.webp",
+                  "note": "It stays off until I fix it."
+                }
+              ]
             }
           ],
           "stages": [
@@ -1006,68 +2348,198 @@
               "id": "profile-hours",
               "name": "Times for each day",
               "caption": "Day tabs above the periods for one day.",
-              "image": "features/shots/profile-hours.png"
+              "image": "features/walks/profile-hours-2.webp",
+              "walk": [
+                {
+                  "image": "features/walks/profile-hours-1.webp",
+                  "x": 26.2,
+                  "y": 48.99,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-hours-2.webp"
+                }
+              ]
             },
             {
               "id": "profile-hours-issue",
               "name": "A period to fix",
               "caption": "An overlap shows in red and flags the day tab.",
-              "image": "features/shots/profile-hours-issue.png"
+              "image": "features/walks/profile-hours-issue-2.webp",
+              "walk": [
+                {
+                  "image": "features/walks/profile-hours-issue-1.webp",
+                  "x": 57.41,
+                  "y": 58.9,
+                  "do": "type"
+                },
+                {
+                  "image": "features/walks/profile-hours-issue-2.webp"
+                }
+              ]
             }
           ],
           "estimate": {
-            "complexity": 4,
-            "effort": 4,
-            "risk": 3,
-            "dependencies": 2,
-            "why": "Day tabs, a period table, Add a period, Remove, and three errors and two warnings"
+            "dev": {
+              "complexity": 4,
+              "effort": 4,
+              "risk": 3,
+              "dependencies": 2,
+              "why": "Day tabs, a period table, Add a period, Remove, and three errors and two warnings"
+            },
+            "test": {
+              "scenarios": 5,
+              "setup": 3,
+              "risk": 4,
+              "regression": 3,
+              "why": "Sixteen scenarios with three errors and two warnings. Edge times such as 00:00 and 24:00"
+            }
           }
         },
         {
           "section": "profile",
           "id": "profile-tou",
           "name": "Set time of use for each day",
-          "points": 3,
           "role": "User",
           "stage": "review",
+          "open": [
+            {
+              "pane": "profile"
+            },
+            {
+              "row": "Crewe"
+            },
+            {
+              "button": "Site settings"
+            },
+            {
+              "fold": "tou"
+            }
+          ],
           "want": "set when each day is on peak and off peak",
-          "benefit": "Cost charges each hour at the right unit rate",
-          "notes": "Time of use works like operational hours, with the same tabs, table, buttons, and checks. It differs in its statuses, its presets, and what it feeds. Water has one unit rate, so time of use does not change its cost.",
+          "benefit": "the Cost tab charges each hour at the right unit rate",
+          "notes": "Time of use works like Operational hours, with the same Tabs, table, buttons, and checks. It differs in its statuses, its presets, and what it feeds. Water has one unit rate, so time of use does not change its cost.",
           "criteria": [
             {
-              "given": "Time of use is open",
-              "when": "I look at Times for each day",
-              "then": "the day tabs, table, Add a period, Remove, and checks work as in Operational hours"
+              "given": "the Time of use accordion is open in Site settings",
+              "when": "I look at the Times for each day card",
+              "then": "the day Tabs, the table, Add a period, the Remove icon button, and the checks work as in Operational hours",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-site-6-2.webp",
+                  "x": 33.96,
+                  "y": 34.12,
+                  "do": "click",
+                  "note": "Open Time of use"
+                },
+                {
+                  "image": "features/walks/demo-profile-tou-1-2.webp",
+                  "x": 34.93,
+                  "y": 63.79,
+                  "do": "click",
+                  "note": "Pick a day tab"
+                },
+                {
+                  "image": "features/walks/demo-profile-tou-1-3.webp",
+                  "note": "The day Tabs, the table, Add a period, the Remove icon button, and the checks work as in Operational hours."
+                }
+              ]
             },
             {
-              "given": "I open Status",
-              "when": "I read the options",
-              "then": "I can choose On peak or Off peak, with no Closed"
+              "given": "I am on a day in Time of use",
+              "when": "I open the Status Select on a row",
+              "then": "I can choose On peak or Off peak, with no Closed",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-tou-1-2.webp",
+                  "x": 73.58,
+                  "y": 75.68,
+                  "do": "click",
+                  "note": "Open Status"
+                },
+                {
+                  "image": "features/walks/demo-profile-tou-2-2.webp",
+                  "note": "I can choose On peak or Off peak, with no Closed."
+                }
+              ]
             },
             {
-              "given": "I open Select preset",
-              "when": "I read the standard presets",
-              "then": "I see On peak and off peak, Weekday peak, Night and day, and Off peak all day"
+              "given": "I am on a day in Time of use",
+              "when": "I open Select preset on a row and read the standard presets",
+              "then": "I see On peak and off peak, Weekday peak, Night and day, and Off peak all day",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-tou-1-2.webp",
+                  "x": 33.38,
+                  "y": 75.68,
+                  "do": "click",
+                  "note": "Open Select preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-tou-3-2.webp",
+                  "note": "I see On peak and off peak, Weekday peak, Night and day, and Off peak all day."
+                }
+              ]
             },
             {
-              "given": "I use a preset for a full week",
+              "given": "I picked Use a preset and chose A full week",
               "when": "I read the standard weeks",
-              "then": "I see Standard week, Weekday peak, and Night and day"
+              "then": "I see Standard week, Weekday peak, and Night and day",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-tou-1-2.webp",
+                  "x": 89.07,
+                  "y": 57.68,
+                  "do": "click",
+                  "note": "Pick Use a preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-tou-4-2.webp",
+                  "x": 35.01,
+                  "y": 62.5,
+                  "do": "click",
+                  "note": "Choose A full week and continue"
+                },
+                {
+                  "image": "features/walks/demo-profile-tou-4-3.webp",
+                  "note": "I see Standard week, Weekday peak, and Night and day."
+                }
+              ]
             },
             {
-              "given": "On peak and Off peak are set",
-              "when": "Cost reads the site",
+              "given": "On peak and Off peak are set for a site",
+              "when": "the Cost tab reads the site",
               "then": "use in on-peak periods is charged at the On-peak unit rate in Attributes, and the rest at the Off-peak unit rate"
             },
             {
               "given": "a meter has its own time of use",
-              "when": "Cost reads that meter",
+              "when": "the Cost tab reads that meter",
               "then": "its own periods decide the split"
             },
             {
               "given": "I change Time of use",
               "when": "I look at Operational hours",
-              "then": "nothing has changed, since each has its own times and its own Settings for"
+              "then": "nothing has changed, since each has its own times and its own Settings for",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-tou-1-2.webp",
+                  "x": 61.21,
+                  "y": 75.68,
+                  "do": "type",
+                  "note": "Change a time of use"
+                },
+                {
+                  "image": "features/walks/demo-profile-tou-7-2.webp",
+                  "x": 33.96,
+                  "y": 29.12,
+                  "do": "click",
+                  "note": "Open Operational hours"
+                },
+                {
+                  "image": "features/walks/demo-profile-tou-7-3.webp",
+                  "note": "Nothing has changed, since each has its own times and its own Settings for."
+                }
+              ]
             }
           ],
           "stages": [
@@ -1075,102 +2547,422 @@
               "id": "profile-tou",
               "name": "Time of use",
               "caption": "On peak and Off peak periods for one day.",
-              "image": "features/shots/profile-tou.png"
+              "image": "features/walks/profile-tou-2.webp",
+              "walk": [
+                {
+                  "image": "features/walks/profile-tou-1.webp",
+                  "x": 57.71,
+                  "y": 28.43,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-tou-2.webp"
+                }
+              ]
             }
           ],
           "estimate": {
-            "complexity": 3,
-            "effort": 2,
-            "risk": 3,
-            "dependencies": 4,
-            "why": "Reuses the day table. Cost must read the split for each hour"
+            "dev": {
+              "complexity": 3,
+              "effort": 2,
+              "risk": 3,
+              "dependencies": 4,
+              "why": "Reuses the day table. Cost must read the split for each hour"
+            },
+            "test": {
+              "scenarios": 4,
+              "setup": 3,
+              "risk": 4,
+              "regression": 4,
+              "why": "Cost changes by the hour, so check a bill for a known split"
+            }
           }
         },
         {
           "section": "profile",
           "id": "profile-use-preset",
           "name": "Use a preset",
-          "points": 3,
           "role": "User",
           "stage": "review",
+          "open": [
+            {
+              "pane": "profile"
+            },
+            {
+              "row": "Crewe"
+            },
+            {
+              "button": "Site settings"
+            },
+            {
+              "fold": "hours"
+            }
+          ],
           "want": "fill a week or a day from a preset",
           "benefit": "I do not type the same times for every site",
-          "notes": "Standard presets come with Astral and suit many customers. Your presets belong to the company, so anyone in it can use them. A day that uses a preset follows it, so a later change to the preset reaches that day. Managing presets in Settings is its own story.",
+          "notes": "Standard presets come with Astral and suit many customers. Your presets belong to the company, so anyone in it can use them. A day that uses a preset follows it, so a later change to the preset reaches that day. Managing presets in Settings has its own story.",
           "criteria": [
             {
-              "given": "Times for each day shows",
-              "when": "I pick Use a preset",
-              "then": "a modal asks me to choose A full week or One day"
+              "given": "I am on the Times for each day card",
+              "when": "I pick Use a preset, the primary button at the top right of the card",
+              "then": "a Modal asks me to choose A full week or One day",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 89.07,
+                  "y": 52.68,
+                  "do": "click",
+                  "note": "Pick Use a preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-1-2.webp",
+                  "note": "A Modal asks me to choose A full week or One day."
+                }
+              ]
             },
             {
-              "given": "I choose A full week",
-              "when": "I continue",
-              "then": "I see Your saved weeks, with company presets before standard ones"
+              "given": "the Use a preset Modal is open",
+              "when": "I choose A full week and continue",
+              "then": "I see Your saved weeks, with company presets before standard ones",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 89.07,
+                  "y": 52.68,
+                  "do": "click",
+                  "note": "Pick Use a preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-1-2.webp",
+                  "x": 40,
+                  "y": 50.45,
+                  "do": "click",
+                  "note": "Choose A full week"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-1-2.webp",
+                  "x": 35.01,
+                  "y": 62.5,
+                  "do": "click",
+                  "note": "Pick Continue"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-2-4.webp",
+                  "note": "I see Your saved weeks, with company presets before standard ones."
+                }
+              ]
             },
             {
-              "given": "I choose One day",
-              "when": "I continue",
-              "then": "I see Your saved days, then choose the days to use it on, with the open day ticked"
+              "given": "the Use a preset Modal is open",
+              "when": "I choose One day and continue",
+              "then": "I see Your saved days, then choose the days to use it on, with the open day ticked",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 89.07,
+                  "y": 52.68,
+                  "do": "click",
+                  "note": "Pick Use a preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-1-2.webp",
+                  "x": 58.26,
+                  "y": 50.45,
+                  "do": "click",
+                  "note": "Choose One day"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-3-3.webp",
+                  "x": 35.01,
+                  "y": 62.5,
+                  "do": "click",
+                  "note": "Pick Continue"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-3-4.webp",
+                  "x": 35.01,
+                  "y": 77.33,
+                  "do": "click",
+                  "note": "Pick a day preset and continue"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-3-5.webp",
+                  "note": "I see Your saved days, then choose the days to use it on, with the open day ticked."
+                }
+              ]
             },
             {
               "given": "no presets of that kind exist",
-              "when": "the list shows",
+              "when": "the list shows in the Modal",
               "then": "it reads No saved weeks yet or No saved days yet"
             },
             {
-              "given": "I have not chosen a preset",
-              "when": "I look at Use preset",
-              "then": "it is off"
+              "given": "I have not chosen a preset in the Modal",
+              "when": "I look at the Use preset button",
+              "then": "it is off",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-use-preset-5-1.webp",
+                  "x": 35.37,
+                  "y": 77.33,
+                  "do": "hover",
+                  "note": "Look at Use preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-5-2.webp",
+                  "note": "It is off."
+                }
+              ]
             },
             {
               "given": "I chose a day preset but ticked no days",
-              "when": "I look at Use preset",
-              "then": "it is off"
+              "when": "I look at the Use preset button",
+              "then": "it is off",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-use-preset-6-1.webp",
+                  "x": 35.15,
+                  "y": 54,
+                  "do": "click",
+                  "note": "Untick the open day"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-6-2.webp",
+                  "x": 35.37,
+                  "y": 68.34,
+                  "do": "hover",
+                  "note": "Look at Use preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-6-2.webp",
+                  "note": "It is off."
+                }
+              ]
             },
             {
               "given": "I use a week preset",
-              "when": "the modal closes",
-              "then": "all seven days take its times"
+              "when": "the Modal closes",
+              "then": "all seven days take its times",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 89.07,
+                  "y": 52.68,
+                  "do": "click",
+                  "note": "Pick Use a preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-1-2.webp",
+                  "x": 35.01,
+                  "y": 62.5,
+                  "do": "click",
+                  "note": "Choose A full week"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-2-4.webp",
+                  "x": 40,
+                  "y": 53.68,
+                  "do": "click",
+                  "note": "Pick Shop hours"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-7-4.webp",
+                  "x": 35.37,
+                  "y": 77.33,
+                  "do": "click",
+                  "note": "Pick Use preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-7-5.webp",
+                  "note": "All seven days take its times."
+                }
+              ]
             },
             {
               "given": "I use a day preset",
-              "when": "the modal closes",
-              "then": "only the ticked days take its times and the first of them opens"
+              "when": "the Modal closes",
+              "then": "only the ticked days take its times and the first of them opens",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-use-preset-8-1.webp",
+                  "x": 40,
+                  "y": 46.12,
+                  "do": "click",
+                  "note": "Pick Early start"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-8-2.webp",
+                  "x": 35.01,
+                  "y": 77.33,
+                  "do": "click",
+                  "note": "Pick Continue"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-8-3.webp",
+                  "x": 42.71,
+                  "y": 54,
+                  "do": "click",
+                  "note": "Tick Tuesday"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-8-4.webp",
+                  "x": 35.37,
+                  "y": 68.34,
+                  "do": "click",
+                  "note": "Pick Use preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-8-5.webp",
+                  "note": "Only the ticked days take its times and the first of them opens."
+                }
+              ]
             },
             {
               "given": "I want one day to use a preset",
-              "when": "I open Select preset in the table",
-              "then": "I see Custom, Standard presets, Your presets, and Manage presets"
+              "when": "I open Select preset on a row in the table",
+              "then": "I see Custom, Standard presets, Your presets, and Manage presets",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 33.66,
+                  "y": 70.68,
+                  "do": "click",
+                  "note": "Open Select preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-9-2.webp",
+                  "note": "I see Custom, Standard presets, Your presets, and Manage presets."
+                }
+              ]
             },
             {
               "given": "I pick a preset in Select preset",
               "when": "the table updates",
-              "then": "that day takes the times and statuses of the preset"
+              "then": "that day takes the times and statuses of the preset",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 33.66,
+                  "y": 70.68,
+                  "do": "click",
+                  "note": "Open Select preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-9-2.webp",
+                  "x": 0,
+                  "y": 0,
+                  "do": "click",
+                  "note": "Pick Retail day"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "note": "That day takes the times and statuses of the preset."
+                }
+              ]
             },
             {
               "given": "a day uses a preset",
               "when": "I change one of its times",
-              "then": "Select preset reads Custom"
+              "then": "Select preset reads Custom",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 61.21,
+                  "y": 75.56,
+                  "do": "type",
+                  "note": "Change a time on a day with a preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-10-2.webp",
+                  "note": "Select preset reads Custom."
+                }
+              ]
             },
             {
               "given": "I changed a day that used a preset",
               "when": "I read below Select preset",
-              "then": "I see Edited from Weekday peak with Undo, which puts the preset times back"
+              "then": "I see Edited from Weekday peak with an Undo text button, which puts the preset times back",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-for-10-2.webp",
+                  "x": 41.94,
+                  "y": 75.12,
+                  "do": "click",
+                  "note": "Pick Undo"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "note": "I see Edited from Weekday peak with an Undo text button, which puts the preset times back."
+                }
+              ]
             },
             {
               "given": "a day reads Custom after I changed it",
               "when": "I type the preset times back",
-              "then": "it links to the preset again"
+              "then": "it links to the preset again",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-for-10-2.webp",
+                  "x": 61.21,
+                  "y": 75.56,
+                  "do": "type",
+                  "note": "Type the preset time back"
+                },
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "note": "It links to the preset again."
+                }
+              ]
             },
             {
               "given": "a day uses a preset",
-              "when": "I pick Custom",
-              "then": "the times stay and the day stops following the preset"
+              "when": "I pick Custom in Select preset",
+              "then": "the times stay and the day stops following the preset",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 33.66,
+                  "y": 70.68,
+                  "do": "click",
+                  "note": "Open Select preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-9-2.webp",
+                  "x": 34.78,
+                  "y": 4.11,
+                  "do": "click",
+                  "note": "Pick Custom"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-14-3.webp",
+                  "note": "The times stay and the day stops following the preset."
+                }
+              ]
             },
             {
               "given": "I can manage presets",
-              "when": "I pick Manage presets",
-              "then": "Settings opens on Presets"
+              "when": "I pick Manage presets in Select preset",
+              "then": "Settings opens on Presets",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 33.66,
+                  "y": 70.68,
+                  "do": "click",
+                  "note": "Open Select preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-9-2.webp",
+                  "x": 34.78,
+                  "y": 18.78,
+                  "do": "click",
+                  "note": "Pick Manage presets"
+                },
+                {
+                  "image": "features/walks/demo-profile-use-preset-15-3.webp",
+                  "note": "Settings opens on Presets."
+                }
+              ]
             },
             {
               "given": "a day uses a preset",
@@ -1183,104 +2975,450 @@
               "id": "profile-use-kind",
               "name": "Use a preset",
               "caption": "Choose a full week or one day.",
-              "image": "features/shots/profile-use-kind.png"
+              "image": "features/walks/profile-use-kind-2.webp",
+              "walk": [
+                {
+                  "image": "features/walks/profile-use-kind-1.webp",
+                  "x": 91.8,
+                  "y": 48.06,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-use-kind-2.webp"
+                }
+              ]
             },
             {
               "id": "profile-use-days",
               "name": "Choose the days",
               "caption": "A day preset asks which days to use it on.",
-              "image": "features/shots/profile-use-days.png"
+              "image": "features/walks/profile-use-days-4.webp",
+              "walk": [
+                {
+                  "image": "features/walks/profile-use-days-1.webp",
+                  "x": 56.59,
+                  "y": 50.37,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-use-days-2.webp",
+                  "x": 38.76,
+                  "y": 60.42,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-use-days-3.webp",
+                  "x": 38.76,
+                  "y": 70.56,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-use-days-4.webp"
+                }
+              ]
             },
             {
               "id": "profile-day-preset",
               "name": "Select preset",
               "caption": "Each day can pick a preset in the table.",
-              "image": "features/shots/profile-day-preset.png"
+              "image": "features/walks/profile-day-preset-2.webp",
+              "walk": [
+                {
+                  "image": "features/walks/profile-day-preset-1.webp",
+                  "x": 25.03,
+                  "y": 63.06,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-day-preset-2.webp"
+                }
+              ]
             }
           ],
           "estimate": {
-            "complexity": 3,
-            "effort": 3,
-            "risk": 3,
-            "dependencies": 3,
-            "why": "A modal with up to three steps, plus a picker for each day. Days must stay linked to their preset"
+            "dev": {
+              "complexity": 3,
+              "effort": 3,
+              "risk": 3,
+              "dependencies": 3,
+              "why": "A modal with up to three steps, plus a picker for each day. Days must stay linked to their preset"
+            },
+            "test": {
+              "scenarios": 5,
+              "setup": 3,
+              "risk": 3,
+              "regression": 3,
+              "why": "Sixteen scenarios across the week, one day, and each step of the Modal"
+            }
           }
         },
         {
           "section": "profile",
           "id": "profile-save-preset",
           "name": "Save a preset",
-          "points": 5,
           "role": "User",
           "stage": "review",
+          "open": [
+            {
+              "pane": "profile"
+            },
+            {
+              "row": "Crewe"
+            },
+            {
+              "button": "Site settings"
+            },
+            {
+              "fold": "hours"
+            }
+          ],
           "want": "save the times I set as a preset",
           "benefit": "my company can use them on other sites and meters",
-          "notes": "A preset is shared across the company. Updating one changes every site and meter that uses it, so the times never conflict. Standard presets cannot change. A match compares times and statuses, not names.",
+          "notes": "A preset is shared across the company. Updating one changes every site and meter that uses it, so the times never conflict. Standard presets cannot change. A match compares times and statuses, not names. The match check runs when you pick Save preset in the Modal. When other sites use the preset, the banner also names them, such as the times at Euston, Rugby, and 2 more sites.",
           "criteria": [
             {
-              "given": "I pick Save preset",
-              "when": "the modal opens",
-              "then": "I choose A full week or One day, pick the day for one day, and enter a Preset name"
+              "given": "I am on the Times for each day card",
+              "when": "I pick Save preset, the secondary button at the top right of the card",
+              "then": "a Modal opens where I choose A full week or One day, pick the day for One day, and enter a Preset name",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-save-preset-1-1.webp",
+                  "x": 80.44,
+                  "y": 52.68,
+                  "do": "click",
+                  "note": "Pick Save preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-1-2.webp",
+                  "note": "A Modal opens where I choose A full week or One day, pick the day for One day, and enter a Preset name."
+                }
+              ]
             },
             {
               "given": "no day has times",
-              "when": "I look at Save preset",
-              "then": "it is off with the tip Enter times for at least one day to save them as a preset"
+              "when": "I look at the Save preset button",
+              "then": "it is off with the Tooltip Enter times for at least one day to save them as a preset",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-hours-3-2.webp",
+                  "x": 80.44,
+                  "y": 52.68,
+                  "do": "hover",
+                  "note": "Hover Save preset on a week with no times"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-2-2.webp",
+                  "note": "It is off with the Tooltip Enter times for at least one day to save them as a preset."
+                }
+              ]
             },
             {
               "given": "a period has an error",
-              "when": "I try to save",
-              "then": "I see Fix the periods marked in red to save"
+              "when": "I try to save a preset",
+              "then": "I see Fix the periods marked in red to save",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-settings-10-1.webp",
+                  "x": 61.21,
+                  "y": 70.68,
+                  "do": "type",
+                  "note": "Make two periods overlap"
+                },
+                {
+                  "image": "features/walks/demo-profile-hours-12-2.webp",
+                  "x": 80.44,
+                  "y": 52.68,
+                  "do": "click",
+                  "note": "Try to save a preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-3-3.webp",
+                  "note": "I see Fix the periods marked in red to save."
+                }
+              ]
             },
             {
-              "given": "the name is empty",
-              "when": "I save",
-              "then": "I see Enter a name for the preset"
+              "given": "the Preset name field is empty",
+              "when": "I pick Save preset in the Modal",
+              "then": "I see Enter a name for the preset",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-save-preset-1-1.webp",
+                  "x": 80.44,
+                  "y": 52.68,
+                  "do": "click",
+                  "note": "Pick Save preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-1-2.webp",
+                  "x": 35.62,
+                  "y": 76.56,
+                  "do": "click",
+                  "note": "Save with no name"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-4-3.webp",
+                  "note": "I see Enter a name for the preset."
+                }
+              ]
             },
             {
-              "given": "the name is already used",
-              "when": "I save",
-              "then": "I see A preset with this name already exists. Enter a different name"
+              "given": "the Preset name is already used",
+              "when": "I pick Save preset in the Modal",
+              "then": "I see A preset with this name already exists. Enter a different name",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-save-preset-1-1.webp",
+                  "x": 80.44,
+                  "y": 52.68,
+                  "do": "click",
+                  "note": "Pick Save preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-1-2.webp",
+                  "x": 40,
+                  "y": 67.11,
+                  "do": "type",
+                  "note": "Enter a name that is already used"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-5-3.webp",
+                  "x": 35.62,
+                  "y": 76.56,
+                  "do": "click",
+                  "note": "Pick Save preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-5-4.webp",
+                  "note": "I see A preset with this name already exists. Enter a different name."
+                }
+              ]
             },
             {
-              "given": "the times match one preset I have",
-              "when": "the modal opens",
-              "then": "it asks Use Weekday peak? and says There is nothing new to save. To keep a copy under another name, save it as a new preset"
+              "given": "a day has the same times as one of my presets but does not use it",
+              "when": "I save that day as a preset",
+              "then": "the Modal asks Use Weekday depot? with Use preset, Save as new, and Cancel",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-save-preset-6-1.webp",
+                  "x": 80.44,
+                  "y": 52.68,
+                  "do": "click",
+                  "note": "Save times that match a preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-6-2.webp",
+                  "x": 58.26,
+                  "y": 45.78,
+                  "do": "click",
+                  "note": "Pick One day"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-6-3.webp",
+                  "x": 40,
+                  "y": 63.56,
+                  "do": "type",
+                  "note": "Enter a Preset name"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-6-4.webp",
+                  "x": 35.62,
+                  "y": 73,
+                  "do": "click",
+                  "note": "Pick Save preset in the Modal"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-6-5.webp",
+                  "note": "The Modal asks Use Weekday depot? with Use preset, Save as new, and Cancel."
+                }
+              ]
             },
             {
-              "given": "the times match more than one preset",
-              "when": "the modal opens",
-              "then": "it asks Use a preset you already have? and marks each as Standard preset or Your preset"
+              "given": "a day already uses the preset it matches",
+              "when": "I save that day as a preset",
+              "then": "the Modal reads Monday already uses Weekday peak. There is nothing new to save, with Save as new and Cancel",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-save-preset-7-1.webp",
+                  "x": 80.44,
+                  "y": 57.68,
+                  "do": "click",
+                  "note": "Save times on a day that already uses a preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-7-2.webp",
+                  "x": 58.26,
+                  "y": 45.78,
+                  "do": "click",
+                  "note": "Pick One day"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-7-3.webp",
+                  "x": 40,
+                  "y": 63.56,
+                  "do": "type",
+                  "note": "Enter a Preset name"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-7-4.webp",
+                  "x": 35.62,
+                  "y": 73,
+                  "do": "click",
+                  "note": "Pick Save preset in the Modal"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-7-5.webp",
+                  "note": "The Modal reads Monday already uses Weekday peak. There is nothing new to save, with Save as new and Cancel."
+                }
+              ]
             },
             {
               "given": "I changed a day after picking one of my presets",
-              "when": "I save that day",
-              "then": "it asks Update Weekday peak? with Update preset, Save as new, and Cancel"
+              "when": "I pick Save preset",
+              "then": "the Modal asks Update Early shift? with Update preset, Save as new, and Cancel",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-save-preset-8-1.webp",
+                  "x": 61.21,
+                  "y": 80.56,
+                  "do": "type",
+                  "note": "Change a day that uses your preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-8-2.webp",
+                  "x": 80.44,
+                  "y": 57.68,
+                  "do": "click",
+                  "note": "Save that day"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-8-3.webp",
+                  "note": "The Modal asks Update Early shift? with Update preset, Save as new, and Cancel."
+                }
+              ]
             },
             {
-              "given": "other days or sites use that preset",
-              "when": "I read the update prompt",
-              "then": "it warns Updating Weekday peak also changes the times at Crewe depot, Euston, and 2 more sites"
+              "given": "another day or site uses that preset",
+              "when": "I read the Update Early shift? Modal",
+              "then": "a banner warns Updating Early shift also changes Tuesday on this site",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-save-preset-9-1.webp",
+                  "x": 61.21,
+                  "y": 80.56,
+                  "do": "hover",
+                  "note": "Change a day that uses your preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-9-2.webp",
+                  "x": 80.44,
+                  "y": 57.68,
+                  "do": "click",
+                  "note": "Pick Save preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-9-3.webp",
+                  "note": "A banner warns Updating Early shift also changes Tuesday on this site."
+                }
+              ]
             },
             {
-              "given": "I pick Update preset",
-              "when": "it saves",
-              "then": "every day, site, and meter that uses the preset takes the new times"
+              "given": "the Update Modal is open",
+              "when": "I pick Update preset",
+              "then": "every day, site, and meter that uses the preset takes the new times",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-save-preset-8-2.webp",
+                  "x": 80.44,
+                  "y": 57.68,
+                  "do": "click",
+                  "note": "Pick Save preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-8-3.webp",
+                  "x": 36.27,
+                  "y": 56.56,
+                  "do": "click",
+                  "note": "Pick Update preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-10-3.webp",
+                  "note": "Every day, site, and meter that uses the preset takes the new times."
+                }
+              ]
             },
             {
-              "given": "I pick Save as new",
-              "when": "it saves",
-              "then": "a new preset saves under my name and the day links to it"
+              "given": "the Update Modal is open",
+              "when": "I pick Save as new",
+              "then": "a new preset saves under my name and the day links to it",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-save-preset-8-2.webp",
+                  "x": 80.44,
+                  "y": 57.68,
+                  "do": "click",
+                  "note": "Pick Save preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-8-3.webp",
+                  "x": 45.5,
+                  "y": 56.56,
+                  "do": "click",
+                  "note": "Pick Save as new"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-11-3.webp",
+                  "note": "A new preset saves under my name and the day links to it."
+                }
+              ]
             },
             {
               "given": "I changed a day after picking a standard preset",
               "when": "I save that day",
-              "then": "it says the standard preset cannot be changed and asks me to save my times as a new preset"
+              "then": "the Modal says the standard preset cannot be changed and asks me to save my times as a new preset",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-tou-1-2.webp",
+                  "x": 61.21,
+                  "y": 80.56,
+                  "do": "type",
+                  "note": "Change a day that uses a standard preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-8-2.webp",
+                  "x": 80.44,
+                  "y": 57.68,
+                  "do": "click",
+                  "note": "Save that day"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-8-3.webp",
+                  "note": "The Modal says the standard preset cannot be changed and asks me to save my times as a new preset."
+                }
+              ]
             },
             {
               "given": "I saved a preset",
               "when": "I open Use a preset or Select preset",
-              "then": "it sits under Your presets"
+              "then": "it sits under Your presets",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-save-preset-13-1.webp",
+                  "x": 32.45,
+                  "y": 70.68,
+                  "do": "click",
+                  "note": "Open Select preset"
+                },
+                {
+                  "image": "features/walks/demo-profile-save-preset-13-2.webp",
+                  "note": "It sits under Your presets."
+                }
+              ]
+            },
+            {
+              "given": "a day has the same times as more than one preset",
+              "when": "I save that day as a preset",
+              "then": "the Modal asks Use a preset you already have? and marks each as Standard preset or Your preset"
             }
           ],
           "stages": [
@@ -1288,77 +3426,232 @@
               "id": "profile-save",
               "name": "Save preset",
               "caption": "Name the times as a full week or one day.",
-              "image": "features/shots/profile-save.png"
+              "image": "features/walks/profile-save-2.webp",
+              "walk": [
+                {
+                  "image": "features/walks/profile-save-1.webp",
+                  "x": 85.33,
+                  "y": 48.06,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-save-2.webp"
+                }
+              ]
             },
             {
               "id": "profile-save-update",
               "name": "Update a preset",
               "caption": "A changed preset can update everywhere or save as new.",
-              "image": "features/shots/profile-save-update.png"
+              "image": "features/walks/profile-save-update-2.webp",
+              "walk": [
+                {
+                  "image": "features/walks/profile-save-update-1.webp",
+                  "x": 85.33,
+                  "y": 48.06,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-save-update-2.webp"
+                }
+              ]
             }
           ],
           "estimate": {
-            "complexity": 4,
-            "effort": 3,
-            "risk": 4,
-            "dependencies": 3,
-            "why": "Matching, naming, and updating a shared preset that reaches other sites"
+            "dev": {
+              "complexity": 4,
+              "effort": 3,
+              "risk": 4,
+              "dependencies": 3,
+              "why": "Matching, naming, and updating a shared preset that reaches other sites"
+            },
+            "test": {
+              "scenarios": 5,
+              "setup": 4,
+              "risk": 4,
+              "regression": 4,
+              "why": "Needs saved presets shared across sites. An update must reach every place that uses it"
+            }
           }
         },
         {
           "section": "profile",
           "id": "profile-attrs",
           "name": "Set site attributes",
-          "points": 2,
           "role": "User",
           "stage": "review",
+          "open": [
+            {
+              "pane": "profile"
+            },
+            {
+              "row": "Crewe"
+            },
+            {
+              "button": "Site settings"
+            },
+            {
+              "fold": "rates"
+            }
+          ],
           "want": "set the details of a site and the rates for each utility",
-          "benefit": "Cost, Carbon, and the site address read correctly",
+          "benefit": "the Cost and Carbon tabs and the site address read correctly",
           "notes": "Attributes have no Settings for. For now a meter gets its own rates only by upload. Postcode has no format check. The Site ID never changes, so two sites can share a name.",
           "criteria": [
             {
-              "given": "I open Attributes",
-              "when": "I look at the tabs",
-              "then": "Site comes first, then only the utilities the site has"
+              "given": "the Attributes accordion is open in Site settings",
+              "when": "I look at the Tabs",
+              "then": "Site comes first, then only the utilities the site has",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-site-6-2.webp",
+                  "x": 33.96,
+                  "y": 39.12,
+                  "do": "click",
+                  "note": "Open Attributes"
+                },
+                {
+                  "image": "features/walks/demo-profile-attrs-1-2.webp",
+                  "note": "Site comes first, then only the utilities the site has."
+                }
+              ]
             },
             {
-              "given": "I open the Site tab",
-              "when": "I read the fields",
-              "then": "I see Site name, Floor area in mÂ², Number of employees, Street name, Town or city, Postcode, and Country"
+              "given": "the Attributes accordion is open in Site settings",
+              "when": "I open the Site tab",
+              "then": "I see Site name, Floor area in m², Number of employees, Street name, Town or city, Postcode, and Country",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-attrs-1-2.webp",
+                  "x": 29.11,
+                  "y": 48.45,
+                  "do": "click",
+                  "note": "Open the Site tab"
+                },
+                {
+                  "image": "features/walks/demo-profile-attrs-1-2.webp",
+                  "note": "I see Site name, Floor area in m², Number of employees, Street name, Town or city, Postcode, and Country."
+                }
+              ]
             },
             {
               "given": "I am not an admin",
-              "when": "I look at Site name",
-              "then": "it is locked with the hint Only admins can change the site name"
+              "when": "I look at Site name on the Site tab",
+              "then": "it is locked with the hint Only admins can change the site name",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-attrs-3-1.webp",
+                  "x": 35.69,
+                  "y": 59.01,
+                  "do": "hover",
+                  "note": "Hover Site name"
+                },
+                {
+                  "image": "features/walks/demo-profile-attrs-3-1.webp",
+                  "note": "It is locked with the hint Only admins can change the site name."
+                }
+              ]
             },
             {
               "given": "I am an admin and clear Site name",
               "when": "I read the field",
-              "then": "I see Enter a site name and Save changes is off"
+              "then": "I see Enter a site name and the Save changes button is off",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-attrs-1-2.webp",
+                  "x": 35.69,
+                  "y": 59.01,
+                  "do": "type",
+                  "note": "Clear Site name"
+                },
+                {
+                  "image": "features/walks/demo-profile-attrs-4-2.webp",
+                  "x": 30.1,
+                  "y": 88.12,
+                  "do": "hover",
+                  "note": "Look at Save changes"
+                },
+                {
+                  "image": "features/walks/demo-profile-attrs-4-2.webp",
+                  "note": "I see Enter a site name and the Save changes button is off."
+                }
+              ]
             },
             {
-              "given": "I open the Electricity tab",
-              "when": "I read the fields",
-              "then": "I see Site capacity in kVA, Emissions factor in kgCO2e/kWh, Daily standing charge in Â£/day, and On-peak and Off-peak unit rates in p/kWh"
+              "given": "the Attributes accordion is open in Site settings",
+              "when": "I open the Electricity tab",
+              "then": "I see Site capacity in kVA, Emissions factor in kgCO2e/kWh, Daily standing charge in £/day, and On-peak and Off-peak unit rates in p/kWh",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-attrs-1-2.webp",
+                  "x": 33.54,
+                  "y": 48.45,
+                  "do": "click",
+                  "note": "Open the Electricity tab"
+                },
+                {
+                  "image": "features/walks/demo-profile-for-12-2.webp",
+                  "note": "I see Site capacity in kVA, Emissions factor in kgCO2e/kWh, Daily standing charge in £/day, and On-peak and Off-peak unit rates in p/kWh."
+                }
+              ]
             },
             {
-              "given": "I open the Gas tab",
-              "when": "I read the fields",
-              "then": "I see the Electricity fields without Site capacity"
+              "given": "the Attributes accordion is open in Site settings",
+              "when": "I open the Gas tab",
+              "then": "I see the Electricity fields without Site capacity",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-attrs-1-2.webp",
+                  "x": 37.96,
+                  "y": 48.45,
+                  "do": "click",
+                  "note": "Open the Gas tab"
+                },
+                {
+                  "image": "features/walks/demo-profile-meters-7-2.webp",
+                  "note": "I see the Electricity fields without Site capacity."
+                }
+              ]
             },
             {
-              "given": "I open the Water tab",
-              "when": "I read the fields",
-              "then": "I see Emissions factor in kgCO2e/mÂ³, Daily standing charge in Â£/day, and Unit rate in p/mÂ³"
+              "given": "the Attributes accordion is open in Site settings",
+              "when": "I open the Water tab",
+              "then": "I see Emissions factor in kgCO2e/m³, Daily standing charge in £/day, and Unit rate in p/m³",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-attrs-1-2.webp",
+                  "x": 41.53,
+                  "y": 48.45,
+                  "do": "click",
+                  "note": "Open the Water tab"
+                },
+                {
+                  "image": "features/walks/demo-profile-attrs-7-2.webp",
+                  "note": "I see Emissions factor in kgCO2e/m³, Daily standing charge in £/day, and Unit rate in p/m³."
+                }
+              ]
             },
             {
-              "given": "I opened Site settings from a meter row",
-              "when": "Attributes opens",
-              "then": "it shows the tab for that meter's utility"
+              "given": "I opened Site settings from a meter row in the Meters card",
+              "when": "the Attributes accordion opens",
+              "then": "it shows the tab for that meter's utility",
+              "walk": [
+                {
+                  "image": "features/walks/demo-profile-meters-5-1.webp",
+                  "x": 35.69,
+                  "y": 78.33,
+                  "do": "click",
+                  "note": "Click a gas meter row"
+                },
+                {
+                  "image": "features/walks/demo-profile-meters-7-2.webp",
+                  "note": "It shows the tab for that meter's utility."
+                }
+              ]
             },
             {
               "given": "a meter has its own rates",
-              "when": "Cost reads that meter",
+              "when": "the Cost tab reads that meter",
               "then": "its own rates win over the site rates"
             }
           ],
@@ -1367,47 +3660,78 @@
               "id": "profile-attrs",
               "name": "Attributes",
               "caption": "Site first, then a tab for each utility on the site.",
-              "image": "features/shots/profile-attrs.png"
+              "image": "features/walks/profile-attrs-3.webp",
+              "walk": [
+                {
+                  "image": "features/walks/profile-attrs-1.webp",
+                  "x": 57.71,
+                  "y": 32.6,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-attrs-2.webp",
+                  "x": 25.15,
+                  "y": 40.38,
+                  "do": "click"
+                },
+                {
+                  "image": "features/walks/profile-attrs-3.webp"
+                }
+              ]
             }
           ],
           "estimate": {
-            "complexity": 2,
-            "effort": 3,
-            "risk": 2,
-            "dependencies": 2,
-            "why": "A tab per utility with fixed fields. Only the site name has a rule"
+            "dev": {
+              "complexity": 2,
+              "effort": 3,
+              "risk": 2,
+              "dependencies": 2,
+              "why": "A tab per utility with fixed fields. Only the site name has a rule"
+            },
+            "test": {
+              "scenarios": 4,
+              "setup": 2,
+              "risk": 2,
+              "regression": 2,
+              "why": "Each utility tab and the site name rule"
+            }
           }
         },
         {
           "id": "tick-water",
           "name": "Tick Water",
           "section": "tree",
-          "points": 3,
           "role": "User",
           "stage": "review",
-          "want": "tick Water",
-          "benefit": "I can read m³ on a site that holds a water meter",
-          "notes": "Walk sites hold a water meter so the tick has a hit. Dummy site A1 still holds one. Serial then the number. Gas is a flame. Water is a drop. Do not invent a SPID.",
+          "open": [],
+          "want": "show water meters",
+          "benefit": "I can read m³ on a site that has a water meter",
+          "notes": "Gas shows a flame icon and water shows a drop. A water meter shows its serial, then its number. Do not invent a SPID. Confirm that Dummy site A1 still exists.",
           "criteria": [
             {
-              "given": "Water is off",
-              "when": "I tick Water",
-              "then": "sites with water meters are hits, including Dummy site A1"
+              "given": "the Filter overlay is open in the Portfolio tree",
+              "when": "I pick Water in Utility type",
+              "then": "the tree only shows sites with a water meter"
             },
             {
-              "given": "I am on that site with Water on",
-              "when": "I read Consumption",
+              "given": "I am on a site in Portfolio that has a water meter",
+              "when": "I look at the meter pills under the heading",
+              "then": "the water meter pill starts off and strikes through"
+            },
+            {
+              "given": "the water meter pill is off",
+              "when": "I turn it on and read the Consumption tab",
               "then": "the unit is m³"
             },
             {
-              "given": "I am on Cost or Carbon",
-              "when": "Water is the meter",
-              "then": "Cost is £ and Carbon is kgCO2e"
+              "given": "a water meter is on",
+              "when": "I pick the Cost or Carbon tab",
+              "then": "Cost reads £ and Carbon reads kgCO2e"
             },
             {
-              "given": "Electricity, Gas, and Water are on from Cost",
-              "when": "I open Consumption",
-              "then": "I see that this combination cannot be shown, and I can View water or View electricity & gas"
+              "given": "Electricity, Gas, and Water are on from the Cost tab",
+              "when": "I pick the Consumption tab",
+              "then": "I see that this mix cannot be shown, and I can pick View water or View electricity & gas"
             }
           ],
           "stages": [
@@ -1419,17 +3743,32 @@
             }
           ],
           "estimate": {
-            "complexity": 3,
-            "effort": 2,
-            "risk": 3,
-            "dependencies": 1,
-            "why": "New unit, Water off until ticked, and Dummy site A1."
+            "dev": {
+              "complexity": 3,
+              "effort": 2,
+              "risk": 3,
+              "dependencies": 1,
+              "why": "New unit, Water off until ticked, and Dummy site A1."
+            },
+            "test": {
+              "scenarios": 3,
+              "setup": 3,
+              "risk": 3,
+              "regression": 3,
+              "why": "Needs Dummy site A1 and Water off until ticked"
+            }
           }
         }
       ]
     }
   ],
   "estimate": {
-    "help": "Points are relative size, not days. Find a site or meter is the 2."
+    "help": "Points are relative size, not days. Each story has two estimates. Find a site or meter is the 2 for both.",
+    "dev": {
+      "help": "Dev points size the work to build it. Complexity is how hard the logic is. Effort is how much there is to build. Risk is how likely it is to go wrong. Dependencies are what it needs from other teams or stories."
+    },
+    "test": {
+      "help": "Test points size the work to check it. Scenarios are how many cases to run. Setup is the data and roles each case needs. Risk is how bad a missed bug would be. Regression is how much else needs a check again."
+    }
   }
 }
