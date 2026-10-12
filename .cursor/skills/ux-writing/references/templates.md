@@ -225,6 +225,27 @@ Avoid: Give third-party consent. Inventing the date or the lawful basis.
 
 If access has ended: Your access to {company} ended on {date}.
 
+## User story
+
+Pattern: As a {role}, I want to {want}, so that {benefit}. / Given {where I am and what is set} / When {one action on one named control} / Then {one checkable outcome}
+When: Every story in the Library (`library-site/features.json`). Write for a developer or tester with no prior knowledge of the feature.
+Do: Name the page, tab and level in every Given, such as "I am on the Consumption tab for Crewe depot in Portfolio" or "All is selected in the Portfolio tree".
+Do: Name the column or area, and give each control its component and place, such as "Chart settings, the secondary pill button with a gear icon at the top right of the graph" or "the Filter Icon button to the right of Search".
+Do: Use the component library names: Tag, Tooltip, Modal, Select, Tabs, Button, Icon button, Search, Date picker, Filter, Count, Meter pill, Flow pill, Pagination, Empty state and Banner.
+Do: Name the preset and its type, such as "the Last 24 hours preset in the Date picker", not "uses 1 week".
+Do: Quote the real labels and numbers from the prototype, such as "107 sites" or "Compare sites".
+Do: Keep one checkable outcome in each Then. Split a Then that needs "and then".
+Do: Cover the states, such as empty, no match, the last item, the latest window, and what a Viewer sees when it differs.
+Do: Give every criterion a Play demo captured from the prototype. When there is nothing to click, give a reason that shows on the disabled Play demo. When roles differ, show each role's view side by side.
+Do: Set Open in prototype steps that land on the exact page, tab, level and row the story starts on.
+Do: Give a Dev estimate and a Test estimate, each with a one-line why.
+Do: Treat the prototype as the source of truth. When a story and the prototype disagree, ask which is right, then fix the other. Capture the demo again when a story changes.
+Don't: Write "the user clicks the button" or "the graph updates". Name which button, where it sits and what changes.
+Don't: Leave a Given that only says "I am on the Portfolio page" when the story needs a group, site or tab.
+Why: A story is briefed to someone who has not seen the feature. Exact places, names and states let them build and test it without asking.
+Applies to: All Library stories. The Site profile stories are the reference set (commits 5853360, b893638 and 560266e).
+Example: Given I am on the Site profile tab for a site / When I pick Site settings, the secondary pill button at the top right of the site card / Then Site settings opens for that site
+
 ## Role-based examples
 
 Assumed capability is stated. Do not infer it from the name alone.
