@@ -612,7 +612,13 @@
 
   function walkFigure(walk, alt) {
     const frames = walk.filter((frame) => frame.image);
-    const steps = frames.map((frame) => ({ x: frame.x, y: frame.y, do: frame.do || "", note: frame.note || "" }));
+    const steps = frames.map((frame) => ({
+      x: frame.x,
+      y: frame.y,
+      do: frame.do || "",
+      note: frame.note || "",
+      ...(frame.label ? { label: frame.label } : {}),
+    }));
     const imgs = frames
       .map((frame, i) => `<img src="${esc(shotSrc(frame.image))}" alt="" class="${i === 0 ? "is-on" : ""}" ${i ? 'loading="lazy"' : ""} />`)
       .join("");
@@ -659,7 +665,7 @@
       imgs.forEach((img, k) => img.classList.toggle("is-on", k === i));
       if (note) {
         note.textContent = steps[i].note || "";
-        note.dataset.step = `${i + 1} of ${steps.length}`;
+        note.dataset.step = steps[i].label || `${i + 1} of ${steps.length}`;
       }
     };
     const place = (x, y, move) => {
@@ -754,6 +760,35 @@
     `;
   }
 
+  // One walk plays every scenario demo in order. Stories with no demos keep their stage shots.
+  function storyWalkBlock(story) {
+    const list = story.criteria || [];
+    const frames = list.flatMap((item, i) =>
+      (item.walk || [])
+        .filter((frame) => frame.image)
+        .map((frame) => ({
+          ...frame,
+          note: `When ${item.when.replace(/\.$/, "")}, ${item.then.replace(/\.$/, "")}.`,
+          label: `Scenario ${i + 1} of ${list.length}`,
+        }))
+    );
+    if (frames.length) {
+      return `
+        <h2 class="lib-block-title">Walk-through</h2>
+        <p class="lib-help">Every scenario above, played in order.</p>
+        <div class="lib-stage">
+          ${walkFigure(frames, `Walk-through of ${story.name}`)}
+          <p class="lib-walk-note" data-walk-note></p>
+        </div>
+      `;
+    }
+    const stages = (story.stages || []).map(stageShot).join("");
+    return `
+      <h2 class="lib-block-title">Walk-through</h2>
+      ${stages ? `<div class="lib-stages">${stages}</div>` : `<p class="lib-help">No walk-through yet.</p>`}
+    `;
+  }
+
   function featuresIndexPage() {
     const pack = featurePack();
     const items = featureList();
@@ -792,7 +827,6 @@
   function storyCards(stories) {
     return stories
       .map((story) => {
-        const stages = (story.stages || []).length;
         const scenarios = (story.criteria || []).length;
         return `
           <button type="button" class="lib-card lib-feature" data-feature-story="${esc(story.id)}">
@@ -803,7 +837,6 @@
             <span class="lib-metrics">
               ${pointsMetrics(storyPoints(story, "dev"), storyPoints(story, "test"))}
               ${metric(scenarios, scenarios === 1 ? "scenario" : "scenarios")}
-              ${metric(stages, stages === 1 ? "stage" : "stages")}
             </span>
           </button>
         `;
@@ -961,7 +994,6 @@
 
   function storyPage(feature, story) {
     const scenarios = criteriaBlock(story);
-    const stages = (story.stages || []).map(stageShot).join("");
     const notes = story.notes || story.description || "";
     const section = sectionById(feature, story.section);
     const back = section
@@ -988,12 +1020,7 @@
       <h2 class="lib-block-title">Confirmation</h2>
       <p class="lib-help">What must be true for this to be done.</p>
       ${scenarios || `<p class="lib-help">None yet.</p>`}
-      <h2 class="lib-block-title">Stages</h2>
-      ${
-        stages
-          ? `<div class="lib-stages">${stages}</div>`
-          : `<p class="lib-help">No stages yet.</p>`
-      }
+      ${storyWalkBlock(story)}
     `;
   }
 
