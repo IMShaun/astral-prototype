@@ -456,11 +456,12 @@
   }
 
   function storyCardCopy(story) {
-    const role = story.role || "Viewer";
+    // Stories read As a user. Only a story that needs admin rights names the role.
+    const role = String(story.role || "user").toLowerCase();
     const want = story.want || story.summary || "";
     const benefit = story.benefit || "";
     return `
-      <p class="lib-story-as">As a ${esc(role)}</p>
+      <p class="lib-story-as">As ${/^[aeio]/.test(role) ? "an" : "a"} ${esc(role)}</p>
       <p class="lib-story-want">I want to ${esc(want)}</p>
       ${benefit ? `<p class="lib-story-so">so that ${esc(endStop(benefit).replace(/\.$/, ""))}.</p>` : ""}
     `;
