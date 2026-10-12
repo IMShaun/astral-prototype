@@ -20604,17 +20604,17 @@ function protoSiteButton(site, on) {
 
 // What the Export pop-up can make. Image needs a graph on screen.
 const PROTO_EXPORT_WHAT = [
-  { id: "chart", name: "Chart data", note: "What the graph shows now", mark: "export-chart" },
-  { id: "source", name: "Source data", note: "Every reading, for the dates you choose", mark: "export-source" },
-  { id: "image", name: "Image", note: "The graph as a PNG", mark: "export-image" },
-  { id: "pdf", name: "PDF", note: "The chart data, to share or print", mark: "export-pdf" },
+  { id: "chart", name: "Chart data", mark: "export-chart" },
+  { id: "source", name: "Source data", mark: "export-source" },
+  { id: "image", name: "Image", mark: "export-image" },
 ];
 
-// People and Usage are tables, so they have no source data or image.
-const PROTO_EXPORT_TABLE_WHAT = [
-  { id: "chart", name: "Table data", note: "What the table shows now", mark: "export-table" },
-  { id: "pdf", name: "PDF", note: "The table, to share or print", mark: "export-pdf" },
-];
+// People and Usage are tables, so their one choice is the table data.
+const PROTO_EXPORT_TABLE_WHAT = [{ id: "chart", name: "Table data", mark: "export-table" }];
+
+// The picked choice, or Export when a table has nothing to pick.
+const PROTO_EXPORT_PICK_FOCUS =
+  '#astral-fs #astral-export-pick [data-proto-export-kind][aria-checked="true"], #astral-fs #astral-export-pick [data-proto-export="go"]';
 
 const PROTO_EXPORT_SOURCE_FORMATS = [
   { id: "csv", name: "CSV, comma", ext: "csv", sep: "," },
@@ -20656,7 +20656,7 @@ function protoExportModalState() {
   const file = String(raw.file);
   if (protoExportNoData(file)) return null;
   const prefs = protoExportPrefs();
-  // Too large to graph opens on Source data. Chart data, Image and PDF are still built from the same data in the background.
+  // Too large to graph opens on Source data. Chart data and Image are still built from the same data in the background.
   const limit = raw.limit === true && Boolean(protoGraphLimit(file));
   const what = protoExportChoices(file).some((item) => item.id === prefs.what) ? prefs.what : "chart";
   const errors = raw.errors && typeof raw.errors === "object" ? raw.errors : {};
@@ -20762,7 +20762,7 @@ function protoExportSummary(state) {
     if (prefs.ids) extras.push("with source IDs");
     if (extras.length) text += `, ${extras.join(", ")}`;
   } else {
-    text += ` as ${what === "pdf" ? "PDF" : what === "image" ? "PNG" : PROTO_EXPORT_SUM_FORMAT.csv}`;
+    text += ` as ${what === "image" ? "PNG" : PROTO_EXPORT_SUM_FORMAT.csv}`;
   }
   return `${text}.`;
 }
@@ -20895,7 +20895,7 @@ function protoExportDatesHtml(state) {
 function protoExportFieldsHtml(state) {
   const { what, prefs } = state;
   const dates = protoExportDatesHtml(state);
-  const fixed = what === "pdf" ? "PDF" : what === "image" ? "PNG" : "CSV, comma";
+  const fixed = what === "image" ? "PNG" : "CSV, comma";
   const facts = [dates, `<div><dt>Format</dt><dd>${escapeHtml(fixed)}</dd></div>`].filter(Boolean).join("");
   if (what !== "source") return `<dl class="astral-export-facts">${facts}</dl>`;
   return `
@@ -20937,42 +20937,22 @@ function protoExportModal() {
   const body = sourceStep
     ? protoExportFieldsHtml(state)
     : `
-          <fieldset class="astral-report-split">
+          ${
+            choices.length < 2
+              ? ""
+              : `<fieldset class="astral-report-split">
             <legend id="astral-export-what-label">What do you want to export?</legend>
             <div
-              class="astral-report-types is-pair"
+              class="astral-meter-src is-stack"
               role="radiogroup"
               aria-labelledby="astral-export-what-label"
               ${state.errors.what ? 'aria-describedby="astral-export-what-error"' : ""}
             >
-              ${choices
-                .map((item) => {
-                  const on = state.what === item.id;
-                  const note = !state.limit
-                    ? item.note
-                    : item.id === "chart"
-                      ? "Totals for your selection"
-                      : item.id === "image"
-                        ? "A chart of the totals, as a PNG"
-                        : item.note;
-                  return `
-                    <button
-                      type="button"
-                      role="radio"
-                      class="astral-report-type${on ? " is-on" : ""}"
-                      aria-checked="${on ? "true" : "false"}"
-                      tabindex="${on ? "0" : "-1"}"
-                      data-proto-export-kind="${escapeHtml(item.id)}"
-                    >
-                      <span class="astral-report-type-head">${protoRadio(on)}${protoTypeBadge(item.mark)}<span>${escapeHtml(item.name)}</span></span>
-                      <span class="astral-muted">${escapeHtml(note)}</span>
-                    </button>
-                  `;
-                })
-                .join("")}
+              ${choices.map((item) => protoExportRadio(`data-proto-export-kind="${escapeHtml(item.id)}"`, state.what === item.id, item.name)).join("")}
             </div>
             ${state.errors.what ? `<p class="astral-export-error" id="astral-export-what-error" role="alert">${escapeHtml(state.errors.what)}</p>` : ""}
-          </fieldset>
+          </fieldset>`
+          }
           ${sourcePick ? "" : protoExportFieldsHtml(state)}
         `;
   const motion = state.dir ? ` is-step-${state.dir}` : "";
@@ -21012,7 +20992,7 @@ function protoExportStep(step) {
   setProto({ prototypeExportModal: { ...raw, step, dir: step === 2 ? "next" : "back", errors: {} } });
   store.prototypeExportModal = { ...store.prototypeExportModal, dir: "" };
   if (step === 2) protoRestoreFocus('#astral-fs #astral-export-pick [data-proto-export-step="back"]');
-  else protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
+  else protoRestoreFocus(PROTO_EXPORT_PICK_FOCUS);
 }
 
 // True while an arrow key moves a radio pick, so a pick that opens the next step waits for a click, Enter or Space.
@@ -21039,7 +21019,7 @@ function protoOpenExport(fileId, from = "") {
     prototypeSelectOpen: "",
     prototypeAckOpen: "",
   });
-  protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
+  protoRestoreFocus(PROTO_EXPORT_PICK_FOCUS);
 
 }
 
@@ -21070,14 +21050,14 @@ async function protoExportGo() {
     }
   }
   const back = protoExportBackSelector(file);
-  if (what === "pdf" || what === "chart") {
-    protoQueueExport(what === "pdf" ? "pdf" : "csv", file);
+  if (what === "chart") {
+    protoQueueExport("csv", file);
   } else if (what === "image") {
     // Too large to graph has nothing on screen to capture, so the image is drawn from the data instead.
     const shot = state.limit ? protoPackImageShot(file) : await protoChartImageShot();
     if (!shot) {
       setProto({ prototypeExportModal: { ...store.prototypeExportModal, errors: { what: "The graph is still loading. Try again when it shows." } } });
-      protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
+      protoRestoreFocus(PROTO_EXPORT_PICK_FOCUS);
       return;
     }
     const id = protoNewDownloadId();
@@ -40343,7 +40323,7 @@ function onPrototype(event) {
     }
     store.prototypeExportModal = { ...raw, errors: {} };
     protoSetExportPrefs({ what: kind });
-    protoRestoreFocus("#astral-fs #astral-export-pick .astral-report-type.is-on");
+    protoRestoreFocus(PROTO_EXPORT_PICK_FOCUS);
     return;
   }
   const exportStep = event.target.closest("[data-proto-export-step]");
@@ -41804,7 +41784,7 @@ function onPrototypeKey(event) {
     return;
   }
   const typeRadio = event.target.closest(
-    ".astral-report-types [role='radio'], .astral-chart-style-switch [role='radio'], [role='radio'][data-proto-report-tenant-pays], [role='radio'][data-proto-report-tax-incl], [role='radio'][data-proto-export-opt]"
+    ".astral-report-types [role='radio'], .astral-chart-style-switch [role='radio'], [role='radio'][data-proto-report-tenant-pays], [role='radio'][data-proto-report-tax-incl], [role='radio'][data-proto-export-opt], [role='radio'][data-proto-export-kind]"
   );
   if (typeRadio && ["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) {
     event.preventDefault();
