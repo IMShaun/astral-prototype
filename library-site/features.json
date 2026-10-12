@@ -69,30 +69,165 @@
           "section": "tree",
           "role": "User",
           "stage": "review",
-          "open": [],
+          "open": [
+            {
+              "click": ".astral-tree [data-proto-group=\"all\"]"
+            }
+          ],
           "want": "see All and the named groups in the Portfolio tree",
           "benefit": "I can start from the whole estate before I pick a group or site",
-          "notes": "This is the first look at Portfolio. The pane opens on the Consumption tab. Other tabs have their own stories.",
+          "notes": "This is the first look at the Portfolio page. The pane opens on the Consumption tab. Other tabs have their own stories. Only one group is open at a time.",
           "criteria": [
             {
               "given": "I am on the Portfolio page",
               "when": "the tree on the left loads",
-              "then": "All sits at the top of the tree with its site count in grey, such as 107 sites"
+              "then": "All sits at the top of the tree with its site count in grey, such as 107 sites",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-1-1.webp",
+                  "x": 11.18,
+                  "y": 27.89,
+                  "do": "hover",
+                  "note": "Look at the top of the tree"
+                },
+                {
+                  "image": "features/walks/demo-scan-estate-1-1.webp",
+                  "note": "All sits at the top of the tree with its site count in grey, such as 107 sites."
+                }
+              ]
+            },
+            {
+              "given": "I am on the Portfolio page",
+              "when": "I click All in the tree",
+              "then": "the kicker in the pane reads EDF, the heading reads All, and the line beside it reads 107 sites. 127 meter points.",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-2-1.webp",
+                  "x": 11.18,
+                  "y": 27.89,
+                  "do": "click",
+                  "note": "Click All"
+                },
+                {
+                  "image": "features/walks/demo-scan-estate-2-2.webp",
+                  "note": "The kicker in the pane reads EDF, the heading reads All, and the line beside it reads 107 sites. 127 meter points."
+                }
+              ]
             },
             {
               "given": "All is selected in the Portfolio tree",
-              "when": "I look at the pane on the right",
-              "then": "the kicker reads the company, the heading reads All, and the line below gives the number of sites and meter points"
+              "when": "I look under the heading in the pane",
+              "then": "the first 5 sites show as pills, followed by a Show 102 more text button",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-2-2.webp",
+                  "x": 82.84,
+                  "y": 27.9,
+                  "do": "hover",
+                  "note": "Look under the heading"
+                },
+                {
+                  "image": "features/walks/demo-scan-estate-2-2.webp",
+                  "note": "The first 5 sites show as pills, followed by a Show 102 more text button."
+                }
+              ]
+            },
+            {
+              "given": "All is selected in the Portfolio tree",
+              "when": "I hover a site pill under the heading",
+              "then": "a Tooltip gives the meter points on that site by utility, such as Electricity 1 · Gas 1 · Water 1",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-2-2.webp",
+                  "x": 28.84,
+                  "y": 27.9,
+                  "do": "hover",
+                  "note": "Hover a site pill"
+                },
+                {
+                  "image": "features/walks/demo-scan-estate-4-2.webp",
+                  "note": "A Tooltip gives the meter points on that site by utility, such as Electricity 1 · Gas 1 · Water 1."
+                }
+              ]
+            },
+            {
+              "given": "I am on the Portfolio page",
+              "when": "I click a closed group in the tree, such as Eastern",
+              "then": "the group opens with its sites under it, each with a grey Count of its meter points",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-5-1.webp",
+                  "x": 11.18,
+                  "y": 64.33,
+                  "do": "click",
+                  "note": "Click Eastern"
+                },
+                {
+                  "image": "features/walks/demo-scan-estate-5-2.webp",
+                  "note": "The group opens with its sites under it, each with a grey Count of its meter points."
+                }
+              ]
+            },
+            {
+              "given": "I am on the Portfolio page",
+              "when": "I click a closed group in the tree, such as Eastern",
+              "then": "the group that was open collapses",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-2-1.webp",
+                  "x": 11.18,
+                  "y": 33.44,
+                  "do": "hover",
+                  "note": "London North Western is open"
+                },
+                {
+                  "image": "features/walks/demo-scan-estate-6-2.webp",
+                  "x": 11.18,
+                  "y": 64.33,
+                  "do": "click",
+                  "note": "Click Eastern"
+                },
+                {
+                  "image": "features/walks/demo-scan-estate-5-2.webp",
+                  "note": "The group that was open collapses."
+                }
+              ]
             },
             {
               "given": "I am on the Portfolio page",
               "when": "I click a group in the tree",
-              "then": "the group opens with its sites under it, each with a grey meter count, and the other groups hide"
+              "then": "the pane shows that group, with the group name as the heading",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-5-1.webp",
+                  "x": 11.18,
+                  "y": 64.33,
+                  "do": "click",
+                  "note": "Click a group"
+                },
+                {
+                  "image": "features/walks/demo-scan-estate-5-2.webp",
+                  "note": "The pane shows that group, with the group name as the heading."
+                }
+              ]
             },
             {
               "given": "a group is open in the Portfolio tree",
               "when": "I click the group again",
-              "then": "its sites hide"
+              "then": "its sites collapse and the pane stays on the group",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-8-1.webp",
+                  "x": 11.18,
+                  "y": 39.22,
+                  "do": "click",
+                  "note": "Click Eastern again"
+                },
+                {
+                  "image": "features/walks/demo-scan-estate-8-2.webp",
+                  "note": "Its sites collapse and the pane stays on the group."
+                }
+              ]
             }
           ],
           "stages": [
@@ -115,7 +250,7 @@
               "effort": 3,
               "risk": 2,
               "dependencies": 1,
-              "why": "More than Search. Tree, All, and group accordion."
+              "why": "More than Search. Tree, All, the group accordion, and the site pills."
             },
             "test": {
               "scenarios": 2,
@@ -135,22 +270,122 @@
           "open": [],
           "want": "search the Portfolio tree for a site or meter",
           "benefit": "I can reach it without opening every group",
-          "notes": "The Filter icon button sits to the right of Search. Filter has its own story, Filter the tree.",
+          "notes": "The Filter Icon button sits to the right of Search. Filter has its own story, Filter the tree. Search matches site names and meter numbers.",
           "criteria": [
             {
               "given": "I am on the Portfolio page",
               "when": "I look at the top of the tree",
-              "then": "a Search field reads Search site or meter, with the Filter icon button to its right"
+              "then": "a Search field reads Search site or meter, with the Filter Icon button to its right",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-2-1.webp",
+                  "x": 11.18,
+                  "y": 22.56,
+                  "do": "hover",
+                  "note": "Look at the top of the tree"
+                },
+                {
+                  "image": "features/walks/demo-find-site-1-2.webp",
+                  "note": "A Search field reads Search site or meter, with the Filter Icon button to its right."
+                }
+              ]
             },
             {
               "given": "I am on the Portfolio page",
-              "when": "I type a site name or meter number in Search",
-              "then": "the tree shows only the matching sites and meters"
+              "when": "I type Crewe in the Search field above the tree",
+              "then": "the tree shows All with 1 site, London North Western with 1 site, and Crewe depot",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-2-1.webp",
+                  "x": 11.18,
+                  "y": 22.56,
+                  "do": "type",
+                  "note": "Type Crewe"
+                },
+                {
+                  "image": "features/walks/demo-find-site-2-2.webp",
+                  "note": "The tree shows All with 1 site, London North Western with 1 site, and Crewe depot."
+                }
+              ]
             },
             {
-              "given": "Search in the Portfolio tree has text in it",
-              "when": "I leave the Portfolio page and come back",
-              "then": "Search is empty and the tree shows every group"
+              "given": "I am on the Portfolio page",
+              "when": "I type a meter number in the Search field, such as 2100000002",
+              "then": "the tree shows the site that holds that meter, Crewe depot",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-2-1.webp",
+                  "x": 11.18,
+                  "y": 22.56,
+                  "do": "type",
+                  "note": "Type a meter number"
+                },
+                {
+                  "image": "features/walks/demo-find-site-3-2.webp",
+                  "note": "The tree shows the site that holds that meter, Crewe depot."
+                }
+              ]
+            },
+            {
+              "given": "I am on the Portfolio page",
+              "when": "I type text in the Search field that matches no site or meter",
+              "then": "All reads 0 sites and the tree reads No sites match.",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-2-1.webp",
+                  "x": 11.18,
+                  "y": 22.56,
+                  "do": "type",
+                  "note": "Type a name that matches nothing"
+                },
+                {
+                  "image": "features/walks/demo-find-site-4-2.webp",
+                  "note": "All reads 0 sites and the tree reads No sites match."
+                }
+              ]
+            },
+            {
+              "given": "I have typed in the Search field above the tree",
+              "when": "I pick the Clear cross at the right of the field",
+              "then": "the field empties and the full tree shows",
+              "walk": [
+                {
+                  "image": "features/walks/demo-find-site-2-2.webp",
+                  "x": 18.26,
+                  "y": 22.56,
+                  "do": "click",
+                  "note": "Pick the Clear cross"
+                },
+                {
+                  "image": "features/walks/demo-find-site-5-2.webp",
+                  "note": "The field empties and the full tree shows."
+                }
+              ]
+            },
+            {
+              "given": "I have typed in the Search field on the Portfolio page",
+              "when": "I pick Overview in the top nav and then Portfolio",
+              "then": "the Search field is empty and the full tree shows",
+              "walk": [
+                {
+                  "image": "features/walks/demo-find-site-2-2.webp",
+                  "x": 21.7,
+                  "y": 5.11,
+                  "do": "click",
+                  "note": "Pick Overview"
+                },
+                {
+                  "image": "features/walks/demo-find-site-6-2.webp",
+                  "x": 28.48,
+                  "y": 5.11,
+                  "do": "click",
+                  "note": "Pick Portfolio"
+                },
+                {
+                  "image": "features/walks/demo-find-site-6-3.webp",
+                  "note": "The Search field is empty and the full tree shows."
+                }
+              ]
             }
           ],
           "stages": [
@@ -187,32 +422,176 @@
           "open": [],
           "want": "filter the Portfolio tree by utility type and by incoming or outgoing",
           "benefit": "the tree only shows sites and meters that match",
-          "notes": "The same filters sit behind the Filter icon button at the top right of the pane. The prototype has no ownership filter, so confirm whether it is needed. Confirm the component name for the removable filter Tag against the component library.",
+          "notes": "The same filters sit behind the Filter Icon button at the top right of the pane. The prototype has no ownership filter, so confirm whether it is needed. Confirm the component name for the removable filter Tag against the component library.",
           "criteria": [
             {
               "given": "I am on the Portfolio page",
-              "when": "I pick the Filter icon button to the right of Search",
-              "then": "an overlay opens with a Utility type Select (All, Electricity, Gas, and Water) and an Incoming and outgoing Select (All, In, and Out), each option with its site count"
+              "when": "I pick the Filter Icon button to the right of Search",
+              "then": "a menu opens with Utility type, Incoming and outgoing, and Clear all",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-2-1.webp",
+                  "x": 21.46,
+                  "y": 22.56,
+                  "do": "click",
+                  "note": "Pick the Filter Icon button"
+                },
+                {
+                  "image": "features/walks/demo-filter-tree-1-2.webp",
+                  "note": "A menu opens with Utility type, Incoming and outgoing, and Clear all."
+                }
+              ]
             },
             {
-              "given": "the Filter overlay is open in the Portfolio tree",
-              "when": "I pick Gas in Utility type",
-              "then": "the tree only shows sites with a gas meter"
+              "given": "the Filter menu is open above the Portfolio tree",
+              "when": "I look at each option",
+              "then": "each option gives the number of sites it matches, such as Gas 18 and Out 2",
+              "walk": [
+                {
+                  "image": "features/walks/demo-filter-tree-2-1.webp",
+                  "x": 9.51,
+                  "y": 20.78,
+                  "do": "hover",
+                  "note": "Gas matches 18 sites"
+                },
+                {
+                  "image": "features/walks/demo-filter-tree-2-2.webp",
+                  "x": 9.51,
+                  "y": 27.72,
+                  "do": "hover",
+                  "note": "Out matches 2 sites"
+                },
+                {
+                  "image": "features/walks/demo-filter-tree-2-1.webp",
+                  "note": "Each option gives the number of sites it matches, such as Gas 18 and Out 2."
+                }
+              ]
+            },
+            {
+              "given": "the Filter menu is open above the Portfolio tree",
+              "when": "I pick Gas under Utility type",
+              "then": "the tree shows only the 18 sites with gas, and each site Count reads 1",
+              "walk": [
+                {
+                  "image": "features/walks/demo-filter-tree-2-1.webp",
+                  "x": 9.51,
+                  "y": 20.78,
+                  "do": "click",
+                  "note": "Pick Gas"
+                },
+                {
+                  "image": "features/walks/demo-scan-estate-1-1.webp",
+                  "note": "The tree shows only the 18 sites with gas, and each site Count reads 1."
+                }
+              ]
+            },
+            {
+              "given": "I have picked Gas in the Filter menu above the Portfolio tree",
+              "when": "I look under the Search field",
+              "then": "a Gas Tag with a cross shows, followed by a Clear text button",
+              "walk": [
+                {
+                  "image": "features/walks/demo-filter-tree-4-1.webp",
+                  "x": 7.79,
+                  "y": 27.44,
+                  "do": "hover",
+                  "note": "Look under Search"
+                },
+                {
+                  "image": "features/walks/demo-filter-tree-4-2.webp",
+                  "note": "A Gas Tag with a cross shows, followed by a Clear text button."
+                }
+              ]
             },
             {
               "given": "a filter is on in the Portfolio tree",
-              "when": "I look under Search",
-              "then": "each filter shows as a removable Tag with a Clear text button after them, and the Filter icon button shows a teal count"
+              "when": "I look at the Filter Icon button",
+              "then": "it shows a teal Count of the filters that are on",
+              "walk": [
+                {
+                  "image": "features/walks/demo-filter-tree-4-1.webp",
+                  "x": 21.46,
+                  "y": 22.56,
+                  "do": "hover",
+                  "note": "Look at the Filter Icon button"
+                },
+                {
+                  "image": "features/walks/demo-filter-tree-5-2.webp",
+                  "note": "It shows a teal Count of the filters that are on."
+                }
+              ]
             },
             {
-              "given": "filter Tags show under Search",
-              "when": "I pick the cross on a Tag, or pick Clear",
-              "then": "that filter goes, or every filter goes"
+              "given": "the Filter menu is open above the Portfolio tree",
+              "when": "I pick Gas and then Out",
+              "then": "All reads 0 sites and the tree reads No sites match.",
+              "walk": [
+                {
+                  "image": "features/walks/demo-filter-tree-6-1.webp",
+                  "x": 9.51,
+                  "y": 27.72,
+                  "do": "click",
+                  "note": "Pick Out as well"
+                },
+                {
+                  "image": "features/walks/demo-scan-estate-1-1.webp",
+                  "note": "All reads 0 sites and the tree reads No sites match."
+                }
+              ]
             },
             {
-              "given": "the Filter overlay is open in the Portfolio tree",
-              "when": "I pick Clear all at the bottom of the overlay",
-              "then": "every filter goes and the tree shows every site"
+              "given": "Gas and Out are on in the Portfolio tree",
+              "when": "I pick the cross on the Gas Tag under Search",
+              "then": "Gas turns off and Out stays on",
+              "walk": [
+                {
+                  "image": "features/walks/demo-filter-tree-7-1.webp",
+                  "x": 7.79,
+                  "y": 27.44,
+                  "do": "click",
+                  "note": "Pick the cross on the Gas Tag"
+                },
+                {
+                  "image": "features/walks/demo-filter-tree-7-2.webp",
+                  "note": "Gas turns off and Out stays on."
+                }
+              ]
+            },
+            {
+              "given": "filters are on in the Portfolio tree",
+              "when": "I pick the Clear text button after the Tags",
+              "then": "every filter turns off and the full tree shows",
+              "walk": [
+                {
+                  "image": "features/walks/demo-filter-tree-7-1.webp",
+                  "x": 17.56,
+                  "y": 27.44,
+                  "do": "click",
+                  "note": "Pick Clear"
+                },
+                {
+                  "image": "features/walks/demo-scan-estate-1-1.webp",
+                  "note": "Every filter turns off and the full tree shows."
+                }
+              ]
+            },
+            {
+              "given": "the Filter menu is open with filters on",
+              "when": "I pick Clear all at the bottom of the menu",
+              "then": "every filter turns off and the full tree shows",
+              "walk": [
+                {
+                  "image": "features/walks/demo-filter-tree-9-1.webp",
+                  "x": 19.28,
+                  "y": 17.11,
+                  "do": "click",
+                  "note": "Pick Clear all"
+                },
+                {
+                  "image": "features/walks/demo-scan-estate-1-1.webp",
+                  "note": "Every filter turns off and the full tree shows."
+                }
+              ]
             }
           ],
           "stages": [
@@ -235,14 +614,14 @@
               "effort": 4,
               "risk": 3,
               "dependencies": 1,
-              "why": "Overlay ticks, pills, count, and Clear."
+              "why": "Menu options with counts, Tags, the Count on the icon, and Clear."
             },
             "test": {
               "scenarios": 3,
               "setup": 3,
               "risk": 3,
               "regression": 2,
-              "why": "Each filter alone and together, the count, and Clear"
+              "why": "Each filter alone and together, the counts, the Tags, and both Clear buttons"
             }
           }
         },
@@ -254,32 +633,138 @@
           "stage": "review",
           "open": [
             {
-              "click": ".astral-tree [data-proto-group=\"london-north-western\"]"
+              "click": ".astral-tree [data-proto-group=\"eastern\"]"
             }
           ],
           "want": "see consumption for a group",
           "benefit": "I can read the total for the group without opening each site",
-          "notes": "Cost, Carbon, Site profile, Alerts, and Queries have their own stories. Each pill under the group heading is a site.",
+          "notes": "Cost, Carbon, Site profile, Alerts, and Queries have their own stories. Each pill under the group heading is a site. Turning a site pill off takes the site off the graph, not out of the tree.",
           "criteria": [
             {
               "given": "I am on the Portfolio page",
-              "when": "I click a group in the tree",
-              "then": "the pane kicker reads the company, such as EDF, and the heading reads the group name"
+              "when": "I click a group in the tree, such as Eastern",
+              "then": "the kicker in the pane reads EDF, the heading reads Eastern, and the line beside it reads 21 sites. 45 meter points.",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-5-1.webp",
+                  "x": 11.18,
+                  "y": 64.33,
+                  "do": "click",
+                  "note": "Click Eastern"
+                },
+                {
+                  "image": "features/walks/demo-scan-estate-5-2.webp",
+                  "note": "The kicker in the pane reads EDF, the heading reads Eastern, and the line beside it reads 21 sites. 45 meter points."
+                }
+              ]
             },
             {
-              "given": "I am on a group in Portfolio",
-              "when": "the Consumption tab is selected",
-              "then": "the graph shows the total for the sites that are on"
+              "given": "Eastern is open on the Consumption tab",
+              "when": "I look at the graph",
+              "then": "the title reads Consumption and the subtitle reads Last 24 hours UTC",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-8-1.webp",
+                  "x": 37.63,
+                  "y": 39.45,
+                  "do": "hover",
+                  "note": "Look at the graph title"
+                },
+                {
+                  "image": "features/walks/demo-scan-estate-8-1.webp",
+                  "note": "The title reads Consumption and the subtitle reads Last 24 hours UTC."
+                }
+              ]
             },
             {
-              "given": "I am on a group in Portfolio",
+              "given": "Eastern is open on the Consumption tab",
+              "when": "I look at the bars on the graph",
+              "then": "each bar is the total for the sites whose pills are on",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-8-1.webp",
+                  "x": 33.96,
+                  "y": 66.29,
+                  "do": "hover",
+                  "note": "Hover a bar"
+                },
+                {
+                  "image": "features/walks/demo-read-group-3-2.webp",
+                  "note": "Each bar is the total for the sites whose pills are on."
+                }
+              ]
+            },
+            {
+              "given": "Eastern is open in the Portfolio pane",
               "when": "I look under the heading",
-              "then": "each site shows as a pill, with a Show more text button when there are many"
+              "then": "the first 6 sites show as pills, followed by a Show 15 more text button",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-8-1.webp",
+                  "x": 70.02,
+                  "y": 27.9,
+                  "do": "hover",
+                  "note": "Look under the heading"
+                },
+                {
+                  "image": "features/walks/demo-scan-estate-8-1.webp",
+                  "note": "The first 6 sites show as pills, followed by a Show 15 more text button."
+                }
+              ]
             },
             {
-              "given": "site pills show under the group heading",
-              "when": "I click a site pill",
-              "then": "that site leaves the graph and its name strikes through, and this works for the last site too"
+              "given": "Eastern is open in the Portfolio pane",
+              "when": "I pick Show 15 more after the site pills",
+              "then": "every site pill shows and the button reads Hide",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-8-1.webp",
+                  "x": 70.02,
+                  "y": 27.9,
+                  "do": "click",
+                  "note": "Pick Show 15 more"
+                },
+                {
+                  "image": "features/walks/demo-read-group-5-2.webp",
+                  "note": "Every site pill shows and the button reads Hide."
+                }
+              ]
+            },
+            {
+              "given": "Eastern is open in the Portfolio pane",
+              "when": "I hover a site pill under the heading",
+              "then": "a Tooltip gives the meter points on that site by utility",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-8-1.webp",
+                  "x": 28.88,
+                  "y": 27.9,
+                  "do": "hover",
+                  "note": "Hover a site pill"
+                },
+                {
+                  "image": "features/walks/demo-read-group-6-2.webp",
+                  "note": "A Tooltip gives the meter points on that site by utility."
+                }
+              ]
+            },
+            {
+              "given": "Eastern is open on the Consumption tab",
+              "when": "I pick a site pill, such as York Traction",
+              "then": "the pill is struck through and that site leaves the graph",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-8-1.webp",
+                  "x": 28.88,
+                  "y": 27.9,
+                  "do": "click",
+                  "note": "Pick York Traction"
+                },
+                {
+                  "image": "features/walks/demo-read-group-7-2.webp",
+                  "note": "The pill is struck through and that site leaves the graph."
+                }
+              ]
             }
           ],
           "stages": [
@@ -318,29 +803,171 @@
               "click": ".astral-tree [data-proto-site=\"nr-crewe-in\"]"
             }
           ],
-          "want": "see incoming and outgoing on one graph for a site",
+          "want": "see the meters on a site, and incoming and outgoing on one graph",
           "benefit": "I can read import and export together",
-          "notes": "Do not put All, In, or Out chips in the site header. Do not put a meter Select in the site header.",
+          "notes": "Do not put All, In, or Out chips in the site header. Do not put a meter Select in the site header. In the prototype, Manchester Traction and Glasgow Central are the sites with outgoing.",
           "criteria": [
             {
-              "given": "I am on a site in Portfolio that has In and Out channels",
-              "when": "the Consumption tab loads",
-              "then": "the graph title reads Incoming and outgoing"
+              "given": "I am on the Portfolio page",
+              "when": "I click a site in the tree, such as Crewe depot",
+              "then": "the kicker in the pane reads its group, London North Western, and the heading reads Crewe depot",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-2-1.webp",
+                  "x": 11.18,
+                  "y": 38.56,
+                  "do": "click",
+                  "note": "Click Crewe depot"
+                },
+                {
+                  "image": "features/walks/demo-tick-water-1-1.webp",
+                  "note": "The kicker in the pane reads its group, London North Western, and the heading reads Crewe depot."
+                }
+              ]
             },
             {
-              "given": "I am on a site in Portfolio that has In and Out channels",
-              "when": "I look at the key under the graph",
-              "then": "In is teal with an import mark and Out is black with an export mark"
-            },
-            {
-              "given": "the key under the graph shows In and Out",
-              "when": "I click one",
-              "then": "that series leaves the graph and its name strikes through, and this works for the last one too"
-            },
-            {
-              "given": "I am on a site in Portfolio",
+              "given": "Crewe depot is open on the Consumption tab",
               "when": "I look under the heading",
-              "then": "each meter shows as a pill with its number, even when there is only one"
+              "then": "each meter shows as a pill with a colour mark and its meter number",
+              "walk": [
+                {
+                  "image": "features/walks/demo-tick-water-1-1.webp",
+                  "x": 30.1,
+                  "y": 27.9,
+                  "do": "hover",
+                  "note": "Look under the heading"
+                },
+                {
+                  "image": "features/walks/demo-read-site-2-2.webp",
+                  "note": "Each meter shows as a pill with a colour mark and its meter number."
+                }
+              ]
+            },
+            {
+              "given": "Crewe depot is open on the Consumption tab",
+              "when": "I hover a meter pill",
+              "then": "a Tooltip names its utility, such as Gas",
+              "walk": [
+                {
+                  "image": "features/walks/demo-tick-water-1-1.webp",
+                  "x": 38.55,
+                  "y": 27.9,
+                  "do": "hover",
+                  "note": "Hover the gas pill"
+                },
+                {
+                  "image": "features/walks/demo-read-site-3-2.webp",
+                  "note": "A Tooltip names its utility, such as Gas."
+                }
+              ]
+            },
+            {
+              "given": "Crewe depot is open on the Consumption tab",
+              "when": "I pick the gas meter pill",
+              "then": "the pill is struck through and gas leaves the graph",
+              "walk": [
+                {
+                  "image": "features/walks/demo-tick-water-1-1.webp",
+                  "x": 38.55,
+                  "y": 27.9,
+                  "do": "click",
+                  "note": "Pick the gas pill"
+                },
+                {
+                  "image": "features/walks/demo-read-site-4-2.webp",
+                  "note": "The pill is struck through and gas leaves the graph."
+                }
+              ]
+            },
+            {
+              "given": "only one meter pill is on for Crewe depot",
+              "when": "I pick that pill",
+              "then": "the graph shows empty axes with no bars",
+              "walk": [
+                {
+                  "image": "features/walks/demo-read-site-5-1.webp",
+                  "x": 30.1,
+                  "y": 27.9,
+                  "do": "click",
+                  "note": "Pick the last pill that is on"
+                },
+                {
+                  "image": "features/walks/demo-read-site-5-2.webp",
+                  "note": "The graph shows empty axes with no bars."
+                }
+              ]
+            },
+            {
+              "given": "I am on the Portfolio page",
+              "when": "I click a site with outgoing in the tree, such as Manchester Traction",
+              "then": "the graph title reads Incoming and outgoing",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-2-1.webp",
+                  "x": 11.18,
+                  "y": 54.56,
+                  "do": "click",
+                  "note": "Click Manchester Traction"
+                },
+                {
+                  "image": "features/walks/demo-read-site-6-2.webp",
+                  "note": "The graph title reads Incoming and outgoing."
+                }
+              ]
+            },
+            {
+              "given": "Manchester Traction is open on the Consumption tab",
+              "when": "I look at the key below the graph",
+              "then": "In shows in teal and Out shows in black",
+              "walk": [
+                {
+                  "image": "features/walks/demo-read-site-7-1.webp",
+                  "x": 58.6,
+                  "y": 65.23,
+                  "do": "hover",
+                  "note": "Look at the key"
+                },
+                {
+                  "image": "features/walks/demo-read-site-7-1.webp",
+                  "note": "In shows in teal and Out shows in black."
+                }
+              ]
+            },
+            {
+              "given": "Manchester Traction is open on the Consumption tab",
+              "when": "I pick Out in the key",
+              "then": "the outgoing bars leave the graph",
+              "walk": [
+                {
+                  "image": "features/walks/demo-read-site-7-1.webp",
+                  "x": 61.54,
+                  "y": 65.23,
+                  "do": "click",
+                  "note": "Pick Out"
+                },
+                {
+                  "image": "features/walks/demo-read-site-8-2.webp",
+                  "note": "The outgoing bars leave the graph."
+                }
+              ]
+            },
+            {
+              "given": "only In is on in the key for Manchester Traction",
+              "when": "I pick In",
+              "then": "the graph shows no bars",
+              "walk": [
+                {
+                  "image": "features/walks/demo-read-site-9-1.webp",
+                  "x": 58.6,
+                  "y": 65.23,
+                  "do": "click",
+                  "note": "Pick In"
+                },
+                {
+                  "image": "features/walks/demo-read-site-9-2.webp",
+                  "note": "The graph shows no bars."
+                }
+              ]
             }
           ],
           "stages": [
@@ -357,14 +984,14 @@
               "effort": 4,
               "risk": 3,
               "dependencies": 1,
-              "why": "Incoming and Outgoing, the key, and meter pills."
+              "why": "Incoming and outgoing, the key, and meter pills."
             },
             "test": {
               "scenarios": 3,
               "setup": 3,
               "risk": 3,
               "regression": 2,
-              "why": "Needs a site that both imports and exports"
+              "why": "Needs a site that both imports and exports, and a site with more than one utility"
             }
           }
         },
@@ -377,27 +1004,179 @@
           "open": [],
           "want": "change the date window of the graph",
           "benefit": "I can read a preset window or a custom from and to",
-          "notes": "Gaps stay gaps. Zero is a reading.",
+          "notes": "Gaps stay gaps. Zero is a reading. Compare in the Date picker waits for its own story. The window stays the same when I switch tabs.",
           "criteria": [
             {
-              "given": "I am on a graph tab in Portfolio, such as Consumption",
-              "when": "I open the date Select at the top right of the pane",
-              "then": "I can pick Last 24 hours, Last 7 days, Last month, Last 12 months, or Custom"
+              "given": "I am on the Consumption tab in the Portfolio pane",
+              "when": "I open the Date picker at the top right of the pane",
+              "then": "it lists Last 24 hours, Last 7 days, Last month, Last 12 months, Custom, and Compare",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-2-1.webp",
+                  "x": 73.24,
+                  "y": 22.56,
+                  "do": "click",
+                  "note": "Open the Date picker"
+                },
+                {
+                  "image": "features/walks/demo-change-window-1-2.webp",
+                  "note": "It lists Last 24 hours, Last 7 days, Last month, Last 12 months, Custom, and Compare."
+                }
+              ]
             },
             {
-              "given": "the date Select is open",
+              "given": "the Date picker is open on the Consumption tab",
+              "when": "I pick Last 7 days",
+              "then": "the Date picker reads Last 7 days and the graph subtitle reads Last 7 days UTC",
+              "walk": [
+                {
+                  "image": "features/walks/demo-change-window-1-2.webp",
+                  "x": 73.26,
+                  "y": 12.33,
+                  "do": "click",
+                  "note": "Pick Last 7 days"
+                },
+                {
+                  "image": "features/walks/demo-change-window-2-2.webp",
+                  "note": "The Date picker reads Last 7 days and the graph subtitle reads Last 7 days UTC."
+                }
+              ]
+            },
+            {
+              "given": "the Date picker is open on the Consumption tab",
               "when": "I pick Custom",
-              "then": "a calendar opens where I set from and to, and the dates next to the graph title change to match"
+              "then": "a Pick a date range Modal opens with a month calendar, Save, and Cancel",
+              "walk": [
+                {
+                  "image": "features/walks/demo-change-window-1-2.webp",
+                  "x": 73.26,
+                  "y": 27,
+                  "do": "click",
+                  "note": "Pick Custom"
+                },
+                {
+                  "image": "features/walks/demo-change-window-3-2.webp",
+                  "note": "A Pick a date range Modal opens with a month calendar, Save, and Cancel."
+                }
+              ]
             },
             {
-              "given": "a preset is on in the date Select",
-              "when": "I use the previous and next arrows at the top right of the graph",
-              "then": "the window moves and the date Select reads Custom, then reads the preset again when I return to the first window"
+              "given": "the Pick a date range Modal is open",
+              "when": "I pick a start day, an end day, and then Save",
+              "then": "the Date picker reads the range, such as Aug 10-16, 2026",
+              "walk": [
+                {
+                  "image": "features/walks/demo-change-window-4-1.webp",
+                  "x": 40.78,
+                  "y": 52.78,
+                  "do": "click",
+                  "note": "Pick a start day"
+                },
+                {
+                  "image": "features/walks/demo-change-window-4-2.webp",
+                  "x": 58.52,
+                  "y": 52.78,
+                  "do": "click",
+                  "note": "Pick an end day"
+                },
+                {
+                  "image": "features/walks/demo-change-window-4-3.webp",
+                  "x": 41.66,
+                  "y": 75.56,
+                  "do": "click",
+                  "note": "Pick Save"
+                },
+                {
+                  "image": "features/walks/demo-change-window-4-4.webp",
+                  "note": "The Date picker reads the range, such as Aug 10-16, 2026."
+                }
+              ]
             },
             {
-              "given": "the graph shows the latest window",
-              "when": "I look at the next arrow",
-              "then": "it is off"
+              "given": "the Pick a date range Modal is open",
+              "when": "I pick days and then Cancel",
+              "then": "the Date picker still reads Last 24 hours",
+              "walk": [
+                {
+                  "image": "features/walks/demo-change-window-4-1.webp",
+                  "x": 40.78,
+                  "y": 52.78,
+                  "do": "click",
+                  "note": "Pick a start day"
+                },
+                {
+                  "image": "features/walks/demo-change-window-4-2.webp",
+                  "x": 58.52,
+                  "y": 52.78,
+                  "do": "click",
+                  "note": "Pick an end day"
+                },
+                {
+                  "image": "features/walks/demo-change-window-4-3.webp",
+                  "x": 47.23,
+                  "y": 75.56,
+                  "do": "click",
+                  "note": "Pick Cancel"
+                },
+                {
+                  "image": "features/walks/demo-scan-estate-1-1.webp",
+                  "note": "The Date picker still reads Last 24 hours."
+                }
+              ]
+            },
+            {
+              "given": "the graph on the Consumption tab shows the latest window",
+              "when": "I pick the Previous arrow to the right of Chart settings",
+              "then": "the Date picker and the graph subtitle read the day before, such as Thu 3 Sep 2026",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-2-1.webp",
+                  "x": 90.63,
+                  "y": 39.45,
+                  "do": "click",
+                  "note": "Pick the Previous arrow"
+                },
+                {
+                  "image": "features/walks/demo-change-window-6-2.webp",
+                  "note": "The Date picker and the graph subtitle read the day before, such as Thu 3 Sep 2026."
+                }
+              ]
+            },
+            {
+              "given": "I have moved the graph back one window with the Previous arrow",
+              "when": "I pick the Next arrow",
+              "then": "the Date picker reads Last 24 hours again",
+              "walk": [
+                {
+                  "image": "features/walks/demo-change-window-7-1.webp",
+                  "x": 93.68,
+                  "y": 39.45,
+                  "do": "click",
+                  "note": "Pick the Next arrow"
+                },
+                {
+                  "image": "features/walks/demo-change-window-7-2.webp",
+                  "note": "The Date picker reads Last 24 hours again."
+                }
+              ]
+            },
+            {
+              "given": "the graph on the Consumption tab shows the latest window",
+              "when": "I look at the Next arrow to the right of Chart settings",
+              "then": "it is disabled",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-2-1.webp",
+                  "x": 93.68,
+                  "y": 39.45,
+                  "do": "hover",
+                  "note": "Look at the Next arrow"
+                },
+                {
+                  "image": "features/walks/demo-change-window-8-2.webp",
+                  "note": "It is disabled."
+                }
+              ]
             }
           ],
           "stages": [
@@ -414,14 +1193,14 @@
               "effort": 3,
               "risk": 2,
               "dependencies": 1,
-              "why": "Date Select, Custom calendar, and arrows."
+              "why": "Date picker, Custom calendar Modal, and arrows."
             },
             "test": {
               "scenarios": 3,
               "setup": 2,
               "risk": 3,
               "regression": 2,
-              "why": "The edges of each window, Custom ranges, and the arrows at each end"
+              "why": "The edges of each window, Custom ranges, Cancel, and the arrows at each end"
             }
           }
         },
@@ -431,35 +1210,158 @@
           "section": "consumption",
           "role": "User",
           "stage": "review",
-          "open": [],
+          "open": [
+            {
+              "click": ".astral-tree [data-proto-group=\"eastern\"]"
+            }
+          ],
           "want": "change the view and the chart type of the graph",
           "benefit": "I can add readings up or break them down, and pick bars or lines",
-          "notes": "Cost and Carbon have their own stories. In and Out stay teal and black bars when Total consumption and Bar are on. Overlay, Average profile, Highlight weekends, and Restore defaults also sit in Chart settings and wait for their own stories.",
+          "notes": "Cost and Carbon have their own stories. In and Out stay teal and black bars when Total consumption and Bar are on. Overlay, Average profile, and Highlight weekends also sit in Chart settings and wait for their own stories. The menu stays open after each pick.",
           "criteria": [
             {
-              "given": "I am on the Consumption tab in Portfolio",
-              "when": "I pick Chart settings, the secondary pill button with a gear icon next to the graph title",
-              "then": "I see a View Select with Total consumption, Individual consumption, and Calendar, and a Chart type control with Bar and Line"
+              "given": "I am on the Consumption tab in the Portfolio pane",
+              "when": "I pick Chart settings at the top right of the graph",
+              "then": "a menu opens with View, Chart type, Overlay, Average profile, Weekends, and Restore defaults",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-8-1.webp",
+                  "x": 82.63,
+                  "y": 39.45,
+                  "do": "click",
+                  "note": "Pick Chart settings"
+                },
+                {
+                  "image": "features/walks/demo-switch-graph-1-2.webp",
+                  "note": "A menu opens with View, Chart type, Overlay, Average profile, Weekends, and Restore defaults."
+                }
+              ]
             },
             {
-              "given": "Total consumption and Bar are on in Chart settings",
-              "when": "I read the graph",
-              "then": "it adds the readings up as bars"
+              "given": "Chart settings is open on the Consumption tab",
+              "when": "I open the View Select",
+              "then": "it lists Total consumption, Individual consumption, and Calendar, each with a line that says what it shows",
+              "walk": [
+                {
+                  "image": "features/walks/demo-switch-graph-2-1.webp",
+                  "x": 76.11,
+                  "y": 7.22,
+                  "do": "click",
+                  "note": "Open View"
+                },
+                {
+                  "image": "features/walks/demo-switch-graph-2-2.webp",
+                  "note": "It lists Total consumption, Individual consumption, and Calendar, each with a line that says what it shows."
+                }
+              ]
             },
             {
-              "given": "I am on a group in Portfolio",
-              "when": "I pick Individual consumption and Line in Chart settings",
-              "then": "I see one line for each site"
+              "given": "a group is open on the Consumption tab, such as Eastern",
+              "when": "I pick Individual consumption in View",
+              "then": "each bar stacks one colour per site, and each site pill shows its colour",
+              "walk": [
+                {
+                  "image": "features/walks/demo-switch-graph-3-1.webp",
+                  "x": 76.74,
+                  "y": 7.58,
+                  "do": "click",
+                  "note": "Pick Individual consumption"
+                },
+                {
+                  "image": "features/walks/demo-switch-graph-3-2.webp",
+                  "note": "Each bar stacks one colour per site, and each site pill shows its colour."
+                }
+              ]
             },
             {
-              "given": "I am on a site in Portfolio",
-              "when": "I pick Individual consumption and Line in Chart settings",
-              "then": "I see one line for each meter"
+              "given": "a group is open with Individual consumption on",
+              "when": "I pick Line under Chart type",
+              "then": "the graph draws one line per site",
+              "walk": [
+                {
+                  "image": "features/walks/demo-switch-graph-4-1.webp",
+                  "x": 82.57,
+                  "y": 15.33,
+                  "do": "click",
+                  "note": "Pick Line"
+                },
+                {
+                  "image": "features/walks/demo-switch-graph-4-2.webp",
+                  "note": "The graph draws one line per site."
+                }
+              ]
             },
             {
-              "given": "I am on a group in Portfolio",
-              "when": "I pick Total consumption and Line in Chart settings",
-              "then": "I see one line for the total"
+              "given": "a site is open with Individual consumption on, such as Crewe depot",
+              "when": "I pick Line under Chart type",
+              "then": "the graph draws one line per meter",
+              "walk": [
+                {
+                  "image": "features/walks/demo-switch-graph-5-1.webp",
+                  "x": 82.57,
+                  "y": 15.33,
+                  "do": "click",
+                  "note": "Pick Line"
+                },
+                {
+                  "image": "features/walks/demo-switch-graph-5-2.webp",
+                  "note": "The graph draws one line per meter."
+                }
+              ]
+            },
+            {
+              "given": "a group is open with Total consumption on",
+              "when": "I pick Line under Chart type",
+              "then": "the graph draws one line for the group total",
+              "walk": [
+                {
+                  "image": "features/walks/demo-switch-graph-2-1.webp",
+                  "x": 82.57,
+                  "y": 15.33,
+                  "do": "click",
+                  "note": "Pick Line"
+                },
+                {
+                  "image": "features/walks/demo-switch-graph-6-2.webp",
+                  "note": "The graph draws one line for the group total."
+                }
+              ]
+            },
+            {
+              "given": "Chart settings is open on the Consumption tab",
+              "when": "I pick Calendar in View",
+              "then": "the graph becomes a month of day tiles, each with a small line and the total for that day",
+              "walk": [
+                {
+                  "image": "features/walks/demo-switch-graph-2-2.webp",
+                  "x": 76.74,
+                  "y": 19.86,
+                  "do": "click",
+                  "note": "Pick Calendar"
+                },
+                {
+                  "image": "features/walks/demo-scan-estate-8-1.webp",
+                  "note": "The graph becomes a month of day tiles, each with a small line and the total for that day."
+                }
+              ]
+            },
+            {
+              "given": "I have changed Chart settings on the Consumption tab",
+              "when": "I pick Restore defaults at the bottom of the menu",
+              "then": "View returns to Total consumption and Chart type returns to Bar",
+              "walk": [
+                {
+                  "image": "features/walks/demo-switch-graph-8-1.webp",
+                  "x": 71.94,
+                  "y": 45.78,
+                  "do": "click",
+                  "note": "Pick Restore defaults"
+                },
+                {
+                  "image": "features/walks/demo-switch-graph-4-2.webp",
+                  "note": "View returns to Total consumption and Chart type returns to Bar."
+                }
+              ]
             }
           ],
           "stages": [
@@ -476,14 +1378,14 @@
               "effort": 3,
               "risk": 2,
               "dependencies": 1,
-              "why": "Bars or lines, and group vs site."
+              "why": "Bars, lines, and Calendar, at group and site level."
             },
             "test": {
               "scenarios": 3,
               "setup": 2,
               "risk": 2,
               "regression": 2,
-              "why": "Bars and lines at group and site level"
+              "why": "Bars and lines at group and site level, Calendar, and Restore defaults"
             }
           }
         },
@@ -495,6 +1397,9 @@
           "stage": "review",
           "open": [
             {
+              "click": ".astral-tree [data-proto-site=\"nr-crewe-in\"]"
+            },
+            {
               "pane": "cost"
             }
           ],
@@ -503,14 +1408,76 @@
           "notes": "The rates in Attributes in Site settings feed the numbers. Water uses £ too.",
           "criteria": [
             {
-              "given": "I am on a group or a site in Portfolio",
+              "given": "I have picked Crewe depot in the Portfolio tree",
               "when": "I pick the Cost tab",
-              "then": "the graph title reads Cost and the axis reads £"
+              "then": "the graph title reads Cost and the axis reads £",
+              "walk": [
+                {
+                  "image": "features/walks/demo-tick-water-1-1.webp",
+                  "x": 34.93,
+                  "y": 32.45,
+                  "do": "click",
+                  "note": "Pick the Cost tab"
+                },
+                {
+                  "image": "features/walks/demo-tick-water-4-1.webp",
+                  "note": "The graph title reads Cost and the axis reads £."
+                }
+              ]
             },
             {
-              "given": "I am on the Cost tab in Portfolio",
+              "given": "Crewe depot is open on the Cost tab",
+              "when": "I look at the Summary below the graph",
+              "then": "it gives Total cost and the highest, lowest, and average cost",
+              "walk": [
+                {
+                  "image": "features/walks/demo-see-cost-2-1.webp",
+                  "x": 31.09,
+                  "y": 66.12,
+                  "do": "hover",
+                  "note": "Look at the Summary"
+                },
+                {
+                  "image": "features/walks/demo-see-cost-2-2.webp",
+                  "note": "It gives Total cost and the highest, lowest, and average cost."
+                }
+              ]
+            },
+            {
+              "given": "Crewe depot is open on the Cost tab",
               "when": "I open the View Select in Chart settings",
-              "then": "I can pick Total cost or Individual cost"
+              "then": "it lists Total cost and Individual cost",
+              "walk": [
+                {
+                  "image": "features/walks/demo-see-cost-3-1.webp",
+                  "x": 76.11,
+                  "y": 7.22,
+                  "do": "click",
+                  "note": "Open View"
+                },
+                {
+                  "image": "features/walks/demo-see-cost-3-2.webp",
+                  "note": "It lists Total cost and Individual cost."
+                }
+              ]
+            },
+            {
+              "given": "I picked Last 7 days on the Consumption tab",
+              "when": "I pick the Cost tab",
+              "then": "the Date picker still reads Last 7 days",
+              "walk": [
+                {
+                  "image": "features/walks/demo-see-cost-4-1.webp",
+                  "x": 34.93,
+                  "y": 32.45,
+                  "do": "click",
+                  "note": "Pick the Cost tab"
+                },
+                {
+                  "image": "features/walks/demo-see-cost-4-2.webp",
+                  "note": "The Date picker still reads Last 7 days."
+                }
+              ]
             }
           ],
           "stages": [
@@ -534,7 +1501,7 @@
               "setup": 2,
               "risk": 2,
               "regression": 1,
-              "why": "Check the ? figure against the tariff for a known day"
+              "why": "Check the £ figure against the tariff for a known day"
             }
           }
         },
@@ -546,6 +1513,9 @@
           "stage": "review",
           "open": [
             {
+              "click": ".astral-tree [data-proto-site=\"nr-crewe-in\"]"
+            },
+            {
               "pane": "carbon"
             }
           ],
@@ -554,14 +1524,76 @@
           "notes": "Water uses the 2026 supply and wastewater factors, added together on the graph.",
           "criteria": [
             {
-              "given": "I am on a group or a site in Portfolio",
+              "given": "I have picked Crewe depot in the Portfolio tree",
               "when": "I pick the Carbon tab",
-              "then": "the graph title reads Carbon and the axis reads kgCO2e"
+              "then": "the graph title reads Carbon and the axis reads kgCO2e",
+              "walk": [
+                {
+                  "image": "features/walks/demo-tick-water-1-1.webp",
+                  "x": 38.99,
+                  "y": 32.45,
+                  "do": "click",
+                  "note": "Pick the Carbon tab"
+                },
+                {
+                  "image": "features/walks/demo-tick-water-5-1.webp",
+                  "note": "The graph title reads Carbon and the axis reads kgCO2e."
+                }
+              ]
             },
             {
-              "given": "I am on the Carbon tab in Portfolio",
+              "given": "Crewe depot is open on the Carbon tab",
+              "when": "I look at the Summary below the graph",
+              "then": "it gives Total carbon and the highest, lowest, and average carbon",
+              "walk": [
+                {
+                  "image": "features/walks/demo-see-carbon-2-1.webp",
+                  "x": 31.09,
+                  "y": 66.12,
+                  "do": "hover",
+                  "note": "Look at the Summary"
+                },
+                {
+                  "image": "features/walks/demo-see-carbon-2-2.webp",
+                  "note": "It gives Total carbon and the highest, lowest, and average carbon."
+                }
+              ]
+            },
+            {
+              "given": "Crewe depot is open on the Carbon tab",
               "when": "I open the View Select in Chart settings",
-              "then": "I can pick Total carbon or Individual carbon"
+              "then": "it lists Total carbon and Individual carbon",
+              "walk": [
+                {
+                  "image": "features/walks/demo-see-carbon-3-1.webp",
+                  "x": 76.11,
+                  "y": 7.22,
+                  "do": "click",
+                  "note": "Open View"
+                },
+                {
+                  "image": "features/walks/demo-see-carbon-3-2.webp",
+                  "note": "It lists Total carbon and Individual carbon."
+                }
+              ]
+            },
+            {
+              "given": "I picked Last 7 days on the Consumption tab",
+              "when": "I pick the Carbon tab",
+              "then": "the Date picker still reads Last 7 days",
+              "walk": [
+                {
+                  "image": "features/walks/demo-see-cost-4-1.webp",
+                  "x": 38.99,
+                  "y": 32.45,
+                  "do": "click",
+                  "note": "Pick the Carbon tab"
+                },
+                {
+                  "image": "features/walks/demo-see-carbon-4-2.webp",
+                  "note": "The Date picker still reads Last 7 days."
+                }
+              ]
             }
           ],
           "stages": [
@@ -595,35 +1627,176 @@
           "section": "consumption",
           "role": "User",
           "stage": "review",
-          "open": [],
+          "open": [
+            {
+              "click": ".astral-tree [data-proto-site=\"nr-crewe-in\"]"
+            }
+          ],
           "want": "compare other places at the same level",
           "benefit": "I can add more than one place to the graph",
-          "notes": "On a meter, Compare lists other meters across the portfolio. Each row shows the site and the MPAN.",
+          "notes": "On a meter, Compare lists other meters across the portfolio. Each row shows the site and the MPAN. At All or a group, the line reads the number of groups, sites, and meter points.",
           "criteria": [
             {
-              "given": "I am on All or a group in Portfolio",
+              "given": "All or a group is selected in the Portfolio tree",
               "when": "I look at the top right of the pane",
-              "then": "the Compare button reads Compare groups"
+              "then": "a Compare groups ghost button sits beside the Date picker",
+              "walk": [
+                {
+                  "image": "features/walks/demo-scan-estate-2-2.webp",
+                  "x": 84.25,
+                  "y": 22.56,
+                  "do": "hover",
+                  "note": "Look at the top right of the pane"
+                },
+                {
+                  "image": "features/walks/demo-compare-others-1-2.webp",
+                  "note": "A Compare groups ghost button sits beside the Date picker."
+                }
+              ]
             },
             {
-              "given": "I am on a site in Portfolio",
+              "given": "a site is selected in the Portfolio tree",
               "when": "I look at the top right of the pane",
-              "then": "the Compare button reads Compare sites"
+              "then": "the button reads Compare sites",
+              "walk": [
+                {
+                  "image": "features/walks/demo-tick-water-1-1.webp",
+                  "x": 84.86,
+                  "y": 22.56,
+                  "do": "hover",
+                  "note": "Look at the top right of the pane"
+                },
+                {
+                  "image": "features/walks/demo-compare-others-2-2.webp",
+                  "note": "The button reads Compare sites."
+                }
+              ]
             },
             {
-              "given": "I am on a site in Portfolio",
+              "given": "a site is open in the Portfolio pane",
               "when": "I pick Compare sites",
-              "then": "a Modal opens with the line Search and add other sites at this level, a Search field, a Filter, and a row for each site with an Add button"
+              "then": "a Compare sites Modal opens with a Search field, a Filter Icon button, and a list of sites, each with an Add button",
+              "walk": [
+                {
+                  "image": "features/walks/demo-tick-water-1-1.webp",
+                  "x": 84.86,
+                  "y": 22.56,
+                  "do": "click",
+                  "note": "Pick Compare sites"
+                },
+                {
+                  "image": "features/walks/demo-compare-others-3-2.webp",
+                  "note": "A Compare sites Modal opens with a Search field, a Filter Icon button, and a list of sites, each with an Add button."
+                }
+              ]
             },
             {
-              "given": "the Compare Modal is open",
-              "when": "I pick Add on two rows and then Done",
-              "then": "both sites join the graph"
+              "given": "the Compare sites Modal is open",
+              "when": "I pick Add on a site",
+              "then": "the button on that row reads Remove",
+              "walk": [
+                {
+                  "image": "features/walks/demo-compare-others-3-2.webp",
+                  "x": 61.13,
+                  "y": 39.68,
+                  "do": "click",
+                  "note": "Pick Add on a site"
+                },
+                {
+                  "image": "features/walks/demo-compare-others-4-2.webp",
+                  "note": "The button on that row reads Remove."
+                }
+              ]
             },
             {
-              "given": "I have added places to compare",
-              "when": "I look at the Compare button",
-              "then": "it shows a teal count, and its cross clears the comparison"
+              "given": "the Compare sites Modal is open",
+              "when": "I pick the Filter Icon button beside Search",
+              "then": "it lists Utility type, Incoming and outgoing, Sort, and Clear all",
+              "walk": [
+                {
+                  "image": "features/walks/demo-compare-others-3-2.webp",
+                  "x": 62.64,
+                  "y": 33.01,
+                  "do": "click",
+                  "note": "Pick the Filter Icon button"
+                },
+                {
+                  "image": "features/walks/demo-compare-others-5-2.webp",
+                  "note": "It lists Utility type, Incoming and outgoing, Sort, and Clear all."
+                }
+              ]
+            },
+            {
+              "given": "I have added a site in the Compare sites Modal",
+              "when": "I pick Done",
+              "then": "the line beside the heading reads 2 sites in this comparison. 6 meter points.",
+              "walk": [
+                {
+                  "image": "features/walks/demo-compare-others-6-1.webp",
+                  "x": 38.48,
+                  "y": 77.33,
+                  "do": "click",
+                  "note": "Pick Done"
+                },
+                {
+                  "image": "features/walks/demo-compare-others-6-2.webp",
+                  "note": "The line beside the heading reads 2 sites in this comparison. 6 meter points."
+                }
+              ]
+            },
+            {
+              "given": "I have added a site in the Compare sites Modal",
+              "when": "I pick Done",
+              "then": "the meter pills of both sites show under the heading",
+              "walk": [
+                {
+                  "image": "features/walks/demo-compare-others-6-1.webp",
+                  "x": 38.48,
+                  "y": 77.33,
+                  "do": "click",
+                  "note": "Pick Done"
+                },
+                {
+                  "image": "features/walks/demo-compare-others-6-2.webp",
+                  "note": "The meter pills of both sites show under the heading."
+                }
+              ]
+            },
+            {
+              "given": "a comparison is on in the Portfolio pane",
+              "when": "I look at the Compare sites button",
+              "then": "it shows a teal Count of the other sites and a cross",
+              "walk": [
+                {
+                  "image": "features/walks/demo-compare-others-6-2.webp",
+                  "x": 81.66,
+                  "y": 22.67,
+                  "do": "hover",
+                  "note": "Look at Compare sites"
+                },
+                {
+                  "image": "features/walks/demo-compare-others-8-2.webp",
+                  "note": "It shows a teal Count of the other sites and a cross."
+                }
+              ]
+            },
+            {
+              "given": "a comparison is on in the Portfolio pane",
+              "when": "I pick the cross on the Compare sites button",
+              "then": "the comparison clears and the pane shows the one site again",
+              "walk": [
+                {
+                  "image": "features/walks/demo-compare-others-6-2.webp",
+                  "x": 88.19,
+                  "y": 22.67,
+                  "do": "click",
+                  "note": "Pick the cross"
+                },
+                {
+                  "image": "features/walks/demo-tick-water-1-1.webp",
+                  "note": "The comparison clears and the pane shows the one site again."
+                }
+              ]
             }
           ],
           "stages": [
@@ -640,14 +1813,14 @@
               "effort": 5,
               "risk": 4,
               "dependencies": 2,
-              "why": "Modal, more than one place, and lines on the graph."
+              "why": "Modal, more than one place, and the Count and cross on the button."
             },
             "test": {
               "scenarios": 3,
               "setup": 3,
               "risk": 4,
               "regression": 3,
-              "why": "More than one place, the lines, and the Modal at each level"
+              "why": "More than one place, the Filter and Sort, and the Modal at each level"
             }
           }
         },
@@ -3731,35 +4904,158 @@
           "section": "tree",
           "role": "User",
           "stage": "review",
-          "open": [],
+          "open": [
+            {
+              "click": ".astral-tree [data-proto-site=\"nr-crewe-in\"]"
+            }
+          ],
           "want": "show water meters",
           "benefit": "I can read m³ on a site that has a water meter",
-          "notes": "Gas shows a flame icon and water shows a drop. A water meter shows its serial, then its number. Do not invent a SPID. Confirm that Dummy site A1 still exists.",
+          "notes": "Gas shows a flame icon and water shows a drop. A water meter shows its serial, then its number. Do not invent a SPID. Water is in cubic metres (m³), and electricity and gas are in kilowatt hours (kWh), so water cannot share the Consumption graph with them. Cost and Carbon can show all three.",
           "criteria": [
             {
-              "given": "the Filter overlay is open in the Portfolio tree",
-              "when": "I pick Water in Utility type",
-              "then": "the tree only shows sites with a water meter"
+              "given": "I have picked Crewe depot in the Portfolio tree",
+              "when": "the Consumption tab loads",
+              "then": "the water meter pill, 81000003, is off and struck through",
+              "walk": [
+                {
+                  "image": "features/walks/demo-tick-water-1-1.webp",
+                  "x": 45.68,
+                  "y": 27.9,
+                  "do": "hover",
+                  "note": "Look at the water pill"
+                },
+                {
+                  "image": "features/walks/demo-tick-water-1-2.webp",
+                  "note": "The water meter pill, 81000003, is off and struck through."
+                }
+              ]
             },
             {
-              "given": "I am on a site in Portfolio that has a water meter",
-              "when": "I look at the meter pills under the heading",
-              "then": "the water meter pill starts off and strikes through"
+              "given": "Crewe depot is open on the Consumption tab",
+              "when": "I pick the water meter pill",
+              "then": "the graph shows water alone in m³, and the electricity and gas pills turn off",
+              "walk": [
+                {
+                  "image": "features/walks/demo-tick-water-1-1.webp",
+                  "x": 45.68,
+                  "y": 27.9,
+                  "do": "click",
+                  "note": "Pick the water pill"
+                },
+                {
+                  "image": "features/walks/demo-tick-water-2-2.webp",
+                  "note": "The graph shows water alone in m³, and the electricity and gas pills turn off."
+                }
+              ]
             },
             {
-              "given": "the water meter pill is off",
-              "when": "I turn it on and read the Consumption tab",
-              "then": "the unit is m³"
+              "given": "only water is on for Crewe depot on the Consumption tab",
+              "when": "I pick the electricity meter pill",
+              "then": "the graph shows electricity in kWh and the water pill turns off",
+              "walk": [
+                {
+                  "image": "features/walks/demo-tick-water-3-1.webp",
+                  "x": 30.1,
+                  "y": 27.9,
+                  "do": "click",
+                  "note": "Pick the electricity pill"
+                },
+                {
+                  "image": "features/walks/demo-tick-water-3-2.webp",
+                  "note": "The graph shows electricity in kWh and the water pill turns off."
+                }
+              ]
             },
             {
-              "given": "a water meter is on",
-              "when": "I pick the Cost or Carbon tab",
-              "then": "Cost reads £ and Carbon reads kgCO2e"
+              "given": "Crewe depot is open on the Cost tab",
+              "when": "I pick the water meter pill",
+              "then": "water joins electricity and gas on the graph in £",
+              "walk": [
+                {
+                  "image": "features/walks/demo-tick-water-4-1.webp",
+                  "x": 45.68,
+                  "y": 27.9,
+                  "do": "click",
+                  "note": "Pick the water pill"
+                },
+                {
+                  "image": "features/walks/demo-tick-water-4-2.webp",
+                  "note": "Water joins electricity and gas on the graph in £."
+                }
+              ]
             },
             {
-              "given": "Electricity, Gas, and Water are on from the Cost tab",
+              "given": "Crewe depot is open on the Carbon tab",
+              "when": "I pick the water meter pill",
+              "then": "water joins electricity and gas on the graph in kgCO2e",
+              "walk": [
+                {
+                  "image": "features/walks/demo-tick-water-5-1.webp",
+                  "x": 45.68,
+                  "y": 27.9,
+                  "do": "click",
+                  "note": "Pick the water pill"
+                },
+                {
+                  "image": "features/walks/demo-tick-water-5-2.webp",
+                  "note": "Water joins electricity and gas on the graph in kgCO2e."
+                }
+              ]
+            },
+            {
+              "given": "all three meter pills are on for Crewe depot on the Cost tab",
               "when": "I pick the Consumption tab",
-              "then": "I see that this mix cannot be shown, and I can pick View water or View electricity & gas"
+              "then": "the graph reads This combination cannot be shown, with View electricity & gas and View water buttons",
+              "walk": [
+                {
+                  "image": "features/walks/demo-tick-water-6-1.webp",
+                  "x": 29.51,
+                  "y": 32.45,
+                  "do": "click",
+                  "note": "Pick the Consumption tab"
+                },
+                {
+                  "image": "features/walks/demo-tick-water-6-2.webp",
+                  "note": "The graph reads This combination cannot be shown, with View electricity & gas and View water buttons."
+                }
+              ]
+            },
+            {
+              "given": "the Consumption tab reads This combination cannot be shown",
+              "when": "I pick View water",
+              "then": "only the water pill stays on and the graph shows m³",
+              "walk": [
+                {
+                  "image": "features/walks/demo-tick-water-6-2.webp",
+                  "x": 66.93,
+                  "y": 72.06,
+                  "do": "click",
+                  "note": "Pick View water"
+                },
+                {
+                  "image": "features/walks/demo-tick-water-7-2.webp",
+                  "note": "Only the water pill stays on and the graph shows m³."
+                }
+              ]
+            },
+            {
+              "given": "I am on the Portfolio page",
+              "when": "I pick Water under Utility type in the Filter menu above the tree and then Crewe depot",
+              "then": "only the water meter pill is on and the graph shows m³",
+              "walk": [
+                {
+                  "image": "features/walks/demo-tick-water-8-1.webp",
+                  "x": 11.18,
+                  "y": 43.44,
+                  "do": "click",
+                  "note": "Pick Crewe depot"
+                },
+                {
+                  "image": "features/walks/demo-tick-water-8-2.webp",
+                  "note": "Only the water meter pill is on and the graph shows m³."
+                }
+              ]
             }
           ],
           "stages": [
@@ -3776,14 +5072,291 @@
               "effort": 2,
               "risk": 3,
               "dependencies": 1,
-              "why": "New unit, Water off until ticked, and Dummy site A1."
+              "why": "New unit, water off until picked, and the message when units mix."
             },
             "test": {
               "scenarios": 3,
               "setup": 3,
               "risk": 3,
               "regression": 3,
-              "why": "Needs Dummy site A1 and Water off until ticked"
+              "why": "Needs a site with water, electricity, and gas. Check each tab and the mixed-unit message"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "reports",
+      "name": "Reports",
+      "status": "working",
+      "statusNote": "The live prototype already walks this.",
+      "screen": "Reports",
+      "summary": "Get reports, data exports, and documents from Downloads.",
+      "roles": [
+        "Admin",
+        "Manager",
+        "Contributor",
+        "Viewer"
+      ],
+      "who": "A Customer uses Reports. Viewer can look. Contributor can download.",
+      "sections": [
+        {
+          "id": "downloads",
+          "name": "Downloads",
+          "summary": "Follow a file from Waiting to Complete"
+        },
+        {
+          "id": "reports",
+          "name": "Reports"
+        }
+      ],
+      "stories": [
+        {
+          "id": "follow-download",
+          "name": "Follow an export in Downloads",
+          "section": "downloads",
+          "role": "User",
+          "stage": "review",
+          "open": [
+            {
+              "button": "Reports"
+            },
+            {
+              "button": "Downloads"
+            }
+          ],
+          "want": "see where my export is up to on the Downloads tab",
+          "benefit": "I can keep working and come back when the file is ready",
+          "notes": "The time an export takes is not known, so the progress bar shows no percentage and no time left. It keeps moving until the backend says the file is ready or has failed. The backend sets when a file moves from Waiting to Processing, and its text. How long files stay in Downloads is still to be confirmed. The banner stays until Hide, as a banner that hides itself on a timer fails WCAG 2.2.1. In the prototype, a first try at a Source data export of more than 20,000 meter-days fails, so Failed and Try again can be seen.",
+          "criteria": [
+            {
+              "given": "the Export Modal is open on the Portfolio page",
+              "when": "I pick Export at the bottom of the Modal",
+              "then": "a banner at the top of the page reads We are preparing your export. You can keep working and find it in Downloads when it is ready.",
+              "walk": [
+                {
+                  "image": "features/walks/demo-follow-download-1-1.webp",
+                  "x": 32.1,
+                  "y": 75.39,
+                  "do": "click",
+                  "note": "Pick Export"
+                },
+                {
+                  "image": "features/walks/demo-follow-download-1-2.webp",
+                  "note": "A banner at the top of the page reads We are preparing your export. You can keep working and find it in Downloads when it is ready."
+                }
+              ]
+            },
+            {
+              "given": "the export banner shows",
+              "when": "I pick View downloads in the banner",
+              "then": "the Downloads tab on the Reports page opens with the new row highlighted",
+              "walk": [
+                {
+                  "image": "features/walks/demo-follow-download-2-1.webp",
+                  "x": 60.68,
+                  "y": 16.11,
+                  "do": "click",
+                  "note": "Pick View downloads"
+                },
+                {
+                  "image": "features/walks/demo-follow-download-2-2.webp",
+                  "note": "The Downloads tab on the Reports page opens with the new row highlighted."
+                }
+              ]
+            },
+            {
+              "given": "an export has just been asked for",
+              "when": "I look at its Status column on the Downloads tab",
+              "then": "a grey progress bar moves with Waiting under it",
+              "walk": [
+                {
+                  "image": "features/walks/demo-follow-download-3-1.webp",
+                  "x": 82.01,
+                  "y": 57.92,
+                  "do": "hover",
+                  "note": "Look at Status"
+                },
+                {
+                  "image": "features/walks/demo-follow-download-3-2.webp",
+                  "note": "A grey progress bar moves with Waiting under it."
+                }
+              ]
+            },
+            {
+              "given": "the export has started",
+              "when": "I look at its Status column on the Downloads tab",
+              "then": "a teal progress bar moves with Processing under it",
+              "walk": [
+                {
+                  "image": "features/walks/demo-follow-download-4-1.webp",
+                  "x": 82.01,
+                  "y": 57.92,
+                  "do": "hover",
+                  "note": "Look at Status"
+                },
+                {
+                  "image": "features/walks/demo-follow-download-4-2.webp",
+                  "note": "A teal progress bar moves with Processing under it."
+                }
+              ]
+            },
+            {
+              "given": "an export is Waiting or Processing on the Downloads tab",
+              "when": "I look at the progress bar",
+              "then": "it shows no percentage and no time left",
+              "walk": [
+                {
+                  "image": "features/walks/demo-follow-download-5-1.webp",
+                  "x": 82.01,
+                  "y": 57.92,
+                  "do": "hover",
+                  "note": "Look at the progress bar"
+                },
+                {
+                  "image": "features/walks/demo-follow-download-5-2.webp",
+                  "note": "It shows no percentage and no time left."
+                }
+              ]
+            },
+            {
+              "given": "an export is ready",
+              "when": "I look at its Status column on the Downloads tab",
+              "then": "it reads Complete, with a Download Icon button at the end of the row",
+              "walk": [
+                {
+                  "image": "features/walks/demo-follow-download-6-1.webp",
+                  "x": 82.01,
+                  "y": 58.63,
+                  "do": "hover",
+                  "note": "Look at Status"
+                },
+                {
+                  "image": "features/walks/demo-follow-download-6-2.webp",
+                  "x": 92.99,
+                  "y": 58.58,
+                  "do": "hover",
+                  "note": "Download sits at the end of the row"
+                },
+                {
+                  "image": "features/walks/demo-follow-download-6-3.webp",
+                  "note": "It reads Complete, with a Download Icon button at the end of the row."
+                }
+              ]
+            },
+            {
+              "given": "the export banner still shows on the Portfolio page",
+              "when": "the export is ready",
+              "then": "the banner reads Your export is ready to download, followed by the file name",
+              "walk": [
+                {
+                  "image": "features/walks/demo-follow-download-7-1.webp",
+                  "x": 39.53,
+                  "y": 14.11,
+                  "do": "hover",
+                  "note": "Look at the banner"
+                },
+                {
+                  "image": "features/walks/demo-follow-download-7-1.webp",
+                  "note": "The banner reads Your export is ready to download, followed by the file name."
+                }
+              ]
+            },
+            {
+              "given": "an export could not be prepared",
+              "when": "I look at its Status column on the Downloads tab",
+              "then": "it reads Failed, with a Try again Icon button at the end of the row",
+              "walk": [
+                {
+                  "image": "features/walks/demo-follow-download-8-1.webp",
+                  "x": 82.01,
+                  "y": 58.63,
+                  "do": "hover",
+                  "note": "Look at Status"
+                },
+                {
+                  "image": "features/walks/demo-follow-download-8-2.webp",
+                  "x": 92.99,
+                  "y": 58.58,
+                  "do": "hover",
+                  "note": "Try again sits at the end of the row"
+                },
+                {
+                  "image": "features/walks/demo-follow-download-8-3.webp",
+                  "note": "It reads Failed, with a Try again Icon button at the end of the row."
+                }
+              ]
+            },
+            {
+              "given": "an export has failed on the Downloads tab",
+              "when": "I pick the Try again Icon button",
+              "then": "the row goes back to Waiting",
+              "walk": [
+                {
+                  "image": "features/walks/demo-follow-download-9-1.webp",
+                  "x": 92.99,
+                  "y": 58.58,
+                  "do": "click",
+                  "note": "Pick Try again"
+                },
+                {
+                  "image": "features/walks/demo-follow-download-9-2.webp",
+                  "note": "The row goes back to Waiting."
+                }
+              ]
+            },
+            {
+              "given": "the export banner still shows on the Portfolio page",
+              "when": "the export fails",
+              "then": "the banner reads Your export could not be prepared, with Try again and View downloads ghost buttons",
+              "walk": [
+                {
+                  "image": "features/walks/demo-follow-download-10-1.webp",
+                  "x": 39.41,
+                  "y": 14.78,
+                  "do": "hover",
+                  "note": "Look at the banner"
+                },
+                {
+                  "image": "features/walks/demo-follow-download-10-1.webp",
+                  "note": "The banner reads Your export could not be prepared, with Try again and View downloads ghost buttons."
+                }
+              ]
+            },
+            {
+              "given": "the export banner shows",
+              "when": "I pick the Hide cross on the banner",
+              "then": "the banner closes",
+              "walk": [
+                {
+                  "image": "features/walks/demo-follow-download-1-2.webp",
+                  "x": 67.57,
+                  "y": 16.11,
+                  "do": "click",
+                  "note": "Pick the Hide cross"
+                },
+                {
+                  "image": "features/walks/demo-tick-water-1-1.webp",
+                  "note": "The banner closes."
+                }
+              ]
+            }
+          ],
+          "stages": [],
+          "estimate": {
+            "dev": {
+              "complexity": 3,
+              "effort": 3,
+              "risk": 3,
+              "dependencies": 4,
+              "why": "The table and bar exist. The status must follow backend checkpoints, and the banner must follow the same file."
+            },
+            "test": {
+              "scenarios": 4,
+              "setup": 3,
+              "risk": 3,
+              "regression": 2,
+              "why": "Needs exports that wait, process, complete, and fail, and the banner on another page while they do"
             }
           }
         }
