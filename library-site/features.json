@@ -809,7 +809,8 @@
             {
               "given": "I am a Viewer on the Site profile tab at All or a group",
               "when": "I look at the top right of the tab",
-              "then": "Download template and Upload do not show"
+              "then": "Download template and Upload do not show",
+              "noDemo": "The demos run as an Admin, so the Viewer view does not show."
             },
             {
               "given": "I am on the Site profile tab at All or a group",
@@ -999,12 +1000,14 @@
             {
               "given": "I am a Viewer on the Site profile tab for a site",
               "when": "I hover a Tag on the site card",
-              "then": "no Tooltip opens"
+              "then": "no Tooltip opens",
+              "noDemo": "The demos run as an Admin, so the Viewer view does not show."
             },
             {
               "given": "I am on the Site profile tab for a site",
               "when": "I look at Attributes on the site card",
-              "then": "I see the floor area and the occupants, such as 1,200 m² · 18 people"
+              "then": "I see the floor area and the occupants, such as 1,200 m² · 18 people",
+              "noDemo": "There is nothing to click. The floor area and occupants show on the site card."
             }
           ],
           "stages": [
@@ -2509,12 +2512,14 @@
             {
               "given": "On peak and Off peak are set for a site",
               "when": "the Cost tab reads the site",
-              "then": "use in on-peak periods is charged at the On-peak unit rate in Attributes, and the rest at the Off-peak unit rate"
+              "then": "use in on-peak periods is charged at the On-peak unit rate in Attributes, and the rest at the Off-peak unit rate",
+              "noDemo": "This happens in the cost sums, so there is nothing to show on screen."
             },
             {
               "given": "a meter has its own time of use",
               "when": "the Cost tab reads that meter",
-              "then": "its own periods decide the split"
+              "then": "its own periods decide the split",
+              "noDemo": "This happens in the cost sums, so there is nothing to show on screen."
             },
             {
               "given": "I change Time of use",
@@ -2694,7 +2699,8 @@
             {
               "given": "no presets of that kind exist",
               "when": "the list shows in the Modal",
-              "then": "it reads No saved weeks yet or No saved days yet"
+              "then": "it reads No saved weeks yet or No saved days yet",
+              "noDemo": "The prototype always has saved presets, so the empty list does not show."
             },
             {
               "given": "I have not chosen a preset in the Modal",
@@ -2967,7 +2973,8 @@
             {
               "given": "a day uses a preset",
               "when": "someone updates that preset",
-              "then": "the day takes the new times"
+              "then": "the day takes the new times",
+              "noDemo": "This happens when someone else updates the preset, so there is nothing to click."
             }
           ],
           "stages": [
@@ -3652,7 +3659,8 @@
             {
               "given": "a meter has its own rates",
               "when": "the Cost tab reads that meter",
-              "then": "its own rates win over the site rates"
+              "then": "its own rates win over the site rates",
+              "noDemo": "This happens in the cost sums, so there is nothing to show on screen."
             }
           ],
           "stages": [

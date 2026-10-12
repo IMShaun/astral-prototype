@@ -521,12 +521,26 @@
       : `<button type="button" class="astral-ghost lib-demo-play" ${attrs}>${label}</button>`;
   }
 
+  // A scenario with no demo keeps the button, disabled, with a Tooltip that says why.
+  function demoOffButton(story, index, why) {
+    const tipId = `lib-demo-tip-${story.id}-${index}`;
+    const reason = why || "This demo is not recorded yet.";
+    return `
+      <span class="lib-demo-off">
+        <button type="button" class="astral-ghost lib-demo-play" aria-disabled="true" aria-describedby="${esc(tipId)}">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5.5v13l10.5-6.5z" /></svg><span>Play demo</span>
+        </button>
+        <span class="astral-tip lib-demo-tip" id="${esc(tipId)}" role="tooltip"><p>${esc(endStop(reason))}</p></span>
+      </span>
+    `;
+  }
+
   function scenarioCard(item, index, story) {
     if (!item) return "";
     if (typeof item === "string") {
       return `<article class="lib-card lib-scenario"><p>${esc(endStop(item))}</p></article>`;
     }
-    const play = story && (item.walk || []).length ? demoButton(story, index) : "";
+    const play = story ? ((item.walk || []).length ? demoButton(story, index) : demoOffButton(story, index, item.noDemo)) : "";
     return `
       <article class="lib-card lib-scenario">
         <p><span class="lib-gwt">Given</span> ${esc(endStop(item.given))}</p>
@@ -775,7 +789,7 @@
     if (frames.length) {
       return `
         <h2 class="lib-block-title">Walk-through</h2>
-        <p class="lib-help">Every scenario above, played in order.</p>
+        <p class="lib-help">Each scenario with a demo, played in order.</p>
         <div class="lib-stage">
           ${walkFigure(frames, `Walk-through of ${story.name}`)}
           <p class="lib-walk-note" data-walk-note></p>

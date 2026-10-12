@@ -786,6 +786,30 @@ button.lib-feature .lib-card-top {
   fill: currentColor;
 }
 
+.lib-demo-off {
+  position: relative;
+  display: inline-flex;
+}
+
+.lib-demo-off .lib-demo-play[aria-disabled="true"],
+.lib-demo-off .lib-demo-play[aria-disabled="true"]:hover {
+  border-color: var(--color-border-default, #dfdfdf);
+  background: var(--color-background-subtle, #f7f7f7);
+  color: var(--color-text-secondary, #737373);
+  cursor: default;
+}
+
+.lib-demo-off .lib-demo-tip {
+  top: calc(100% + 8px);
+  left: 0;
+  display: none;
+}
+
+.lib-demo-off:hover .lib-demo-tip,
+.lib-demo-off:focus-within .lib-demo-tip {
+  display: grid;
+}
+
 .lib-demo-back {
   z-index: 1000;
 }
