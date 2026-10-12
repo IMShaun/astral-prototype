@@ -773,6 +773,34 @@ button.lib-feature .lib-card-top {
   margin-top: 8px;
 }
 
+.lib-roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.lib-role {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 8px;
+  margin: 0;
+}
+
+.lib-role figcaption {
+  color: #4a4a4a;
+}
+
+.lib-role img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid #dfdfdf;
+  border-radius: 16px;
+  background: #efefef;
+}
+
 .lib-demo-play {
   display: inline-flex;
   align-items: center;

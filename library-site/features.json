@@ -810,7 +810,18 @@
               "given": "I am a Viewer on the Site profile tab at All or a group",
               "when": "I look at the top right of the tab",
               "then": "Download template and Upload do not show",
-              "noDemo": "The demos run as an Admin, so the Viewer view does not show."
+              "roles": [
+                {
+                  "role": "Admin",
+                  "image": "features/walks/roles-profile-sites-8-admin.webp",
+                  "note": "Download template and Upload show at the top right"
+                },
+                {
+                  "role": "Viewer",
+                  "image": "features/walks/roles-profile-sites-8-viewer.webp",
+                  "note": "Download template and Upload do not show"
+                }
+              ]
             },
             {
               "given": "I am on the Site profile tab at All or a group",
@@ -999,9 +1010,20 @@
             },
             {
               "given": "I am a Viewer on the Site profile tab for a site",
-              "when": "I hover a Tag on the site card",
-              "then": "no Tooltip opens",
-              "noDemo": "The demos run as an Admin, so the Viewer view does not show."
+              "when": "I click a Tag on the site card",
+              "then": "Site settings does not open, and the Tooltip still shows on hover",
+              "roles": [
+                {
+                  "role": "Admin",
+                  "image": "features/walks/roles-profile-site-7-admin.webp",
+                  "note": "Clicking a Tag opens Site settings"
+                },
+                {
+                  "role": "Viewer",
+                  "image": "features/walks/roles-profile-site-7-viewer.webp",
+                  "note": "Clicking a Tag does nothing. Its Tooltip still shows on hover"
+                }
+              ]
             },
             {
               "given": "I am on the Site profile tab for a site",
@@ -1548,17 +1570,16 @@
               "given": "I am a Viewer on the Site profile tab for a site",
               "when": "I look at the site card",
               "then": "the Site settings button does not show, so I cannot change the settings, and Download template and Upload do not show",
-              "walk": [
+              "roles": [
                 {
-                  "image": "features/walks/demo-profile-settings-13-1.webp",
-                  "x": 33.96,
-                  "y": 43.84,
-                  "do": "click",
-                  "note": "Open a site as a Viewer"
+                  "role": "Admin",
+                  "image": "features/walks/roles-profile-settings-13-admin.webp",
+                  "note": "Site settings shows at the top right of the site card"
                 },
                 {
-                  "image": "features/walks/demo-profile-settings-13-2.webp",
-                  "note": "The Site settings button does not show, so I cannot change the settings, and Download template and Upload do not show."
+                  "role": "Viewer",
+                  "image": "features/walks/roles-profile-settings-13-viewer.webp",
+                  "note": "Site settings does not show"
                 }
               ]
             }
@@ -3545,17 +3566,16 @@
               "given": "I am not an admin",
               "when": "I look at Site name on the Site tab",
               "then": "it is locked with the hint Only admins can change the site name",
-              "walk": [
+              "roles": [
                 {
-                  "image": "features/walks/demo-profile-attrs-3-1.webp",
-                  "x": 35.69,
-                  "y": 59.01,
-                  "do": "hover",
-                  "note": "Hover Site name"
+                  "role": "Admin",
+                  "image": "features/walks/roles-profile-attrs-3-admin.webp",
+                  "note": "Site name can be changed"
                 },
                 {
-                  "image": "features/walks/demo-profile-attrs-3-1.webp",
-                  "note": "It is locked with the hint Only admins can change the site name."
+                  "role": "Manager",
+                  "image": "features/walks/roles-profile-attrs-3-manager.webp",
+                  "note": "Site name is locked, with a hint below the field"
                 }
               ]
             },

@@ -590,6 +590,8 @@ def build_lib() -> dict:
             for item in story.get("criteria") or []:
                 for step in item.get("walk") or []:
                     keep(step.get("image") or "")
+                for view in item.get("roles") or []:
+                    keep(view.get("image") or "")
     features["media"] = media
 
     return {

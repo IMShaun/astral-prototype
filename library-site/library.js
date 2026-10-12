@@ -537,17 +537,43 @@
     `;
   }
 
+  // A scenario about roles shows each role's view of the same area, side by side, instead of a demo.
+  function rolesBlock(item) {
+    const views = (item.roles || []).filter((view) => view && view.image);
+    if (!views.length) return "";
+    return `
+      <div class="lib-roles">
+        ${views
+          .map((view) => {
+            const role = `${view.role} view`;
+            const note = endStop(view.note || "");
+            return `
+              <figure class="lib-role">
+                <span class="astral-tag lib-role-tag">${esc(role)}</span>
+                <img src="${esc(shotSrc(view.image))}" alt="${esc(`${role}. ${note}`)}" loading="lazy" decoding="async" />
+                ${note ? `<figcaption>${esc(note)}</figcaption>` : ""}
+              </figure>
+            `;
+          })
+          .join("")}
+      </div>
+    `;
+  }
+
   function scenarioCard(item, index, story) {
     if (!item) return "";
     if (typeof item === "string") {
       return `<article class="lib-card lib-scenario"><p>${esc(endStop(item))}</p></article>`;
     }
-    const play = story ? ((item.walk || []).length ? demoButton(story, index) : demoOffButton(story, index, item.noDemo)) : "";
+    const roles = rolesBlock(item);
+    const play =
+      story && !roles ? ((item.walk || []).length ? demoButton(story, index) : demoOffButton(story, index, item.noDemo)) : "";
     return `
       <article class="lib-card lib-scenario">
         <p><span class="lib-gwt">Given</span> ${esc(endStop(item.given))}</p>
         <p><span class="lib-gwt">When</span> ${esc(endStop(item.when))}</p>
         <p><span class="lib-gwt">Then</span> ${esc(endStop(item.then))}</p>
+        ${roles}
         ${play ? `<div class="lib-scenario-foot">${play}</div>` : ""}
       </article>
     `;
