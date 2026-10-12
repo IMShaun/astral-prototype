@@ -453,7 +453,6 @@
         `
       )
       .join("");
-    const help = estimateHelp(kind);
     const tipId = `lib-estimate-tip-${kind}`;
     return `
       <article class="lib-card lib-stat lib-estimate-part" data-estimate="${esc(kind)}" tabindex="0" aria-describedby="${tipId}">
@@ -463,8 +462,6 @@
         <div class="lib-estimate-tip" id="${tipId}" role="tooltip">
           <p class="lib-estimate-tip-head">${esc(ESTIMATES[kind].name)} breakdown</p>
           <ul class="lib-estimate-factors">${factors}</ul>
-          ${part.why ? `<p>${esc(endStop(part.why))}</p>` : ""}
-          ${help ? `<p class="lib-estimate-tip-help">${esc(help)}</p>` : ""}
         </div>
       </article>
     `;
