@@ -31109,16 +31109,39 @@ function protoAlertRuleFor(item) {
   if (!site) return null;
   const type = item.kind === "Alert" ? "alert" : "missing";
   const key = String(protoSiteId(site));
-  return (
-    protoReportDefs().find(
-      (def) =>
-        def.on &&
-        def.type === type &&
-        (type === "alert" ? protoReportAlertHits(def) : protoReportMissingHits(def)).some(
-          (row) => String(protoSiteId(row)) === key
-        )
-    ) || null
-  );
+  const memo = protoAlertRuleTaskMemo();
+  if (!memo.defs) memo.defs = protoReportDefs();
+  return memo.defs.find((def) => def.on && def.type === type && protoAlertRuleHitIds(def).has(key)) || null;
+}
+
+// Working out a rule's hits reads 30 days of every meter. Flags ask many times per paint, so one task shares one answer.
+// A change to the saved rules starts afresh.
+let protoAlertRuleMemo = null;
+
+function protoAlertRuleTaskMemo() {
+  const company = protoReportDefsKey();
+  const raw = protoReportDefsStore()[company];
+  if (!protoAlertRuleMemo) {
+    queueMicrotask(() => {
+      protoAlertRuleMemo = null;
+    });
+  }
+  if (!protoAlertRuleMemo || protoAlertRuleMemo.raw !== raw || protoAlertRuleMemo.company !== company) {
+    protoAlertRuleMemo = { company, raw, defs: null, hits: new Map() };
+  }
+  return protoAlertRuleMemo;
+}
+
+function protoAlertRuleHitIds(def) {
+  const memo = protoAlertRuleTaskMemo();
+  const key = JSON.stringify(def);
+  let ids = memo.hits.get(key);
+  if (!ids) {
+    const rows = def.type === "alert" ? protoReportAlertHits(def) : protoReportMissingHits(def);
+    ids = new Set(rows.map((row) => String(protoSiteId(row))));
+    memo.hits.set(key, ids);
+  }
+  return ids;
 }
 
 // A flag set off by one of their alerts takes that alert's priority. Astral's own checks keep theirs.
