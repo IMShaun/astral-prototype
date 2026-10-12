@@ -35492,6 +35492,8 @@ function protoPaintLibraryFs(fs, id = "library") {
   protoPaintPreviewMenu(fs);
 }
 
+let protoSwapping = false;
+
 function protoPaintWalkFs(fs) {
   Object.keys(PROTO_SITES).forEach((key) => {
     const host = protoSiteHost(fs, key);
@@ -35503,8 +35505,15 @@ function protoPaintWalkFs(fs) {
   if (next) next.hidden = false;
   if (next) protoSkelPaint(next);
   const app = fs.querySelector(".astral-app");
-  if (app) app.replaceWith(next);
-  else {
+  if (app) {
+    // Swapping out a focused text box makes Chrome fire change on it. That change must not start a second paint mid-swap.
+    protoSwapping = true;
+    try {
+      app.replaceWith(next);
+    } finally {
+      protoSwapping = false;
+    }
+  } else {
     const menu = protoFsChild(fs, "astral-preview-menu");
     if (menu) fs.insertBefore(next, menu);
     else fs.insertBefore(next, fs.firstChild);
@@ -40842,6 +40851,7 @@ function protoOutsideClick(event) {
 }
 
 function onPrototypeInput(event) {
+  if (event.type === "change" && protoSwapping) return;
   if (protoCommentArea(event.target)) {
     protoOpenComment(event.target);
     protoSyncQuerySubmit(event.target);
