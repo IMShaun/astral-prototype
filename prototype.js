@@ -25200,9 +25200,9 @@ function protoMeterProfileForm(meter) {
     const siteMode = protoSrcMode(draft, part, false);
     const siteBody =
       siteMode === "preset" ? protoWeekPresetView(id, part, draft[part], draft.weeks[part]) : siteBodies[part];
-    const siteCards = panel(protoSiteSrcGroup(id, part, siteMode));
+    // The site has nothing to follow, so it shows its times with no source cards.
     const sitePanel = protoTimesPanel(id, part, siteMode, siteBody);
-    if (meters.length < 2 && !ownCount) return { tag, html: `${siteCards}${sitePanel}` };
+    if (meters.length < 2 && !ownCount) return { tag, html: sitePanel };
     const pick = protoSiteOwnPick(site, part);
     const capId = `astral-own-pick-${part}`;
     const select = panel(`
@@ -25228,7 +25228,7 @@ function protoMeterProfileForm(meter) {
         })}
       </div>
     `);
-    if (!pick) return { tag, html: `${select}${siteCards}${sitePanel}` };
+    if (!pick) return { tag, html: `${select}${sitePanel}` };
     const own = protoMeter(pick);
     const ownDraft = protoMeterOwnDraft(own.id);
     const mode = protoSrcMode(ownDraft, part, true);
@@ -25311,7 +25311,7 @@ function protoMeterSiteView(meter, part, site, siteName) {
     .join("")}</div></div>`;
 }
 
-// The source cards. A meter can follow the site, so it has two. The site has one in the same grid, so each card keeps its width and place.
+// The source cards. A meter can follow the site, so it has two. The site follows nothing, so it has none.
 // A preset is a way to set the times, so its card is the Set for card. The preset button sits in the times panel.
 function protoSrcCards(owner, part, mode, choices) {
   const name = PROTO_METER_PART_NAMES[part];
@@ -26538,11 +26538,6 @@ function protoMeterSrcGroup(meter, part, mode, siteName) {
     ["site", `Follow ${siteName}`, "Updates when the site changes."],
     ["own", "Set for this meter only", "Does not change with the site."],
   ]);
-}
-
-function protoSiteSrcGroup(id, part, mode) {
-  if (part === "rates") return protoSrcCards(id, part, "own", [["own", "Set for this site", "Choose the rates for this site."]]);
-  return protoSrcCards(id, part, mode, [["own", "Set for this site", "Choose the times for each day."]]);
 }
 
 // A day in a few words, such as Operational 05:00 to 21:00 or Closed all day.
