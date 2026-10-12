@@ -26,6 +26,7 @@
     (data.access && data.access.layers && data.access.layers[0] && data.access.layers[0].id) ||
     "stack";
   let featureId = "";
+  let featureSectionId = "";
   let featureStoryId = "";
 
   (data.tokens || []).forEach((token) => {
@@ -357,6 +358,19 @@
     return ((feature && feature.stories) || []).filter((item) => item && item.id);
   }
 
+  // A feature can split into sections, such as the tabs on Portfolio. Each story then names its section.
+  function featureSections(feature) {
+    return ((feature && feature.sections) || []).filter((item) => item && item.id);
+  }
+
+  function sectionById(feature, id) {
+    return featureSections(feature).find((item) => item.id === id) || null;
+  }
+
+  function sectionStories(feature, section) {
+    return featureStories(feature).filter((item) => item.section === section.id);
+  }
+
   function factorScore(value) {
     const n = Number(value);
     if (!Number.isFinite(n)) return 0;
@@ -424,8 +438,8 @@
     `;
   }
 
-  function featureStats(feature) {
-    const stories = featureStories(feature);
+  function featureStats(feature, list) {
+    const stories = list || featureStories(feature);
     return {
       stories: stories.length,
       points: stories.reduce((sum, item) => sum + storyPoints(item), 0),
@@ -565,10 +579,8 @@
     `;
   }
 
-  function featurePage(feature) {
-    const stats = featureStats(feature);
-    const stories = featureStories(feature);
-    const rows = stories
+  function storyCards(stories) {
+    return stories
       .map((story) => {
         const stages = (story.stages || []).length;
         const scenarios = (story.criteria || []).length;
@@ -587,6 +599,39 @@
         `;
       })
       .join("");
+  }
+
+  function storyGrid(stories, empty) {
+    const rows = storyCards(stories);
+    return rows ? `<div class="lib-grid lib-story-grid">${rows}</div>` : `<p class="lib-help">${esc(empty)}</p>`;
+  }
+
+  function sectionGrid(feature) {
+    const cards = featureSections(feature)
+      .map((section) => {
+        const stats = featureStats(feature, sectionStories(feature, section));
+        const summary = section.summary || "No stories yet.";
+        return `
+          <button type="button" class="lib-card lib-feature" data-feature-section="${esc(section.id)}">
+            <span class="lib-card-top">
+              <h2>${esc(section.name)}</h2>
+            </span>
+            <p${section.summary ? "" : ' class="lib-help"'}>${esc(endStop(summary))}</p>
+            <span class="lib-metrics">
+              ${metric(stats.stories, stats.stories === 1 ? "story" : "stories")}
+              ${metric(stats.points, stats.points === 1 ? "point" : "points")}
+              ${metric(stats.scenarios, stats.scenarios === 1 ? "scenario" : "scenarios")}
+            </span>
+          </button>
+        `;
+      })
+      .join("");
+    return `<div class="lib-grid lib-feature-grid">${cards}</div>`;
+  }
+
+  function featurePage(feature) {
+    const stats = featureStats(feature);
+    const sections = featureSections(feature);
     const roles = (feature.roles || []).map((role) => tagPill(role)).join("");
     return `
       ${backButton("Back to Features", "features")}
@@ -606,12 +651,31 @@
       <p class="lib-help lib-feature-who">${esc(feature.who || "")}</p>
       ${roles ? `<div class="lib-role-row">${roles}</div>` : ""}
       <p class="lib-help">${esc(estimateHelp())}</p>
-      <h2 class="lib-block-title">User stories</h2>
       ${
-        rows
-          ? `<div class="lib-grid lib-story-grid">${rows}</div>`
-          : `<p class="lib-help">This feature has no stories yet.</p>`
+        sections.length
+          ? `<h2 class="lib-block-title">Sections</h2>${sectionGrid(feature)}`
+          : `<h2 class="lib-block-title">User stories</h2>${storyGrid(featureStories(feature), "This feature has no stories yet.")}`
       }
+    `;
+  }
+
+  function sectionPage(feature, section) {
+    const stories = sectionStories(feature, section);
+    const stats = featureStats(feature, stories);
+    return `
+      ${backButton("Back to " + feature.name, `features/${feature.id}`)}
+      <section class="lib-lead">
+        <h1>${esc(section.name)}</h1>
+        ${section.summary ? `<p>${esc(endStop(section.summary))}</p>` : ""}
+      </section>
+      <div class="lib-grid lib-stat-grid">
+        ${statCard(stats.stories, stats.stories === 1 ? "Story" : "Stories")}
+        ${statCard(stats.points, stats.points === 1 ? "Point" : "Points")}
+        ${statCard(stats.scenarios, stats.scenarios === 1 ? "Scenario" : "Scenarios")}
+      </div>
+      ${section.notes ? `<p class="lib-help">${esc(endStop(section.notes))}</p>` : ""}
+      <h2 class="lib-block-title">User stories</h2>
+      ${storyGrid(stories, "This section has no stories yet.")}
     `;
   }
 
@@ -619,8 +683,12 @@
     const scenarios = (story.criteria || []).map(scenarioCard).join("");
     const stages = (story.stages || []).map(stageShot).join("");
     const notes = story.notes || story.description || "";
+    const section = sectionById(feature, story.section);
+    const back = section
+      ? backButton("Back to " + section.name, `features/${feature.id}/${section.id}`)
+      : backButton("Back to " + feature.name, `features/${feature.id}`);
     return `
-      ${backButton("Back to " + feature.name, `features/${feature.id}`)}
+      ${back}
       <section class="lib-lead">
         <div class="lib-card-top">
           <h1>${esc(story.name)}</h1>
@@ -653,6 +721,8 @@
     if (!feature) return featuresIndexPage();
     const story = featureStories(feature).find((item) => item.id === featureStoryId);
     if (story) return storyPage(feature, story);
+    const section = sectionById(feature, featureSectionId);
+    if (section) return sectionPage(feature, section);
     return featurePage(feature);
   }
 
@@ -751,14 +821,18 @@
       page = "features";
       const parts = raw.split("/").filter(Boolean);
       featureId = parts[1] || "";
-      featureStoryId = parts[2] || "";
-      if (featureId && !featureById(featureId)) {
+      featureSectionId = "";
+      featureStoryId = "";
+      const feature = featureById(featureId);
+      if (!feature) {
         featureId = "";
-        featureStoryId = "";
-      } else if (featureId) {
-        const feature = featureById(featureId);
-        const known = featureStories(feature).some((item) => item.id === featureStoryId);
-        if (featureStoryId && !known) featureStoryId = "";
+      } else if (featureSections(feature).length) {
+        // Sectioned features read features/feature/section/story.
+        featureSectionId = sectionById(feature, parts[2]) ? parts[2] : "";
+        const story = featureStories(feature).find((item) => item.id === parts[3]);
+        if (featureSectionId && story && story.section === featureSectionId) featureStoryId = story.id;
+      } else if (featureStories(feature).some((item) => item.id === parts[2])) {
+        featureStoryId = parts[2];
       }
       return;
     }
@@ -786,9 +860,8 @@
     if (page === "tokens") location.hash = `tokens/${tokenKind}`;
     else if (page === "components") location.hash = componentId;
     else if (page === "features") {
-      if (featureId && featureStoryId) location.hash = `features/${featureId}/${featureStoryId}`;
-      else if (featureId) location.hash = `features/${featureId}`;
-      else location.hash = "features";
+      const where = ["features", featureId, featureSectionId, featureStoryId].filter(Boolean);
+      location.hash = where.join("/");
     }
     else if (page === "access") location.hash = `access/${accessLayer}`;
     else if (page === "files") location.hash = "files";
@@ -801,6 +874,7 @@
     page = button.dataset.libPage;
     if (page === "features") {
       featureId = "";
+      featureSectionId = "";
       featureStoryId = "";
     }
     writeHash();
@@ -1010,14 +1084,10 @@
     }
     const featureBack = event.target.closest("[data-feature-back]");
     if (featureBack) {
-      const where = featureBack.dataset.featureBack || "features";
-      if (where === "features") {
-        featureId = "";
-        featureStoryId = "";
-      } else if (where.startsWith("features/")) {
-        featureId = where.split("/")[1] || "";
-        featureStoryId = "";
-      }
+      const where = (featureBack.dataset.featureBack || "features").split("/");
+      featureId = where[1] || "";
+      featureSectionId = where[2] || "";
+      featureStoryId = "";
       page = "features";
       writeHash();
       render();
@@ -1031,9 +1101,19 @@
       render();
       return;
     }
+    const featureSection = event.target.closest("[data-feature-section]");
+    if (featureSection) {
+      featureSectionId = featureSection.dataset.featureSection;
+      featureStoryId = "";
+      page = "features";
+      writeHash();
+      render();
+      return;
+    }
     const featureOpen = event.target.closest("[data-feature]");
     if (featureOpen) {
       featureId = featureOpen.dataset.feature;
+      featureSectionId = "";
       featureStoryId = "";
       page = "features";
       writeHash();

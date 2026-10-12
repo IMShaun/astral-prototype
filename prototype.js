@@ -25800,11 +25800,12 @@ function protoPresetUsers(part, id, owner, skipDay) {
   return { days, sites: [...sites].map((key) => names.get(key)).filter(Boolean).sort() };
 }
 
-// Crewe depot, Euston and Stafford, or Crewe depot, Euston, Stafford and 4 more sites.
+// Crewe depot and Euston, Crewe depot, Euston, and Stafford, or Crewe depot, Euston, Stafford, and 4 more sites.
 function protoPresetUserList(names) {
-  if (names.length <= 3) return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0] || "";
+  if (names.length <= 2) return names.join(" and ");
+  if (names.length === 3) return `${names.slice(0, 2).join(", ")}, and ${names[2]}`;
   const more = names.length - 3;
-  return `${names.slice(0, 3).join(", ")} and ${more} more ${more === 1 ? "site" : "sites"}`;
+  return `${names.slice(0, 3).join(", ")}, and ${more} more ${more === 1 ? "site" : "sites"}`;
 }
 
 // One of your own day presets that this day was edited from. Standard presets cannot change, so they never count.

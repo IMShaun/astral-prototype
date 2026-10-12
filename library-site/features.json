@@ -15,10 +15,58 @@
         "Viewer"
       ],
       "who": "A Customer uses Portfolio. Viewer can look. Contributor can work.",
+      "sections": [
+        {
+          "id": "tree",
+          "name": "Tree",
+          "summary": "Find and pick a place on the estate"
+        },
+        {
+          "id": "consumption",
+          "name": "Consumption",
+          "summary": "Read use on the graph for a group or a site"
+        },
+        {
+          "id": "cost",
+          "name": "Cost",
+          "summary": "Read use as cost"
+        },
+        {
+          "id": "carbon",
+          "name": "Carbon",
+          "summary": "Read use as carbon"
+        },
+        {
+          "id": "demand",
+          "name": "Demand"
+        },
+        {
+          "id": "power-factor",
+          "name": "Power factor"
+        },
+        {
+          "id": "weather",
+          "name": "Weather"
+        },
+        {
+          "id": "profile",
+          "name": "Site profile",
+          "summary": "See and set hours, time of use, and attributes for each site and meter"
+        },
+        {
+          "id": "alerts",
+          "name": "Alerts"
+        },
+        {
+          "id": "queries",
+          "name": "Queries"
+        }
+      ],
       "stories": [
         {
           "id": "scan-estate",
           "name": "Scan the estate",
+          "section": "tree",
           "points": 3,
           "role": "Viewer",
           "want": "see All and the named groups on the tree",
@@ -71,6 +119,7 @@
         {
           "id": "find-site",
           "name": "Find a site or meter",
+          "section": "tree",
           "points": 2,
           "role": "Viewer",
           "want": "search for a site or meter",
@@ -112,6 +161,7 @@
         {
           "id": "filter-tree",
           "name": "Filter the tree",
+          "section": "tree",
           "points": 5,
           "role": "Viewer",
           "want": "tick ownership, meter, and In or Out",
@@ -164,6 +214,7 @@
         {
           "id": "read-group",
           "name": "Read a group",
+          "section": "consumption",
           "points": 5,
           "role": "Viewer",
           "want": "see consumption for a group",
@@ -205,6 +256,7 @@
         {
           "id": "read-site",
           "name": "Read a site",
+          "section": "consumption",
           "points": 5,
           "role": "Viewer",
           "want": "see Incoming and Outgoing on a site",
@@ -251,6 +303,7 @@
         {
           "id": "change-window",
           "name": "Change the window",
+          "section": "consumption",
           "points": 3,
           "role": "Viewer",
           "want": "change the date window",
@@ -292,6 +345,7 @@
         {
           "id": "switch-graph",
           "name": "Switch the graph",
+          "section": "consumption",
           "points": 3,
           "role": "Viewer",
           "want": "switch Total or Individual, and Bar or Line",
@@ -338,6 +392,7 @@
         {
           "id": "see-cost",
           "name": "See Cost",
+          "section": "cost",
           "points": 2,
           "role": "Viewer",
           "want": "see Cost for the same window",
@@ -374,6 +429,7 @@
         {
           "id": "see-carbon",
           "name": "See Carbon",
+          "section": "carbon",
           "points": 2,
           "role": "Viewer",
           "want": "see Carbon for the same window",
@@ -410,6 +466,7 @@
         {
           "id": "compare-others",
           "name": "Compare others",
+          "section": "consumption",
           "points": 8,
           "role": "Viewer",
           "want": "compare others at this level",
@@ -449,65 +506,862 @@
           }
         },
         {
-          "id": "site-profile",
-          "name": "Open Site profile",
+          "section": "profile",
+          "id": "profile-sites",
+          "name": "Compare site profiles",
           "points": 5,
           "role": "Viewer",
-          "want": "open a meter on Site profile",
-          "benefit": "I can see hours, time of use, attributes, and the map",
-          "notes": "MPAN or MPRN for electricity and gas. Serial for water. Do not invent a SPID. If Country is England, points below a site are MPANs. Brand and install wait. Viewer looks. Admin, Manager, and Contributor can edit.",
+          "want": "see the hours, time of use, floor area, and occupants of every site in one table",
+          "benefit": "I can spot gaps across a group without opening each site",
+          "notes": "Shows on All and on a group. Download template sits with Upload above the table. Upload is its own story. Custom means hours or time of use set by hand with no saved preset.",
           "criteria": [
             {
-              "given": "I am on a site",
+              "given": "I am on All or a group",
               "when": "I pick Site profile",
-              "then": "meters sit in a list with the same lines as the other tables and no box"
+              "then": "a table lists each site with Operational hours, Time of use, Floor area, and Occupants"
             },
             {
-              "given": "I click a meter row",
+              "given": "a site uses one week",
+              "when": "I look at its row",
+              "then": "the tag shows the preset name, or Custom if no preset is saved"
+            },
+            {
+              "given": "the meters on a site use different weeks",
+              "when": "I look at its row",
+              "then": "the tag reads Mixed"
+            },
+            {
+              "given": "some days have no times, or no week is set",
+              "when": "I look at its row",
+              "then": "the tag reads Incomplete or Missing"
+            },
+            {
+              "given": "I hover a tag",
+              "when": "the tip opens",
+              "then": "I see each day of the week and its times"
+            },
+            {
+              "given": "I pick Download template",
+              "when": "the file downloads",
+              "then": "it holds the sites in the table, ready to fill in"
+            },
+            {
+              "given": "I click a site row",
               "when": "it opens",
-              "then": "the meter fills the pane, and Operational hours, Time of use, and Attributes sit as accordions"
-            },
-            {
-              "given": "a meter is open",
-              "when": "I pick Time of use",
-              "then": "that accordion opens and the others close"
-            },
-            {
-              "given": "a meter is open",
-              "when": "I look at time of use",
-              "then": "it is on peak and off peak"
-            },
-            {
-              "given": "I am on Site profile",
-              "when": "I look at the map",
-              "then": "the map is square and follows the meters on the graph"
+              "then": "I see Site profile for that site"
             }
           ],
           "stages": [
             {
-              "id": "meters",
-              "name": "Meter list",
-              "caption": "The list uses the same lines as the other tables. No box around it.",
-              "image": "features/shots/site-profile.png"
+              "id": "sites",
+              "name": "Sites table",
+              "caption": "One row per site. Download template and Upload sit above the table.",
+              "image": "features/shots/profile-sites.png"
             },
             {
-              "id": "open-meter",
-              "name": "Open meter",
-              "caption": "Hours, time of use, and attributes sit in the open row. Settings sits as a cog with the word Settings. It opens a page for that meter. Back sits to the left of the heading.",
-              "image": "features/shots/site-profile-open.png"
+              "id": "sites-tip",
+              "name": "Week on hover",
+              "caption": "Hover a tag to see each day of the week.",
+              "image": "features/shots/profile-sites-tip.png"
             }
           ],
           "estimate": {
             "complexity": 4,
             "effort": 5,
+            "risk": 3,
+            "dependencies": 2,
+            "why": "A table of sites, tags that fold many meters into one, week tips, and the template"
+          }
+        },
+        {
+          "section": "profile",
+          "id": "profile-site",
+          "name": "Read a site profile",
+          "points": 3,
+          "role": "Viewer",
+          "want": "see where a site is and how its hours and time of use are set",
+          "benefit": "I can check a site at a glance before I change anything",
+          "notes": "Custom means hours or time of use set by hand with no saved preset. A preset on a meter shows its name and the icon for that meter's utility. Floor area and occupants sit under Attributes.",
+          "criteria": [
+            {
+              "given": "I click a site row, or pick a site on the tree",
+              "when": "Site profile opens",
+              "then": "I see a map of the site and its address"
+            },
+            {
+              "given": "hours or time of use are set by hand with no saved preset",
+              "when": "I look at the tag",
+              "then": "it reads Custom"
+            },
+            {
+              "given": "a meter uses a saved preset",
+              "when": "I look at the tag",
+              "then": "it shows the preset name with the icon for that meter's utility"
+            },
+            {
+              "given": "I hover a time of use tag such as Weekday peak",
+              "when": "the tip opens",
+              "then": "I see each day of the week with its on peak and off peak times"
+            },
+            {
+              "given": "I hover an operational hours tag",
+              "when": "the tip opens",
+              "then": "I see each day of the week with its open hours"
+            },
+            {
+              "given": "I pick Site settings",
+              "when": "it opens",
+              "then": "I can dig deeper into the settings for that site"
+            }
+          ],
+          "stages": [
+            {
+              "id": "site",
+              "name": "Site profile",
+              "caption": "The map, address, hours, time of use, and attributes. Site settings sits to the right.",
+              "image": "features/shots/profile-site.png"
+            },
+            {
+              "id": "site-tip",
+              "name": "Week on hover",
+              "caption": "Hover a preset to see on peak and off peak for each day.",
+              "image": "features/shots/profile-site-tip.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 3,
+            "effort": 3,
             "risk": 2,
-            "dependencies": 1,
-            "why": "Meter list, open row, rates, and a square map."
+            "dependencies": 2,
+            "why": "Map, address, and tags. The tip reuses the week tip from the sites table"
+          }
+        },
+        {
+          "section": "profile",
+          "id": "profile-meters",
+          "name": "Read the meters on a site",
+          "points": 3,
+          "role": "Viewer",
+          "want": "see each meter on a site with its channel, settings, last reading, and use",
+          "benefit": "I can tell which meters follow the site and which do not",
+          "notes": "From site means the meter takes the site settings, so three meters are set once, not three times. Change one meter and it becomes Custom. Do not invent a SPID.",
+          "criteria": [
+            {
+              "given": "I am on Site profile for a site",
+              "when": "I look below the site",
+              "then": "Meters lists each meter with Meter, Channel, Settings, Last reading, and Use"
+            },
+            {
+              "given": "I look at a meter",
+              "when": "I read the Meter column",
+              "then": "I see its number, such as the MPAN, with the icon for its utility"
+            },
+            {
+              "given": "I look at a meter",
+              "when": "I read the Channel column",
+              "then": "it reads In, Out, or both"
+            },
+            {
+              "given": "a meter takes the site settings",
+              "when": "I read the Settings column",
+              "then": "it reads From site"
+            },
+            {
+              "given": "a meter has its own settings",
+              "when": "I read the Settings column",
+              "then": "it reads Custom"
+            },
+            {
+              "given": "I look at a meter",
+              "when": "I read Last reading and Use",
+              "then": "I see when the last reading came in and how much the meter used"
+            },
+            {
+              "given": "I click a meter row",
+              "when": "it opens",
+              "then": "Site settings opens with Attributes on the tab for that meter's utility"
+            }
+          ],
+          "stages": [
+            {
+              "id": "meters",
+              "name": "Meters",
+              "caption": "One row per meter, below the site.",
+              "image": "features/shots/profile-meters.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 3,
+            "effort": 3,
+            "risk": 2,
+            "dependencies": 2,
+            "why": "Five columns. From site has to compare each meter with the site settings"
+          }
+        },
+        {
+          "section": "profile",
+          "id": "profile-settings",
+          "name": "Open Site settings",
+          "points": 3,
+          "role": "Contributor",
+          "want": "open the settings for a site",
+          "benefit": "I can change its hours, time of use, and attributes in one place",
+          "notes": "Each accordion has its own story. Upload is its own story. Viewers can read Site settings but cannot change it. The prototype shows no message after Save changes and no prompt when you leave with changes. Both are gaps to close before build.",
+          "criteria": [
+            {
+              "given": "I am on Site profile for a site",
+              "when": "I pick Site settings",
+              "then": "Operational hours, Time of use, and Attributes sit as closed accordions"
+            },
+            {
+              "given": "Site settings is open",
+              "when": "I look at the top",
+              "then": "the group and site name sit on the left, with Download template and Upload on the right"
+            },
+            {
+              "given": "I pick Download template",
+              "when": "the file downloads",
+              "then": "site-settings.csv holds Site, Meter point, Section, Group, Setting, Value, and Unit for every period and attribute on the site"
+            },
+            {
+              "given": "a meter has its own settings",
+              "when": "I download the template",
+              "then": "its lines follow the site lines under its meter point, and a blank meter point means the site"
+            },
+            {
+              "given": "no meter on the site has times",
+              "when": "I read the accordion header",
+              "then": "it shows Missing"
+            },
+            {
+              "given": "any day has a gap or a missing time",
+              "when": "I read the accordion header",
+              "then": "it shows Incomplete"
+            },
+            {
+              "given": "the times are complete and some meters have their own",
+              "when": "I read the accordion header",
+              "then": "it shows Mixed"
+            },
+            {
+              "given": "I have changed nothing",
+              "when": "I look at Save changes",
+              "then": "it is off"
+            },
+            {
+              "given": "I have changed the site or any meter",
+              "when": "I pick Save changes",
+              "then": "the site and every changed meter save together"
+            },
+            {
+              "given": "a period has an error or the site name is empty",
+              "when": "I look at Save changes",
+              "then": "it stays off until I fix it"
+            },
+            {
+              "given": "a day has a gap but no error",
+              "when": "I pick Save changes",
+              "then": "it saves, since a gap is a warning"
+            },
+            {
+              "given": "I go back without saving",
+              "when": "I open Site settings again",
+              "then": "my changes are still there"
+            },
+            {
+              "given": "I am a Viewer",
+              "when": "I open Site settings",
+              "then": "I can read every setting but cannot change one, and Download template and Upload do not show"
+            }
+          ],
+          "stages": [
+            {
+              "id": "profile-settings",
+              "name": "Site settings",
+              "caption": "Three accordions. Download template and Upload sit at the top.",
+              "image": "features/shots/profile-settings.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 3,
+            "effort": 3,
+            "risk": 2,
+            "dependencies": 2,
+            "why": "One save covers the site and every meter. Changes wait until saved. The template lists every setting"
+          }
+        },
+        {
+          "section": "profile",
+          "id": "profile-for",
+          "name": "Choose who the settings are for",
+          "points": 5,
+          "role": "Contributor",
+          "want": "choose whether I set the whole site or one meter",
+          "benefit": "I set most meters once at the site and only change the ones that differ",
+          "notes": "Operational hours and Time of use each have their own Settings for. Picking a meter in one does not pick it in the other. Attributes have no Settings for, since they split into Site and utility tabs. The site has nothing to follow, so it has no source cards.",
+          "criteria": [
+            {
+              "given": "a site has two or more meters, or a meter has its own settings",
+              "when": "I open Operational hours or Time of use",
+              "then": "Settings for sits at the top with the site first, then each meter"
+            },
+            {
+              "given": "a site has one meter and it follows the site",
+              "when": "I open the accordion",
+              "then": "there is no Settings for and I set the site"
+            },
+            {
+              "given": "I open Settings for",
+              "when": "I read the options",
+              "then": "the site reads Every meter that follows the site, and each meter shows its MPAN, MPRN, or serial, its utility, and From site or Custom"
+            },
+            {
+              "given": "the site is picked",
+              "when": "I look below Settings for",
+              "then": "the times for each day show straight away, with no source cards"
+            },
+            {
+              "given": "a meter is picked",
+              "when": "I look below Settings for",
+              "then": "Follow Crewe depot and Set for this meter only sit as single-select cards"
+            },
+            {
+              "given": "a meter follows the site",
+              "when": "I read its times",
+              "then": "they match the site and are locked, with the tip These follow Crewe depot. Choose Set for this meter only to change them"
+            },
+            {
+              "given": "a meter follows the site",
+              "when": "I pick Set for this meter only",
+              "then": "its times start as a copy of the site and I can change them"
+            },
+            {
+              "given": "a meter has its own times",
+              "when": "I pick Follow Crewe depot",
+              "then": "it drops its own times and takes the site times again"
+            },
+            {
+              "given": "I followed the site by mistake before saving",
+              "when": "I pick Set for this meter only again",
+              "then": "the meter gets back the times I set"
+            },
+            {
+              "given": "a meter follows the site",
+              "when": "the site times change",
+              "then": "the meter changes with them"
+            },
+            {
+              "given": "a meter has its own times",
+              "when": "the site times change",
+              "then": "the meter keeps its own"
+            },
+            {
+              "given": "I opened Site settings from a meter row",
+              "when": "I open Operational hours or Time of use",
+              "then": "that meter is already picked"
+            },
+            {
+              "given": "I saved a meter with its own times",
+              "when": "I read the Meters table",
+              "then": "its Settings reads Custom, and From site again once it follows the site"
+            }
+          ],
+          "stages": [
+            {
+              "id": "profile-for-site",
+              "name": "The site",
+              "caption": "The site is picked, so the times show with no source cards.",
+              "image": "features/shots/profile-for-site.png"
+            },
+            {
+              "id": "profile-for-meter",
+              "name": "A meter that follows",
+              "caption": "Follow Crewe depot is on, so the times are locked.",
+              "image": "features/shots/profile-for-meter.png"
+            },
+            {
+              "id": "profile-for-own",
+              "name": "A meter on its own",
+              "caption": "Set for this meter only is on, so the times can change.",
+              "image": "features/shots/profile-for-own.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 4,
+            "effort": 3,
+            "risk": 4,
+            "dependencies": 3,
+            "why": "Two parts with their own picker. Following and setting a meter on its own must not lose its times"
+          }
+        },
+        {
+          "section": "profile",
+          "id": "profile-hours",
+          "name": "Set operational hours for each day",
+          "points": 5,
+          "role": "Contributor",
+          "want": "set the operational hours for each day of the week",
+          "benefit": "Astral knows when the site is operational and when it is not",
+          "notes": "A day runs from 00:00 to 24:00. 24:00 is midnight at the end of the day. The talk named Operational and Non-operational. The prototype also has Closed, so confirm whether it stays. Gaps warn but do not stop the save. Errors stop it.",
+          "criteria": [
+            {
+              "given": "Operational hours is open",
+              "when": "I look at Times for each day",
+              "then": "Monday to Sunday sit as tabs above a table with Select preset, From, To, Status, and Remove"
+            },
+            {
+              "given": "I pick a day tab",
+              "when": "the table changes",
+              "then": "it shows the periods for that day only"
+            },
+            {
+              "given": "a day has no periods",
+              "when": "I open its tab",
+              "then": "one blank row shows with the note No times set for this day. Enter times or select a preset"
+            },
+            {
+              "given": "I type in From or To",
+              "when": "I enter a time",
+              "then": "it takes 24-hour time such as 08:00, up to 24:00"
+            },
+            {
+              "given": "I open Status",
+              "when": "I read the options",
+              "then": "I can choose Operational, Non-operational, or Closed"
+            },
+            {
+              "given": "part of the day has no period",
+              "when": "I pick Add a period",
+              "then": "a new row fills the first gap with the opposite status to the period before it"
+            },
+            {
+              "given": "periods cover the whole day up to 24:00",
+              "when": "I look at Add a period",
+              "then": "it is off with the tip This day is covered up to 24:00. Shorten a period to add another"
+            },
+            {
+              "given": "a day has one period",
+              "when": "I look at Remove",
+              "then": "it is off with the tip A day needs at least one period. Change this one instead"
+            },
+            {
+              "given": "a day has more than one period",
+              "when": "I remove one",
+              "then": "the row goes and leaves a gap I can fill"
+            },
+            {
+              "given": "a period has no start or no end",
+              "when": "I read the table",
+              "then": "I see Enter a start and end time for every period"
+            },
+            {
+              "given": "a period ends at or before its start",
+              "when": "I read the table",
+              "then": "I see Each period must end after it starts. Use 24:00 for midnight at the end of the day"
+            },
+            {
+              "given": "two periods overlap",
+              "when": "I read the table",
+              "then": "I see Periods overlap from 09:00 to 10:00. Change one so each time sits in only one period"
+            },
+            {
+              "given": "no period covers part of the day",
+              "when": "I read the table",
+              "then": "I see No period covers 17:00 to 18:00. Add a period so the whole day is set"
+            },
+            {
+              "given": "a day has an error",
+              "when": "I look at its tab",
+              "then": "a red flag marks it"
+            },
+            {
+              "given": "a day has a gap or no times",
+              "when": "I look at its tab",
+              "then": "a yellow flag marks it"
+            },
+            {
+              "given": "any day has an error",
+              "when": "I look at Save changes",
+              "then": "it stays off until I fix it"
+            }
+          ],
+          "stages": [
+            {
+              "id": "profile-hours",
+              "name": "Times for each day",
+              "caption": "Day tabs above the periods for one day.",
+              "image": "features/shots/profile-hours.png"
+            },
+            {
+              "id": "profile-hours-issue",
+              "name": "A period to fix",
+              "caption": "An overlap shows in red and flags the day tab.",
+              "image": "features/shots/profile-hours-issue.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 4,
+            "effort": 4,
+            "risk": 3,
+            "dependencies": 2,
+            "why": "Day tabs, a period table, Add a period, Remove, and three errors and two warnings"
+          }
+        },
+        {
+          "section": "profile",
+          "id": "profile-tou",
+          "name": "Set time of use for each day",
+          "points": 3,
+          "role": "Contributor",
+          "want": "set when each day is on peak and off peak",
+          "benefit": "Cost charges each hour at the right unit rate",
+          "notes": "Time of use works like operational hours, with the same tabs, table, buttons, and checks. It differs in its statuses, its presets, and what it feeds. Water has one unit rate, so time of use does not change its cost.",
+          "criteria": [
+            {
+              "given": "Time of use is open",
+              "when": "I look at Times for each day",
+              "then": "the day tabs, table, Add a period, Remove, and checks work as in Operational hours"
+            },
+            {
+              "given": "I open Status",
+              "when": "I read the options",
+              "then": "I can choose On peak or Off peak, with no Closed"
+            },
+            {
+              "given": "I open Select preset",
+              "when": "I read the standard presets",
+              "then": "I see On peak and off peak, Weekday peak, Night and day, and Off peak all day"
+            },
+            {
+              "given": "I use a preset for a full week",
+              "when": "I read the standard weeks",
+              "then": "I see Standard week, Weekday peak, and Night and day"
+            },
+            {
+              "given": "On peak and Off peak are set",
+              "when": "Cost reads the site",
+              "then": "use in on-peak periods is charged at the On-peak unit rate in Attributes, and the rest at the Off-peak unit rate"
+            },
+            {
+              "given": "a meter has its own time of use",
+              "when": "Cost reads that meter",
+              "then": "its own periods decide the split"
+            },
+            {
+              "given": "I change Time of use",
+              "when": "I look at Operational hours",
+              "then": "nothing has changed, since each has its own times and its own Settings for"
+            }
+          ],
+          "stages": [
+            {
+              "id": "profile-tou",
+              "name": "Time of use",
+              "caption": "On peak and Off peak periods for one day.",
+              "image": "features/shots/profile-tou.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 3,
+            "effort": 2,
+            "risk": 3,
+            "dependencies": 4,
+            "why": "Reuses the day table. Cost must read the split for each hour"
+          }
+        },
+        {
+          "section": "profile",
+          "id": "profile-use-preset",
+          "name": "Use a preset",
+          "points": 3,
+          "role": "Contributor",
+          "want": "fill a week or a day from a preset",
+          "benefit": "I do not type the same times for every site",
+          "notes": "Standard presets come with Astral and suit many customers. Your presets belong to the company, so anyone in it can use them. A day that uses a preset follows it, so a later change to the preset reaches that day. Managing presets in Settings is its own story.",
+          "criteria": [
+            {
+              "given": "Times for each day shows",
+              "when": "I pick Use a preset",
+              "then": "a modal asks me to choose A full week or One day"
+            },
+            {
+              "given": "I choose A full week",
+              "when": "I continue",
+              "then": "I see Your saved weeks, with company presets before standard ones"
+            },
+            {
+              "given": "I choose One day",
+              "when": "I continue",
+              "then": "I see Your saved days, then choose the days to use it on, with the open day ticked"
+            },
+            {
+              "given": "no presets of that kind exist",
+              "when": "the list shows",
+              "then": "it reads No saved weeks yet or No saved days yet"
+            },
+            {
+              "given": "I have not chosen a preset",
+              "when": "I look at Use preset",
+              "then": "it is off"
+            },
+            {
+              "given": "I chose a day preset but ticked no days",
+              "when": "I look at Use preset",
+              "then": "it is off"
+            },
+            {
+              "given": "I use a week preset",
+              "when": "the modal closes",
+              "then": "all seven days take its times"
+            },
+            {
+              "given": "I use a day preset",
+              "when": "the modal closes",
+              "then": "only the ticked days take its times and the first of them opens"
+            },
+            {
+              "given": "I want one day to use a preset",
+              "when": "I open Select preset in the table",
+              "then": "I see Custom, Standard presets, Your presets, and Manage presets"
+            },
+            {
+              "given": "I pick a preset in Select preset",
+              "when": "the table updates",
+              "then": "that day takes the times and statuses of the preset"
+            },
+            {
+              "given": "a day uses a preset",
+              "when": "I change one of its times",
+              "then": "Select preset reads Custom"
+            },
+            {
+              "given": "I changed a day that used a preset",
+              "when": "I read below Select preset",
+              "then": "I see Edited from Weekday peak with Undo, which puts the preset times back"
+            },
+            {
+              "given": "a day reads Custom after I changed it",
+              "when": "I type the preset times back",
+              "then": "it links to the preset again"
+            },
+            {
+              "given": "a day uses a preset",
+              "when": "I pick Custom",
+              "then": "the times stay and the day stops following the preset"
+            },
+            {
+              "given": "I can manage presets",
+              "when": "I pick Manage presets",
+              "then": "Settings opens on Presets"
+            },
+            {
+              "given": "a day uses a preset",
+              "when": "someone updates that preset",
+              "then": "the day takes the new times"
+            }
+          ],
+          "stages": [
+            {
+              "id": "profile-use-kind",
+              "name": "Use a preset",
+              "caption": "Choose a full week or one day.",
+              "image": "features/shots/profile-use-kind.png"
+            },
+            {
+              "id": "profile-use-days",
+              "name": "Choose the days",
+              "caption": "A day preset asks which days to use it on.",
+              "image": "features/shots/profile-use-days.png"
+            },
+            {
+              "id": "profile-day-preset",
+              "name": "Select preset",
+              "caption": "Each day can pick a preset in the table.",
+              "image": "features/shots/profile-day-preset.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 3,
+            "effort": 3,
+            "risk": 3,
+            "dependencies": 3,
+            "why": "A modal with up to three steps, plus a picker for each day. Days must stay linked to their preset"
+          }
+        },
+        {
+          "section": "profile",
+          "id": "profile-save-preset",
+          "name": "Save a preset",
+          "points": 5,
+          "role": "Contributor",
+          "want": "save the times I set as a preset",
+          "benefit": "my company can use them on other sites and meters",
+          "notes": "A preset is shared across the company. Updating one changes every site and meter that uses it, so the times never conflict. Standard presets cannot change. A match compares times and statuses, not names.",
+          "criteria": [
+            {
+              "given": "I pick Save preset",
+              "when": "the modal opens",
+              "then": "I choose A full week or One day, pick the day for one day, and enter a Preset name"
+            },
+            {
+              "given": "no day has times",
+              "when": "I look at Save preset",
+              "then": "it is off with the tip Enter times for at least one day to save them as a preset"
+            },
+            {
+              "given": "a period has an error",
+              "when": "I try to save",
+              "then": "I see Fix the periods marked in red to save"
+            },
+            {
+              "given": "the name is empty",
+              "when": "I save",
+              "then": "I see Enter a name for the preset"
+            },
+            {
+              "given": "the name is already used",
+              "when": "I save",
+              "then": "I see A preset with this name already exists. Enter a different name"
+            },
+            {
+              "given": "the times match one preset I have",
+              "when": "the modal opens",
+              "then": "it asks Use Weekday peak? and says There is nothing new to save. To keep a copy under another name, save it as a new preset"
+            },
+            {
+              "given": "the times match more than one preset",
+              "when": "the modal opens",
+              "then": "it asks Use a preset you already have? and marks each as Standard preset or Your preset"
+            },
+            {
+              "given": "I changed a day after picking one of my presets",
+              "when": "I save that day",
+              "then": "it asks Update Weekday peak? with Update preset, Save as new, and Cancel"
+            },
+            {
+              "given": "other days or sites use that preset",
+              "when": "I read the update prompt",
+              "then": "it warns Updating Weekday peak also changes the times at Crewe depot, Euston, and 2 more sites"
+            },
+            {
+              "given": "I pick Update preset",
+              "when": "it saves",
+              "then": "every day, site, and meter that uses the preset takes the new times"
+            },
+            {
+              "given": "I pick Save as new",
+              "when": "it saves",
+              "then": "a new preset saves under my name and the day links to it"
+            },
+            {
+              "given": "I changed a day after picking a standard preset",
+              "when": "I save that day",
+              "then": "it says the standard preset cannot be changed and asks me to save my times as a new preset"
+            },
+            {
+              "given": "I saved a preset",
+              "when": "I open Use a preset or Select preset",
+              "then": "it sits under Your presets"
+            }
+          ],
+          "stages": [
+            {
+              "id": "profile-save",
+              "name": "Save preset",
+              "caption": "Name the times as a full week or one day.",
+              "image": "features/shots/profile-save.png"
+            },
+            {
+              "id": "profile-save-update",
+              "name": "Update a preset",
+              "caption": "A changed preset can update everywhere or save as new.",
+              "image": "features/shots/profile-save-update.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 4,
+            "effort": 3,
+            "risk": 4,
+            "dependencies": 3,
+            "why": "Matching, naming, and updating a shared preset that reaches other sites"
+          }
+        },
+        {
+          "section": "profile",
+          "id": "profile-attrs",
+          "name": "Set site attributes",
+          "points": 2,
+          "role": "Contributor",
+          "want": "set the details of a site and the rates for each utility",
+          "benefit": "Cost, Carbon, and the site address read correctly",
+          "notes": "Attributes have no Settings for. For now a meter gets its own rates only by upload. Postcode has no format check. The Site ID never changes, so two sites can share a name.",
+          "criteria": [
+            {
+              "given": "I open Attributes",
+              "when": "I look at the tabs",
+              "then": "Site comes first, then only the utilities the site has"
+            },
+            {
+              "given": "I open the Site tab",
+              "when": "I read the fields",
+              "then": "I see Site name, Floor area in mÂ², Number of employees, Street name, Town or city, Postcode, and Country"
+            },
+            {
+              "given": "I am not an admin",
+              "when": "I look at Site name",
+              "then": "it is locked with the hint Only admins can change the site name"
+            },
+            {
+              "given": "I am an admin and clear Site name",
+              "when": "I read the field",
+              "then": "I see Enter a site name and Save changes is off"
+            },
+            {
+              "given": "I open the Electricity tab",
+              "when": "I read the fields",
+              "then": "I see Site capacity in kVA, Emissions factor in kgCO2e/kWh, Daily standing charge in Â£/day, and On-peak and Off-peak unit rates in p/kWh"
+            },
+            {
+              "given": "I open the Gas tab",
+              "when": "I read the fields",
+              "then": "I see the Electricity fields without Site capacity"
+            },
+            {
+              "given": "I open the Water tab",
+              "when": "I read the fields",
+              "then": "I see Emissions factor in kgCO2e/mÂ³, Daily standing charge in Â£/day, and Unit rate in p/mÂ³"
+            },
+            {
+              "given": "I opened Site settings from a meter row",
+              "when": "Attributes opens",
+              "then": "it shows the tab for that meter's utility"
+            },
+            {
+              "given": "a meter has its own rates",
+              "when": "Cost reads that meter",
+              "then": "its own rates win over the site rates"
+            }
+          ],
+          "stages": [
+            {
+              "id": "profile-attrs",
+              "name": "Attributes",
+              "caption": "Site first, then a tab for each utility on the site.",
+              "image": "features/shots/profile-attrs.png"
+            }
+          ],
+          "estimate": {
+            "complexity": 2,
+            "effort": 3,
+            "risk": 2,
+            "dependencies": 2,
+            "why": "A tab per utility with fixed fields. Only the site name has a rule"
           }
         },
         {
           "id": "tick-water",
           "name": "Tick Water",
+          "section": "tree",
           "points": 3,
           "role": "Viewer",
           "want": "tick Water",
