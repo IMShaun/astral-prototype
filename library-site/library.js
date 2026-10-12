@@ -1770,11 +1770,14 @@
   });
 
   async function boot() {
-    try {
-      const res = await fetch("features.json?t=meter-folds");
-      if (res.ok) data.features = await res.json();
-    } catch (_) {
-      /* Share packs features into ASTRAL_LIB. Keep that copy. */
+    // The live page carries its own copy of features.json, so only fetch it when there is none.
+    if (!(data.features && data.features.bundled)) {
+      try {
+        const res = await fetch("features.json?t=meter-folds");
+        if (res.ok) data.features = await res.json();
+      } catch (_) {
+        /* Share packs features into ASTRAL_LIB. Keep that copy. */
+      }
     }
     if (!data.features) data.features = { lead: "", items: [] };
     restoreFramedHash();
