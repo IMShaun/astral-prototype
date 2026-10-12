@@ -607,6 +607,32 @@
     return rows ? `<div class="lib-grid lib-story-grid">${rows}</div>` : `<p class="lib-help">${esc(empty)}</p>`;
   }
 
+  const STORY_STAGES = [
+    { id: "review", name: "Needs review", empty: "No stories need review." },
+    { id: "refine", name: "Ready for refinement", empty: "No stories are ready for refinement." },
+    { id: "live", name: "In production", empty: "No stories are in production yet." },
+  ];
+
+  function storyStage(story) {
+    return STORY_STAGES.find((stage) => stage.id === story.stage) || STORY_STAGES[0];
+  }
+
+  function storyBoard(stories, empty) {
+    if (!stories.length) return `<p class="lib-help">${esc(empty)}</p>`;
+    return STORY_STAGES.map((stage) => {
+      const list = stories.filter((story) => storyStage(story) === stage);
+      return `
+        <section class="lib-story-stage" data-story-stage="${esc(stage.id)}">
+          <div class="lib-card-top">
+            <h2 class="lib-block-title">${esc(stage.name)}</h2>
+            ${countPill(list.length)}
+          </div>
+          ${storyGrid(list, stage.empty)}
+        </section>
+      `;
+    }).join("");
+  }
+
   function sectionGrid(feature) {
     const cards = featureSections(feature)
       .map((section) => {
@@ -655,7 +681,7 @@
       ${
         sections.length
           ? `<h2 class="lib-block-title">Sections</h2>${sectionGrid(feature)}`
-          : `<h2 class="lib-block-title">User stories</h2>${storyGrid(featureStories(feature), "This feature has no stories yet.")}`
+          : storyBoard(featureStories(feature), "This feature has no stories yet.")
       }
     `;
   }
@@ -675,8 +701,7 @@
         ${statCard(stats.scenarios, stats.scenarios === 1 ? "Scenario" : "Scenarios")}
       </div>
       ${section.notes ? `<p class="lib-help">${esc(endStop(section.notes))}</p>` : ""}
-      <h2 class="lib-block-title">User stories</h2>
-      ${storyGrid(stories, "This section has no stories yet.")}
+      ${storyBoard(stories, "This section has no stories yet.")}
     `;
   }
 
@@ -694,6 +719,7 @@
         <div class="lib-card-top">
           <h1>${esc(story.name)}</h1>
           ${countPill(storyPoints(story))}
+          ${tagPill(storyStage(story).name)}
         </div>
       </section>
       <article class="lib-card lib-story-card">

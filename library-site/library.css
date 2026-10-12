@@ -539,6 +539,14 @@ button.lib-feature .lib-card-top {
   font-weight: 500;
 }
 
+.lib-story-stage > .lib-card-top {
+  margin: 32px 0 16px;
+}
+
+.lib-story-stage > .lib-card-top .lib-block-title {
+  margin: 0;
+}
+
 .lib-root .text-back {
   margin: 0 0 16px;
 }
