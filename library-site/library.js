@@ -1703,13 +1703,38 @@
       /* Share packs features into ASTRAL_LIB. Keep that copy. */
     }
     if (!data.features) data.features = { lead: "", items: [] };
+    restoreFramedHash();
     readHash();
+    rememberHash();
     render();
     paintPreview();
   }
 
+  // In the prototype the library sits in a frame that always loads with no hash.
+  // Keep the last page for this tab so a refresh lands back on it.
+  const LAST_PAGE_KEY = "astral-lib-last-page";
+
+  function restoreFramedHash() {
+    if (location.hash || window.parent === window) return;
+    try {
+      const last = sessionStorage.getItem(LAST_PAGE_KEY);
+      if (last) history.replaceState(null, "", `${location.pathname}${location.search}#${last}`);
+    } catch (err) {
+      /* Session storage or history can be blocked. */
+    }
+  }
+
+  function rememberHash() {
+    try {
+      sessionStorage.setItem(LAST_PAGE_KEY, (location.hash || "#start").slice(1));
+    } catch (err) {
+      /* Session storage can be blocked. */
+    }
+  }
+
   window.addEventListener("hashchange", () => {
     readHash();
+    rememberHash();
     render();
   });
 
