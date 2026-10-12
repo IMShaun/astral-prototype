@@ -1047,10 +1047,16 @@
         <div class="lib-card-top">
           <h1>${esc(story.name)}</h1>
           ${tagPill(storyStage(story).name)}
-          <a class="astral-ghost lib-open-proto" href="${esc(storyPrototypeHref(story))}" target="_blank" rel="noopener">
-            <span>Open in prototype</span>
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 5h5v5M19 5l-8 8M17 14v5H5V7h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-          </a>
+          <div class="lib-story-actions">
+            <button type="button" class="astral-ghost lib-open-proto" data-lib-copy-link="${esc(storyShareHref())}">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              <span data-lib-copy-label>Copy link</span>
+            </button>
+            <a class="astral-ghost lib-open-proto" href="${esc(storyPrototypeHref(story))}" target="_blank" rel="noopener">
+              <span>Open in prototype</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 5h5v5M19 5l-8 8M17 14v5H5V7h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </a>
+          </div>
         </div>
         <span class="lib-metrics">${pointsMetrics(storyPoints(story, "dev"), storyPoints(story, "test"))}</span>
       </section>
@@ -1622,6 +1628,11 @@
       }
       return;
     }
+    const copyLinkBtn = event.target.closest("[data-lib-copy-link]");
+    if (copyLinkBtn) {
+      copyLink(copyLinkBtn);
+      return;
+    }
     const copyText = event.target.closest("[data-copy-text]");
     if (copyText) copy(copyText.dataset.copyText, copyText);
   });
@@ -1660,6 +1671,41 @@
   }
 
   // The prototype runs these steps after it loads, so the story opens where it starts.
+  // Copy link gives a link to this page that anyone can open, such as from an Azure DevOps story.
+  // A local copy has no shareable address, so it points at the IMSERV site instead.
+  const SHARE_BASE = "https://imserv-astral-prototype.pages.imserv.ghe.com/library-site/";
+
+  function storyShareHref() {
+    const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || location.protocol === "file:";
+    const base = local ? SHARE_BASE : location.origin + location.pathname;
+    return base + location.hash;
+  }
+
+  function copyLink(button) {
+    const label = button.querySelector("[data-lib-copy-label]");
+    const text = button.dataset.libCopyLink;
+    const done = () => {
+      if (!label) return;
+      label.textContent = "Link copied";
+      clearTimeout(button.libCopyTimer);
+      button.libCopyTimer = setTimeout(() => (label.textContent = "Copy link"), 1600);
+    };
+    const fallback = () => {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.append(area);
+      area.select();
+      const ok = document.execCommand("copy");
+      area.remove();
+      if (ok) done();
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done).catch(fallback);
+    else fallback();
+  }
+
   function storyPrototypeHref(story) {
     const url = new URL(prototypeHref(), location.href);
     url.searchParams.set("open", JSON.stringify(Array.isArray(story.open) ? story.open : []));

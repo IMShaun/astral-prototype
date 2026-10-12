@@ -539,11 +539,16 @@ button.lib-feature .lib-card-top {
   font-weight: 500;
 }
 
+.lib-story-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
 .lib-open-proto {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-left: auto;
   text-decoration: none;
   white-space: nowrap;
 }
