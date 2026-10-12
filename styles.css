@@ -11511,12 +11511,6 @@ tr.is-off .astral-person-mark {
   gap: 8px 24px;
 }
 
-.astral-meter-src.is-stack {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-}
-
 .astral-meter-src-item {
   appearance: none;
   display: inline-flex;

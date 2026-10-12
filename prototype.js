@@ -20943,12 +20943,28 @@ function protoExportModal() {
               : `<fieldset class="astral-report-split">
             <legend id="astral-export-what-label">What do you want to export?</legend>
             <div
-              class="astral-meter-src is-stack"
+              class="astral-report-types is-list"
               role="radiogroup"
               aria-labelledby="astral-export-what-label"
               ${state.errors.what ? 'aria-describedby="astral-export-what-error"' : ""}
             >
-              ${choices.map((item) => protoExportRadio(`data-proto-export-kind="${escapeHtml(item.id)}"`, state.what === item.id, item.name)).join("")}
+              ${choices
+                .map((item) => {
+                  const on = state.what === item.id;
+                  return `
+                    <button
+                      type="button"
+                      role="radio"
+                      class="astral-report-type${on ? " is-on" : ""}"
+                      aria-checked="${on ? "true" : "false"}"
+                      tabindex="${on ? "0" : "-1"}"
+                      data-proto-export-kind="${escapeHtml(item.id)}"
+                    >
+                      <span class="astral-report-type-head">${protoRadio(on)}${protoTypeBadge(item.mark)}<span>${escapeHtml(item.name)}</span></span>
+                    </button>
+                  `;
+                })
+                .join("")}
             </div>
             ${state.errors.what ? `<p class="astral-export-error" id="astral-export-what-error" role="alert">${escapeHtml(state.errors.what)}</p>` : ""}
           </fieldset>`
