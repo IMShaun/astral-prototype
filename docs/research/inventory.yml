@@ -1,6 +1,19 @@
 # Index only. Do not invent studies. Fill from analysed evidence via /ux-research.
 version: 1
-studies: []
+studies:
+  - id: STUDY-2026-10-13-customer-discovery
+    name: Astral customer discovery
+    round: 1-2
+    status: planned
+    decision: Which customer journeys and behavioural differences Astral should prioritise, and what the BA team specifies next
+    method: exploratory sequential mixed methods (evidence review, interviews and walkthroughs, survey, integration, design testing)
+    objectives: 7
+    participants: 0 (plan proposes two rounds of 6-8; not recruited)
+    prototype: none in discovery; stage 7 only
+    plan_ref: docs/research/studies/2026-10-13-customer-discovery-plan.md
+    insight_ids: []
+    kei_ids: []
+    date: 2026-10-13
 insights: []
 archetypes: []
 knowledge_gaps: []
