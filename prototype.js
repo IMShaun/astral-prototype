@@ -36699,19 +36699,79 @@ function protoChartImagePlace(fileId, titles) {
   return named ? "" : place;
 }
 
-// Site, graph and dates, so the file says what it shows: "Crewe depot consumption graph 2026-09-04".
+// The channel the graph shows, so the heading reads "Crewe depot – Incoming". Graphs that are not a channel keep their title.
+function protoChartImageStream(title, wrap) {
+  const text = String(title || "").trim();
+  if (!protoChartIsGraph(text)) return text;
+  const flow = protoMetersFlow(protoPanePoolMeters());
+  let words = flow.channel === "out" ? "Outgoing" : "Incoming";
+  const pills = wrap ? wrap.querySelectorAll("[data-proto-chart-flow]").length : flow.both && flow.channel === "all";
+  if (pills && flow.both && flow.channel === "all") {
+    const showIn = protoChartFlowOn("in");
+    const showOut = protoChartFlowOn("out");
+    words = showOut && !showIn ? "Outgoing" : showIn && !showOut ? "Incoming" : "Incoming and outgoing";
+  }
+  return text === "Consumption" || text === "Incoming and outgoing" ? words : `${words} ${text.toLowerCase()}`;
+}
+
+// Place and channel on one line: "Crewe depot – Incoming and outgoing".
+function protoChartImageHeading(place, title, wrap) {
+  return [place, protoChartImageStream(title, wrap)].filter(Boolean).join(" \u2013 ");
+}
+
+// The meters behind the channel shown. Only incoming meters when the graph shows incoming only.
+function protoChartImageMeterList(meters, stream) {
+  const list = meters || [];
+  if (/^Incoming(?! and outgoing)/.test(stream || "")) return list.filter((item) => item.direction !== "Export");
+  if (/^Outgoing/.test(stream || "")) return list.filter((item) => item.direction === "Export");
+  return list;
+}
+
+// "Electricity", "Electricity and gas" or "Electricity, gas and water".
+function protoChartImageUtility(meters) {
+  const names = ["electricity", "gas", "water"]
+    .filter((kind) => (meters || []).some((item) => protoMeterKind(item) === kind))
+    .map((kind) => kind.charAt(0).toUpperCase() + kind.slice(1));
+  const words = names.map((name, i) => (i ? name.toLowerCase() : name));
+  return words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}` : words[0] || "";
+}
+
+// Utility and meter numbers, so the image says which supply it shows: "Electricity · MPAN 1200012345678".
+function protoChartImageMeterLine(meters) {
+  const list = meters || [];
+  if (!list.length) return "";
+  const utility = protoChartImageUtility(list);
+  const refs = [
+    ...new Set(
+      list.map((item) => {
+        const kind = protoMeterKind(item);
+        const ref = kind === "water" ? item.serial : kind === "gas" ? item.mprn : item.mpan;
+        return ref ? `${kind === "water" ? "Serial" : kind === "gas" ? "MPRN" : "MPAN"} ${ref}` : "";
+      })
+    ),
+  ];
+  const named = refs.length <= 3 && refs.every(Boolean);
+  const count = `${list.length} ${list.length === 1 ? "meter" : "meters"}`;
+  return [utility, named ? refs.join(", ") : count].filter(Boolean).join(" \u00b7 ");
+}
+
+// Site, utility, channel and dates, so the file says what it shows: "Crewe depot electricity incoming graph 2026-09-04".
 function protoChartImageName(fileId, limit) {
-  const titles = limit
-    ? ["Consumption"]
-    : protoChartImageWraps()
-        .map((wrap) => wrap.querySelector(".astral-chart-title")?.textContent.trim() || "")
-        .filter(Boolean);
+  const wraps = limit ? [null] : protoChartImageWraps();
+  const titles = wraps
+    .map((wrap) => {
+      const title = wrap ? wrap.querySelector(".astral-chart-title")?.textContent.trim() || "" : "Consumption";
+      return title ? protoChartImageStream(title, wrap) : "";
+    })
+    .filter(Boolean);
   const place = protoExportSourceName(fileId);
   const title = titles.length === 1 && titles[0].toLowerCase() !== place.toLowerCase() ? titles[0] : "";
+  const meters = limit ? protoExportMeters(fileId) : protoPaneGraphMeters();
+  const utility = title ? protoChartImageUtility(protoChartImageMeterList(meters, title)).toLowerCase() : "";
   const what = title && /^[A-Z][a-z]/.test(title) ? title.charAt(0).toLowerCase() + title.slice(1) : title;
   const { from, to } = protoExportGraphDates();
   const dates = from && to ? (protoIso(from) === protoIso(to) ? protoIso(from) : `${protoIso(from)} to ${protoIso(to)}`) : "";
-  return [place, what, titles.length > 1 ? "graphs" : "graph", dates].filter(Boolean).join(" ");
+  return [place, utility, what, titles.length > 1 ? "graphs" : "graph", dates].filter(Boolean).join(" ");
 }
 
 // The alert star, query dot and pale estimated bars have no words on the graph, so the image keys them.
@@ -36773,19 +36833,26 @@ async function protoChartImageShot(fileId) {
       const img = await protoSvgImage(out.text);
       if (img) svgs.push({ img, width: out.width, height: out.height });
     }
-    if (svgs.length) parts.push({ title, whens, keys, svgs });
+    if (svgs.length) parts.push({ title, whens, keys, svgs, wrap });
   }
   if (!parts.length) return "";
   const place = protoChartImagePlace(fileId, parts.map((part) => part.title));
+  const meters = protoPaneGraphMeters();
+  parts.forEach((part) => {
+    part.heading = protoChartImageHeading(place, part.title, part.wrap);
+    const stream = protoChartIsGraph(part.title) ? protoChartImageStream(part.title, part.wrap) : "";
+    const line = stream ? protoChartImageMeterLine(protoChartImageMeterList(meters, stream)) : "";
+    part.whens = [line, ...part.whens].filter(Boolean);
+  });
   const font = window.getComputedStyle(document.querySelector("#astral-fs") || document.body).fontFamily;
   const width = Math.max(...parts.flatMap((part) => part.svgs.map((item) => item.width))) + pad * 2;
   const blockHeight = (part) =>
-    (part.title ? 24 : 0) +
+    (part.heading ? 30 : 0) +
     part.whens.length * 20 +
+    12 +
     (part.keys.length ? 28 : 0) +
-    8 +
     part.svgs.reduce((n, item) => n + item.height + 8, 0);
-  const height = pad * 2 + (place ? 32 : 0) + parts.reduce((n, part) => n + blockHeight(part) + 16, 0);
+  const height = pad * 2 + parts.reduce((n, part) => n + blockHeight(part) + 16, 0);
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(width * scale);
   canvas.height = Math.round(height * scale);
@@ -36795,18 +36862,12 @@ async function protoChartImageShot(fileId) {
   ctx.fillRect(0, 0, width, height);
   ctx.textBaseline = "top";
   let y = pad;
-  if (place) {
-    ctx.fillStyle = "#000";
-    ctx.font = `600 20px ${font}`;
-    ctx.fillText(place, pad, y);
-    y += 32;
-  }
   parts.forEach((part) => {
-    if (part.title) {
+    if (part.heading) {
       ctx.fillStyle = "#000";
-      ctx.font = `600 16px ${font}`;
-      ctx.fillText(part.title, pad, y);
-      y += 24;
+      ctx.font = `600 20px ${font}`;
+      ctx.fillText(part.heading, pad, y);
+      y += 30;
     }
     part.whens.forEach((when) => {
       ctx.fillStyle = "#525252";
@@ -36814,6 +36875,7 @@ async function protoChartImageShot(fileId) {
       ctx.fillText(when, pad, y);
       y += 20;
     });
+    y += 12;
     if (part.keys.length) {
       let x = pad;
       ctx.font = `400 13px ${font}`;
@@ -36860,7 +36922,6 @@ async function protoChartImageShot(fileId) {
       });
       y += 28;
     }
-    y += 8;
     part.svgs.forEach((item) => {
       ctx.drawImage(item.img, pad, y, item.width, item.height);
       y += item.height + 8;
@@ -36889,12 +36950,16 @@ function protoPackImageShot(fileId) {
   const ink = window.getComputedStyle(fs).getPropertyValue("--color-brand-primary").trim() || "#028178";
   const { from, to } = protoExportGraphDates();
   const place = pack.title && !["users", "usage"].includes(fileId) ? protoExportSourceName(fileId) : "";
+  const heading = protoChartImageHeading(place, "Consumption");
+  const meterLine = place
+    ? protoChartImageMeterLine(protoChartImageMeterList(protoExportMeters(fileId), protoChartImageStream("Consumption")))
+    : "";
   const pad = 24;
   const scale = 2;
   const width = 960;
   const plot = 320;
-  const top0 = pad + (place ? 32 : 0);
-  const height = top0 + 24 + 20 + 16 + plot + 24 + pad;
+  const top0 = pad + (meterLine ? 20 : 0);
+  const height = top0 + 30 + 20 + 16 + plot + 24 + pad;
   const canvas = document.createElement("canvas");
   canvas.width = width * scale;
   canvas.height = height * scale;
@@ -36904,16 +36969,13 @@ function protoPackImageShot(fileId) {
   ctx.fillRect(0, 0, width, height);
   ctx.textBaseline = "top";
   ctx.fillStyle = "#000";
-  if (place) {
-    ctx.font = `600 20px ${font}`;
-    ctx.fillText(place, pad, pad);
-  }
-  ctx.font = `600 16px ${font}`;
-  ctx.fillText("Consumption", pad, top0);
+  ctx.font = `600 20px ${font}`;
+  ctx.fillText(heading, pad, pad);
   ctx.fillStyle = "#525252";
   ctx.font = `400 13px ${font}`;
-  ctx.fillText(`${protoRangeWords(from, to)} ${protoChartZone()}`, pad, top0 + 24);
-  const base = top0 + 24 + 20 + 16 + plot;
+  if (meterLine) ctx.fillText(meterLine, pad, pad + 30);
+  ctx.fillText(`${protoRangeWords(from, to)} ${protoChartZone()}`, pad, top0 + 30);
+  const base = top0 + 30 + 20 + 16 + plot;
   const topText = `${protoFormatAmount(top)} ${/m3/.test(pack.headers?.[1] || "") ? "m³" : "kWh"}`;
   const left = pad + Math.ceil(ctx.measureText(topText).width) + 12;
   const span = width - left - pad;
