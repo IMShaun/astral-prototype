@@ -4118,10 +4118,23 @@ function researchReportRow(item) {
   });
 }
 
+const BUNDLED_FILE_URLS = new Map();
+
+// The published build carries PDFs as base64, so they open from a blob URL.
+function deskFileUrl(file) {
+  const raw = window.WORK_DESK_BOOT?.files?.[file];
+  if (typeof raw !== "string") return file;
+  if (!BUNDLED_FILE_URLS.has(file)) {
+    const bytes = Uint8Array.from(atob(raw), (ch) => ch.charCodeAt(0));
+    BUNDLED_FILE_URLS.set(file, URL.createObjectURL(new Blob([bytes], { type: "application/pdf" })));
+  }
+  return BUNDLED_FILE_URLS.get(file);
+}
+
 function researchFile(item) {
-  const file = String(item.file || "");
-  if (!/\.pdf$/i.test(file)) return "";
-  const name = file.split("/").pop() || "plan.pdf";
+  const file = deskFileUrl(String(item.file || ""));
+  if (!/\.pdf$/i.test(String(item.file || ""))) return "";
+  const name = String(item.file).split("/").pop() || "plan.pdf";
   return deskSection(
     "File",
     `<div class="astral-actions desk-plan-actions">
@@ -4250,6 +4263,11 @@ function researchMarkdown(text) {
 function researchReportText(file) {
   if (!file) return false;
   if (RESEARCH_REPORT_TEXT.has(file)) return RESEARCH_REPORT_TEXT.get(file);
+  const bundled = window.WORK_DESK_BOOT?.reports?.[file];
+  if (typeof bundled === "string") {
+    RESEARCH_REPORT_TEXT.set(file, bundled);
+    return bundled;
+  }
   RESEARCH_REPORT_TEXT.set(file, null);
   fetch(file, { cache: "no-store" })
     .then((response) => (response.ok ? response.text() : Promise.reject(new Error(String(response.status)))))
@@ -6510,13 +6528,18 @@ async function loadSystems() {
   }
 }
 
+// The published single-file build has no data folder, so it bundles these files in WORK_DESK_BOOT.
+async function loadDeskJson(key, url) {
+  const boot = window.WORK_DESK_BOOT?.[key];
+  if (boot) return boot;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`missing ${key}`);
+  return res.json();
+}
+
 async function loadExperience() {
   try {
-    const res = await fetch("/docs/research/experience/keis.json", {
-      cache: "no-store",
-    });
-    if (!res.ok) throw new Error("missing experience");
-    const data = await res.json();
+    const data = await loadDeskJson("experience", "/docs/research/experience/keis.json");
     experience = {
       updated: data.updated || "",
       keis: Array.isArray(data.keis) ? data.keis : [],
@@ -6537,9 +6560,7 @@ async function loadExperience() {
 
 async function loadSkills() {
   try {
-    const res = await fetch("/data/skills.json", { cache: "no-store" });
-    if (!res.ok) throw new Error("missing skills");
-    const data = await res.json();
+    const data = await loadDeskJson("skills", "/data/skills.json");
     skillsCatalog = {
       lead: data.lead || "",
       groups: Array.isArray(data.groups) ? data.groups : [],
@@ -6551,9 +6572,7 @@ async function loadSkills() {
 
 async function loadResources() {
   try {
-    const res = await fetch("/data/resources.json", { cache: "no-store" });
-    if (!res.ok) throw new Error("missing resources");
-    const data = await res.json();
+    const data = await loadDeskJson("resources", "/data/resources.json");
     resourcesCatalog = {
       lead: data.lead || "",
       themes: Array.isArray(data.themes) ? data.themes : [],
@@ -6566,9 +6585,7 @@ async function loadResources() {
 
 async function loadRoadmap() {
   try {
-    const res = await fetch("/data/roadmap.json", { cache: "no-store" });
-    if (!res.ok) throw new Error("missing roadmap");
-    const data = await res.json();
+    const data = await loadDeskJson("roadmap", "/data/roadmap.json");
     roadmapCatalog = {
       lead: data.lead || "",
       all: data.all || "",

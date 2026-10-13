@@ -4,8 +4,8 @@
     {
       "id": "overview",
       "name": "Overview",
-      "status": "working",
-      "statusNote": "",
+      "status": "unfinished",
+      "statusNote": "The Overview page is not finished in the prototype, so these stories may change.",
       "screen": "Overview",
       "summary": "See the health, use, and catches across the estate at a glance.",
       "roles": [
@@ -6997,8 +6997,8 @@
     {
       "id": "finance",
       "name": "Finance",
-      "status": "working",
-      "statusNote": "",
+      "status": "unfinished",
+      "statusNote": "The Finance page is not finished in the prototype, so these stories may change.",
       "screen": "Finance",
       "summary": "See the sites with the highest spend, and go to the reports and alerts behind them.",
       "roles": [
@@ -9881,8 +9881,8 @@
     {
       "id": "queries",
       "name": "Queries",
-      "status": "working",
-      "statusNote": "",
+      "status": "unfinished",
+      "statusNote": "The Queries page is not finished in the prototype, so these stories may change.",
       "screen": "Queries",
       "summary": "Raise a query on a point in the graph, talk it through, and resolve it.",
       "roles": [

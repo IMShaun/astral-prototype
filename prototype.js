@@ -21070,7 +21070,7 @@ async function protoExportGo() {
     protoQueueExport("csv", file);
   } else if (what === "image") {
     // Too large to graph has nothing on screen to capture, so the image is drawn from the data instead.
-    const shot = state.limit ? protoPackImageShot(file) : await protoChartImageShot();
+    const shot = state.limit ? protoPackImageShot(file) : await protoChartImageShot(file);
     if (!shot) {
       setProto({ prototypeExportModal: { ...store.prototypeExportModal, errors: { what: "The graph is still loading. Try again when it shows." } } });
       protoRestoreFocus(PROTO_EXPORT_PICK_FOCUS);
@@ -21078,7 +21078,7 @@ async function protoExportGo() {
     }
     const id = protoNewDownloadId();
     protoExportImageKeep(id, shot);
-    protoQueueExport("png", file, { id, spec: { what: "image" } });
+    protoQueueExport("png", file, { id, name: protoChartImageName(file, state.limit), spec: { what: "image" } });
   } else {
     const { from, to } = protoExportSourceDates(state);
     const format = protoExportSourceFormat(prefs.format);
@@ -27210,6 +27210,83 @@ function protoExportNoticeFrom(raw, downloads) {
   return { kind, id, shownAt };
 }
 
+// Examples of Source data a person exported earlier, so Downloads shows Data exports before they make one.
+// The last one failed, so Try again can be seen.
+function protoExportExamples() {
+  const sites = protoEstateSites().filter((site) => site.meters?.length);
+  const groups = protoGroups().filter((group) => group.sites?.length);
+  const today = protoToday();
+  const at = (daysAgo, hour, minute) => {
+    const day = protoAddDays(today, -daysAgo);
+    day.setHours(hour, minute, 0, 0);
+    return day.getTime();
+  };
+  const meterIds = (list) => list.flatMap((site) => (site.meters || []).map((meter) => meter.id)).slice(0, 200);
+  const example = (id, kind, fileId, place, from, to, added, spec = {}, more = {}) => ({
+    id: `example-${id}`,
+    kind,
+    type: "export",
+    fileId,
+    name: `${place} source data ${protoIso(from)} to ${protoIso(to)}`,
+    added,
+    spec: protoExportSpecFrom({
+      what: "source",
+      from: protoIso(from),
+      to: protoIso(to),
+      format: kind === "xlsx" ? "xlsx" : "csv",
+      quality: "all",
+      time: "uk",
+      ids: false,
+      ...spec,
+    }),
+    ...more,
+  });
+  const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+  const lastMonthStart = new Date(lastMonthEnd.getFullYear(), lastMonthEnd.getMonth(), 1);
+  const rows = [];
+  if (sites[0]) {
+    rows.push(
+      example("site-month", "csv", sites[0].meters[0].id, sites[0].name, lastMonthStart, lastMonthEnd, at(1, 9, 12), {
+        meters: meterIds([sites[0]]),
+      })
+    );
+  }
+  if (groups[0]) {
+    rows.push(
+      example("group-week", "xlsx", `group:${groups[0].id}`, groups[0].name, protoAddDays(today, -7), protoAddDays(today, -1), at(3, 14, 38), {
+        meters: meterIds(groups[0].sites),
+      })
+    );
+  }
+  if (sites[1]) {
+    rows.push(
+      example("site-week", "csv", sites[1].meters[0].id, sites[1].name, protoAddDays(lastMonthStart, -7), protoAddDays(lastMonthStart, -1), at(6, 11, 5), {
+        meters: meterIds([sites[1]]),
+        quality: "actual",
+        time: "utc",
+        ids: true,
+      })
+    );
+  }
+  const failed = sites[2] || sites[0];
+  if (failed) {
+    rows.push(
+      example(
+        "site-year",
+        "csv",
+        failed.meters[0].id,
+        failed.name,
+        new Date(today.getFullYear() - 1, today.getMonth(), 1),
+        protoAddDays(today, -1),
+        at(0, 8, 47),
+        { meters: meterIds([failed]) },
+        { fail: true }
+      )
+    );
+  }
+  return rows.filter((item) => item.spec);
+}
+
 function protoDownloads() {
   const queued = protoDownloadsFrom(store.prototypeDownloads);
   if (protoAdminRail()) return queued;
@@ -27240,6 +27317,7 @@ function protoDownloads() {
     ...clockwork.filter((item) => !seen.has(item.id)),
     ...docs.filter((item) => !seen.has(item.id)),
     ...queued,
+    ...protoExportExamples().filter((item) => !seen.has(item.id)),
   ]
     .filter((item) => protoDownloadCategoryOpen(protoDownloadCategoryId(item)))
     .slice(0, 40);
@@ -27257,11 +27335,12 @@ function protoNewDownloadId() {
   return `dl-${Date.now()}-${protoDownloads().length}`;
 }
 
-// The site, group or comparison names, for a Source data file.
+// The site, group or comparison names, for a Source data or Image file. The list calls the whole estate "All".
 function protoExportSourceName(fileId) {
   if (fileId === "compare") return protoIntervalPack("compare")?.title || "Comparison";
   if (fileId === "group:all") return "All sites";
-  return protoExportPlaceName(fileId);
+  const place = protoExportPlaceName(fileId);
+  return place === "All" ? "All sites" : place;
 }
 
 // Prototype only. A first try at a very large Source data file fails, so the Failed state and Try again can be seen.
@@ -36598,26 +36677,88 @@ function protoSvgImage(text) {
   });
 }
 
-// The graph on screen as a PNG: its title, dates, key and lines or bars, on white.
-async function protoChartImageShot() {
-  const wraps = [...document.querySelectorAll("#astral-fs .astral-chart-wrap")].filter(
+// The graphs on screen that an image can be made from.
+function protoChartImageWraps() {
+  return [...document.querySelectorAll("#astral-fs .astral-chart-wrap")].filter(
     (wrap) =>
       wrap.querySelector("svg.astral-chart") && !wrap.classList.contains("is-loading") && wrap.getBoundingClientRect().width > 0
   );
+}
+
+// The real dates the graph shows. "Last 24 hours" means nothing once the file is saved.
+function protoChartImageDates() {
+  const { from, to } = protoExportGraphDates();
+  return from && to ? `${protoRangeWords(from, to)} ${protoChartZone()}` : "";
+}
+
+// The site or group goes above the graph title, unless the title already names it.
+function protoChartImagePlace(fileId, titles) {
+  const place = protoExportSourceName(fileId);
+  if (!place || ["users", "usage"].includes(fileId)) return "";
+  const named = titles.some((title) => title.toLowerCase().includes(place.toLowerCase()));
+  return named ? "" : place;
+}
+
+// Site, graph and dates, so the file says what it shows: "Crewe depot consumption graph 2026-09-04".
+function protoChartImageName(fileId, limit) {
+  const titles = limit
+    ? ["Consumption"]
+    : protoChartImageWraps()
+        .map((wrap) => wrap.querySelector(".astral-chart-title")?.textContent.trim() || "")
+        .filter(Boolean);
+  const place = protoExportSourceName(fileId);
+  const title = titles.length === 1 && titles[0].toLowerCase() !== place.toLowerCase() ? titles[0] : "";
+  const what = title && /^[A-Z][a-z]/.test(title) ? title.charAt(0).toLowerCase() + title.slice(1) : title;
+  const { from, to } = protoExportGraphDates();
+  const dates = from && to ? (protoIso(from) === protoIso(to) ? protoIso(from) : `${protoIso(from)} to ${protoIso(to)}`) : "";
+  return [place, what, titles.length > 1 ? "graphs" : "graph", dates].filter(Boolean).join(" ");
+}
+
+// The alert star, query dot and pale estimated bars have no words on the graph, so the image keys them.
+function protoChartImageMarkKey(wrap) {
+  const keys = [];
+  const est = wrap.querySelector("svg.astral-chart .astral-bar.is-est");
+  const star = wrap.querySelector("svg.astral-chart .astral-alert-mark");
+  const dot = wrap.querySelector("svg.astral-chart .astral-query-mark");
+  if (est) {
+    const look = window.getComputedStyle(est);
+    keys.push({
+      text: "Estimated",
+      mark: "est",
+      color: look.fill,
+      fillAlpha: Number(look.fillOpacity) || 1,
+      line: look.stroke,
+      lineAlpha: Number(look.strokeOpacity) || 1,
+    });
+  }
+  if (star) keys.push({ text: "Alert", mark: "star", color: window.getComputedStyle(star).fill });
+  if (dot) keys.push({ text: "Query", mark: "dot", color: window.getComputedStyle(dot).fill });
+  return keys;
+}
+
+// The graph on screen as a PNG: site, title, real dates, key and lines or bars, on white.
+async function protoChartImageShot(fileId) {
+  const wraps = protoChartImageWraps();
   if (!wraps.length) return "";
   const pad = 24;
   const scale = 2;
+  const relative = `${protoChartWhen()} ${protoChartZone()}`;
+  const dates = protoChartImageDates();
   const parts = [];
   for (const wrap of wraps) {
     const title = wrap.querySelector(".astral-chart-title")?.textContent.trim() || "";
-    const when = wrap.querySelector(".astral-chart-when")?.textContent.trim() || "";
+    const whens = [...wrap.querySelectorAll(".astral-chart-when")]
+      .map((el) => el.textContent.trim())
+      .filter(Boolean)
+      .map((when) => (when === relative && dates ? dates : when));
     const keys = [...wrap.querySelectorAll(".astral-chart-key [role='listitem'], .astral-chart-key > *")]
       .map((el) => {
         const mark = el.querySelector(".astral-chart-key-mark");
         const color = mark ? window.getComputedStyle(mark).backgroundColor : el.style.getPropertyValue("--slice");
         return { text: el.textContent.replace(/\s+/g, " ").trim(), color: color.trim() };
       })
-      .filter((key) => key.text);
+      .filter((key) => key.text)
+      .concat(protoChartImageMarkKey(wrap));
     const svgs = [];
     for (const svg of wrap.querySelectorAll("svg.astral-chart")) {
       // A graph still drawing in would be caught half done.
@@ -36632,14 +36773,19 @@ async function protoChartImageShot() {
       const img = await protoSvgImage(out.text);
       if (img) svgs.push({ img, width: out.width, height: out.height });
     }
-    if (svgs.length) parts.push({ title, when, keys, svgs });
+    if (svgs.length) parts.push({ title, whens, keys, svgs });
   }
   if (!parts.length) return "";
+  const place = protoChartImagePlace(fileId, parts.map((part) => part.title));
   const font = window.getComputedStyle(document.querySelector("#astral-fs") || document.body).fontFamily;
   const width = Math.max(...parts.flatMap((part) => part.svgs.map((item) => item.width))) + pad * 2;
   const blockHeight = (part) =>
-    (part.title ? 24 : 0) + (part.when ? 20 : 0) + (part.keys.length ? 28 : 0) + 8 + part.svgs.reduce((n, item) => n + item.height + 8, 0);
-  const height = pad * 2 + parts.reduce((n, part) => n + blockHeight(part) + 16, 0);
+    (part.title ? 24 : 0) +
+    part.whens.length * 20 +
+    (part.keys.length ? 28 : 0) +
+    8 +
+    part.svgs.reduce((n, item) => n + item.height + 8, 0);
+  const height = pad * 2 + (place ? 32 : 0) + parts.reduce((n, part) => n + blockHeight(part) + 16, 0);
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(width * scale);
   canvas.height = Math.round(height * scale);
@@ -36649,6 +36795,12 @@ async function protoChartImageShot() {
   ctx.fillRect(0, 0, width, height);
   ctx.textBaseline = "top";
   let y = pad;
+  if (place) {
+    ctx.fillStyle = "#000";
+    ctx.font = `600 20px ${font}`;
+    ctx.fillText(place, pad, y);
+    y += 32;
+  }
   parts.forEach((part) => {
     if (part.title) {
       ctx.fillStyle = "#000";
@@ -36656,17 +36808,48 @@ async function protoChartImageShot() {
       ctx.fillText(part.title, pad, y);
       y += 24;
     }
-    if (part.when) {
+    part.whens.forEach((when) => {
       ctx.fillStyle = "#525252";
       ctx.font = `400 13px ${font}`;
-      ctx.fillText(part.when, pad, y);
+      ctx.fillText(when, pad, y);
       y += 20;
-    }
+    });
     if (part.keys.length) {
       let x = pad;
       ctx.font = `400 13px ${font}`;
       part.keys.forEach((key) => {
-        if (key.color) {
+        if (key.mark === "est") {
+          ctx.globalAlpha = key.fillAlpha;
+          ctx.fillStyle = key.color || "#fff";
+          ctx.fillRect(x, y + 6, 12, 12);
+          if (key.line && key.line !== "none") {
+            ctx.globalAlpha = key.lineAlpha;
+            ctx.strokeStyle = key.line;
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(x + 0.75, y + 6.75, 10.5, 10.5);
+          }
+          ctx.globalAlpha = 1;
+          x += 18;
+        } else if (key.mark === "star") {
+          ctx.fillStyle = key.color || "#000";
+          ctx.beginPath();
+          protoStarPoints(x + 6, y + 12, 7, 3)
+            .split(" ")
+            .forEach((pt, i) => {
+              const [px, py] = pt.split(",").map(Number);
+              if (i) ctx.lineTo(px, py);
+              else ctx.moveTo(px, py);
+            });
+          ctx.closePath();
+          ctx.fill();
+          x += 18;
+        } else if (key.mark === "dot") {
+          ctx.fillStyle = key.color || "#000";
+          ctx.beginPath();
+          ctx.arc(x + 6, y + 12, 5, 0, Math.PI * 2);
+          ctx.fill();
+          x += 18;
+        } else if (key.color) {
           ctx.fillStyle = key.color;
           ctx.fillRect(x, y + 6, 12, 12);
           x += 18;
@@ -36705,11 +36888,13 @@ function protoPackImageShot(fileId) {
   const font = window.getComputedStyle(fs).fontFamily;
   const ink = window.getComputedStyle(fs).getPropertyValue("--color-brand-primary").trim() || "#028178";
   const { from, to } = protoExportGraphDates();
+  const place = pack.title && !["users", "usage"].includes(fileId) ? protoExportSourceName(fileId) : "";
   const pad = 24;
   const scale = 2;
   const width = 960;
   const plot = 320;
-  const height = pad * 2 + 24 + 20 + 16 + plot + 24;
+  const top0 = pad + (place ? 32 : 0);
+  const height = top0 + 24 + 20 + 16 + plot + 24 + pad;
   const canvas = document.createElement("canvas");
   canvas.width = width * scale;
   canvas.height = height * scale;
@@ -36719,12 +36904,16 @@ function protoPackImageShot(fileId) {
   ctx.fillRect(0, 0, width, height);
   ctx.textBaseline = "top";
   ctx.fillStyle = "#000";
+  if (place) {
+    ctx.font = `600 20px ${font}`;
+    ctx.fillText(place, pad, pad);
+  }
   ctx.font = `600 16px ${font}`;
-  ctx.fillText(pack.title || "Consumption", pad, pad);
+  ctx.fillText("Consumption", pad, top0);
   ctx.fillStyle = "#525252";
   ctx.font = `400 13px ${font}`;
-  ctx.fillText(protoRangeWords(from, to), pad, pad + 24);
-  const base = pad + 24 + 20 + 16 + plot;
+  ctx.fillText(`${protoRangeWords(from, to)} ${protoChartZone()}`, pad, top0 + 24);
+  const base = top0 + 24 + 20 + 16 + plot;
   const topText = `${protoFormatAmount(top)} ${/m3/.test(pack.headers?.[1] || "") ? "m³" : "kWh"}`;
   const left = pad + Math.ceil(ctx.measureText(topText).width) + 12;
   const span = width - left - pad;
@@ -36749,13 +36938,22 @@ function protoPackImageShot(fileId) {
   }
 }
 
+// Saved under the name Downloads shows, so the two match.
 function protoChartImageSave(item) {
   const url = protoExportImageGet(item.id);
   if (!url) return;
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${protoFileSlug(item.name)}-graph.png`;
+  a.download = `${protoFileName(item.name || "Graph")}.png`;
   a.click();
+}
+
+// Takes out the characters Windows does not allow in a file name.
+function protoFileName(name) {
+  return String(name || "")
+    .replace(/[\\/:*?"<>|]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function hideProtoTips() {

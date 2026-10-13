@@ -594,6 +594,7 @@
 
   function statusLabel(status) {
     if (status === "working") return "Working";
+    if (status === "unfinished") return "Unfinished";
     if (status === "draft") return "Draft";
     if (status === "firm") return "Firm";
     return "Waiting";
@@ -866,21 +867,340 @@
     `;
   }
 
+  // Plain text of a story, ready to paste into an Azure DevOps story.
+  function storyText(story) {
+    const role = String(story.role || "user").toLowerCase();
+    const want = story.want || story.summary || "";
+    const benefit = story.benefit || "";
+    const lines = [story.name, "", `As ${/^[aeio]/.test(role) ? "an" : "a"} ${role}`, `I want to ${want}`];
+    if (benefit) lines.push(`so that ${endStop(benefit).replace(/\.$/, "")}.`);
+    const criteria = (story.criteria || []).filter(Boolean);
+    if (criteria.length) {
+      lines.push("", "Acceptance criteria");
+      criteria.forEach((item, i) => {
+        lines.push("");
+        if (typeof item === "string") {
+          lines.push(`${i + 1}. ${endStop(item)}`);
+          return;
+        }
+        lines.push(`${i + 1}. Given ${endStop(item.given)}`, `When ${endStop(item.when)}`, `Then ${endStop(item.then)}`);
+      });
+    }
+    return lines.join("\n");
+  }
+
+  function storyById(id) {
+    for (const feature of featureList()) {
+      const story = featureStories(feature).find((item) => item.id === id);
+      if (story) return story;
+    }
+    return null;
+  }
+
+  function storyFeature(story) {
+    return featureList().find((feature) => featureStories(feature).includes(story)) || null;
+  }
+
+  // Copy story puts rich HTML on the clipboard for Azure DevOps, with plain text as a fallback.
+  // Each demo becomes an animated GIF and each role view a screenshot, inlined in story order.
+  const COPY_WIDTH = 800;
+
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Image did not load"));
+      img.src = src;
+    });
+  }
+
+  // With a fixed height, the canvas is exactly width by fixedHeight, so every GIF frame keeps one size.
+  function imageCanvas(img, width, fixedHeight) {
+    const scale = Math.min(1, width / img.naturalWidth);
+    const canvas = document.createElement("canvas");
+    canvas.width = fixedHeight ? width : Math.round(img.naturalWidth * scale);
+    canvas.height = fixedHeight || Math.round(img.naturalHeight * scale);
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, Math.round(img.naturalHeight * (canvas.width / img.naturalWidth)));
+    return { canvas, ctx };
+  }
+
+  const CURSOR_PATH = "M5 2.5v17.2l4.4-4.2 2.9 6.6 2.9-1.3-2.9-6.5h6.1z";
+
+  function drawCursor(ctx, x, y, press) {
+    if (press) {
+      ctx.beginPath();
+      ctx.arc(x, y, 18, 0, Math.PI * 2);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "#028178";
+      ctx.stroke();
+    }
+    ctx.save();
+    ctx.translate(x - 5, y - 3);
+    const path = new Path2D(CURSOR_PATH);
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = "#fff";
+    ctx.fillStyle = "#000";
+    ctx.fill(path);
+    ctx.stroke(path);
+    ctx.restore();
+  }
+
+  // Popularity palette on 5-bit channels. Screens are mostly flat colour, so 255 colours hold up well.
+  function quantise(rgba) {
+    const counts = new Uint32Array(32768);
+    const sums = new Float64Array(32768 * 3);
+    const keys = new Uint16Array(rgba.length / 4);
+    for (let p = 0, i = 0; i < rgba.length; i += 4, p++) {
+      const key = ((rgba[i] >> 3) << 10) | ((rgba[i + 1] >> 3) << 5) | (rgba[i + 2] >> 3);
+      keys[p] = key;
+      counts[key]++;
+      sums[key * 3] += rgba[i];
+      sums[key * 3 + 1] += rgba[i + 1];
+      sums[key * 3 + 2] += rgba[i + 2];
+    }
+    const used = [];
+    for (let k = 0; k < 32768; k++) if (counts[k]) used.push(k);
+    used.sort((a, b) => counts[b] - counts[a]);
+    const top = used.slice(0, 256);
+    const palette = new Uint8Array(256 * 3);
+    top.forEach((k, i) => {
+      palette[i * 3] = Math.round(sums[k * 3] / counts[k]);
+      palette[i * 3 + 1] = Math.round(sums[k * 3 + 1] / counts[k]);
+      palette[i * 3 + 2] = Math.round(sums[k * 3 + 2] / counts[k]);
+    });
+    const map = new Int16Array(32768).fill(-1);
+    const nearest = (k) => {
+      const r = ((k >> 10) & 31) * 8 + 4;
+      const g = ((k >> 5) & 31) * 8 + 4;
+      const b = (k & 31) * 8 + 4;
+      let best = 0;
+      let bestD = Infinity;
+      for (let i = 0; i < top.length; i++) {
+        const dr = palette[i * 3] - r;
+        const dg = palette[i * 3 + 1] - g;
+        const db = palette[i * 3 + 2] - b;
+        const d = dr * dr * 3 + dg * dg * 4 + db * db * 2;
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
+      }
+      return best;
+    };
+    const indices = new Uint8Array(keys.length);
+    for (let p = 0; p < keys.length; p++) {
+      const k = keys[p];
+      if (map[k] < 0) map[k] = nearest(k);
+      indices[p] = map[k];
+    }
+    return { palette, indices };
+  }
+
+  function lzw(indices, out) {
+    const minSize = 8;
+    const clear = 1 << minSize;
+    const end = clear + 1;
+    let size = minSize + 1;
+    let next = end + 1;
+    let dict = new Map();
+    let cur = 0;
+    let bits = 0;
+    const block = [];
+    const emit = (code) => {
+      cur |= code << bits;
+      bits += size;
+      while (bits >= 8) {
+        block.push(cur & 255);
+        cur >>>= 8;
+        bits -= 8;
+      }
+    };
+    out.push(minSize);
+    emit(clear);
+    let prefix = indices[0];
+    for (let i = 1; i < indices.length; i++) {
+      const c = indices[i];
+      const key = (prefix << 8) | c;
+      const hit = dict.get(key);
+      if (hit !== undefined) {
+        prefix = hit;
+        continue;
+      }
+      emit(prefix);
+      if (next < 4096) {
+        dict.set(key, next++);
+        if (next > 1 << size && size < 12) size++;
+      } else {
+        emit(clear);
+        dict = new Map();
+        size = minSize + 1;
+        next = end + 1;
+      }
+      prefix = c;
+    }
+    emit(prefix);
+    if (next >= 1 << size && size < 12) size++;
+    emit(end);
+    if (bits > 0) block.push(cur & 255);
+    for (let i = 0; i < block.length; i += 255) {
+      const chunk = block.slice(i, i + 255);
+      out.push(chunk.length, ...chunk);
+    }
+    out.push(0);
+  }
+
+  function gifEncode(frames, width, height) {
+    const out = [];
+    const word = (n) => out.push(n & 255, (n >> 8) & 255);
+    out.push(...[..."GIF89a"].map((ch) => ch.charCodeAt(0)));
+    word(width);
+    word(height);
+    out.push(0, 0, 0);
+    out.push(0x21, 0xff, 11, ...[..."NETSCAPE2.0"].map((ch) => ch.charCodeAt(0)), 3, 1, 0, 0, 0);
+    frames.forEach((frame) => {
+      const { palette, indices } = quantise(frame.rgba);
+      out.push(0x21, 0xf9, 4, 0);
+      word(Math.round(frame.delay / 10));
+      out.push(0, 0, 0x2c);
+      word(0);
+      word(0);
+      word(width);
+      word(height);
+      out.push(0x87);
+      for (let i = 0; i < palette.length; i++) out.push(palette[i]);
+      lzw(indices, out);
+    });
+    out.push(0x3b);
+    return new Uint8Array(out);
+  }
+
+  function bytesUrl(bytes, type) {
+    let raw = "";
+    for (let i = 0; i < bytes.length; i += 32768) raw += String.fromCharCode.apply(null, bytes.subarray(i, i + 32768));
+    return `data:${type};base64,${btoa(raw)}`;
+  }
+
+  const pause = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  // One demo walk as a looping GIF. Each step shows the screen, then the cursor on its target.
+  async function walkGif(walk) {
+    const steps = (walk || []).filter((frame) => frame.image);
+    if (!steps.length) return "";
+    const imgs = await Promise.all(steps.map((step) => loadImage(shotSrc(step.image))));
+    const first = imageCanvas(imgs[0], COPY_WIDTH);
+    const width = first.canvas.width;
+    const height = first.canvas.height;
+    const frames = [];
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      const { ctx } = imageCanvas(imgs[i], width, height);
+      const shot = ctx.getImageData(0, 0, width, height).data;
+      const grab = () => ctx.getImageData(0, 0, width, height).data;
+      if (step.do && Number.isFinite(step.x) && Number.isFinite(step.y)) {
+        const x = (step.x / 100) * width;
+        const y = (step.y / 100) * height;
+        frames.push({ rgba: shot, delay: 800 });
+        drawCursor(ctx, x, y, false);
+        frames.push({ rgba: grab(), delay: 700 });
+        if (step.do !== "hover") {
+          ctx.putImageData(new ImageData(new Uint8ClampedArray(shot), width, height), 0, 0);
+          drawCursor(ctx, x, y, true);
+          frames.push({ rgba: grab(), delay: 900 });
+        }
+      } else {
+        frames.push({ rgba: shot, delay: 2400 });
+      }
+      await pause();
+    }
+    const bytes = gifEncode(frames, width, height);
+    return bytesUrl(bytes, "image/gif");
+  }
+
+  async function shotUrl(path) {
+    const img = await loadImage(shotSrc(path));
+    return imageCanvas(img, COPY_WIDTH).canvas.toDataURL("image/jpeg", 0.85);
+  }
+
+  function storyLibraryHref(story) {
+    const feature = storyFeature(story);
+    const where = ["features", feature && feature.id, story.section, story.id].filter(Boolean);
+    const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || location.protocol === "file:";
+    const base = local ? SHARE_BASE : location.origin + location.pathname;
+    return `${base}#${where.join("/")}`;
+  }
+
+  async function storyHtml(story) {
+    const role = String(story.role || "user").toLowerCase();
+    const want = story.want || story.summary || "";
+    const benefit = story.benefit || "";
+    const notes = story.notes || story.description || "";
+    const parts = [
+      `<h2>${esc(story.name)}</h2>`,
+      `<p>As ${/^[aeio]/.test(role) ? "an" : "a"} ${esc(role)}<br>I want to ${esc(want)}${
+        benefit ? `<br>so that ${esc(endStop(benefit).replace(/\.$/, ""))}.` : ""
+      }</p>`,
+    ];
+    if (notes) parts.push(`<p>${esc(endStop(notes))}</p>`);
+    const criteria = (story.criteria || []).filter(Boolean);
+    if (criteria.length) parts.push(`<h3>Acceptance criteria</h3>`);
+    for (let i = 0; i < criteria.length; i++) {
+      const item = criteria[i];
+      parts.push(`<p><b>Scenario ${i + 1}</b></p>`);
+      if (typeof item === "string") {
+        parts.push(`<p>${esc(endStop(item))}</p>`);
+        continue;
+      }
+      parts.push(
+        `<p><b>Given</b> ${esc(endStop(item.given))}<br><b>When</b> ${esc(endStop(item.when))}<br><b>Then</b> ${esc(
+          endStop(item.then)
+        )}</p>`
+      );
+      const views = (item.roles || []).filter((view) => view && view.image);
+      if (views.length) {
+        for (const view of views) {
+          const src = await shotUrl(view.image).catch(() => "");
+          const note = endStop(view.note || "");
+          parts.push(`<p><b>${esc(view.role)} view</b>${note ? `<br>${esc(note)}` : ""}</p>`);
+          if (src) parts.push(`<p><img src="${src}" alt="${esc(`${view.role} view`)}" width="${COPY_WIDTH}"></p>`);
+        }
+      } else if ((item.walk || []).length) {
+        const src = await walkGif(item.walk).catch(() => "");
+        if (src) parts.push(`<p><img src="${src}" alt="${esc(`Demo of scenario ${i + 1}`)}" width="${COPY_WIDTH}"></p>`);
+      }
+    }
+    parts.push(`<p><a href="${esc(storyLibraryHref(story))}">Open this story in the Astral library</a></p>`);
+    return `<div>${parts.join("\n")}</div>`;
+  }
+
+  function copyStoryButton(story) {
+    const ui = window.AstralUI;
+    const attrs = `data-lib-copy-story="${esc(story.id)}"`;
+    if (ui && ui.iconButton) return ui.iconButton("duplicate", "Copy story", attrs, { className: "lib-copy-story" });
+    return `<button type="button" class="astral-icon-btn lib-copy-story" ${attrs} aria-label="Copy story">Copy</button>`;
+  }
+
   function storyCards(stories) {
     return stories
       .map((story) => {
         const scenarios = (story.criteria || []).length;
         return `
-          <button type="button" class="lib-card lib-feature" data-feature-story="${esc(story.id)}">
-            <span class="lib-card-top">
-              <h2>${esc(story.name)}</h2>
-            </span>
-            <div class="lib-story-copy">${storyCardCopy(story)}</div>
-            <span class="lib-metrics">
-              ${pointsMetrics(storyPoints(story, "dev"), storyPoints(story, "test"))}
-              ${metric(scenarios, scenarios === 1 ? "scenario" : "scenarios")}
-            </span>
-          </button>
+          <div class="lib-feature-wrap">
+            <button type="button" class="lib-card lib-feature" data-feature-story="${esc(story.id)}">
+              <span class="lib-card-top">
+                <h2>${esc(story.name)}</h2>
+              </span>
+              <div class="lib-story-copy">${storyCardCopy(story)}</div>
+              <span class="lib-metrics">
+                ${pointsMetrics(storyPoints(story, "dev"), storyPoints(story, "test"))}
+                ${metric(scenarios, scenarios === 1 ? "scenario" : "scenarios")}
+              </span>
+            </button>
+            <span class="lib-feature-tools">${copyStoryButton(story)}</span>
+          </div>
         `;
       })
       .join("");
@@ -1051,6 +1371,10 @@
             <button type="button" class="astral-ghost lib-open-proto" data-lib-copy-link="${esc(storyShareHref())}">
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
               <span data-lib-copy-label>Copy link</span>
+            </button>
+            <button type="button" class="astral-ghost lib-open-proto" data-lib-copy-story="${esc(story.id)}">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${(window.AstralUI && window.AstralUI.icons && window.AstralUI.icons.duplicate) || ""}</svg>
+              <span data-lib-copy-label>Copy story</span>
             </button>
             <a class="astral-ghost lib-open-proto" href="${esc(storyPrototypeHref(story))}" target="_blank" rel="noopener">
               <span>Open in prototype</span>
@@ -1633,6 +1957,12 @@
       copyLink(copyLinkBtn);
       return;
     }
+    const copyStoryBtn = event.target.closest("[data-lib-copy-story]");
+    if (copyStoryBtn) {
+      const story = storyById(copyStoryBtn.dataset.libCopyStory);
+      if (story) copyStory(copyStoryBtn, story);
+      return;
+    }
     const copyText = event.target.closest("[data-copy-text]");
     if (copyText) copy(copyText.dataset.copyText, copyText);
   });
@@ -1682,13 +2012,70 @@
   }
 
   function copyLink(button) {
+    copyWithFeedback(button, button.dataset.libCopyLink, "Copy link", "Link copied");
+  }
+
+  // The card Icon button shows its state in its Tooltip. The story page button shows it in its label.
+  function copyStory(button, story) {
     const label = button.querySelector("[data-lib-copy-label]");
-    const text = button.dataset.libCopyLink;
+    const host = button.closest(".astral-tip-host");
+    const tip = host && host.querySelector(".astral-icon-tip");
+    const say = (text) => {
+      if (label) label.textContent = text;
+      if (tip) tip.textContent = text;
+    };
+    if (button.libCopyBusy) return;
+    const text = `${storyText(story)}\n\n${storyLibraryHref(story)}`;
+    const rich = typeof ClipboardItem !== "undefined" && navigator.clipboard && navigator.clipboard.write;
+    if (!rich) {
+      copyWithFeedback(button, text, "Copy story", "Story copied");
+      return;
+    }
+    button.libCopyBusy = true;
+    clearTimeout(button.libCopyTimer);
+    button.setAttribute("aria-busy", "true");
+    say("Copying story");
+    const settle = (message) => {
+      button.libCopyBusy = false;
+      button.removeAttribute("aria-busy");
+      say(message);
+      if (tip) button.classList.add("is-on");
+      button.libCopyTimer = setTimeout(() => {
+        say("Copy story");
+        button.classList.remove("is-on");
+      }, 1600);
+    };
+    // The clipboard write starts inside the click, and the HTML follows once the GIFs are built.
+    const html = storyHtml(story).then((markup) => new Blob([markup], { type: "text/html" }));
+    const item = new ClipboardItem({
+      "text/html": html,
+      "text/plain": new Blob([text], { type: "text/plain" }),
+    });
+    navigator.clipboard
+      .write([item])
+      .then(() => settle("Story copied"))
+      .catch(() => {
+        navigator.clipboard
+          .writeText(text)
+          .then(() => settle("Text copied"))
+          .catch(() => settle("Copy failed"));
+      });
+  }
+
+  function copyWithFeedback(button, text, idle, busy) {
+    const label = button.querySelector("[data-lib-copy-label]");
+    const host = button.closest(".astral-tip-host");
+    const tip = host && host.querySelector(".astral-icon-tip");
     const done = () => {
-      if (!label) return;
-      label.textContent = "Link copied";
+      if (label) label.textContent = busy;
+      if (tip) tip.textContent = busy;
+      if (tip) button.classList.add("is-on");
       clearTimeout(button.libCopyTimer);
-      button.libCopyTimer = setTimeout(() => (label.textContent = "Copy link"), 1600);
+      button.libCopyTimer = setTimeout(() => {
+        if (label) label.textContent = idle;
+        if (tip) tip.textContent = idle;
+        button.classList.remove("is-on");
+      }, 1600);
     };
     const fallback = () => {
       const area = document.createElement("textarea");

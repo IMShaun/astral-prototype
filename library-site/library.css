@@ -452,6 +452,26 @@ button.lib-feature:hover {
   background: #f7f7f7;
 }
 
+/* Copy story sits beside the card, not inside it, because the card is a button. */
+.lib-feature-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.lib-feature-wrap > .lib-feature {
+  height: 100%;
+}
+
+.lib-feature-wrap .lib-card-top {
+  padding-right: 40px;
+}
+
+.lib-feature-tools {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
 button.lib-feature:focus-visible {
   outline: 2px solid #000;
   outline-offset: 2px;
