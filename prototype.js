@@ -36846,11 +36846,24 @@ async function protoChartImageShot(fileId) {
   });
   const font = window.getComputedStyle(document.querySelector("#astral-fs") || document.body).fontFamily;
   const width = Math.max(...parts.flatMap((part) => part.svgs.map((item) => item.width))) + pad * 2;
+  // The key sits on the heading line, at the right. When the two do not fit side by side, the key takes its own row.
+  const measure = document.createElement("canvas").getContext("2d");
+  parts.forEach((part) => {
+    measure.font = `400 13px ${font}`;
+    part.keyWidth = part.keys.reduce(
+      (n, key, i) =>
+        n + (key.mark || key.color ? 18 : 0) + measure.measureText(key.text).width + (i < part.keys.length - 1 ? 20 : 0),
+      0
+    );
+    measure.font = `600 20px ${font}`;
+    const headWidth = part.heading ? measure.measureText(part.heading).width : 0;
+    part.keyBeside = Boolean(part.keys.length && part.heading && headWidth + 32 + part.keyWidth <= width - pad * 2);
+  });
   const blockHeight = (part) =>
     (part.heading ? 30 : 0) +
     part.whens.length * 20 +
     12 +
-    (part.keys.length ? 28 : 0) +
+    (part.keys.length && !part.keyBeside ? 28 : 0) +
     part.svgs.reduce((n, item) => n + item.height + 8, 0);
   const height = pad * 2 + parts.reduce((n, part) => n + blockHeight(part) + 16, 0);
   const canvas = document.createElement("canvas");
@@ -36862,24 +36875,11 @@ async function protoChartImageShot(fileId) {
   ctx.fillRect(0, 0, width, height);
   ctx.textBaseline = "top";
   let y = pad;
-  parts.forEach((part) => {
-    if (part.heading) {
-      ctx.fillStyle = "#000";
-      ctx.font = `600 20px ${font}`;
-      ctx.fillText(part.heading, pad, y);
-      y += 30;
-    }
-    part.whens.forEach((when) => {
-      ctx.fillStyle = "#525252";
-      ctx.font = `400 13px ${font}`;
-      ctx.fillText(when, pad, y);
-      y += 20;
-    });
-    y += 12;
-    if (part.keys.length) {
-      let x = pad;
-      ctx.font = `400 13px ${font}`;
-      part.keys.forEach((key) => {
+  const drawKeys = (part, left, top) => {
+    let x = left;
+    const y = top;
+    ctx.font = `400 13px ${font}`;
+    part.keys.forEach((key) => {
         if (key.mark === "est") {
           ctx.globalAlpha = key.fillAlpha;
           ctx.fillStyle = key.color || "#fff";
@@ -36919,7 +36919,25 @@ async function protoChartImageShot(fileId) {
         ctx.fillStyle = "#000";
         ctx.fillText(key.text, x, y + 4);
         x += ctx.measureText(key.text).width + 20;
-      });
+    });
+  };
+  parts.forEach((part) => {
+    if (part.heading) {
+      ctx.fillStyle = "#000";
+      ctx.font = `600 20px ${font}`;
+      ctx.fillText(part.heading, pad, y);
+      if (part.keyBeside) drawKeys(part, width - pad - part.keyWidth, y);
+      y += 30;
+    }
+    part.whens.forEach((when) => {
+      ctx.fillStyle = "#525252";
+      ctx.font = `400 13px ${font}`;
+      ctx.fillText(when, pad, y);
+      y += 20;
+    });
+    y += 12;
+    if (part.keys.length && !part.keyBeside) {
+      drawKeys(part, pad, y);
       y += 28;
     }
     part.svgs.forEach((item) => {
