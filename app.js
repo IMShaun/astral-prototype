@@ -4046,11 +4046,11 @@ function researchOpenItem() {
     const item = (pack.moves || []).find((entry) => entry.id === id);
     return item ? { kind, item } : null;
   }
-  // A project's activity opens as "activity:<project id>/<activity id>".
-  if (kind === "activity") {
-    const [planId, stepId] = String(id || "").split("/");
+  // A project's document opens as "doc:<project id>/<document id>".
+  if (kind === "doc") {
+    const [planId, docId] = String(id || "").split("/");
     const plan = (pack.plans || []).find((entry) => entry.id === planId);
-    const item = (plan?.activities || []).find((entry) => entry.id === stepId);
+    const item = (plan?.documents || []).find((entry) => entry.id === docId);
     return item ? { kind, item, plan } : null;
   }
   return null;
@@ -4063,10 +4063,10 @@ function researchKindTag(item) {
 
 function researchStudyMeta(item) {
   const count = studyInsights(item).length;
-  const steps = (item.activities || []).length;
+  const docs = (item.documents || []).length;
   return [
     researchDate(item.date),
-    steps ? `${steps} activities` : "",
+    docs ? (docs === 1 ? "1 document" : `${docs} documents`) : "",
     count ? (count === 1 ? "1 insight" : `${count} insights`) : "",
     item.pages ? `${item.pages} pages` : "",
   ]
@@ -4188,7 +4188,7 @@ function researchStudyPage(item) {
           : ""
       }`
     )}
-    ${researchActivitiesSection(item)}
+    ${researchDocumentsSection(item)}
     ${
       insights.length
         ? deskSection(
@@ -4201,41 +4201,37 @@ function researchStudyPage(item) {
   `;
 }
 
-function researchActivityOpen(plan, step) {
-  return { "data-action": "research-open", "data-id": `activity:${plan.id}/${step.id}` };
+function researchDocumentOpen(plan, doc) {
+  return { "data-action": "research-open", "data-id": `doc:${plan.id}/${doc.id}` };
 }
 
-function researchActivitiesSection(plan) {
-  const steps = plan.activities || [];
-  if (!steps.length) return "";
+function researchDocumentsSection(plan) {
+  const docs = plan.documents || [];
+  if (!docs.length) return "";
   return deskSection(
-    `Activities (${steps.length})`,
+    `Documents (${docs.length})`,
     deskTable(
-      ["Activity", "Status", "Duration", "Plan"],
-      steps.map((step) =>
+      ["Document", "Status", "Pages"],
+      docs.map((doc) =>
         deskRow({
-          open: researchActivityOpen(plan, step),
-          title: `${step.n}. ${step.title || ""}`,
-          cells: [
-            researchStudyTag(step),
-            escapeHtml(step.duration || ""),
-            escapeHtml(step.pages ? `${step.pages} pages` : ""),
-          ],
+          open: researchDocumentOpen(plan, doc),
+          title: `${doc.n}. ${doc.title || ""}`,
+          cells: [researchStudyTag(doc), escapeHtml(doc.pages ? `${doc.pages} pages` : "")],
         })
       )
     ),
-    "Open an activity to read its plan."
+    "Open a document to read it."
   );
 }
 
-function researchActivityPage(plan, step) {
-  const steps = plan.activities || [];
+function researchDocumentPage(plan, step) {
+  const steps = plan.documents || [];
   const at = steps.indexOf(step);
   const prev = steps[at - 1];
   const next = steps[at + 1];
   const nav = (other, label) =>
     other
-      ? `<button type="button" class="astral-btn" ${deskOpenAttrs(researchActivityOpen(plan, other))}>${escapeHtml(
+      ? `<button type="button" class="astral-btn" ${deskOpenAttrs(researchDocumentOpen(plan, other))}>${escapeHtml(
           `${label}: ${other.n}. ${other.title}`
         )}</button>`
       : "";
@@ -4245,7 +4241,7 @@ function researchActivityPage(plan, step) {
       back: "research-back",
       where: plan.title || "Project",
       kicker: `<span class="desk-card-tags">${researchStudyTag(step)}${deskTag(
-        `Activity ${step.n} of ${steps.length}`,
+        `Document ${step.n} of ${steps.length}`,
         "draft"
       )}</span>`,
       title: step.title || "",
@@ -4255,9 +4251,6 @@ function researchActivityPage(plan, step) {
       "About",
       `<dl class="fact-grid">
         ${factRow("Project", plan.title)}
-        ${factRow("Duration", step.duration)}
-        ${factRow("Depends on", step.depends)}
-        ${factRow("Output", step.output)}
         ${factRow("Format", format)}
       </dl>
       ${prev || next ? `<div class="astral-actions">${nav(prev, "Previous")}${nav(next, "Next")}</div>` : ""}`
@@ -4660,7 +4653,7 @@ function renderResearch() {
   const open = researchOpenItem();
   const detail =
     Boolean(open) &&
-    (((open.kind === "plan" || open.kind === "activity") && tab === "planning") ||
+    (((open.kind === "plan" || open.kind === "doc") && tab === "planning") ||
       (open.kind === "report" && tab === "reporting") ||
       (open.kind === "move" && tab === "strategy"));
   if (!detail) store.researchOpen = "";
@@ -4768,7 +4761,7 @@ function renderResearch() {
     els.researchPlanning.hidden = tab !== "planning";
     let html = "";
     if (tab === "planning" && detail) {
-      html = open.kind === "activity" ? researchActivityPage(open.plan, open.item) : researchStudyPage(open.item);
+      html = open.kind === "doc" ? researchDocumentPage(open.plan, open.item) : researchStudyPage(open.item);
     } else if (tab === "planning") {
       const activity = activeResearchActivity();
       const matched = sortedStudies().filter(
@@ -4782,7 +4775,7 @@ function renderResearch() {
             item.summary,
             item.who,
             item.where,
-            ...(item.activities || []).map((step) => step.title)
+            ...(item.documents || []).map((doc) => doc.title)
           )
       );
       html = plans.length
@@ -4874,9 +4867,9 @@ function planResearchMove(id) {
 function onResearchPage(event) {
   const back = event.target.closest("[data-action='research-back']");
   if (back) {
-    // Back from an activity returns to its project, not the list.
+    // Back from a document returns to its project, not the list.
     const open = researchOpenItem();
-    store.researchOpen = open?.kind === "activity" ? `plan:${open.plan.id}` : "";
+    store.researchOpen = open?.kind === "doc" ? `plan:${open.plan.id}` : "";
     render();
     persistChrome();
     document.querySelector(".stage")?.scrollTo?.({ top: 0 });
