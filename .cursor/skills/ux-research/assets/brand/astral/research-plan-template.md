@@ -1,7 +1,7 @@
-# Research plan template (placeholder)
+# Research plan template
 
-Replace this file with the approved IMSERV or client document template when you have it.
+Write the plan as Markdown first, following [references/research-planning.md](../../../references/research-planning.md).
 
-Until then, generate plans as Markdown following [references/research-planning.md](../../../references/research-planning.md) and mark visual PDFs **neutral draft**.
+Branded A4 PDFs use the IMSERV usability-test-plan template at `assets/brand/plan/` in the repo root. Put plan content in a `window.PLAN` data file, then build with `node assets/brand/plan/build.js <served-root-url>`. That gives an overview and one PDF per activity under `docs/research/plans/<study>/`. See `assets/brand/plan/README.md`.
 
-Required once the real template exists: cover, logo slot, type styles, table styles, header/footer, confidentiality marker.
+Keep the folio's confidentiality marker and **Draft for review** until the plan is approved.

@@ -4046,6 +4046,13 @@ function researchOpenItem() {
     const item = (pack.moves || []).find((entry) => entry.id === id);
     return item ? { kind, item } : null;
   }
+  // A project's activity opens as "activity:<project id>/<activity id>".
+  if (kind === "activity") {
+    const [planId, stepId] = String(id || "").split("/");
+    const plan = (pack.plans || []).find((entry) => entry.id === planId);
+    const item = (plan?.activities || []).find((entry) => entry.id === stepId);
+    return item ? { kind, item, plan } : null;
+  }
   return null;
 }
 
@@ -4056,8 +4063,10 @@ function researchKindTag(item) {
 
 function researchStudyMeta(item) {
   const count = studyInsights(item).length;
+  const steps = (item.activities || []).length;
   return [
     researchDate(item.date),
+    steps ? `${steps} activities` : "",
     count ? (count === 1 ? "1 insight" : `${count} insights`) : "",
     item.pages ? `${item.pages} pages` : "",
   ]
@@ -4179,6 +4188,7 @@ function researchStudyPage(item) {
           : ""
       }`
     )}
+    ${researchActivitiesSection(item)}
     ${
       insights.length
         ? deskSection(
@@ -4188,6 +4198,71 @@ function researchStudyPage(item) {
         : ""
     }
     ${researchFile(item)}
+  `;
+}
+
+function researchActivityOpen(plan, step) {
+  return { "data-action": "research-open", "data-id": `activity:${plan.id}/${step.id}` };
+}
+
+function researchActivitiesSection(plan) {
+  const steps = plan.activities || [];
+  if (!steps.length) return "";
+  return deskSection(
+    `Activities (${steps.length})`,
+    deskTable(
+      ["Activity", "Status", "Duration", "Plan"],
+      steps.map((step) =>
+        deskRow({
+          open: researchActivityOpen(plan, step),
+          title: `${step.n}. ${step.title || ""}`,
+          cells: [
+            researchStudyTag(step),
+            escapeHtml(step.duration || ""),
+            escapeHtml(step.pages ? `${step.pages} pages` : ""),
+          ],
+        })
+      )
+    ),
+    "Open an activity to read its plan."
+  );
+}
+
+function researchActivityPage(plan, step) {
+  const steps = plan.activities || [];
+  const at = steps.indexOf(step);
+  const prev = steps[at - 1];
+  const next = steps[at + 1];
+  const nav = (other, label) =>
+    other
+      ? `<button type="button" class="astral-btn" ${deskOpenAttrs(researchActivityOpen(plan, other))}>${escapeHtml(
+          `${label}: ${other.n}. ${other.title}`
+        )}</button>`
+      : "";
+  const format = [step.pages ? `${step.pages} pages` : "", step.format || ""].filter(Boolean).join(" · ");
+  return `
+    ${deskDetailHead({
+      back: "research-back",
+      where: plan.title || "Project",
+      kicker: `<span class="desk-card-tags">${researchStudyTag(step)}${deskTag(
+        `Activity ${step.n} of ${steps.length}`,
+        "draft"
+      )}</span>`,
+      title: step.title || "",
+      lead: step.summary || "",
+    })}
+    ${deskSection(
+      "About",
+      `<dl class="fact-grid">
+        ${factRow("Project", plan.title)}
+        ${factRow("Duration", step.duration)}
+        ${factRow("Depends on", step.depends)}
+        ${factRow("Output", step.output)}
+        ${factRow("Format", format)}
+      </dl>
+      ${prev || next ? `<div class="astral-actions">${nav(prev, "Previous")}${nav(next, "Next")}</div>` : ""}`
+    )}
+    ${researchFile({ ...step, title: `${step.n}. ${step.title}` })}
   `;
 }
 
@@ -4585,7 +4660,7 @@ function renderResearch() {
   const open = researchOpenItem();
   const detail =
     Boolean(open) &&
-    ((open.kind === "plan" && tab === "planning") ||
+    (((open.kind === "plan" || open.kind === "activity") && tab === "planning") ||
       (open.kind === "report" && tab === "reporting") ||
       (open.kind === "move" && tab === "strategy"));
   if (!detail) store.researchOpen = "";
@@ -4693,13 +4768,22 @@ function renderResearch() {
     els.researchPlanning.hidden = tab !== "planning";
     let html = "";
     if (tab === "planning" && detail) {
-      html = researchStudyPage(open.item);
+      html = open.kind === "activity" ? researchActivityPage(open.plan, open.item) : researchStudyPage(open.item);
     } else if (tab === "planning") {
       const activity = activeResearchActivity();
       const matched = sortedStudies().filter(
         (item) =>
           (activity === "all" || researchActivity(item) === activity) &&
-          deskMatch("research-plans", item.title, item.kind, researchActivityName(item), item.summary, item.who, item.where)
+          deskMatch(
+            "research-plans",
+            item.title,
+            item.kind,
+            researchActivityName(item),
+            item.summary,
+            item.who,
+            item.where,
+            ...(item.activities || []).map((step) => step.title)
+          )
       );
       html = plans.length
         ? deskSheet("research-plans", {
@@ -4790,7 +4874,9 @@ function planResearchMove(id) {
 function onResearchPage(event) {
   const back = event.target.closest("[data-action='research-back']");
   if (back) {
-    store.researchOpen = "";
+    // Back from an activity returns to its project, not the list.
+    const open = researchOpenItem();
+    store.researchOpen = open?.kind === "activity" ? `plan:${open.plan.id}` : "";
     render();
     persistChrome();
     document.querySelector(".stage")?.scrollTo?.({ top: 0 });

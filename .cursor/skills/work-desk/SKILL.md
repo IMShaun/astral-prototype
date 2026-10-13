@@ -78,6 +78,8 @@ Each group needs `id`, `name`, `status` (`draft`, `working`, or `firm`), `who`, 
 
 `research.insights` are named problems from a walk. Each needs `id`, `title`, `problem`, `where`, `why`, `note`, `severity` (`critical`, `high`, `medium-high`, or `medium`), and `score` (1 to 99). `example` is optional. Score ranks within a severity from what the talk named. Harm to access, customer data, or scale sits above extra effort. Critical first, then High, Medium high, and Medium. Use Critical only when a talk named it. Do not invent a red. Do not invent an insight a talk has not named. The Research page is insights only. Insights sit as cards. Switch to a list. Filter by All, then each severity. Walk work still to do goes on Today. Score is not a desk input.
 
+`research.plans` items with `kind: "Project"` may carry `activities[]`. Each needs `id`, `n`, `title`, `status`, `duration`, `depends`, `summary`, `output`, `file` (a PDF under `docs/research/plans/`), `pages`, and `format`. The project page lists them in an Activities table. Each opens its own page (`activity:<plan>/<activity>`) with the PDF, plus previous and next. Build the PDFs with `assets/brand/plan/` (see its README). Do not invent an activity the plan has not named.
+
 Set `updated` to today.
 
 ## UI library and Branding
