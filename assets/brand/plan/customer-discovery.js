@@ -1,7 +1,7 @@
 // Content for the customer discovery documents: the proposal, the interview plan and script, and the survey plan and script.
 // Source: docs/research/studies/2026-10-13-customer-discovery-plan.md.
 // Plan facts come only from that file. Script wording, timings, and survey questions are drafts built from its
-// objectives, questions, and rules, for review. Placeholders in [brackets] are filled after discovery or approval.
+// objectives, questions, and rules, for review. Placeholders in [brackets] are filled before the pilot or after approval.
 // Strings are HTML. Rendered by document.html, printed by build.js.
 window.PLAN = {
   study: "STUDY-2026-10-13-customer-discovery",
@@ -49,12 +49,11 @@ window.PLAN = {
 
   objectives: [
     { n: 1, verb: "Understand", text: "how customers do their energy-data work today, from trigger to finished outcome, including spreadsheets, email, and other tools.", question: "What triggers the work, and what does finished look like?", activity: "Discovery interviews, walkthroughs", evidence: "Episode accounts, artefacts", measure: "Journey stages covered per scenario" },
-    { n: 2, verb: "Identify", text: "recurring behavioural patterns that need different design priorities or trade-offs.", question: "Which patterns recur across organisations, roles, and scales?", activity: "Rounds 1 and 2, integration", evidence: "Coded episodes across participants and organisations", measure: "Patterns observed in n of N participants and organisations" },
+    { n: 2, verb: "Identify", text: "recurring behavioural patterns that need different design priorities or trade-offs.", question: "Which patterns recur across organisations, roles, and scales?", activity: "Interviews, analysis", evidence: "Coded episodes across participants and organisations", measure: "Patterns observed in n of N participants and organisations" },
     { n: 3, verb: "Understand", text: "what people check before they trust and share a figure or a report.", question: "What do people check before relying on a figure?", activity: "Interviews, walkthroughs, survey", evidence: "Described and shown checks. Reported frequency", measure: "Reported frequency among respondents" },
     { n: 4, verb: "Identify", text: "who does, approves, and receives the work, and where handoffs and waiting happen.", question: "Who contributes, approves, or acts?", activity: "Interviews, walkthroughs", evidence: "Handoffs, correspondence", measure: "Handoffs per journey. Waiting points" },
     { n: 5, verb: "Determine", text: "where problems come from the service, process, or data rather than the interface.", question: "Where does it slow down, and why?", activity: "Walkthroughs, support evidence, blueprint", evidence: "Breakdowns traced to cause", measure: "Problems classed interface, process, or data" },
-    { n: 6, verb: "Gauge", text: "how often the patterns from interviews happen across a wider group of respondents.", question: "How often do these patterns happen?", activity: "Survey", evidence: "Responses", measure: "Share of respondents, by people and by organisation" },
-    { n: 7, verb: "Evaluate", text: "whether proposed design changes address the needs we find.", question: "Do proposed changes meet the need?", activity: "Design implication testing", evidence: "Observed tasks", measure: "Task success, effort, confidence" },
+    { n: 6, verb: "Gauge", text: "how often the activities, checks, and problems we ask about happen across a wider group of respondents.", question: "How often do these happen?", activity: "Survey", evidence: "Responses", measure: "Share of respondents, by people and by organisation" },
   ],
 
   supporting: [
@@ -73,6 +72,7 @@ window.PLAN = {
     "<b>Access to the people who do the work.</b> Not only senior account contacts.",
     "<b>Access to Clive and Emily Haddon's existing customer interview notes.</b> So we build on them, not repeat them.",
     "<b>A privacy and data-protection owner.</b> To agree recording, transcription, storage, and any AI processing before the first session.",
+    "<b>An approved survey tool.</b> SurveyMonkey or Microsoft Forms, cleared for customer answers.",
   ],
 
   decisions: [
@@ -111,12 +111,14 @@ window.PLAN = {
   risks: {
     senior: { risk: "Introductions only reach senior contacts", effect: "We hear about the work, not from the people doing it", fix: "Ask for practitioners by the activity they do. Track who does what in the screener" },
     orgs: { risk: "Participants come from one or two organisations", effect: "Shared local process looks like a pattern", fix: "Track organisation coverage. Recruit across several" },
-    slow: { risk: "Recruitment or privacy approval is slow", effect: "The timeline moves", fix: "Start both in stage 1. Share early findings from round 1" },
+    slow: { risk: "Recruitment or privacy approval is slow", effect: "The timeline moves", fix: "Ask for both in week 1. Hold one or two reserve participants" },
+    early: { risk: "The survey runs before the interviews can shape it", effect: "It measures our assumptions, or uses words customers do not", fix: "Build answer options from scoping and existing notes. Pilot with target users. Keep a “Something else” answer and read it" },
+    fatigue: { risk: "Four to six interviews a day tires the researchers", effect: "Later sessions get thinner probing and notes", fix: "One moderator and one notetaker. Gaps between sessions. Write up notes the same day" },
     notes: { risk: "Existing interview notes are not available", effect: "We repeat work, or miss context", fix: "Ask Clive early. Record what they cover" },
     survey: { risk: "The survey reaches only engaged customers", effect: "Patterns look more common than they are", fix: "Report respondents, not customers. Name the sampling limits" },
-    screens: { risk: "Prototype screens steer discovery", effect: "We confirm our own design", fix: "No screens until stage 7" },
-    archetypes: { risk: "Archetypes are expected before evidence exists", effect: "A persona deck without support", fix: "Agree upfront that archetypes emerge from rounds 1 and 2" },
-    twelve: { risk: "Twelve interviews are treated as enough", effect: "A multi-role audience is under-covered", fix: "Plan rounds, not a total. Keep recruiting while important gaps remain" },
+    screens: { risk: "Prototype screens steer discovery", effect: "We confirm our own design", fix: "No screens in this study. Test design changes in a follow-on study" },
+    archetypes: { risk: "Archetypes are expected before evidence exists", effect: "A persona deck without support", fix: "Agree upfront that archetypes emerge from the interviews and survey" },
+    twelve: { risk: "Twelve interviews leave gaps in a multi-role audience", effect: "Three per group shows differences between groups, not everything about each group", fix: "Recruit across several organisations. Name the gaps in the report, and propose extra sessions where they matter" },
   },
 
   consent: [
@@ -135,23 +137,40 @@ window.PLAN = {
   },
 
   ba: [
-    "Round 1 findings are shared with the BA team as they emerge, marked provisional",
+    "Early themes from the interview days are shared with the BA team, marked provisional",
     "Stories link back to the need and evidence behind them",
-    "The BA team (Claire and others) can bring open story questions into round 2",
+    "The BA team (Claire and others) can add open story questions to the script before the interview days",
   ],
 
-  // Week positions are the upper estimates laid end to end (18 weeks). Stage 2 runs alongside stage 1.
+  // Week positions are the upper estimates. Stages 2 to 5 run side by side, and so do stages 6 and 7.
   timelineNote:
-    "Estimates to agree, not commitments. Bars show the upper estimate for each stage. With overlap, roughly 12 to 18 weeks from agreement to tested implications.",
+    "Estimates to agree, not commitments. Bars show the upper estimate for each stage. With overlap, about 8 to 11 weeks from agreement to presenting the findings.",
+  overall: { weeks: "8 to 11 weeks", text: "With overlap, from agreement to presenting the findings." },
+  followOn: "Testing proposed design changes with customers is a possible follow-on study. It is not part of this proposal.",
+
+  phases: [
+    { title: "Prepare", lede: "Agree the scope, then recruit and get ready for the interviews and the survey side by side.", stages: [1, 2, 3, 4, 5] },
+    { title: "Run, then<br>report", lede: "One round of interviews with the survey open alongside. Then analysis, a report, and a presentation to the wider team.", stages: [6, 7, 8, 9, 10] },
+  ],
 
   stages: [
-    { n: 1, title: "Agree scope and decisions", short: "Scope and decisions", duration: "1 to 2 weeks", weeks: [0, 2], depends: "Time with Clive and the manager. Access to existing interview notes", purpose: "Agree what the research must help decide, the priority journeys, and what is out of scope.", doc: "proposal" },
-    { n: 2, title: "Set up recruitment", short: "Recruitment", duration: "2 to 3 weeks, alongside stage 1", weeks: [0, 3], depends: "Access coordinator. Privacy owner sign-off", purpose: "Reach the people who actually do the work, across several organisations.", doc: "interview" },
-    { n: 3, title: "Discovery round 1", short: "Round 1", duration: "2 to 3 weeks, including analysis", weeks: [3, 6], depends: "Bookings", purpose: "Understand real, recent episodes of work before showing any proposed screens.", doc: "interview" },
-    { n: 4, title: "Discovery round 2, targeted", short: "Round 2", duration: "2 to 3 weeks, including analysis", weeks: [6, 9], depends: "Gap recruitment", purpose: "Fill the gaps round 1 found and test our early interpretations.", doc: "interview" },
-    { n: 5, title: "Survey pilot and run", short: "Survey", duration: "3 to 4 weeks", weeks: [9, 13], depends: "Distribution route. Reachable population known", purpose: "Gauge how often the patterns from discovery happen across a wider group of respondents.", doc: "survey" },
-    { n: 6, title: "Integrate and follow up", short: "Integrate", duration: "About 2 weeks", weeks: [13, 15], depends: "Survey results. Follow-up participants", purpose: "Bring the evidence together, investigate disagreement, and refine archetypes and journeys.", doc: "survey" },
-    { n: 7, title: "Test design implications", short: "Test implications", duration: "2 to 3 weeks", weeks: [15, 18], depends: "Priority hypotheses. Prototype ready", purpose: "Check whether proposed changes address the needs we found.", doc: "proposal" },
+    { n: 1, title: "Agree scope and decisions", short: "Scope and decisions", duration: "1 week", weeks: [0, 1], depends: "Time with Clive and the manager. Access to existing interview notes", purpose: "Agree what the research must help decide, the priority journeys, the four user groups, and what is out of scope.", output: "Research questions, priority journeys, user groups, exclusions, and an existing-evidence summary", doc: "proposal" },
+    { n: 2, title: "Recruit for the interviews", short: "Interview recruitment", duration: "2 weeks", weeks: [1, 3], depends: "Access coordinator. Agreed user groups", purpose: "Screen and book 12 people who do the work, 3 from each of four user groups, across several organisations.", output: "Screener, tracker, 12 bookings, and one or two reserves", doc: "interview" },
+    { n: 3, title: "Prepare the interviews", short: "Interview prep", duration: "1 to 2 weeks, alongside recruitment", weeks: [1, 3], depends: "Privacy owner sign-off for recording and transcription", purpose: "Finish the interview plan and script, get the consent wording approved, and set up and test recording and transcription.", output: "Final script, approved consent, tested recording, briefed notetaker", doc: "interview" },
+    { n: 4, title: "Prepare the survey", short: "Survey prep", duration: "1 to 2 weeks, alongside recruitment", weeks: [1, 3], depends: "An approved survey tool. Privacy owner sign-off", purpose: "Build the survey and its routing in SurveyMonkey or Microsoft Forms, pilot it, and write the invitation and reminder emails.", output: "Piloted survey, invitation email, and reminder email", doc: "survey" },
+    { n: 5, title: "Recruit for the survey", short: "Survey recruitment", duration: "About 1 week, alongside survey prep", weeks: [2, 3], depends: "Distribution route. Reachable population known", purpose: "Agree who receives the survey and who sends it, and get the distribution list ready.", output: "Distribution list, sender, and response target", doc: "survey" },
+    { n: 6, title: "Run the interviews", short: "Interviews", duration: "2 to 3 interview days, within 1 to 2 weeks", weeks: [3, 5], depends: "Bookings. Tested recording", purpose: "One round of 12 interviews, 4 to 6 a day. Notes are written up the same day.", output: "Recordings, transcripts, and session notes", doc: "interview" },
+    { n: 7, title: "Run the survey", short: "Survey", duration: "Open for 2 to 3 weeks, alongside the interviews", weeks: [3, 6], depends: "Piloted survey. Distribution list", purpose: "Send the invitation, then leave the survey open. One reminder, and a light check on responses.", output: "Survey responses", doc: "survey" },
+    { n: 8, title: "Analyse the data", short: "Analysis", duration: "2 to 3 weeks", weeks: [5, 8], depends: "Transcripts. The survey closed before the comparison", purpose: "Code the interviews against the objectives, analyse the survey responses, and compare the two.", output: "Coded evidence, patterns, and contradictions", doc: "proposal" },
+    { n: 9, title: "Write the report and UX deliverables", short: "Report", duration: "1 to 2 weeks", weeks: [8, 10], depends: "Analysis", purpose: "Write up the findings, with the behavioural archetypes, customer journey maps, and prioritised UX decisions.", output: "Report, archetypes, journey maps, and prioritised UX decisions", doc: "proposal" },
+    { n: 10, title: "Present the findings", short: "Presentation", duration: "1 session, in the last week", weeks: [10, 11], depends: "Report. Time with the wider team", purpose: "Present the findings and UX deliverables to the wider team, including the BA team.", output: "Shared findings and agreed next steps", doc: "proposal" },
+  ],
+
+  groups: [
+    ["Energy managers", "Understand use, spikes, and which sites waste energy", "3"],
+    ["Finance users", "Find where spend is highest, why, and where to cut", "3"],
+    ["Brokers / TPIs", "Act for one or more customers, with reports, invoices, and energy data", "3"],
+    ["Data and asset users", "Get reliable data into another process, or check meter faults are repaired", "3"],
   ],
 
   scenarios: [
@@ -181,8 +200,26 @@ window.PLAN = {
     objectives: [1, 2, 3, 4, 5],
     format: "Proposed 60-minute remote sessions. Interview plus a walkthrough of a recent piece of work.",
     rounds: [
-      { name: "Round 1", who: "6 to 8 participants across several organisations", aim: "Understand real, recent episodes of work before showing any proposed screens.", output: "Episode-level evidence, first journey fragments, candidate behaviours, and recruitment gaps.", duration: "2 to 3 weeks, including analysis" },
-      { name: "Round 2, targeted", who: "6 to 8 participants recruited into the gaps", aim: "Fill the gaps round 1 found and test our early interpretations.", output: "Wider coverage, tested interpretations, and provisional archetypes.", duration: "2 to 3 weeks, including analysis" },
+      { name: "One round", who: "12 participants, 3 from each of four user groups, across several organisations", aim: "Understand real, recent episodes of work before showing any proposed screens.", output: "Episode-level evidence, journey fragments, candidate behaviours, and any gaps to name in the report.", duration: "2 to 3 interview days, 4 to 6 sessions a day" },
+    ],
+    prep: [
+      "Finish the plan and script. Agree it with Clive and the manager",
+      "Consent wording approved by the privacy owner",
+      "Recording and transcription set up in the approved tool, and tested end to end",
+      "A restricted storage folder for recordings, transcripts, and notes",
+      "Invites sent with the joining link, what to expect, and the consent information",
+      "Notetaker briefed, with a note template for each session",
+      "One practice session with a colleague to check timings",
+    ],
+    day: [
+      ["09:00 to 10:00", "Session 1"],
+      ["10:15 to 11:15", "Session 2"],
+      ["11:30 to 12:30", "Session 3"],
+      ["12:30 to 13:30", "Lunch. Write up notes"],
+      ["13:30 to 14:30", "Session 4"],
+      ["14:45 to 15:45", "Session 5"],
+      ["16:00 to 17:00", "Session 6"],
+      ["After the last session", "Write up notes. Note early themes for the BA team"],
     ],
     parts: [
       {
@@ -305,14 +342,35 @@ window.PLAN = {
 
   survey: {
     objectives: [3, 6],
-    duration: "3 to 4 weeks",
-    depends: "Discovery rounds 1 and 2. Distribution route. Reachable population known",
+    duration: "1 to 2 weeks to prepare, then open for 2 to 3 weeks alongside the interviews",
+    depends: "Agreed scope. An approved survey tool. Distribution route. Reachable population known",
     steps: [
-      { h: "Build from discovery", p: "Build questions from discovery findings, in customers' own words." },
+      { h: "Build from what we know", p: "Answer options come from scoping, Clive and Emily's interview notes, and desk research, in customers' words." },
       { h: "Ask about behaviour", p: "Ask about behaviour, not about which persona someone is." },
-      { h: "Pilot", p: "Pilot with target users to check meaning, answer options, and effort." },
-      { h: "Run, then analyse", p: "Results describe respondents. Report people and customer organisations separately." },
+      { h: "Pilot, then send", p: "Pilot with target users to check meaning, answer options, routing, and effort." },
+      { h: "Analyse with the interviews", p: "The survey shows how often. The interviews show why. Results describe respondents." },
     ],
+    prepare: [
+      "Build the questions and routing in SurveyMonkey or Microsoft Forms",
+      "Test every route in the routes table",
+      "Pilot with a few target users. Set the time on the introduction screen",
+      "Write the invitation email and one reminder",
+      "Privacy owner signs off the tool, the consent wording, and where answers are stored",
+    ],
+    recruit: [
+      "Agree who receives it: the reachable population",
+      "Agree who sends it, such as the access coordinator or account managers",
+      "Get the distribution list ready",
+      "Set the response target",
+    ],
+    run: [
+      "Send the invitation at the start of the interview days",
+      "Leave it open. It needs no moderating",
+      "Check responses a couple of times a week",
+      "Send one reminder after about a week",
+      "Close after 2 to 3 weeks",
+    ],
+    tool: "Check the tool handles the routing before building. B1 and D1 reuse earlier answers. If the tool cannot, B1 becomes one grid question listing every activity, and D1 asks about the activity that takes most time.",
     rules: [
       "A recall period that fits each activity. Monthly reporting and annual processes need different treatment",
       "Include “not applicable” and “don't know”. Keep them apart from missing answers",
@@ -345,7 +403,7 @@ window.PLAN = {
         who: "Everyone who agreed",
         questions: [
           { id: "A1", q: "How do you get IMSERV data today?", type: "Select all that apply", options: ["I log in to the IMSERV portal myself", "Someone else sends me files or reports", "It comes through an API or another system", "I don't use IMSERV data", "Don't know"], logic: "“I don't use IMSERV data” and “Don't know” are exclusive. “I don't use IMSERV data” → Section F.", obj: [1, 6] },
-          { id: "A2", q: "In the past three months, which of these have you done with IMSERV data?", type: "Select all that apply", options: ["Investigated data that did not look right", "Reconciled figures from different sources", "Prepared or shared a report", "Managed who can see data, sites, or documents", "Raised or followed up a service issue with IMSERV", "<span class=\"ph\">[Other activities named in discovery]</span>", "None of these", "Don't know"], logic: "“None of these” and “Don't know” are exclusive → Section F. Choices carry into B1, B2, and C.", obj: [2, 6] },
+          { id: "A2", q: "In the past three months, which of these have you done with IMSERV data?", type: "Select all that apply", options: ["Investigated data that did not look right", "Reconciled figures from different sources", "Prepared or shared a report", "Managed who can see data, sites, or documents", "Raised or followed up a service issue with IMSERV", "<span class=\"ph\">[Other activities named in scoping or existing notes]</span>", "None of these", "Don't know"], logic: "“None of these” and “Don't know” are exclusive → Section F. Choices carry into B1, B2, and C.", obj: [2, 6] },
         ],
       },
       {
@@ -363,7 +421,7 @@ window.PLAN = {
         who: "If A2 includes investigating, reconciling, or reporting",
         questions: [
           { id: "C1", q: "In the past three months, how often have you compared figures from more than one source before sharing a report?", type: "Single choice", options: ["Every time", "Most times", "Sometimes", "Never", "Not applicable, I don't share reports", "Don't know"], logic: "Not applicable and Don't know are coded apart from missing answers.", obj: [3, 6] },
-          { id: "C2", q: "Before you rely on a figure from IMSERV, what do you usually check?", type: "Select all that apply", options: ["<span class=\"ph\">[Checks named in discovery, in participants' words]</span>", "Something else (please say)", "I don't usually check", "Don't know"], logic: "“I don't usually check” and “Don't know” are exclusive. “Something else” → short text.", obj: [3, 6] },
+          { id: "C2", q: "Before you rely on a figure from IMSERV, what do you usually check?", type: "Select all that apply", options: ["<span class=\"ph\">[Checks named in existing notes, in customers' words]</span>", "Something else (please say)", "I don't usually check", "Don't know"], logic: "“I don't usually check” and “Don't know” are exclusive. “Something else” → short text.", obj: [3, 6] },
           { id: "C3", q: "By the time you share a figure, how confident are you that it is right?", type: "Single choice", options: ["Very confident", "Fairly confident", "Not very confident", "Not at all confident", "Don't know"], logic: "", obj: [3] },
         ],
       },

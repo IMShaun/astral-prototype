@@ -23,7 +23,7 @@ We want to run a research-led discovery with IMSERV customers. It should produce
 - **Evidence-backed customer journeys.** What happens today, including work outside Astral.
 - **A prioritised set of UX decisions.** Each one traceable to evidence, and ready for the BA team to turn into stories.
 
-The method is a connected sequence: review what we already have, interview and observe, find provisional patterns, survey those patterns, follow up on contradictions, then test what it means for the design.
+The method: review what we already have, then run one round of 12 interviews with a survey open alongside. We analyse the two together, write a report with the archetypes and journey maps, and present it to the wider team. About 8 to 11 weeks from agreement to presenting the findings.
 
 Clive has offered to help unlock customer access. He has **not** agreed a research plan, scope, or sample size. This plan is the proposal for that conversation.
 
@@ -37,6 +37,7 @@ Everything here is a proposed approach. It is grounded in UX and mixed-methods g
 4. **Access to the people who do the work.** Not only senior account contacts.
 5. **Access to Clive and Emily Haddon's existing customer interview notes.** So we build on them, not repeat them.
 6. **A privacy and data-protection owner.** To agree recording, transcription, storage, and any AI processing before the first session.
+7. **An approved survey tool.** SurveyMonkey or Microsoft Forms, cleared for customer answers.
 
 ## Decision to inform
 
@@ -84,8 +85,9 @@ These are beliefs we have not tested with customers:
 3. **Understand** what people check before they trust and share a figure or a report.
 4. **Identify** who does, approves, and receives the work, and where handoffs and waiting happen.
 5. **Determine** where problems come from the service, process, or data rather than the interface.
-6. **Gauge** how often the patterns from interviews happen across a wider group of respondents.
-7. **Evaluate** whether proposed design changes address the needs we find.
+6. **Gauge** how often the activities, checks, and problems we ask about happen across a wider group of respondents.
+
+Testing proposed design changes with customers is a possible follow-on study. It is not part of this proposal.
 
 ## Research questions
 
@@ -106,22 +108,24 @@ How do IMSERV customers do their energy-data work today, and which differences i
 
 ### Approach
 
-An **exploratory sequential mixed-methods** discovery. Qualitative research comes first. It sets the concepts and language that the survey then measures.
+A **mixed-methods** discovery. One round of interviews and a survey run at the same time, then are analysed together. The interviews show why. The survey shows how often.
 
-**Review existing evidence → interview and observe → find provisional patterns → survey those patterns → follow up on contradictions → refine archetypes and journeys → test design implications.**
+**Review existing evidence → prepare → interview and survey side by side → analyse together → report with archetypes and journeys → present to the wider team.**
 
-The methods are connected, not just collected. Interviews build the survey. Survey results guide follow-up recruitment. Both are compared in one analysis. ([Fetters, Curry and Creswell](https://pmc.ncbi.nlm.nih.gov/articles/PMC4097839/))
+The methods are connected, not just collected. Both answer the same objectives. They are compared in one analysis, and disagreement is investigated, not smoothed away. ([Fetters, Curry and Creswell](https://pmc.ncbi.nlm.nih.gov/articles/PMC4097839/))
 
-### Why not start with the survey
+### The trade-off of running the survey alongside
 
-A survey written before discovery measures our own assumptions. It may:
+The survey opens alongside the interviews, so it cannot be built from them. It is built from scoping, Clive and Emily's interview notes, and desk research, then piloted with target users. A survey written from our own assumptions may:
 
 - miss activities customers think are important
 - use words that do not match how people describe their work
 - force people into categories that do not fit
 - collect feature wishes instead of explaining needs
 
-A **short screener** is still used for recruitment. That is different from the main survey.
+The pilot, open "Something else" answers, and the interviews help catch this.
+
+A **short screener** is still used for interview recruitment. That is different from the main survey.
 
 If IMSERV already has a strong survey or usage dataset, we use it to choose who to interview. We do not collect it again.
 
@@ -136,7 +140,7 @@ Interviews and surveys rely on what people remember and choose to report. Callin
 | **Work walkthroughs or observation** | Tools, checks, workarounds, and handoffs | A reconstruction is not the same as watching normal work |
 | **Survey** | Reported frequency and variation among respondents | Sampling and wording shape the answers |
 | **Usage and support evidence, where available** | Recorded activity and recurring service problems | Logs do not explain why. Support cases over-represent problems |
-| **Design implication testing** | Whether proposed changes address the needs | Comes after discovery, not before |
+| **Design implication testing** | Whether proposed changes address the needs | A possible follow-on study. Not part of this proposal |
 
 ### Behavioural archetypes, not decorative personas
 
@@ -161,14 +165,17 @@ We keep these dimensions separate, so a job title is not mistaken for a behaviou
 
 ## Research activities
 
-### Activity 1. Agree scope and decisions
+Ten stages in two phases. **Prepare** covers stages 1 to 5. **Run, then report** covers stages 6 to 10. The interviews and the survey have their own plan and script.
 
-**Purpose.** Agree what the research must help decide, the priority journeys, and what is out of scope.
+### Stage 1. Agree scope and decisions (1 week)
+
+**Purpose.** Agree what the research must help decide, the priority journeys, the four user groups, and what is out of scope.
 
 **What happens.**
 
 - Session with Clive and the manager to agree the decisions and exclusions
 - Agree two or three priority scenarios to follow in depth
+- Agree the four user groups for interview recruitment
 - Agree how findings reach the BA team
 - Review Clive and Emily Haddon's customer interview notes, DataVision walk notes, and any support or usage data
 - Record what those sources already answer, so we do not ask again
@@ -179,25 +186,33 @@ We keep these dimensions separate, so a job title is not mistaken for a behaviou
 - Investigating a discrepancy through to resolution
 - Preparing and sharing evidence for a business decision
 
-**Output.** Agreed research questions, priority journeys, exclusions, and an existing-evidence summary.
+**Output.** Agreed research questions, priority journeys, user groups, exclusions, and an existing-evidence summary.
 
-### Activity 2. Set up recruitment
+### Stage 2. Recruit for the interviews (2 weeks)
 
-**Purpose.** Reach the people who actually do the work, across several organisations.
+**Purpose.** Screen and book 12 people who do the work, 3 from each of four user groups, across several organisations.
+
+| User group | What they need to do | Interviews |
+| --- | --- | --- |
+| Energy managers | Understand use, spikes, and which sites waste energy | 3 |
+| Finance users | Find where spend is highest, why, and where to cut | 3 |
+| Brokers / TPIs | Act for one or more customers, with reports, invoices, and energy data | 3 |
+| Data and asset users | Get reliable data into another process, or check meter faults are repaired | 3 |
+
+The groups are a starting point for recruitment. They are not the archetypes. Archetypes come from what people do.
 
 **What happens.**
 
 - Named access coordinator for customer introductions
 - Short behavioural screener
-- Recruitment matrix and tracker. Participant coverage and organisation coverage
-- Consent, recording, storage, and AI-processing approach agreed with the privacy owner
-- First sessions booked
+- Recruitment tracker. Participant coverage and organisation coverage
+- 12 sessions booked, plus one or two reserves
 
 In business services, separate the **buyer, administrator, practitioner, approver, and recipient of outputs**. A senior contact may not do the everyday work.
 
 Account managers and internal experts help with recruitment and service context. They do not stand in for customer practitioners. ([GOV.UK, finding participants](https://www.gov.uk/service-manual/user-research/find-user-research-participants))
 
-**Recruitment matrix**
+**Balance within each group.** Within each group of three, we aim for contrasts likely to change a design decision. We will not fill every combination.
 
 | Dimension | Examples |
 | --- | --- |
@@ -209,19 +224,68 @@ Account managers and internal experts help with recruitment and service context.
 | Tools and channels | Portal, spreadsheet, email, API, telephone, and combinations |
 | Access needs | Assistive technology, magnification, digital confidence, other support needs |
 
-We will not try to fill every combination. We prioritise contrasts likely to change a design decision, then recruit into gaps as findings emerge.
-
-Energy, Finance, Asset, and Data hats are a starting point for screening. They are not the archetypes.
-
 **Exclusions.** IMSERV staff standing in for customers. People who designed the flows being discussed.
 
-**Output.** Access coordinator, screener, matrix, consent approach, and first bookings.
+**Output.** Screener, tracker, 12 bookings, and one or two reserves.
 
-### Activity 3. Discovery round 1
+### Stage 3. Prepare the interviews (1 to 2 weeks, alongside recruitment)
+
+**Purpose.** Have everything in place before the first interview day.
+
+- Finish the plan and script. Agree it with Clive and the manager
+- Consent wording approved by the privacy owner
+- Recording and transcription set up in the approved tool, and tested end to end
+- A restricted storage folder for recordings, transcripts, and notes
+- Invites sent with the joining link, what to expect, and the consent information
+- Notetaker briefed, with a note template for each session
+- One practice session with a colleague to check timings
+
+**Output.** Final script, approved consent, tested recording, and a briefed notetaker.
+
+### Stage 4. Prepare the survey (1 to 2 weeks, alongside recruitment)
+
+**Purpose.** Build, pilot, and get ready to send the survey.
+
+- Build the questions and routing in SurveyMonkey or Microsoft Forms
+- Test every route
+- Pilot with a few target users to check meaning, answer options, routing, and effort. Set the time on the introduction screen
+- Write the invitation email and one reminder
+- Privacy owner signs off the tool, the consent wording, and where answers are stored
+
+**Check the tool first.** Two questions reuse earlier answers. If the tool cannot do that, ask about every activity in one grid question, and ask the follow-up about the activity that takes most time.
+
+| Ask this | Not this |
+| --- | --- |
+| In the past three months, how often have you compared figures from more than one source before sharing a report? | Are you an evidence-led analyst? |
+
+**Rules.**
+
+- Answer options come from scoping, existing interview notes, and desk research, in customers' own words
+- Ask about behaviour, not about which persona someone is
+- A recall period that fits each activity. Monthly reporting and annual processes need different treatment
+- Include "not applicable" and "don't know". Keep them apart from missing answers
+- Wording, options, and order change results. ([Pew, questionnaire design](https://www.pewresearch.org/writing-survey-questions/))
+- Set the response target only after we know the reachable population, sampling approach, and comparisons needed
+- Results describe **respondents** unless the sampling supports wider claims. ([Pew, nonprobability surveys](https://www.pewresearch.org/methods/2018/08/06/video-explainer-what-are-nonprobability-surveys/))
+- Report people and customer organisations separately
+- More responses do not remove recruitment bias
+
+**Output.** Piloted survey, invitation email, and reminder email.
+
+### Stage 5. Recruit for the survey (about 1 week, alongside survey prep)
+
+- Agree who receives it: the reachable population
+- Agree who sends it, such as the access coordinator or account managers
+- Get the distribution list ready
+- Set the response target
+
+**Output.** Distribution list, sender, and response target.
+
+### Stage 6. Run the interviews (2 to 3 interview days)
 
 **Purpose.** Understand real, recent episodes of work before showing any proposed screens.
 
-**Format.** Proposed 60-minute remote sessions. Interview plus a walkthrough of a recent piece of work. 6 to 8 participants across several organisations.
+**Format.** One round of 12 proposed 60-minute remote sessions, 4 to 6 a day. Interview plus a walkthrough of a recent piece of work. Every session has a moderator and a notetaker. Notes are written up the same day.
 
 **How the session runs.** We ask about the last real time, not about features:
 
@@ -243,50 +307,31 @@ Where it is appropriate and authorised, participants show a redacted report, spr
 
 **We do not show prototype screens in discovery.** A prototype steers the conversation towards its own features. ([GOV.UK, interviews](https://www.gov.uk/service-manual/user-research/using-in-depth-interviews), [contextual research](https://www.gov.uk/service-manual/user-research/contextual-research-and-observation))
 
-**Analysis.** Code against objectives, then open coding. Separate observation from interpretation. Look for contradictions and outliers.
+**When to add interviews.** When important contexts are still unexplored, new behavioural differences keep appearing, or consequential contradictions are unresolved. Use the reserves. If gaps remain, name them in the report. A rare, high-impact need is not dropped because it appeared once.
 
-**Output.** Episode-level evidence, first journey fragments, candidate behaviours, and recruitment gaps.
+**Output.** Recordings, transcripts, and session notes.
 
-### Activity 4. Discovery round 2, targeted
+### Stage 7. Run the survey (open for 2 to 3 weeks, alongside the interviews)
 
-**Purpose.** Fill the gaps round 1 found and test our early interpretations.
+The survey needs little moderating.
 
-**Format.** As round 1. 6 to 8 participants recruited into the gaps.
+- Send the invitation at the start of the interview days
+- Leave it open
+- Check responses a couple of times a week
+- Send one reminder after about a week
+- Close after 2 to 3 weeks
 
-**Output.** Wider coverage, tested interpretations, and provisional archetypes.
+**Output.** Survey responses.
 
-**When to keep recruiting.** When important contexts are still unexplored, new behavioural differences keep appearing, or consequential contradictions are unresolved. A rare, high-impact need is not dropped because it appeared once.
+### Stage 8. Analyse the data (2 to 3 weeks)
 
-### Activity 5. Survey
+**Purpose.** Bring the evidence together, investigate disagreement, and find the patterns.
 
-**Purpose.** Gauge how often the patterns from discovery happen across a wider group of respondents.
-
-**What happens.**
-
-- Build questions from discovery findings, in customers' own words
-- Ask about behaviour, not about which persona someone is
-- Pilot with target users to check meaning, answer options, and effort
-- Run, then analyse
-
-| Ask this | Not this |
-| --- | --- |
-| In the past three months, how often have you compared figures from more than one source before sharing a report? | Are you an evidence-led analyst? |
-
-**Rules.**
-
-- A recall period that fits each activity. Monthly reporting and annual processes need different treatment
-- Include "not applicable" and "don't know". Keep them apart from missing answers
-- Wording, options, and order change results. ([Pew, questionnaire design](https://www.pewresearch.org/writing-survey-questions/))
-- Set the response target only after we know the reachable population, sampling approach, and comparisons needed
-- Results describe **respondents** unless the sampling supports wider claims. ([Pew, nonprobability surveys](https://www.pewresearch.org/methods/2018/08/06/video-explainer-what-are-nonprobability-surveys/))
-- Report people and customer organisations separately
-- More responses do not remove recruitment bias
-
-**Output.** Reported patterns across respondents, with sampling limits stated.
-
-### Activity 6. Integrate and follow up
-
-**Purpose.** Bring the evidence together, investigate disagreement, and refine archetypes and journeys.
+- Code the interviews against the objectives, then open coding
+- Separate observation from interpretation
+- Look for contradictions and outliers
+- Analyse the survey responses, reporting people and organisations separately
+- Compare the two in one joint evidence table
 
 Triangulation does not mean three sources agreed, so it is true. Sources can share a bias. Interviewing and surveying the same customer champions adds detail, not independent coverage.
 
@@ -301,22 +346,21 @@ Each relationship is marked **supporting, complementary, conflicting, or insuffi
 
 For example, someone may say they use the portal for reporting. A walkthrough may show the final report is built elsewhere. That is not dishonest. Reporting may mean getting the starting data.
 
-Short follow-up sessions are used where contradictions matter.
+**Output.** Coded evidence, patterns, and contradictions.
 
-**Output.** Refined archetypes, journeys, a service blueprint where needed, contradictions, and priorities.
+### Stage 9. Write the report and UX deliverables (1 to 2 weeks)
 
-### Activity 7. Test design implications
+**Purpose.** Write up the findings, with the behavioural archetypes, customer journey maps, and prioritised UX decisions. See [What the research produces](#what-the-research-produces).
 
-**Purpose.** Check whether proposed changes address the needs we found.
+**Output.** Report, archetypes, journey maps, a service blueprint where needed, and prioritised UX decisions.
 
-**What happens.**
+### Stage 10. Present the findings (1 session, in the last week)
 
-- Turn priority problems into design hypotheses
-- Test with customers who match the relevant archetypes
-- Record task success, effort, and confidence where they serve an objective
+**Purpose.** Present the findings and UX deliverables to the wider team, including the BA team.
 
-**Output.** Evidence about which changes work, which do not, and what to try next.
+**Output.** Shared findings and agreed next steps.
 
+Testing proposed design changes with customers is a possible follow-on study. It is not part of this proposal.
 ## What the research produces
 
 ### Behavioural archetypes
@@ -362,23 +406,26 @@ Observation, interpretation, and recommendation stay separate, with links back t
 
 | Stage | Provisional duration | Depends on | Output |
 | --- | --- | --- | --- |
-| 1. Agree scope and decisions | 1 to 2 weeks | Time with Clive and the manager. Access to existing interview notes | Research questions, priority journeys, exclusions, evidence summary |
-| 2. Set up recruitment | 2 to 3 weeks, alongside stage 1 | Access coordinator. Privacy owner sign-off | Screener, matrix, consent approach, first bookings |
-| 3. Discovery round 1 | 2 to 3 weeks, including analysis | Bookings | Episode evidence, journey fragments, gaps |
-| 4. Discovery round 2 | 2 to 3 weeks, including analysis | Gap recruitment | Wider coverage, provisional archetypes |
-| 5. Survey pilot and run | 3 to 4 weeks | Distribution route. Reachable population known | Reported patterns, with sampling limits |
-| 6. Integrate and follow up | About 2 weeks | Survey results. Follow-up participants | Refined archetypes, journeys, blueprint, priorities |
-| 7. Test design implications | 2 to 3 weeks | Priority hypotheses. Prototype ready | Evidence on proposed changes |
+| 1. Agree scope and decisions | 1 week | Time with Clive and the manager. Access to existing interview notes | Research questions, priority journeys, user groups, exclusions, evidence summary |
+| 2. Recruit for the interviews | 2 weeks | Access coordinator. Agreed user groups | Screener, tracker, 12 bookings, one or two reserves |
+| 3. Prepare the interviews | 1 to 2 weeks, alongside recruitment | Privacy owner sign-off for recording and transcription | Final script, approved consent, tested recording, briefed notetaker |
+| 4. Prepare the survey | 1 to 2 weeks, alongside recruitment | An approved survey tool. Privacy owner sign-off | Piloted survey, invitation and reminder emails |
+| 5. Recruit for the survey | About 1 week, alongside survey prep | Distribution route. Reachable population known | Distribution list, sender, response target |
+| 6. Run the interviews | 2 to 3 interview days, within 1 to 2 weeks | Bookings. Tested recording | Recordings, transcripts, session notes |
+| 7. Run the survey | Open for 2 to 3 weeks, alongside the interviews | Piloted survey. Distribution list | Survey responses |
+| 8. Analyse the data | 2 to 3 weeks | Transcripts. The survey closed before the comparison | Coded evidence, patterns, contradictions |
+| 9. Write the report and UX deliverables | 1 to 2 weeks | Analysis | Report, archetypes, journey maps, prioritised UX decisions |
+| 10. Present the findings | 1 session, in the last week | Report. Time with the wider team | Shared findings and agreed next steps |
 
-With overlap, roughly **12 to 18 weeks** from agreement to tested implications. Early findings reach the BA team from round 1, not only at the end.
+With overlap, about **8 to 11 weeks** from agreement to presenting the findings. Early themes reach the BA team from the interview days, not only at the end.
 
 ## Working alongside the BA team
 
 This is a small discovery track that feeds the BA work while it builds the wider picture. It does not have to finish before anything else can be specified.
 
-- Round 1 findings are shared with the BA team as they emerge, marked provisional
+- Early themes from the interview days are shared with the BA team, marked provisional
 - Stories link back to the need and evidence behind them
-- The BA team (Claire and others) can bring open story questions into round 2
+- The BA team (Claire and others) can add open story questions to the script before the interview days
 
 ## Consent, privacy, and data
 
@@ -402,26 +449,27 @@ It will **not** invent quotes, build archetypes from job titles, or treat simula
 | --- | --- | --- |
 | Introductions only reach senior contacts | We hear about the work, not from the people doing it | Ask for practitioners by the activity they do. Track who does what in the screener |
 | Participants come from one or two organisations | Shared local process looks like a pattern | Track organisation coverage. Recruit across several |
-| Recruitment or privacy approval is slow | The timeline moves | Start both in stage 1. Share early findings from round 1 |
+| Recruitment or privacy approval is slow | The timeline moves | Ask for both in week 1. Hold one or two reserve participants |
+| The survey runs before the interviews can shape it | It measures our assumptions, or uses words customers do not | Build answer options from scoping and existing notes. Pilot with target users. Keep a "Something else" answer and read it |
+| Four to six interviews a day tires the researchers | Later sessions get thinner probing and notes | One moderator and one notetaker. Gaps between sessions. Write up notes the same day |
 | Existing interview notes are not available | We repeat work, or miss context | Ask Clive early. Record what they cover |
 | The survey reaches only engaged customers | Patterns look more common than they are | Report respondents, not customers. Name the sampling limits |
-| Prototype screens steer discovery | We confirm our own design | No screens until stage 7 |
-| Archetypes are expected before evidence exists | A persona deck without support | Agree upfront that archetypes emerge from rounds 1 and 2 |
-| Twelve interviews are treated as enough | A multi-role audience is under-covered | Plan rounds, not a total. Keep recruiting while important gaps remain |
+| Prototype screens steer discovery | We confirm our own design | No screens in this study. Test design changes in a follow-on study |
+| Archetypes are expected before evidence exists | A persona deck without support | Agree upfront that archetypes emerge from the interviews and survey |
+| Twelve interviews leave gaps in a multi-role audience | Three per group shows differences between groups, not everything about each group | Recruit across several organisations. Name the gaps in the report, and propose extra sessions where they matter |
 
-On sample size. GOV.UK suggests about 4 to 8 participants per qualitative round, with more rounds as needed. ([GOV.UK, planning research](https://www.gov.uk/service-manual/user-research/plan-user-research-for-your-service)) A systematic review found saturation often within 9 to 17 interviews, in fairly similar groups with narrow aims. ([Hennink and Kaiser, 2022](https://doi.org/10.1016/j.socscimed.2021.114523)) That does **not** show 12 to 16 interviews are enough for IMSERV's varied, multi-role audience. Two rounds of 6 to 8 is a starting proposal, not a promise of coverage.
+On sample size. GOV.UK suggests about 4 to 8 participants per qualitative round. ([GOV.UK, planning research](https://www.gov.uk/service-manual/user-research/plan-user-research-for-your-service)) A systematic review found saturation often within 9 to 17 interviews, in fairly similar groups with narrow aims. ([Hennink and Kaiser, 2022](https://doi.org/10.1016/j.socscimed.2021.114523)) That does **not** show 12 interviews are enough for IMSERV's varied, multi-role audience. Three people per group is a starting proposal, not a promise of coverage.
 
 ## Objective-to-evidence matrix
 
 | Objective | Research question | Activity | Evidence | Measure |
 | --- | --- | --- | --- | --- |
 | 1. Understand today's work end to end | What triggers the work, and what does finished look like? | Discovery interviews, walkthroughs | Episode accounts, artefacts | Journey stages covered per scenario |
-| 2. Identify recurring behaviour patterns | Which patterns recur across organisations, roles, and scales? | Rounds 1 and 2, integration | Coded episodes across participants and organisations | Patterns observed in n of N participants and organisations |
+| 2. Identify recurring behaviour patterns | Which patterns recur across organisations, roles, and scales? | Interviews, analysis | Coded episodes across participants and organisations | Patterns observed in n of N participants and organisations |
 | 3. Understand trust before sharing | What do people check before relying on a figure? | Interviews, walkthroughs, survey | Described and shown checks. Reported frequency | Reported frequency among respondents |
 | 4. Identify handoffs and waiting | Who contributes, approves, or acts? | Interviews, walkthroughs | Handoffs, correspondence | Handoffs per journey. Waiting points |
 | 5. Separate interface from service problems | Where does it slow down, and why? | Walkthroughs, support evidence, blueprint | Breakdowns traced to cause | Problems classed interface, process, or data |
-| 6. Gauge how common patterns are | How often do these patterns happen? | Survey | Responses | Share of respondents, by people and by organisation |
-| 7. Evaluate design changes | Do proposed changes meet the need? | Design implication testing | Observed tasks | Task success, effort, confidence |
+| 6. Gauge how often things happen | How often do these happen? | Survey | Responses | Share of respondents, by people and by organisation |
 
 ## Sources
 

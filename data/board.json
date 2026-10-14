@@ -3420,15 +3420,15 @@
             "date": "2026-10-13",
             "who": "IMSERV customers who do the work, across several organisations",
             "source": "team",
-            "where": "Remote interviews and walkthroughs, a survey, then design implication testing.",
+            "where": "Remote interviews and walkthroughs, with a survey running alongside.",
             "summary": "A research-led discovery with IMSERV customers. It should produce behavioural archetypes, evidence-backed customer journeys, and a prioritised set of UX decisions for the BA team.",
             "card": "Three documents for review: the proposal, the interview plan and script, and the survey plan and script.",
             "notes": [
               "Draft for review. Clive has not agreed a research plan, scope, or sample size yet.",
-              "Provisional timeline: roughly 12 to 18 weeks from agreement to tested implications.",
+              "Provisional timeline: about 8 to 11 weeks from agreement to presenting the findings.",
               "Consent wording is a neutral draft. Legal review before it reaches a participant.",
               "None of this is a finding about IMSERV customers yet.",
-              "Script wording, timings, and survey questions are drafts. Grey answer options are placeholders to fill from discovery."
+              "Script wording, timings, and survey questions are drafts. Grey answer options are placeholders to fill before the pilot."
             ],
             "documents": [
               {
@@ -3438,7 +3438,7 @@
                 "status": "planned",
                 "summary": "Why the work is needed, what we want to achieve, and what we propose to do about it.",
                 "file": "/docs/research/plans/customer-discovery/01-proposal.pdf",
-                "pages": 18,
+                "pages": 20,
                 "format": "A4 PDF"
               },
               {
@@ -3448,7 +3448,7 @@
                 "status": "planned",
                 "summary": "How the discovery interviews run, who takes part, and the script, with every question tied to an objective.",
                 "file": "/docs/research/plans/customer-discovery/02-interview-plan-and-script.pdf",
-                "pages": 18,
+                "pages": 20,
                 "format": "A4 PDF"
               },
               {
@@ -3458,7 +3458,7 @@
                 "status": "planned",
                 "summary": "How the survey is built, piloted, and analysed, and the draft questions with their routing, each tied to an objective.",
                 "file": "/docs/research/plans/customer-discovery/03-survey-plan-and-script.pdf",
-                "pages": 17,
+                "pages": 18,
                 "format": "A4 PDF"
               }
             ]
