@@ -97,25 +97,28 @@
   };
 
   const timeline = (sec, title, focus) => {
-    // The track has six columns, so the scale is the last week rounded up to a multiple of six.
-    const span = Math.max(...P.stages.map((a) => a.weeks[1]));
-    const step = Math.ceil(span / 6);
-    const scale = step * 6;
+    // Up to six weeks gets one column a week. Longer plans group weeks into six columns.
+    const span = Math.ceil(Math.max(...P.stages.map((a) => a.weeks[1])));
+    const cols = Math.min(span, 6);
+    const step = Math.ceil(span / cols);
+    const scale = step * cols;
+    const grid = `<div class="tl-track" style="grid-template-columns:repeat(${cols}, 1fr)">`;
     const rows = P.stages.map((a) => {
       const left = (a.weeks[0] / scale) * 100;
       const width = ((a.weeks[1] - a.weeks[0]) / scale) * 100;
       const on = !focus || focus.includes(a.n);
-      return `<div class="tl-row"><div class="tl-name"${on && focus ? ' style="font-weight:600"' : ""}>${a.n}. ${a.short}</div><div class="tl-track"><span></span><span></span><span></span><span></span><span></span><span></span><i class="tl-bar" style="left:${left}%;width:${width}%${on ? "" : ";background:var(--grey-b)"}"></i></div></div>`;
+      return `<div class="tl-row"><div class="tl-name"${on && focus ? ' style="font-weight:600"' : ""}>${a.n}. ${a.short}</div>${grid}${"<span></span>".repeat(cols)}<i class="tl-bar" style="left:${left}%;width:${width}%${on ? "" : ";background:var(--grey-b)"}"></i></div></div>`;
     }).join("");
-    const labels = Array.from({ length: 6 }, (_, i) => (step === 1 ? `WK ${i + 1}` : `WK ${i * step + 1}–${(i + 1) * step}`)).map((l) => `<span>${l}</span>`).join("");
+    const labels = Array.from({ length: cols }, (_, i) => (step === 1 ? `WK ${i + 1}` : `WK ${i * step + 1}–${(i + 1) * step}`)).map((l) => `<span>${l}</span>`).join("");
     const rowsShown = P.stages.filter((a) => !focus || focus.includes(a.n));
     const stages = table(["Stage", "Provisional duration", "Depends on"],
       rowsShown.map((a) => [`${a.n}. ${a.title}`, a.duration, a.depends]), ["30%", "26%"]);
     const split = rowsShown.length > 7;
     add(sec, "paper", `
       ${head(title, P.timelineNote)}
-      <div class="timeline"><div class="tl-row tl-head"><div></div><div class="tl-track">${labels}</div></div>${rows}</div>
+      <div class="timeline"><div class="tl-row tl-head"><div></div>${grid}${labels}</div></div>${rows}</div>
       ${split ? "" : `<div style="margin-top:12mm">${stages}</div>`}
+      ${P.before && !focus ? `<h3 style="margin-top:12mm">Before week 1</h3><p class="muted">The four weeks start only when these are done.</p>${ul(P.before)}` : ""}
       ${folio}`);
     if (split) add(sec, "paper", `
       ${head("Stages and<br>dependencies", "What each stage needs before it can start. Durations are provisional.")}
@@ -233,11 +236,36 @@
     P.phases.forEach((ph, i) => add("What we propose", "paper", `
       ${head(ph.title, `${i === 0 ? `Ten stages in two phases. ` : ""}${ph.lede}`)}
       <div class="agenda">${P.stages.filter((a) => ph.stages.includes(a.n)).map((a) => `<div><span class="tag">STAGE ${a.n}</span><h3>${a.title}</h3><p>${a.purpose}</p><p class="muted">${a.duration}${a.doc !== "proposal" ? ` · See the ${a.doc} plan` : ""}</p></div>`).join("")}
-        ${i === P.phases.length - 1 ? `<div><span class="tag">OVERALL</span><h3>${P.overall.weeks}</h3><p>${P.overall.text}</p></div>` : `<div class="blank"></div>`}
+        ${i === P.phases.length - 1 ? `<div><span class="tag">OVERALL</span><h3>${P.overall.weeks}</h3><p>${P.overall.text}</p></div>` : (P.before ? `<div><span class="tag">BEFORE WEEK 1</span><h3>Already in place</h3><p>Plan approved. Access coordinator named and introductions asked for. Privacy sign-off, including the survey tool. Existing notes shared.</p></div>` : `<div class="blank"></div>`)}
       </div>
       ${i === P.phases.length - 1 ? `<p class="muted" style="margin-top:6mm">${P.followOn}</p>` : ""}
       ${folio}`));
 
+    const RC = P.recruitment;
+    const groupCard = (g) => `<div>
+      <span class="tag">3 INTERVIEWS</span>
+      <h3 style="margin-top:3mm">${g.name}</h3>
+      <p>${g.who}</p>
+      <p class="label" style="margin-top:3mm">INCLUDE IF, IN THE PAST THREE MONTHS, THEY HAVE</p>${ul(g.include)}
+      <p class="label" style="margin-top:3mm">AIM FOR A MIX OF</p><p>${g.mix}</p>
+    </div>`;
+    add("What we propose", "paper", `
+      ${head("Who we<br>recruit", "Twelve people, three from each of four user groups. What someone has done recently decides their group, not their job title. Proposed criteria, to agree at scoping.")}
+      <div class="cols kau block">${RC.groups.slice(0, 2).map(groupCard).join("")}</div>
+      <div class="cols kau block" style="margin-top:10mm">${RC.groups.slice(2).map(groupCard).join("")}</div>
+      ${folio}`);
+
+    add("What we propose", "paper", `
+      ${head("How we<br>recruit", "Clive and the access coordinator suggest people. A short screener confirms they do the work and places them in a group.")}
+      <div class="cols-3 kau block">
+        <div><p class="label">EVERYONE MUST</p>${ul(RC.everyone)}</div>
+        <div><p class="label">WE EXCLUDE</p>${ul(RC.exclude)}</div>
+        <div><p class="label">PLACING PEOPLE</p>${ul(RC.placing)}</div>
+      </div>
+      <h3 style="margin-top:10mm">The screener</h3>
+      ${table(["Question", "What it tells us"], RC.screener, ["62%"])}
+      <div class="facts" style="margin-top:8mm"><div><p class="label">THE SURVEY</p><p>${RC.survey}</p></div><div><p class="label">BALANCE WITHIN EACH GROUP</p><p>Activities, frequency, scale, working relationships, service experience, tools, and access needs. The interview plan sets these out.</p></div></div>
+      ${folio}`);
     add("What we propose", "paper", `
       ${head("What the<br>research produces", "Current state and future proposals stay visibly separate.")}
       <div class="cols-3 kau block">
@@ -289,7 +317,7 @@
       ${table(["User group", "What they need to do", "Interviews"], P.groups, ["28%", "", "14%"])}
       <div class="cols-3 kau block" style="margin-top:12mm">
         <div><p class="label">THE PEOPLE WHO DO THE WORK</p><p>Separate the buyer, administrator, practitioner, approver, and recipient of outputs. A senior contact may not do the everyday work.</p></div>
-        <div><p class="label">RECRUITMENT · STAGE 2</p><p>Clive and the access coordinator suggest people. A short screener confirms they do the work. Book reserves in case of drop-outs.</p></div>
+        <div><p class="label">RECRUITMENT · STAGE 2</p><p>Clive and the access coordinator suggest people. A short screener confirms they do the work. Criteria for each group are in the proposal.</p></div>
         <div><p class="label">EXCLUSIONS</p><p>IMSERV staff standing in for customers. People who designed the flows being discussed.</p></div>
       </div>
       <p class="muted" style="margin-top:8mm">The groups are a starting point for recruitment. They are not the archetypes. Archetypes come from what people do.</p>
@@ -301,10 +329,10 @@
       ${folio}`);
 
     add("The plan", "paper", `
-      ${head("Getting<br>ready", "Stage 3 runs alongside recruitment. Everything here is in place before the first interview day.")}
+      ${head("Getting<br>ready", "Stage 3 runs alongside recruitment in week 1. Everything here is in place before the first interview day.")}
       <div class="cols block">
         <div><h3>Before the interview days</h3>${ul(I.prep)}</div>
-        <div><h3>A sample interview day</h3>${table(["Time", "What happens"], I.day, ["42%"])}<p class="muted" style="margin-top:4mm">Six is the most in a day. Four is easier. Every session needs a moderator and a notetaker.</p></div>
+        <div><h3>A sample interview day</h3>${table(["Time", "What happens"], I.day, ["42%"])}<p class="muted" style="margin-top:4mm">Four a day over three days covers all 12. Six is the most on a catch-up day. Every session needs a moderator and a notetaker.</p></div>
       </div>
       ${folio}`);
 
@@ -346,7 +374,7 @@
 
     add("After the session", "paper", `
       <h2 class="big-head">After the<br>session</h2>
-      <p class="lede">Write up notes the same day. Full analysis starts after the last interview day, together with the survey results.</p>
+      <p class="lede">Write up notes the same day. Full analysis runs in week 3, together with the survey results.</p>
       <div class="cols kau block">
         <div><p class="label">ANALYSIS</p>${ul(I.analysis)}</div>
         <div><p class="label">SHARING</p>${ul(P.ba)}</div>
@@ -361,7 +389,7 @@
       ${folio}`);
 
     consent();
-    risks(["senior", "orgs", "fatigue", "screens", "twelve", "archetypes"]);
+    risks(["tight", "senior", "orgs", "fatigue", "screens", "twelve", "archetypes"]);
     closing();
   }
 
@@ -390,7 +418,7 @@
       ${folio}`);
 
     add("The plan", "paper", `
-      ${head("Preparing and<br>sending", "Stages 4 and 5 run alongside interview recruitment. Stage 7 needs little moderating: open it, check in, and send one reminder.")}
+      ${head("Preparing and<br>sending", "Stages 4 and 5 run in week 1, alongside interview recruitment. Stage 7 needs little moderating: open it, check in, and send one reminder.")}
       <div class="cols-3 kau block">
         <div><p class="label">STAGE 4 · PREPARE</p>${ul(S.prepare)}</div>
         <div><p class="label">STAGE 5 · RECRUIT</p>${ul(S.recruit)}</div>
@@ -440,7 +468,7 @@
       ${folio}`);
 
     consent("Agreed with IMSERV's privacy and data-protection owner before the survey is sent. The same rules apply to survey answers.");
-    risks(["survey", "early", "orgs", "slow"]);
+    risks(["response", "survey", "early", "orgs", "slow"]);
     closing();
   }
 

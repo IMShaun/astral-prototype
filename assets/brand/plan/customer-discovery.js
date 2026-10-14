@@ -111,9 +111,12 @@ window.PLAN = {
   risks: {
     senior: { risk: "Introductions only reach senior contacts", effect: "We hear about the work, not from the people doing it", fix: "Ask for practitioners by the activity they do. Track who does what in the screener" },
     orgs: { risk: "Participants come from one or two organisations", effect: "Shared local process looks like a pattern", fix: "Track organisation coverage. Recruit across several" },
-    slow: { risk: "Recruitment or privacy approval is slow", effect: "The timeline moves", fix: "Ask for both in week 1. Hold one or two reserve participants" },
+    slow: { risk: "Recruitment or privacy approval is slow", effect: "The timeline moves", fix: "Agree both before week 1. Hold one or two reserve participants" },
+    tight: { risk: "Four weeks leaves no slack", effect: "One late approval or several no-shows moves the whole plan", fix: "Start only when everything in Before week 1 is done. Keep day 5 of week 2 for catch-ups. Agree with the manager what can slip first" },
+    rushed: { risk: "Analysis and reporting get a week each", effect: "Archetypes and journeys are less tested than they would be with more time", fix: "Present archetypes and journeys as provisional. Name what needs more evidence" },
+    response: { risk: "The survey is open for only 8 working days", effect: "Fewer responses, mostly from engaged customers", fix: "Send it from a sender customers know. Send one reminder. Report respondents, not customers" },
     early: { risk: "The survey runs before the interviews can shape it", effect: "It measures our assumptions, or uses words customers do not", fix: "Build answer options from scoping and existing notes. Pilot with target users. Keep a “Something else” answer and read it" },
-    fatigue: { risk: "Four to six interviews a day tires the researchers", effect: "Later sessions get thinner probing and notes", fix: "One moderator and one notetaker. Gaps between sessions. Write up notes the same day" },
+    fatigue: { risk: "Four interviews a day, three days running, tires the researchers", effect: "Later sessions get thinner probing and notes", fix: "One moderator and one notetaker. Gaps between sessions. Write up notes the same day" },
     notes: { risk: "Existing interview notes are not available", effect: "We repeat work, or miss context", fix: "Ask Clive early. Record what they cover" },
     survey: { risk: "The survey reaches only engaged customers", effect: "Patterns look more common than they are", fix: "Report respondents, not customers. Name the sampling limits" },
     screens: { risk: "Prototype screens steer discovery", effect: "We confirm our own design", fix: "No screens in this study. Test design changes in a follow-on study" },
@@ -142,28 +145,35 @@ window.PLAN = {
     "The BA team (Claire and others) can add open story questions to the script before the interview days",
   ],
 
-  // Week positions are the upper estimates. Stages 2 to 5 run side by side, and so do stages 6 and 7.
+  // Week positions are in working days: 0.2 is one day. Stages 2 to 5 run side by side in week 1, and stages 6 and 7 in week 2.
   timelineNote:
-    "Estimates to agree, not commitments. Bars show the upper estimate for each stage. With overlap, about 8 to 11 weeks from agreement to presenting the findings.",
-  overall: { weeks: "8 to 11 weeks", text: "With overlap, from agreement to presenting the findings." },
+    "A tight plan to agree, not a commitment. Four weeks from the start of week 1 to presenting the findings. It only works if the approvals and introductions are in place before week 1.",
+  overall: { weeks: "4 weeks", text: "From the start of week 1 to presenting the findings, once the approvals and introductions are in place." },
   followOn: "Testing proposed design changes with customers is a possible follow-on study. It is not part of this proposal.",
+  before: [
+    "The plan is approved by the manager and Clive",
+    "An access coordinator is named, and introductions to all four user groups are asked for",
+    "The privacy owner has signed off consent, recording, transcription, storage, and the survey tool",
+    "Clive and Emily's interview notes are shared",
+    "Researcher and notetaker diaries are clear for week 2",
+  ],
 
   phases: [
-    { title: "Prepare", lede: "Agree the scope, then recruit and get ready for the interviews and the survey side by side.", stages: [1, 2, 3, 4, 5] },
-    { title: "Run, then<br>report", lede: "One round of interviews with the survey open alongside. Then analysis, a report, and a presentation to the wider team.", stages: [6, 7, 8, 9, 10] },
+    { title: "Week 1:<br>prepare", lede: "Agree the scope, then recruit and get ready for the interviews and the survey side by side.", stages: [1, 2, 3, 4, 5] },
+    { title: "Weeks 2 to 4:<br>run, then report", lede: "Interviews in week 2 with the survey open alongside. Analysis in week 3. The report and presentation in week 4.", stages: [6, 7, 8, 9, 10] },
   ],
 
   stages: [
-    { n: 1, title: "Agree scope and decisions", short: "Scope and decisions", duration: "1 week", weeks: [0, 1], depends: "Time with Clive and the manager. Access to existing interview notes", purpose: "Agree what the research must help decide, the priority journeys, the four user groups, and what is out of scope.", output: "Research questions, priority journeys, user groups, exclusions, and an existing-evidence summary", doc: "proposal" },
-    { n: 2, title: "Recruit for the interviews", short: "Interview recruitment", duration: "2 weeks", weeks: [1, 3], depends: "Access coordinator. Agreed user groups", purpose: "Screen and book 12 people who do the work, 3 from each of four user groups, across several organisations.", output: "Screener, tracker, 12 bookings, and one or two reserves", doc: "interview" },
-    { n: 3, title: "Prepare the interviews", short: "Interview prep", duration: "1 to 2 weeks, alongside recruitment", weeks: [1, 3], depends: "Privacy owner sign-off for recording and transcription", purpose: "Finish the interview plan and script, get the consent wording approved, and set up and test recording and transcription.", output: "Final script, approved consent, tested recording, briefed notetaker", doc: "interview" },
-    { n: 4, title: "Prepare the survey", short: "Survey prep", duration: "1 to 2 weeks, alongside recruitment", weeks: [1, 3], depends: "An approved survey tool. Privacy owner sign-off", purpose: "Build the survey and its routing in SurveyMonkey or Microsoft Forms, pilot it, and write the invitation and reminder emails.", output: "Piloted survey, invitation email, and reminder email", doc: "survey" },
-    { n: 5, title: "Recruit for the survey", short: "Survey recruitment", duration: "About 1 week, alongside survey prep", weeks: [2, 3], depends: "Distribution route. Reachable population known", purpose: "Agree who receives the survey and who sends it, and get the distribution list ready.", output: "Distribution list, sender, and response target", doc: "survey" },
-    { n: 6, title: "Run the interviews", short: "Interviews", duration: "2 to 3 interview days, within 1 to 2 weeks", weeks: [3, 5], depends: "Bookings. Tested recording", purpose: "One round of 12 interviews, 4 to 6 a day. Notes are written up the same day.", output: "Recordings, transcripts, and session notes", doc: "interview" },
-    { n: 7, title: "Run the survey", short: "Survey", duration: "Open for 2 to 3 weeks, alongside the interviews", weeks: [3, 6], depends: "Piloted survey. Distribution list", purpose: "Send the invitation, then leave the survey open. One reminder, and a light check on responses.", output: "Survey responses", doc: "survey" },
-    { n: 8, title: "Analyse the data", short: "Analysis", duration: "2 to 3 weeks", weeks: [5, 8], depends: "Transcripts. The survey closed before the comparison", purpose: "Code the interviews against the objectives, analyse the survey responses, and compare the two.", output: "Coded evidence, patterns, and contradictions", doc: "proposal" },
-    { n: 9, title: "Write the report and UX deliverables", short: "Report", duration: "1 to 2 weeks", weeks: [8, 10], depends: "Analysis", purpose: "Write up the findings, with the behavioural archetypes, customer journey maps, and prioritised UX decisions.", output: "Report, archetypes, journey maps, and prioritised UX decisions", doc: "proposal" },
-    { n: 10, title: "Present the findings", short: "Presentation", duration: "1 session, in the last week", weeks: [10, 11], depends: "Report. Time with the wider team", purpose: "Present the findings and UX deliverables to the wider team, including the BA team.", output: "Shared findings and agreed next steps", doc: "proposal" },
+    { n: 1, title: "Agree scope and decisions", short: "Scope and decisions", duration: "Days 1 and 2 of week 1", weeks: [0, 0.4], depends: "Time with Clive and the manager. Existing interview notes shared before week 1", purpose: "Confirm what the research must help decide, the priority journeys, the four user groups, and what is out of scope.", output: "Research questions, priority journeys, user groups, exclusions, and an existing-evidence summary", doc: "proposal" },
+    { n: 2, title: "Recruit for the interviews", short: "Interview recruitment", duration: "Week 1", weeks: [0, 1], depends: "Access coordinator named, and introductions asked for before week 1", purpose: "Screen and book 12 people who do the work, 3 from each of four user groups, into the interview days in week 2.", output: "Screener, tracker, 12 bookings, and one or two reserves", doc: "interview" },
+    { n: 3, title: "Prepare the interviews", short: "Interview prep", duration: "Days 2 to 5 of week 1, alongside recruitment", weeks: [0.2, 1], depends: "Privacy sign-off for recording and transcription before week 1", purpose: "Finish the interview script, set up and test recording and transcription, and brief the notetaker.", output: "Final script, approved consent, tested recording, briefed notetaker", doc: "interview" },
+    { n: 4, title: "Prepare the survey", short: "Survey prep", duration: "Days 2 to 4 of week 1", weeks: [0.2, 0.8], depends: "An approved survey tool. Privacy sign-off before week 1", purpose: "Build the survey and its routing in SurveyMonkey or Microsoft Forms, pilot it with 2 or 3 target users, and write the invitation and reminder emails.", output: "Piloted survey, invitation email, and reminder email", doc: "survey" },
+    { n: 5, title: "Recruit for the survey", short: "Survey recruitment", duration: "Days 3 to 5 of week 1", weeks: [0.4, 1], depends: "Distribution route. Reachable population known", purpose: "Agree who receives the survey and who sends it, and get the distribution list ready.", output: "Distribution list, sender, and response target", doc: "survey" },
+    { n: 6, title: "Run the interviews", short: "Interviews", duration: "3 interview days in week 2, 4 a day. Day 5 for catch-ups", weeks: [1, 2], depends: "Bookings. Tested recording", purpose: "One round of 12 interviews. Notes are written up the same day. The last day of the week is kept for no-shows and reserves.", output: "Recordings, transcripts, and session notes", doc: "interview" },
+    { n: 7, title: "Run the survey", short: "Survey", duration: "Open for 8 working days, from the start of week 2", weeks: [1, 2.6], depends: "Piloted survey. Distribution list", purpose: "Send the invitation, then leave the survey open. One reminder, and a light check on responses.", output: "Survey responses", doc: "survey" },
+    { n: 8, title: "Analyse the data", short: "Analysis", duration: "Week 3", weeks: [2, 3], depends: "Transcripts. The survey closed by the middle of week 3", purpose: "Code the interviews against the objectives, analyse the survey responses when it closes, and compare the two.", output: "Coded evidence, patterns, and contradictions", doc: "proposal" },
+    { n: 9, title: "Write the report and UX deliverables", short: "Report", duration: "Days 1 to 4 of week 4", weeks: [3, 3.8], depends: "Analysis", purpose: "Write up the findings, with provisional behavioural archetypes, customer journey maps, and prioritised UX decisions.", output: "Report, archetypes, journey maps, and prioritised UX decisions", doc: "proposal" },
+    { n: 10, title: "Present the findings", short: "Presentation", duration: "1 session, on the last day of week 4", weeks: [3.8, 4], depends: "Report. Time with the wider team booked before week 1", purpose: "Present the findings and UX deliverables to the wider team, including the BA team.", output: "Shared findings and agreed next steps", doc: "proposal" },
   ],
 
   groups: [
@@ -172,6 +182,79 @@ window.PLAN = {
     ["Brokers / TPIs", "Act for one or more customers, with reports, invoices, and energy data", "3"],
     ["Data and asset users", "Get reliable data into another process, or check meter faults are repaired", "3"],
   ],
+
+  // Proposed recruitment criteria, to agree at scoping. Recent activity, not job title, decides the group.
+  recruitment: {
+    groups: [
+      {
+        name: "Energy managers",
+        who: "Energy, sustainability, or facilities managers responsible for one site or a portfolio.",
+        include: [
+          "Looked at energy use for their sites",
+          "Investigated a spike, unusual reading, or missing data",
+          "Compared sites, or reported progress against a target",
+        ],
+        mix: "One site and multi-site portfolios. Regular and occasional users. More than one sector.",
+      },
+      {
+        name: "Finance users",
+        who: "Finance managers, analysts, or accounts staff who handle energy costs and invoices.",
+        include: [
+          "Checked, queried, or approved an energy invoice",
+          "Reported energy spend to someone else",
+          "Looked for where costs could be cut",
+        ],
+        mix: "People who prepare figures and people who approve them. Portal users and people sent files by others.",
+      },
+      {
+        name: "Brokers / TPIs",
+        who: "Brokers, consultants, and third-party intermediaries who act for one or more customers.",
+        include: [
+          "Prepared a report or checked an invoice for a client",
+          "Pulled energy data for a client",
+          "Managed access for a client, or acted on their behalf",
+        ],
+        mix: "Small and large client books. Independent and larger firms. More than one type of client.",
+      },
+      {
+        name: "Data and asset users",
+        who: "Analysts, metering or asset staff, and people who feed IMSERV data into other systems.",
+        include: [
+          "Exported or received data for another process, by file or API",
+          "Raised or followed up a meter fault",
+          "Checked data was complete before using it",
+        ],
+        mix: "File and API users. Data roles and asset or maintenance roles.",
+      },
+    ],
+    everyone: [
+      "Works for an IMSERV customer, or acts for one",
+      "Has done at least one of their group's activities in the past three months",
+      "Uses IMSERV data or outputs, directly or through someone else",
+      "Can join a 60-minute remote session in week 2, and agrees to recording",
+    ],
+    exclude: [
+      "IMSERV staff standing in for customers",
+      "People who designed the flows being discussed",
+      "Senior contacts who do not do the work themselves, unless they approve it",
+      "More than one person per group from the same organisation, where we can avoid it",
+    ],
+    placing: [
+      "Someone who fits two groups goes in the group for the activity they do most",
+      "People who rely on someone else for IMSERV data still qualify. How they get it is part of what we learn",
+      "Reserves are screened the same way, one or two across the groups",
+    ],
+    screener: [
+      ["Which organisation do you work for? Do you work for it directly, or act for it?", "Customer or intermediary. Organisation coverage"],
+      ["In the past three months, which of these have you done with IMSERV data?", "Group, and that they do the work"],
+      ["How often do you do the activity you do most?", "Regular or occasional use"],
+      ["How do you usually get IMSERV data?", "Portal, files from others, API, or a mix"],
+      ["About how many sites, or clients, does your work cover?", "Scale and complexity"],
+      ["Is there anything that would help you take part?", "Access needs and support"],
+      ["Which of these times in week 2 suit you?", "Booking"],
+    ],
+    survey: "Everyone in the reachable population who uses IMSERV data or outputs, across all four groups. No quotas. A1 and A2 sort respondents by what they do, and results are reported by group.",
+  },
 
   scenarios: [
     "Getting access and reaching usable data",
@@ -200,7 +283,7 @@ window.PLAN = {
     objectives: [1, 2, 3, 4, 5],
     format: "Proposed 60-minute remote sessions. Interview plus a walkthrough of a recent piece of work.",
     rounds: [
-      { name: "One round", who: "12 participants, 3 from each of four user groups, across several organisations", aim: "Understand real, recent episodes of work before showing any proposed screens.", output: "Episode-level evidence, journey fragments, candidate behaviours, and any gaps to name in the report.", duration: "2 to 3 interview days, 4 to 6 sessions a day" },
+      { name: "One round", who: "12 participants, 3 from each of four user groups, across several organisations", aim: "Understand real, recent episodes of work before showing any proposed screens.", output: "Episode-level evidence, journey fragments, candidate behaviours, and any gaps to name in the report.", duration: "3 interview days in week 2, 4 sessions a day" },
     ],
     prep: [
       "Finish the plan and script. Agree it with Clive and the manager",
@@ -212,13 +295,13 @@ window.PLAN = {
       "One practice session with a colleague to check timings",
     ],
     day: [
-      ["09:00 to 10:00", "Session 1"],
-      ["10:15 to 11:15", "Session 2"],
-      ["11:30 to 12:30", "Session 3"],
-      ["12:30 to 13:30", "Lunch. Write up notes"],
-      ["13:30 to 14:30", "Session 4"],
-      ["14:45 to 15:45", "Session 5"],
-      ["16:00 to 17:00", "Session 6"],
+      ["09:30 to 10:30", "Session 1"],
+      ["10:30 to 11:00", "Write up notes"],
+      ["11:00 to 12:00", "Session 2"],
+      ["12:00 to 13:30", "Lunch. Write up notes"],
+      ["13:30 to 14:30", "Session 3"],
+      ["14:30 to 15:00", "Write up notes"],
+      ["15:00 to 16:00", "Session 4"],
       ["After the last session", "Write up notes. Note early themes for the BA team"],
     ],
     parts: [
@@ -342,7 +425,7 @@ window.PLAN = {
 
   survey: {
     objectives: [3, 6],
-    duration: "1 to 2 weeks to prepare, then open for 2 to 3 weeks alongside the interviews",
+    duration: "Built in week 1, then open for 8 working days from the start of week 2",
     depends: "Agreed scope. An approved survey tool. Distribution route. Reachable population known",
     steps: [
       { h: "Build from what we know", p: "Answer options come from scoping, Clive and Emily's interview notes, and desk research, in customers' words." },
@@ -353,7 +436,7 @@ window.PLAN = {
     prepare: [
       "Build the questions and routing in SurveyMonkey or Microsoft Forms",
       "Test every route in the routes table",
-      "Pilot with a few target users. Set the time on the introduction screen",
+      "Pilot with 2 or 3 target users on day 4. Set the time on the introduction screen",
       "Write the invitation email and one reminder",
       "Privacy owner signs off the tool, the consent wording, and where answers are stored",
     ],
@@ -364,11 +447,11 @@ window.PLAN = {
       "Set the response target",
     ],
     run: [
-      "Send the invitation at the start of the interview days",
+      "Send the invitation on the first day of week 2",
       "Leave it open. It needs no moderating",
-      "Check responses a couple of times a week",
-      "Send one reminder after about a week",
-      "Close after 2 to 3 weeks",
+      "Check responses every couple of days",
+      "Send one reminder after 4 working days",
+      "Close in the middle of week 3",
     ],
     tool: "Check the tool handles the routing before building. B1 and D1 reuse earlier answers. If the tool cannot, B1 becomes one grid question listing every activity, and D1 asks about the activity that takes most time.",
     rules: [

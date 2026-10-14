@@ -23,7 +23,7 @@ We want to run a research-led discovery with IMSERV customers. It should produce
 - **Evidence-backed customer journeys.** What happens today, including work outside Astral.
 - **A prioritised set of UX decisions.** Each one traceable to evidence, and ready for the BA team to turn into stories.
 
-The method: review what we already have, then run one round of 12 interviews with a survey open alongside. We analyse the two together, write a report with the archetypes and journey maps, and present it to the wider team. About 8 to 11 weeks from agreement to presenting the findings.
+The method: review what we already have, then run one round of 12 interviews with a survey open alongside. We analyse the two together, write a report with the archetypes and journey maps, and present it to the wider team. About 4 weeks, once approvals and introductions are in place.
 
 Clive has offered to help unlock customer access. He has **not** agreed a research plan, scope, or sample size. This plan is the proposal for that conversation.
 
@@ -167,7 +167,7 @@ We keep these dimensions separate, so a job title is not mistaken for a behaviou
 
 Ten stages in two phases. **Prepare** covers stages 1 to 5. **Run, then report** covers stages 6 to 10. The interviews and the survey have their own plan and script.
 
-### Stage 1. Agree scope and decisions (1 week)
+### Stage 1. Agree scope and decisions (days 1 and 2 of week 1)
 
 **Purpose.** Agree what the research must help decide, the priority journeys, the four user groups, and what is out of scope.
 
@@ -188,9 +188,9 @@ Ten stages in two phases. **Prepare** covers stages 1 to 5. **Run, then report**
 
 **Output.** Agreed research questions, priority journeys, user groups, exclusions, and an existing-evidence summary.
 
-### Stage 2. Recruit for the interviews (2 weeks)
+### Stage 2. Recruit for the interviews (week 1)
 
-**Purpose.** Screen and book 12 people who do the work, 3 from each of four user groups, across several organisations.
+**Purpose.** Screen and book 12 people who do the work, 3 from each of four user groups, across several organisations, into the interview days in week 2. Introductions are asked for before week 1.
 
 | User group | What they need to do | Interviews |
 | --- | --- | --- |
@@ -200,6 +200,47 @@ Ten stages in two phases. **Prepare** covers stages 1 to 5. **Run, then report**
 | Data and asset users | Get reliable data into another process, or check meter faults are repaired | 3 |
 
 The groups are a starting point for recruitment. They are not the archetypes. Archetypes come from what people do.
+
+#### Recruitment criteria
+
+Proposed criteria, to agree at scoping. What someone has done recently decides their group, not their job title.
+
+| User group | Who they are | Include if, in the past three months, they have | Aim for a mix of |
+| --- | --- | --- | --- |
+| Energy managers | Energy, sustainability, or facilities managers responsible for one site or a portfolio | Looked at energy use for their sites. Investigated a spike, unusual reading, or missing data. Compared sites, or reported progress against a target | One site and multi-site portfolios. Regular and occasional users. More than one sector |
+| Finance users | Finance managers, analysts, or accounts staff who handle energy costs and invoices | Checked, queried, or approved an energy invoice. Reported energy spend to someone else. Looked for where costs could be cut | People who prepare figures and people who approve them. Portal users and people sent files by others |
+| Brokers / TPIs | Brokers, consultants, and third-party intermediaries who act for one or more customers | Prepared a report or checked an invoice for a client. Pulled energy data for a client. Managed access for a client, or acted on their behalf | Small and large client books. Independent and larger firms. More than one type of client |
+| Data and asset users | Analysts, metering or asset staff, and people who feed IMSERV data into other systems | Exported or received data for another process, by file or API. Raised or followed up a meter fault. Checked data was complete before using it | File and API users. Data roles and asset or maintenance roles |
+
+**Everyone must:**
+
+- Work for an IMSERV customer, or act for one
+- Have done at least one of their group's activities in the past three months
+- Use IMSERV data or outputs, directly or through someone else
+- Be able to join a 60-minute remote session in week 2, and agree to recording
+
+**We exclude:**
+
+- IMSERV staff standing in for customers
+- People who designed the flows being discussed
+- Senior contacts who do not do the work themselves, unless they approve it
+- More than one person per group from the same organisation, where we can avoid it
+
+**Placing people.** Someone who fits two groups goes in the group for the activity they do most. People who rely on someone else for IMSERV data still qualify. How they get it is part of what we learn. Reserves are screened the same way.
+
+**The screener.**
+
+| Question | What it tells us |
+| --- | --- |
+| Which organisation do you work for? Do you work for it directly, or act for it? | Customer or intermediary. Organisation coverage |
+| In the past three months, which of these have you done with IMSERV data? | Group, and that they do the work |
+| How often do you do the activity you do most? | Regular or occasional use |
+| How do you usually get IMSERV data? | Portal, files from others, API, or a mix |
+| About how many sites, or clients, does your work cover? | Scale and complexity |
+| Is there anything that would help you take part? | Access needs and support |
+| Which of these times in week 2 suit you? | Booking |
+
+**The survey.** Everyone in the reachable population who uses IMSERV data or outputs, across all four groups. No quotas. A1 and A2 sort respondents by what they do, and results are reported by group.
 
 **What happens.**
 
@@ -228,7 +269,7 @@ Account managers and internal experts help with recruitment and service context.
 
 **Output.** Screener, tracker, 12 bookings, and one or two reserves.
 
-### Stage 3. Prepare the interviews (1 to 2 weeks, alongside recruitment)
+### Stage 3. Prepare the interviews (days 2 to 5 of week 1, alongside recruitment)
 
 **Purpose.** Have everything in place before the first interview day.
 
@@ -242,13 +283,13 @@ Account managers and internal experts help with recruitment and service context.
 
 **Output.** Final script, approved consent, tested recording, and a briefed notetaker.
 
-### Stage 4. Prepare the survey (1 to 2 weeks, alongside recruitment)
+### Stage 4. Prepare the survey (days 2 to 4 of week 1)
 
 **Purpose.** Build, pilot, and get ready to send the survey.
 
 - Build the questions and routing in SurveyMonkey or Microsoft Forms
 - Test every route
-- Pilot with a few target users to check meaning, answer options, routing, and effort. Set the time on the introduction screen
+- Pilot with 2 or 3 target users on day 4 to check meaning, answer options, routing, and effort. Set the time on the introduction screen
 - Write the invitation email and one reminder
 - Privacy owner signs off the tool, the consent wording, and where answers are stored
 
@@ -272,7 +313,7 @@ Account managers and internal experts help with recruitment and service context.
 
 **Output.** Piloted survey, invitation email, and reminder email.
 
-### Stage 5. Recruit for the survey (about 1 week, alongside survey prep)
+### Stage 5. Recruit for the survey (days 3 to 5 of week 1)
 
 - Agree who receives it: the reachable population
 - Agree who sends it, such as the access coordinator or account managers
@@ -281,11 +322,11 @@ Account managers and internal experts help with recruitment and service context.
 
 **Output.** Distribution list, sender, and response target.
 
-### Stage 6. Run the interviews (2 to 3 interview days)
+### Stage 6. Run the interviews (3 interview days in week 2)
 
 **Purpose.** Understand real, recent episodes of work before showing any proposed screens.
 
-**Format.** One round of 12 proposed 60-minute remote sessions, 4 to 6 a day. Interview plus a walkthrough of a recent piece of work. Every session has a moderator and a notetaker. Notes are written up the same day.
+**Format.** One round of 12 proposed 60-minute remote sessions, 4 a day over three days. Day 5 of week 2 is kept for no-shows and reserves. Interview plus a walkthrough of a recent piece of work. Every session has a moderator and a notetaker. Notes are written up the same day.
 
 **How the session runs.** We ask about the last real time, not about features:
 
@@ -311,19 +352,19 @@ Where it is appropriate and authorised, participants show a redacted report, spr
 
 **Output.** Recordings, transcripts, and session notes.
 
-### Stage 7. Run the survey (open for 2 to 3 weeks, alongside the interviews)
+### Stage 7. Run the survey (open for 8 working days, from the start of week 2)
 
 The survey needs little moderating.
 
-- Send the invitation at the start of the interview days
+- Send the invitation on the first day of week 2
 - Leave it open
-- Check responses a couple of times a week
-- Send one reminder after about a week
-- Close after 2 to 3 weeks
+- Check responses every couple of days
+- Send one reminder after 4 working days
+- Close in the middle of week 3
 
 **Output.** Survey responses.
 
-### Stage 8. Analyse the data (2 to 3 weeks)
+### Stage 8. Analyse the data (week 3)
 
 **Purpose.** Bring the evidence together, investigate disagreement, and find the patterns.
 
@@ -348,13 +389,13 @@ For example, someone may say they use the portal for reporting. A walkthrough ma
 
 **Output.** Coded evidence, patterns, and contradictions.
 
-### Stage 9. Write the report and UX deliverables (1 to 2 weeks)
+### Stage 9. Write the report and UX deliverables (days 1 to 4 of week 4)
 
-**Purpose.** Write up the findings, with the behavioural archetypes, customer journey maps, and prioritised UX decisions. See [What the research produces](#what-the-research-produces).
+**Purpose.** Write up the findings, with provisional behavioural archetypes, customer journey maps, and prioritised UX decisions. See [What the research produces](#what-the-research-produces).
 
 **Output.** Report, archetypes, journey maps, a service blueprint where needed, and prioritised UX decisions.
 
-### Stage 10. Present the findings (1 session, in the last week)
+### Stage 10. Present the findings (1 session, on the last day of week 4)
 
 **Purpose.** Present the findings and UX deliverables to the wider team, including the BA team.
 
@@ -402,22 +443,30 @@ Observation, interpretation, and recommendation stay separate, with links back t
 
 ## Provisional timeline
 
-**These are estimates to agree, not commitments.** They depend most on how quickly recruitment and privacy approval happen. Stages overlap where they can.
+**A tight plan to agree, not a commitment.** Four weeks from the start of week 1 to presenting the findings. Stages overlap where they can.
 
-| Stage | Provisional duration | Depends on | Output |
-| --- | --- | --- | --- |
-| 1. Agree scope and decisions | 1 week | Time with Clive and the manager. Access to existing interview notes | Research questions, priority journeys, user groups, exclusions, evidence summary |
-| 2. Recruit for the interviews | 2 weeks | Access coordinator. Agreed user groups | Screener, tracker, 12 bookings, one or two reserves |
-| 3. Prepare the interviews | 1 to 2 weeks, alongside recruitment | Privacy owner sign-off for recording and transcription | Final script, approved consent, tested recording, briefed notetaker |
-| 4. Prepare the survey | 1 to 2 weeks, alongside recruitment | An approved survey tool. Privacy owner sign-off | Piloted survey, invitation and reminder emails |
-| 5. Recruit for the survey | About 1 week, alongside survey prep | Distribution route. Reachable population known | Distribution list, sender, response target |
-| 6. Run the interviews | 2 to 3 interview days, within 1 to 2 weeks | Bookings. Tested recording | Recordings, transcripts, session notes |
-| 7. Run the survey | Open for 2 to 3 weeks, alongside the interviews | Piloted survey. Distribution list | Survey responses |
-| 8. Analyse the data | 2 to 3 weeks | Transcripts. The survey closed before the comparison | Coded evidence, patterns, contradictions |
-| 9. Write the report and UX deliverables | 1 to 2 weeks | Analysis | Report, archetypes, journey maps, prioritised UX decisions |
-| 10. Present the findings | 1 session, in the last week | Report. Time with the wider team | Shared findings and agreed next steps |
+**Before week 1.** The four weeks start only when these are done:
 
-With overlap, about **8 to 11 weeks** from agreement to presenting the findings. Early themes reach the BA team from the interview days, not only at the end.
+- The plan is approved by the manager and Clive
+- An access coordinator is named, and introductions to all four user groups are asked for
+- The privacy owner has signed off consent, recording, transcription, storage, and the survey tool
+- Clive and Emily's interview notes are shared
+- Researcher and notetaker diaries are clear for week 2
+
+| Week | Stage | Provisional duration | Depends on | Output |
+| --- | --- | --- | --- | --- |
+| 1 | 1. Agree scope and decisions | Days 1 and 2 | Time with Clive and the manager. Existing notes shared before week 1 | Research questions, priority journeys, user groups, exclusions, evidence summary |
+| 1 | 2. Recruit for the interviews | Week 1 | Access coordinator named, and introductions asked for before week 1 | Screener, tracker, 12 bookings in week 2, one or two reserves |
+| 1 | 3. Prepare the interviews | Days 2 to 5, alongside recruitment | Privacy sign-off before week 1 | Final script, approved consent, tested recording, briefed notetaker |
+| 1 | 4. Prepare the survey | Days 2 to 4 | An approved survey tool. Privacy sign-off before week 1 | Survey piloted with 2 or 3 target users, invitation and reminder emails |
+| 1 | 5. Recruit for the survey | Days 3 to 5 | Distribution route. Reachable population known | Distribution list, sender, response target |
+| 2 | 6. Run the interviews | 3 interview days, 4 a day. Day 5 for catch-ups | Bookings. Tested recording | Recordings, transcripts, session notes |
+| 2 to 3 | 7. Run the survey | Open for 8 working days, from the start of week 2 | Piloted survey. Distribution list | Survey responses |
+| 3 | 8. Analyse the data | Week 3 | Transcripts. The survey closed by the middle of week 3 | Coded evidence, patterns, contradictions |
+| 4 | 9. Write the report and UX deliverables | Days 1 to 4 | Analysis | Report, provisional archetypes, journey maps, prioritised UX decisions |
+| 4 | 10. Present the findings | 1 session, on day 5 | Report. Time with the wider team booked before week 1 | Shared findings and agreed next steps |
+
+Early themes reach the BA team from the interview days in week 2, not only at the end.
 
 ## Working alongside the BA team
 
@@ -449,9 +498,12 @@ It will **not** invent quotes, build archetypes from job titles, or treat simula
 | --- | --- | --- |
 | Introductions only reach senior contacts | We hear about the work, not from the people doing it | Ask for practitioners by the activity they do. Track who does what in the screener |
 | Participants come from one or two organisations | Shared local process looks like a pattern | Track organisation coverage. Recruit across several |
-| Recruitment or privacy approval is slow | The timeline moves | Ask for both in week 1. Hold one or two reserve participants |
+| Recruitment or privacy approval is slow | The timeline moves | Agree both before week 1. Hold one or two reserve participants |
+| Four weeks leaves no slack | One late approval or several no-shows moves the whole plan | Start only when everything in Before week 1 is done. Keep day 5 of week 2 for catch-ups. Agree with the manager what can slip first |
+| Analysis and reporting get a week each | Archetypes and journeys are less tested than they would be with more time | Present archetypes and journeys as provisional. Name what needs more evidence |
+| The survey is open for only 8 working days | Fewer responses, mostly from engaged customers | Send it from a sender customers know. Send one reminder. Report respondents, not customers |
 | The survey runs before the interviews can shape it | It measures our assumptions, or uses words customers do not | Build answer options from scoping and existing notes. Pilot with target users. Keep a "Something else" answer and read it |
-| Four to six interviews a day tires the researchers | Later sessions get thinner probing and notes | One moderator and one notetaker. Gaps between sessions. Write up notes the same day |
+| Four interviews a day, three days running, tires the researchers | Later sessions get thinner probing and notes | One moderator and one notetaker. Gaps between sessions. Write up notes the same day |
 | Existing interview notes are not available | We repeat work, or miss context | Ask Clive early. Record what they cover |
 | The survey reaches only engaged customers | Patterns look more common than they are | Report respondents, not customers. Name the sampling limits |
 | Prototype screens steer discovery | We confirm our own design | No screens in this study. Test design changes in a follow-on study |
