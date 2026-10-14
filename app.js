@@ -4046,6 +4046,13 @@ function researchOpenItem() {
     const item = (pack.moves || []).find((entry) => entry.id === id);
     return item ? { kind, item } : null;
   }
+  // A project's document opens as "doc:<project id>/<document id>".
+  if (kind === "doc") {
+    const [planId, docId] = String(id || "").split("/");
+    const plan = (pack.plans || []).find((entry) => entry.id === planId);
+    const item = (plan?.documents || []).find((entry) => entry.id === docId);
+    return item ? { kind, item, plan } : null;
+  }
   return null;
 }
 
@@ -4056,8 +4063,10 @@ function researchKindTag(item) {
 
 function researchStudyMeta(item) {
   const count = studyInsights(item).length;
+  const docs = (item.documents || []).length;
   return [
     researchDate(item.date),
+    docs ? (docs === 1 ? "1 document" : `${docs} documents`) : "",
     count ? (count === 1 ? "1 insight" : `${count} insights`) : "",
     item.pages ? `${item.pages} pages` : "",
   ]
@@ -4179,6 +4188,7 @@ function researchStudyPage(item) {
           : ""
       }`
     )}
+    ${researchDocumentsSection(item)}
     ${
       insights.length
         ? deskSection(
@@ -4188,6 +4198,64 @@ function researchStudyPage(item) {
         : ""
     }
     ${researchFile(item)}
+  `;
+}
+
+function researchDocumentOpen(plan, doc) {
+  return { "data-action": "research-open", "data-id": `doc:${plan.id}/${doc.id}` };
+}
+
+function researchDocumentsSection(plan) {
+  const docs = plan.documents || [];
+  if (!docs.length) return "";
+  return deskSection(
+    `Documents (${docs.length})`,
+    deskTable(
+      ["Document", "Status", "Pages"],
+      docs.map((doc) =>
+        deskRow({
+          open: researchDocumentOpen(plan, doc),
+          title: `${doc.n}. ${doc.title || ""}`,
+          cells: [researchStudyTag(doc), escapeHtml(doc.pages ? `${doc.pages} pages` : "")],
+        })
+      )
+    ),
+    "Open a document to read it."
+  );
+}
+
+function researchDocumentPage(plan, step) {
+  const steps = plan.documents || [];
+  const at = steps.indexOf(step);
+  const prev = steps[at - 1];
+  const next = steps[at + 1];
+  const nav = (other, label) =>
+    other
+      ? `<button type="button" class="astral-btn" ${deskOpenAttrs(researchDocumentOpen(plan, other))}>${escapeHtml(
+          `${label}: ${other.n}. ${other.title}`
+        )}</button>`
+      : "";
+  const format = [step.pages ? `${step.pages} pages` : "", step.format || ""].filter(Boolean).join(" · ");
+  return `
+    ${deskDetailHead({
+      back: "research-back",
+      where: plan.title || "Project",
+      kicker: `<span class="desk-card-tags">${researchStudyTag(step)}${deskTag(
+        `Document ${step.n} of ${steps.length}`,
+        "draft"
+      )}</span>`,
+      title: step.title || "",
+      lead: step.summary || "",
+    })}
+    ${deskSection(
+      "About",
+      `<dl class="fact-grid">
+        ${factRow("Project", plan.title)}
+        ${factRow("Format", format)}
+      </dl>
+      ${prev || next ? `<div class="astral-actions">${nav(prev, "Previous")}${nav(next, "Next")}</div>` : ""}`
+    )}
+    ${researchFile({ ...step, title: `${step.n}. ${step.title}` })}
   `;
 }
 
@@ -4585,7 +4653,7 @@ function renderResearch() {
   const open = researchOpenItem();
   const detail =
     Boolean(open) &&
-    ((open.kind === "plan" && tab === "planning") ||
+    (((open.kind === "plan" || open.kind === "doc") && tab === "planning") ||
       (open.kind === "report" && tab === "reporting") ||
       (open.kind === "move" && tab === "strategy"));
   if (!detail) store.researchOpen = "";
@@ -4693,13 +4761,22 @@ function renderResearch() {
     els.researchPlanning.hidden = tab !== "planning";
     let html = "";
     if (tab === "planning" && detail) {
-      html = researchStudyPage(open.item);
+      html = open.kind === "doc" ? researchDocumentPage(open.plan, open.item) : researchStudyPage(open.item);
     } else if (tab === "planning") {
       const activity = activeResearchActivity();
       const matched = sortedStudies().filter(
         (item) =>
           (activity === "all" || researchActivity(item) === activity) &&
-          deskMatch("research-plans", item.title, item.kind, researchActivityName(item), item.summary, item.who, item.where)
+          deskMatch(
+            "research-plans",
+            item.title,
+            item.kind,
+            researchActivityName(item),
+            item.summary,
+            item.who,
+            item.where,
+            ...(item.documents || []).map((doc) => doc.title)
+          )
       );
       html = plans.length
         ? deskSheet("research-plans", {
@@ -4790,7 +4867,9 @@ function planResearchMove(id) {
 function onResearchPage(event) {
   const back = event.target.closest("[data-action='research-back']");
   if (back) {
-    store.researchOpen = "";
+    // Back from a document returns to its project, not the list.
+    const open = researchOpenItem();
+    store.researchOpen = open?.kind === "doc" ? `plan:${open.plan.id}` : "";
     render();
     persistChrome();
     document.querySelector(".stage")?.scrollTo?.({ top: 0 });

@@ -396,3 +396,33 @@ patterns:
     health: healthy
     last_reviewed: "2026-10-08"
     decision_refs: []
+  - id: foundation.responsive-viewport
+    name: Responsive viewport
+    level: foundation
+    user_goal: Finish a core task in a 1280 x 640 browser viewport, on a laptop or beside Excel, without clipped controls
+    objects: [page, pane, graph, table, filter, modal, nav]
+    actions: [collapse, stack, reflow, scroll]
+    used_in: []
+    entry_points:
+      - Before a screen is called done
+      - /responsive-design
+    structure: Measure the viewport → check 1440 x 800, 1280 x 640, 1024 x 600, 1920 x 900, 320 wide → one fix → wait for Yes → re-check all five
+    components: [modal, table, filter, tabs, page-header]
+    states: [canvas, baseline, compact, wide, reflow, zoom-200]
+    permissions: all
+    content_terms: []
+    variants: []
+    exceptions:
+      - Data tables and graphs may scroll in two directions inside themselves. The page around them may not.
+    accessibility: WCAG 2.2 SC 1.4.10 reflow at 320 CSS px. SC 1.4.12 text spacing. 200% zoom at 1280 wide. Focus is a 2px black edge.
+    implementation_refs:
+      - styles.css
+      - .cursor/skills/responsive-design/SKILL.md
+      - .cursor/skills/responsive-design/references/viewport-targets.md
+    evidence:
+      - Desk research 2026-10-06. Statcounter UK desktop, Windows scaling, WCAG Reflow. General web data, not Astral users.
+    maturity: emerging
+    health: needs-evidence
+    last_reviewed: "2026-10-06"
+    decision_refs:
+      - UXDR-2026-10-06-viewport-targets

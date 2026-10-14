@@ -7850,6 +7850,22 @@
               "count"
             ],
             "note": "Suggestions, not deletions. Combine more than one signal before treating two pieces as the same."
+          },
+          {
+            "id": "responsive-viewport",
+            "name": "Responsive viewport",
+            "status": "draft",
+            "summary": "Works in a 1280 × 640 browser viewport. Designed at 1440 × 800. A bigger monitor helps but is never needed.",
+            "now": "Design against the browser viewport, not the monitor. A 1920 × 1080 laptop at 150% leaves about 1280 × 720 before browser chrome. Check five sizes. 1440 × 800 is the main canvas. 1280 × 640 is the baseline: core tasks work, no clipped controls, no page-wide sideways scroll. 1024 × 600 collapses or stacks panels and keeps filters and actions reachable. 1920 × 900 gives the chart or table more room without stretching text. 320 wide reflows for WCAG 1.4.10. Vertical scroll is fine. Keep scope, date range, units, and the main analysis on Portfolio. Collapse secondary panels instead of squeezing the graph. Tables scroll sideways inside themselves, not the page. Modals fit the height, the body scrolls, and the footer stays reachable. Cut spacing and spare panels before shrinking text.",
+            "later": "Swap the provisional numbers for measured working viewports once customer research captures them.",
+            "uses": [
+              "modal",
+              "table",
+              "filter",
+              "tabs",
+              "page-header"
+            ],
+            "note": "Provisional. Statcounter UK desktop data is general web use, not Astral users. No one has measured our users' browser sizes yet. Do not block smaller windows. Skill: /responsive-design."
           }
         ]
       },

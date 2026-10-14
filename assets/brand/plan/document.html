@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Customer discovery · IMSERV</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="plan.css">
+<style>
+  /* Additions for the proposal and the two scripts. Same tokens as plan.css. */
+  .title-block h1.fit { font-size: 54pt; }
+  .kicker { font-weight: 600; font-size: 7pt; letter-spacing: 0.02em; margin-bottom: 3mm; }
+  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gutter); border-top: 0.6mm solid var(--black); padding-top: 3mm; }
+  .facts + .facts { margin-top: 6mm; }
+  .card p { font-size: 8.5pt; }
+  .agenda > div.blank { background: var(--grey-a); }
+  .tags { display: flex; gap: 1.5mm; flex-wrap: wrap; }
+  .relations { display: flex; gap: 2mm; flex-wrap: wrap; margin-top: 3mm; }
+
+  /* Script: spoken words, notes, and question blocks. */
+  .say-box { background: var(--grey-a); padding: 4mm 5mm; margin-bottom: 5mm; }
+  .say-box p { font-size: 10pt; line-height: 1.4; }
+  .say-box p + p { margin-top: 2.5mm; }
+  .note { border-left: 1mm solid var(--cyan); padding-left: 3mm; font-size: 8pt; margin-bottom: 5mm; }
+  .note p + p { margin-top: 1mm; }
+  .qs { border-top: 0.6mm solid var(--black); }
+  .q { display: grid; grid-template-columns: 11mm 1fr 26mm; gap: 3mm; padding: 2.6mm 0; border-bottom: 0.25mm solid var(--grey-b); break-inside: avoid; }
+  .q-id { font-weight: 600; font-size: 9pt; }
+  .q-area { font-weight: 600; font-size: 6.5pt; letter-spacing: 0.02em; margin-bottom: 0.8mm; color: var(--grey-c); }
+  .q-ask { font-size: 10pt; line-height: 1.3; font-weight: 500; }
+  .q-probe { font-size: 7.8pt; color: var(--grey-c); margin-top: 1.2mm; }
+  .q-type { font-size: 6.5pt; font-weight: 600; letter-spacing: 0.02em; margin-top: 1.4mm; color: var(--grey-c); }
+  .q-opts { list-style: none; padding: 0; margin-top: 1.2mm; display: grid; grid-template-columns: 1fr 1fr; column-gap: 4mm; font-size: 7.8pt; }
+  .q-opts li { padding: 0.4mm 0 0.4mm 4mm; position: relative; }
+  .q-opts li::before { content: ""; position: absolute; left: 0; top: 1.5mm; width: 2.2mm; height: 2.2mm; border: 0.25mm solid var(--black); border-radius: 50%; }
+  .q-opts.multi li::before { border-radius: 0; }
+  .q-logic { font-size: 7.6pt; margin-top: 1.4mm; padding: 1mm 2mm; background: rgba(3, 244, 232, 0.18); }
+  .q-obj { display: flex; flex-wrap: wrap; gap: 1mm; justify-content: flex-end; align-content: start; }
+  .q-obj .tag { font-size: 5.8pt; }
+  .q-dense .q { padding: 2mm 0; }
+  .q-dense .q-ask { font-size: 9pt; }
+  .opener { font-size: 13pt; line-height: 1.3; font-weight: 500; }
+  .observe { columns: 2; column-gap: var(--gutter); }
+  .part-head { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gutter); align-items: end; margin-bottom: 6mm; }
+  .part-head h2 { font-size: 20pt; line-height: 1.1; }
+  .part-head .kicker { margin-bottom: 2mm; }
+  .part-head p { font-size: 8.5pt; }
+  .run { margin-top: 6mm; }
+  .run-bar { display: flex; height: 9mm; margin-bottom: 8mm; }
+  .run-bar span { border-right: 0.6mm solid var(--white); background: var(--black); color: var(--white); font-size: 6.5pt; font-weight: 600; padding: 1mm 1.5mm; overflow: hidden; }
+  .run-bar span.buffer { background: var(--grey-b); color: var(--black); }
+  .run-bar span.on { background: var(--cyan); color: var(--black); }
+  td.n { width: 8mm; font-weight: 600; }
+</style>
+<script src="customer-discovery.js"></script>
+</head>
+<body>
+<main id="doc"></main>
+<script>
+(function () {
+  const P = window.PLAN;
+  const key = new URLSearchParams(location.search).get("d") || "proposal";
+  const doc = P.documents.find((d) => d.id === key) || P.documents[0];
+  const pad = (n) => String(n).padStart(2, "0");
+  const folio = `<div class="folio"><span>${P.folio}</span></div>`;
+  const ul = (items) => `<ul class="plain">${items.map((i) => `<li>${i}</li>`).join("")}</ul>`;
+  const pages = [];
+  const add = (sec, cls, inner, style) => pages.push({ sec, cls, inner, style: style || "" });
+  const photo = (name, pos) => `background-image:url('photos/${name}.jpg')${pos ? `;background-position:${pos}` : ""}`;
+  const odd = doc.n % 2 === 1;
+  const objTags = (ns) => ns.map((n) => `<span class="tag">OBJ ${n}</span>`).join("");
+  const objList = (ns) => ul(P.objectives.filter((o) => ns.includes(o.n)).map((o) => `${o.n}. <b style="font-weight:500">${o.verb}</b> ${o.text}`));
+
+  const table = (cols, rows, widths) => `
+    <table>
+      <thead><tr>${cols.map((c, i) => `<th${widths && widths[i] ? ` style="width:${widths[i]}"` : ""}>${c}</th>`).join("")}</tr></thead>
+      <tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody>
+    </table>`;
+
+  const head = (title, text) => `<div class="head"><h2>${title}</h2>${text ? `<p>${text}</p>` : "<div></div>"}</div>`;
+
+  const cover = () =>
+    add(null, "photo grid-cover", `
+      <img class="mark mark-top" src="logo/imserv-white.svg" alt="IMSERV">
+      <div class="title-block"><h1 class="fit">${doc.cover}</h1></div>
+      <p class="title-sub">${P.title}<br>${P.status} · ${P.date}</p>`,
+      photo(odd ? "cover-forest-road" : "cover-mountain"));
+
+  const summary = () => add("__summary", "photo summary", "", photo(odd ? "summary-wind-turbine" : "summary-pylons", "28% center"));
+
+  const divider = (title, kind) => {
+    if (kind === "photo") {
+      add(null, "photo", `<img class="mark mark-left" src="logo/imserv-white.svg" alt="IMSERV"><div class="divider-title left"><h2>${title}</h2></div>`,
+        photo(odd ? "divider-hill-road" : "divider-pylon"));
+    } else {
+      add(null, `${kind || "cyan"} dots`, `<img class="mark mark-top" src="logo/imserv-black.svg" alt="IMSERV"><div class="divider-title"><h2>${title}</h2></div>`);
+    }
+  };
+
+  const timeline = (sec, title, focus) => {
+    const rows = P.stages.map((a) => {
+      const left = (a.weeks[0] / 18) * 100;
+      const width = ((a.weeks[1] - a.weeks[0]) / 18) * 100;
+      const on = !focus || focus.includes(a.n);
+      return `<div class="tl-row"><div class="tl-name"${on && focus ? ' style="font-weight:600"' : ""}>${a.n}. ${a.short}</div><div class="tl-track"><span></span><span></span><span></span><span></span><span></span><span></span><i class="tl-bar" style="left:${left}%;width:${width}%${on ? "" : ";background:var(--grey-b)"}"></i></div></div>`;
+    }).join("");
+    const labels = ["WK 1–3", "WK 4–6", "WK 7–9", "WK 10–12", "WK 13–15", "WK 16–18"].map((l) => `<span>${l}</span>`).join("");
+    const stages = table(["Stage", "Provisional duration", "Depends on"],
+      P.stages.filter((a) => !focus || focus.includes(a.n)).map((a) => [`${a.n}. ${a.title}`, a.duration, a.depends]), ["30%", "26%"]);
+    add(sec, "paper", `
+      ${head(title, P.timelineNote)}
+      <div class="timeline"><div class="tl-row tl-head"><div></div><div class="tl-track">${labels}</div></div>${rows}</div>
+      <div style="margin-top:12mm">${stages}</div>
+      ${folio}`);
+  };
+
+  const consent = (lede) => add("Consent and data", "ink", `
+    <div class="band"><p>Neutral draft. No consent wording is sent until it is approved. Legal review before it reaches a participant.</p></div>
+    <h2 class="big-head after-band">Consent, privacy<br>and data</h2>
+    <p class="lede">${lede || "Agreed with IMSERV's privacy and data-protection owner before the first session."}</p>
+    <div class="cols">
+      <div><h3>Every session</h3>${ul(P.consent)}</div>
+      <div><h3>How AI is used</h3><p>${P.ai.can}</p><p>${P.ai.not}</p></div>
+    </div>
+    ${folio}`);
+
+  const risks = (ids) => add("Risks", "paper", `
+    ${head("Risks and<br>limits", "What could weaken the evidence, and what we do about it.")}
+    ${table(["Risk", "Effect", "Mitigation"], ids.map((id) => { const r = P.risks[id]; return [r.risk, r.effect, r.fix]; }), ["32%", "30%"])}
+    ${folio}`);
+
+  const closing = () => add(null, "photo grid-close", `
+    <img class="mark mark-left" src="logo/imserv-white.svg" alt="IMSERV">
+    <span class="site">imserv.com</span>
+    <div class="thanks"><h2>Thank<br><span class="accent">You</span></h2></div>
+    <div class="contact"><div class="avatar"></div><div>${P.owner}<br>${P.team}</div></div>`,
+    photo(odd ? "closing-road-van" : "closing-van-valley"));
+
+  const others = () => P.documents.filter((d) => d.id !== doc.id);
+
+  const map = (sec, title, text, questions, ns) => add(sec, "paper", `
+    ${head(title, text)}
+    ${table(["Objective", "Research question", "Questions that answer it"], P.objectives.filter((o) => ns.includes(o.n)).map((o) => [
+      `${o.n}. ${o.verb}`,
+      o.question,
+      questions.filter((q) => q.obj.includes(o.n)).map((q) => `<b style="font-weight:600">${q.id}</b>`).join(", ") || `<span class="muted">Not in this document</span>`,
+    ]), ["22%", "40%"])}
+    ${folio}`);
+
+  const question = (q) => {
+    const multi = /all that apply/i.test(q.type || "");
+    return `<div class="q">
+      <div class="q-id">${q.id}</div>
+      <div>
+        ${q.area ? `<p class="q-area">${q.area.toUpperCase()}</p>` : ""}
+        <p class="q-ask">${q.q}</p>
+        ${q.probes && q.probes.length ? `<p class="q-probe">Probe: ${q.probes.join(" · ")}</p>` : ""}
+        ${q.type ? `<p class="q-type">${q.type.toUpperCase()}</p>` : ""}
+        ${q.options && q.options.length ? `<ul class="q-opts${multi ? " multi" : ""}">${q.options.map((o) => `<li>${o}</li>`).join("")}</ul>` : ""}
+        ${q.logic ? `<p class="q-logic"><b style="font-weight:600">Logic.</b> ${q.logic}</p>` : ""}
+      </div>
+      <div class="q-obj">${objTags(q.obj)}</div>
+    </div>`;
+  };
+
+  /* ---------- 1. Proposal ---------- */
+  function proposal() {
+    cover();
+    summary();
+    divider("Why the work<br>is needed");
+
+    add("Why the work is needed", "paper", `
+      <h2 class="big-head">Why the work<br>is needed</h2>
+      <p class="lede">We want to run a research-led discovery with IMSERV customers. Today we are designing Astral without evidence of how customers actually do their energy-data work.</p>
+      <div class="cols block">
+        <div><h3>Where this stands</h3><p>Clive has offered to help unlock customer access. He has <b>not</b> agreed a research plan, scope, or sample size. This proposal is for that conversation.</p><p>The research repository has no studies, insights, archetypes, or experience scores yet.</p></div>
+        <div><h3>What we risk without it</h3><p>Designing for assumptions that have not been tested with customers, such as which working hats exist, what reporting means, and whether problems sit in the interface or in the service behind it.</p></div>
+      </div>
+      <div class="callout"><p class="label">NOT A FINDING YET</p><p class="say">Everything here is a proposed approach. None of it is a finding about IMSERV customers yet.</p></div>
+      ${folio}`);
+
+    add("Why the work is needed", "paper", `
+      ${head("What we<br>already know", "Every item has a source and a limit. Most of it is an internal account of customer behaviour, not observed with customers.")}
+      ${table(["Evidence", "Source", "Limit"], P.known.map((k) => [k.text, k.source, k.limit]), ["44%", "22%"])}
+      ${folio}`);
+
+    add("Why the work is needed", "paper", `
+      <h2 class="big-head">Assumed and<br>not yet known</h2>
+      <p class="lede">Beliefs we have not tested with customers, and the gaps that matter to the decision.</p>
+      <div class="cols kau block"><div><p class="label">ASSUMED</p>${ul(P.assumed)}</div><div><p class="label">UNKNOWN</p>${ul(P.unknown)}</div></div>
+      ${folio}`);
+
+    divider("Our goals");
+
+    add("Our goals", "paper", `
+      <h2 class="big-head">Our goals</h2>
+      <p class="lede">The discovery should produce three things.</p>
+      <div class="cols-3 kau block">${P.outputs.map((o) => `<div><p class="label">${o.label}</p><p>${o.text}</p></div>`).join("")}</div>
+      <div class="cols block" style="margin-top:12mm">
+        <div><h3>Decisions it should inform</h3>${ul(P.decisions)}</div>
+        <div><h3>Supporting questions</h3>${ul(P.supporting)}</div>
+      </div>
+      <div class="callout"><p class="label">PRIMARY RESEARCH QUESTION</p><p class="say">${P.primary}</p></div>
+      ${folio}`);
+
+    add("Our goals", "paper", `
+      ${head("Objectives", "Seven objectives. Each has a research question, the activity that answers it, the evidence, and a measure. Measures serve an objective. They are not collected for their own sake.")}
+      ${table(["Objective", "Research question", "Activity", "Evidence", "Measure"], P.objectives.map((o) => [`${o.n}. ${o.verb} ${o.text}`, o.question, o.activity, o.evidence, o.measure]), ["26%", "20%", "18%", "18%"])}
+      ${folio}`);
+
+    divider("What we<br>propose", "photo");
+
+    add("What we propose", "paper", `
+      <div class="band"><p>Review existing evidence → interview and observe → find provisional patterns → survey those patterns → follow up on contradictions → refine archetypes and journeys → test design implications.</p></div>
+      <h2 class="big-head after-band">Approach</h2>
+      <p class="lede">An exploratory sequential mixed-methods discovery. Qualitative research comes first. It sets the concepts and language that the survey then measures.</p>
+      <div class="cols">
+        <div><h3>Connected, not just collected</h3><p>Interviews build the survey. Survey results guide follow-up recruitment. Both are compared in one analysis (Fetters, Curry and Creswell).</p><p>A <b>short screener</b> is still used for recruitment. That is different from the main survey.</p></div>
+        <div><h3>Archetypes, not decorative personas</h3><p>We will define research-backed behavioural profiles and customer journeys. The profiles do the job of personas, without fictional biographies.</p><p>Archetypes come from recurring patterns. They are not job titles with a new label.</p></div>
+      </div>
+      ${folio}`);
+
+    add("What we propose", "paper", `
+      ${head("Seven<br>stages", "Two of them have their own plan and script: the interviews and the survey.")}
+      <div class="agenda">${P.stages.map((a) => `<div><span class="tag">STAGE ${a.n}</span><h3>${a.title}</h3><p>${a.purpose}</p><p class="muted">${a.duration}${a.doc !== "proposal" ? ` · See the ${a.doc} plan` : ""}</p></div>`).join("")}
+        <div><span class="tag">OVERALL</span><h3>12 to 18 weeks</h3><p>With overlap, from agreement to tested implications.</p></div>
+        <div class="blank"></div>
+      </div>
+      ${folio}`);
+
+    add("What we propose", "paper", `
+      ${head("What the<br>research produces", "Current state and future proposals stay visibly separate.")}
+      <div class="cols-3 kau block">
+        <div><p class="label">BEHAVIOURAL ARCHETYPES</p>${ul(["Recurring goals and situations", "Working strategies and information needs", "Constraints, handoffs, and difficulties", "Design implications", "Supporting evidence and known exceptions"])}<p>We do not decide the number in advance.</p></div>
+        <div><p class="label">CUSTOMER JOURNEYS</p>${ul(["Start with the current experience, including work outside Astral", "Go deep on two or three priority scenarios", "Actor, trigger, outcome, stages, handoffs, waiting, and exceptions", "A service blueprint for cross-department issues"])}</div>
+        <div><p class="label">PRIORITISED UX DECISIONS</p>${ul(["Each follows one chain, so it stays traceable into BA work", "Observation, interpretation, and recommendation stay separate"])}</div>
+      </div>
+      <div class="agenda" style="margin-top:12mm">${P.chain.map((c, i) => `<div><span class="tag">STEP ${i + 1}</span><h3>${c}</h3></div>`).join("")}</div>
+      <div class="callout"><p class="label">THE TEST FOR EVERY ARCHETYPE</p><p class="say">Would this profile change how we design, prioritise, or evaluate a real task?</p></div>
+      ${folio}`);
+
+    timeline("What we propose", "Provisional<br>timeline");
+
+    add("What we are asking for", "paper", `
+      ${head("What we are<br>asking for", "Six things we need from reviewers before the research starts.")}
+      ${table(["", "Ask", "Status"], P.asks.map((ask, i) => [String(i + 1), ask, `<span class="tag">To agree</span>`]), ["8mm", "", "16%"])}
+      <div class="cols" style="margin-top:14mm">
+        <div><h3>Working alongside the BA team</h3>${ul(P.ba)}</div>
+        <div><h3>The other two documents</h3>${ul(others().map((d) => `<b style="font-weight:500">${d.title}.</b> ${d.summary}`))}</div>
+      </div>
+      ${folio}`);
+
+    consent();
+    risks(Object.keys(P.risks));
+    closing();
+  }
+
+  /* ---------- 2. Interview plan and script ---------- */
+  function interview() {
+    const I = P.interview;
+    const all = I.parts.flatMap((p) => p.questions);
+    cover();
+    summary();
+    divider("The plan");
+
+    add("The plan", "paper", `
+      <p class="kicker">DISCOVERY INTERVIEWS · STAGES 3 AND 4</p>
+      <h2 class="big-head">Interview plan</h2>
+      <p class="lede">${I.format} We ask about the last real time, not about features. Then we follow that episode through its tools, decisions, and handoffs.</p>
+      <div class="facts">${I.rounds.map((r) => `<div><p class="label">${r.name.toUpperCase()}</p><p><b style="font-weight:500">${r.who}.</b> ${r.aim}</p><p class="muted">${r.duration}</p></div>`).join("")}</div>
+      <div class="facts">${I.rounds.map((r) => `<div><p class="label">OUTPUT</p><p>${r.output}</p></div>`).join("")}</div>
+      <div class="facts"><div><p class="label">OBJECTIVES IT SERVES</p>${objList(I.objectives)}</div><div><p class="label">NOT IN THESE SESSIONS</p><p>Prototype screens. A prototype steers the conversation towards its own features. Design changes are tested in stage 7.</p></div></div>
+      <div class="callout"><p class="label">PRIMARY RESEARCH QUESTION</p><p class="say">${P.primary}</p></div>
+      ${folio}`);
+
+    add("The plan", "paper", `
+      ${head("Who we<br>interview", "We will not try to fill every combination. We prioritise contrasts likely to change a design decision, then recruit into gaps as findings emerge.")}
+      ${table(["Dimension", "Examples"], P.matrix, ["34%"])}
+      <div class="cols-3 kau block" style="margin-top:12mm">
+        <div><p class="label">THE PEOPLE WHO DO THE WORK</p><p>Separate the buyer, administrator, practitioner, approver, and recipient of outputs. A senior contact may not do the everyday work.</p></div>
+        <div><p class="label">STARTING POINT</p><p>Energy, Finance, Asset, and Data hats are a starting point for screening. They are not the archetypes.</p></div>
+        <div><p class="label">EXCLUSIONS</p><p>IMSERV staff standing in for customers. People who designed the flows being discussed.</p></div>
+      </div>
+      ${folio}`);
+
+    const total = I.parts.reduce((s, p) => s + p.min, 0);
+    const bar = (on) => `<div class="run-bar">${I.parts.map((p) => `<span class="${p.id === on ? "on" : ""}" style="width:${(p.min / 60) * 100}%">${p.id}</span>`).join("")}<span class="buffer" style="width:${((60 - total) / 60) * 100}%">+${60 - total}</span></div>`;
+
+    add("The plan", "paper", `
+      ${head("Running<br>order", `Proposed timings for a 60-minute session, with ${60 - total} minutes spare. Adjust in the first sessions.`)}
+      ${bar()}
+      ${table(["Part", "Minutes", "Aim", "Questions", "Objectives"], I.parts.map((p) => [
+        `${p.id}. ${p.title}`, String(p.min), p.aim, p.questions.map((q) => q.id).join(", ") || "—", `<div class="tags">${objTags([...new Set(p.questions.flatMap((q) => q.obj))].sort())}</div>`,
+      ]), ["24%", "10%", "", "14%", "18%"])}
+      <div class="cols" style="margin-top:12mm">
+        <div><h3>Do</h3>${ul(I.dos)}</div>
+        <div><h3>Don't</h3>${ul(I.donts)}</div>
+      </div>
+      ${folio}`);
+
+    divider("The script", "photo");
+
+    I.parts.forEach((p) => {
+      const partHead = `<div class="part-head"><div><p class="kicker">PART ${p.id} · ${p.min} MINUTES</p><h2>${p.title}</h2></div><p>${p.aim}</p></div>${bar(p.id)}`;
+      const say = p.say && p.say.length ? `<div class="say-box"><p class="label">SAY</p>${p.say.map((s) => `<p>“${s}”</p>`).join("")}</div>` : "";
+      const notes = p.notes && p.notes.length ? `<div class="note">${p.notes.map((n) => `<p>${n}</p>`).join("")}</div>` : "";
+      const opener = p.opener ? `<div class="say-box"><p class="label">OPEN WITH</p><p class="opener">“${p.opener}”</p><p class="label" style="margin-top:4mm">OR, FOR THE AGREED SCENARIO</p>${p.alternates.map((s) => `<p>“${s}”</p>`).join("")}</div>` : "";
+      const observe = p.observe ? `<div class="note"><p><b style="font-weight:600">Watch for.</b></p><ul class="plain observe">${p.observe.map((o) => `<li>${o}</li>`).join("")}</ul></div>` : "";
+      const qs = (list) => (list.length ? `<div class="qs">${list.map(question).join("")}</div>` : "");
+      const closingSay = p.id === "E" ? say : "";
+      const openingSay = p.id === "E" ? "" : say;
+      if (p.id === "C") {
+        add("The script", "paper", `${partHead}${opener}${notes}${qs(p.questions.slice(0, 4))}${folio}`);
+        add("The script", "paper", `${partHead}${qs(p.questions.slice(4))}${folio}`);
+      } else {
+        add("The script", "paper", `${partHead}${openingSay}${notes}${observe}${qs(p.questions)}${closingSay}${folio}`);
+      }
+    });
+
+    map("Objectives", "Questions to<br>objectives", "Every question serves an objective. Objectives 6 and 7 are answered by the survey and design testing, not by these sessions.", all, [1, 2, 3, 4, 5]);
+
+    add("After the session", "paper", `
+      <h2 class="big-head">After the<br>session</h2>
+      <p class="lede">Analyse each round before the next one starts, so round 2 can recruit into the gaps.</p>
+      <div class="cols kau block">
+        <div><p class="label">ANALYSIS</p>${ul(I.analysis)}</div>
+        <div><p class="label">SHARING</p>${ul(P.ba)}</div>
+      </div>
+      <h3 style="margin-top:12mm">When to keep recruiting</h3>
+      <div class="cols-3 kau block">${I.keepGoing.map(([l, t]) => `<div><p class="label">${l}</p><p>${t}</p></div>`).join("")}</div>
+      <div class="cols block" style="margin-top:10mm">
+        <div><h3>On sample size</h3><p>GOV.UK suggests about 4 to 8 participants per qualitative round, with more rounds as needed. A systematic review found saturation often within 9 to 17 interviews, in fairly similar groups with narrow aims (Hennink and Kaiser, 2022).</p></div>
+        <div><h3>What that does not show</h3><p>It does <b>not</b> show 12 to 16 interviews are enough for IMSERV's varied, multi-role audience. Two rounds of 6 to 8 is a starting proposal, not a promise of coverage. A rare, high-impact need is not dropped because it appeared once.</p></div>
+      </div>
+      ${folio}`);
+
+    consent();
+    risks(["senior", "orgs", "screens", "twelve", "archetypes"]);
+    closing();
+  }
+
+  /* ---------- 3. Survey plan and script ---------- */
+  function survey() {
+    const S = P.survey;
+    const all = S.sections.flatMap((s) => s.questions);
+    cover();
+    summary();
+    divider("The plan");
+
+    add("The plan", "paper", `
+      <div class="band"><p>Draft questions. Final wording and answer options come from discovery, in customers' own words. Grey options are placeholders to fill after rounds 1 and 2.</p></div>
+      <p class="kicker after-band">SURVEY · STAGE 5</p>
+      <h2 class="big-head">Survey plan</h2>
+      <p class="lede">Gauge how often the patterns from discovery happen across a wider group of respondents.</p>
+      <div class="facts"><div><p class="label">PROVISIONAL DURATION</p><p>${S.duration}, pilot and run</p></div><div><p class="label">DEPENDS ON</p><p>${S.depends}</p></div></div>
+      <div class="facts"><div><p class="label">OBJECTIVES IT SERVES</p>${objList(S.objectives)}<p class="muted">Other questions give reported frequency for patterns found under objectives 1, 2, 4, and 5.</p></div><div><p class="label">OUTPUT</p><p>Reported patterns across respondents, with sampling limits stated.</p></div></div>
+      ${folio}`);
+
+    add("The plan", "paper", `
+      ${head("How it is<br>built", "A survey written before discovery measures our own assumptions. That is why it comes after the interviews.")}
+      <div class="cards" style="grid-template-columns:1fr 1fr">${S.steps.map((s, i) => `<div class="card"><div class="num">${i + 1}</div><div><h3>${s.h}</h3><p>${s.p}</p></div></div>`).join("")}</div>
+      <div style="margin-top:10mm">${table(["Ask this", "Not this"], [["In the past three months, how often have you compared figures from more than one source before sharing a report?", "Are you an evidence-led analyst?"]], ["62%"])}</div>
+      <div class="cols" style="margin-top:10mm"><div><h3>Rules</h3>${ul(S.rules)}</div><div><h3>A survey written first may</h3>${ul(S.why)}</div></div>
+      ${folio}`);
+
+    add("The plan", "paper", `
+      ${head("Flow and<br>logic", "Everyone answers A and F. B to E show only to people who do the work they ask about. “Don't know” and “Not applicable” are always offered and coded apart from missing answers.")}
+      <div class="agenda">${S.sections.map((s) => `<div><span class="tag">${s.id === "Start" ? "START" : `SECTION ${s.id}`}</span><h3>${s.title}</h3><p>${s.who}</p><p class="muted">${s.questions.map((q) => q.id).join(", ")}</p></div>`).join("")}
+        <div><span class="tag">END</span><h3>Thank you</h3><p>${S.end}</p></div>
+        <div class="blank"></div>
+      </div>
+      <div style="margin-top:10mm">${table(["At", "When", "Go to"], S.routes, ["12%", "", "28%"])}</div>
+      ${folio}`);
+
+    divider("The<br>questions", "photo");
+
+    const sec = (s) => `<div class="part-head"><div><p class="kicker">${s.id === "Start" ? "START" : `SECTION ${s.id}`} · ${s.who.toUpperCase()}</p><h2>${s.title}</h2></div><p></p></div>`;
+    const block = (s) => `${sec(s)}<div class="qs${s.questions.length > 3 ? " q-dense" : ""}">${s.questions.map(question).join("")}</div>`;
+    const byId = (id) => S.sections.find((s) => s.id === id);
+
+    add("The questions", "paper", `
+      <div class="say-box"><p class="label">INTRODUCTION SCREEN</p><p>“${S.intro}”</p></div>
+      ${block(byId("Start"))}
+      <div style="margin-top:8mm">${block(byId("A"))}</div>
+      ${folio}`);
+    add("The questions", "paper", `${block(byId("B"))}<div style="margin-top:8mm">${block(byId("C"))}</div>${folio}`);
+    add("The questions", "paper", `${block(byId("D"))}${folio}`);
+    add("The questions", "paper", `${block(byId("E"))}${folio}`);
+    add("The questions", "paper", `${block(byId("F"))}<div class="say-box" style="margin-top:6mm"><p class="label">END SCREEN</p><p>“${S.end}”</p></div>${folio}`);
+
+    map("Objectives", "Questions to<br>objectives", "Every question serves an objective, apart from consent and the follow-up opt-in.", all, [1, 2, 3, 4, 5, 6]);
+
+    add("Pilot and analysis", "paper", `
+      <h2 class="big-head">Pilot and<br>analysis</h2>
+      <p class="lede">Pilot with target users to check meaning, answer options, and effort. Set the response target only after we know the reachable population, sampling approach, and comparisons needed.</p>
+      <div class="cols kau block">
+        <div><p class="label">PILOT CHECKS</p>${ul(["Do people read each question the way we mean it?", "Do the answer options fit, including the grey placeholders once filled?", "Does each recall period fit the activity?", "How long does it take? Set the time on the introduction screen from this"])}</div>
+        <div><p class="label">ANALYSIS</p>${ul(["Results describe <b>respondents</b> unless the sampling supports wider claims", "Report people and customer organisations separately", "Open answers to E2 are coded as interface, process, or data", "More responses do not remove recruitment bias"])}</div>
+      </div>
+      <h3 style="margin-top:12mm">Compared with the interviews</h3>
+      ${table(["Research question", "Interview", "Walkthrough or artefact", "Survey", "Interpretation and next action"], P.joint, ["22%", "18%", "20%", "17%"])}
+      <p style="margin-top:4mm">Each relationship is marked:</p>
+      <div class="relations"><span class="tag">SUPPORTING</span><span class="tag">COMPLEMENTARY</span><span class="tag">CONFLICTING</span><span class="tag">INSUFFICIENT</span></div>
+      ${folio}`);
+
+    consent("Agreed with IMSERV's privacy and data-protection owner before the survey is sent. The same rules apply to survey answers.");
+    risks(["survey", "orgs", "slow"]);
+    closing();
+  }
+
+  ({ proposal, interview, survey })[doc.id]();
+
+  // Summary list, from the section of each page.
+  const ranges = [];
+  pages.forEach((p, i) => {
+    if (!p.sec || p.sec === "__summary") return;
+    const last = ranges[ranges.length - 1];
+    if (last && last.sec === p.sec && last.to === i) last.to = i + 1;
+    else ranges.push({ sec: p.sec, from: i + 1, to: i + 1 });
+  });
+  const summaryPage = pages.find((p) => p.sec === "__summary");
+  if (summaryPage) {
+    summaryPage.inner = `<h2>${doc.title}</h2><ol>${ranges
+      .map((r) => `<li><span>${r.sec}</span><span>${pad(r.from)}${r.to > r.from ? `–${pad(r.to)}` : ""}</span></li>`)
+      .join("")}</ol>`;
+  }
+
+  document.title = `${doc.title} · ${P.title} · IMSERV`;
+  document.getElementById("doc").innerHTML = pages
+    .map((p) => `<section class="page ${p.cls}"${p.style ? ` style="${p.style}"` : ""}>${p.inner}</section>`)
+    .join("");
+
+  const images = Array.from(document.querySelectorAll("img")).map((img) =>
+    img.complete ? null : new Promise((done) => { img.onload = img.onerror = done; }));
+  const photos = pages.filter((p) => p.style).map((p) => new Promise((done) => {
+    const url = /url\('([^']+)'\)/.exec(p.style);
+    if (!url) return done();
+    const img = new Image(); img.onload = img.onerror = done; img.src = url[1];
+  }));
+  Promise.all([...images, ...photos, document.fonts.ready]).then(() => { window.__ready = true; });
+})();
+</script>
+</body>
+</html>

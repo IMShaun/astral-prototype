@@ -21,9 +21,10 @@
             "Fold recipes with UX Patterns. Wait for Yes.",
             "Fold studies with UX Research. Wait for Build plan.",
             "Fold Figma library work with Figma. Live Astral first.",
+            "Check screen sizes with Responsive design. Wait for Yes.",
             "Move processed inbox files to archive."
           ],
-          "uses": ["shaun-writing", "ux-writing", "ux-patterns", "ux-research", "figma"],
+          "uses": ["shaun-writing", "ux-writing", "ux-patterns", "ux-research", "figma", "responsive-design"],
           "library": ["tag", "count", "button"],
           "where": ".cursor/skills/work-desk/",
           "note": "Do not invent groups, insights, or next steps a talk has not named. Never store a password."
@@ -98,6 +99,26 @@
           "library": ["tag", "count", "button"],
           "where": ".cursor/skills/figma/",
           "note": "Coded library and prototype are the source of truth. Map, transform, then construct. Do not invent a CI or Storybook sync."
+        },
+        {
+          "id": "responsive-design",
+          "name": "Responsive design",
+          "status": "draft",
+          "invoke": "/responsive-design",
+          "summary": "Designs responsive behaviours, not smaller desktops. 1440 × 800 is the canvas. 1280 × 640 is the baseline.",
+          "when": "Screen size, viewport, laptop, display scaling, zoom, reflow, breakpoints, panels or drawers, a squeezed graph, a crushed table, a clipped modal, a short window, or a small window.",
+          "how": [
+            "Design against the browser viewport, not the monitor.",
+            "Write the responsive contract. Task, essentials, minimum working size, state to keep.",
+            "Read the screen. Find sidebars, fixed heights, transitions, and the scroll owner.",
+            "Check 1440 × 800, 1280 × 640, 1024 × 600, 1920 × 900, and 320 wide. Resize through each transition.",
+            "Report what holds, what breaks, and what state is lost at each size.",
+            "Recommend one fix. Shell and panels before shrinking. Wait for Yes. Then re-check all five."
+          ],
+          "uses": ["ux-patterns", "ux-research", "ux-writing"],
+          "library": ["modal", "table", "filter", "tabs"],
+          "where": ".cursor/skills/responsive-design/",
+          "note": "Provisional target, not an industry minimum. No one has measured Astral users' viewports yet. A bigger monitor improves Astral. It is never required."
         }
       ]
     },
