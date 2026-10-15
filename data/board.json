@@ -3356,7 +3356,20 @@
             "report": "dataserve-gap-analysis",
             "where": "SP Dataserve customer help guide, read against the Astral prototype.",
             "summary": "The legacy guide lists 14 features. Bill Checker, user-made sub-groups, and a compare statistics table are missing. Consumption, carbon, and register reports are partial.",
-            "card": "Bill Checker, user-made sub-groups, and compare statistics are missing from Astral. Test each in discovery before building."
+            "card": "Bill Checker, user-made sub-groups, and compare statistics are missing from Astral. Test each in discovery before building.",
+            "documents": [
+              {
+                "id": "priorities",
+                "n": 1,
+                "title": "What Astral is missing, in priority order",
+                "status": "done",
+                "date": "2026-10-15",
+                "summary": "All 35 gaps on one page, ranked on value and effort into quick wins, big bets, fill-ins, and ones to reconsider.",
+                "file": "/docs/research/reports/2026-10-15-dataserve-priorities.pdf",
+                "pages": 1,
+                "format": "A4 PDF"
+              }
+            ]
           },
           {
             "id": "customer-base-map",
