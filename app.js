@@ -5613,6 +5613,10 @@ const CHROME_FIELDS = [
   "prototypeCompanyDraftName",
   "prototypeCompanyDraftType",
   "prototypeCompanyNameError",
+  "prototypeCompanyRecord",
+  "prototypeCompanyRecordTab",
+  "prototypeCompanyMeterQuery",
+  "prototypeCompanyMeters",
   "prototypeWalkUsers",
   "prototypeTeams",
   "prototypeTeam",
@@ -6068,6 +6072,15 @@ function applyChrome() {
     ? store.prototypeCompanyDraftType
     : "customer";
   store.prototypeCompanyNameError = Boolean(store.prototypeCompanyNameError);
+  store.prototypeCompanyRecord = String(store.prototypeCompanyRecord || "");
+  store.prototypeCompanyRecordTab = store.prototypeCompanyRecordTab === "meters" ? "meters" : "queries";
+  store.prototypeCompanyMeterQuery = String(store.prototypeCompanyMeterQuery || "").slice(0, 120);
+  store.prototypeCompanyMeters =
+    store.prototypeCompanyMeters &&
+    typeof store.prototypeCompanyMeters === "object" &&
+    !Array.isArray(store.prototypeCompanyMeters)
+      ? store.prototypeCompanyMeters
+      : {};
   if (typeof protoSeedWalkUsers === "function") protoSeedWalkUsers();
   store.prototypeSignedOut = Boolean(store.prototypeSignedOut);
   store.prototypeLibraryOn = Boolean(store.prototypeLibraryOn);

@@ -296,7 +296,7 @@ const PROTO_LENS_EXTRA = {
     id: "companies",
     name: "Companies",
     kicker: "Platform",
-    blurb: "Pick a company, then see as them.",
+    blurb: "See a company's queries and meters, or log in as them.",
   },
   servicing: {
     id: "servicing",
@@ -452,6 +452,7 @@ function protoSetCompany(id) {
     activePrototypeView: "home",
     ...protoSeeAsClear(),
     prototypeCompanyQuery: "",
+    ...protoCompanyRecordClear(),
   });
   if (store.prototypeFullscreen) {
     protoRestoreFocus('#astral-fs [data-proto-select-toggle="preview-company"]');
@@ -9952,6 +9953,11 @@ function protoCloseModal(kind) {
     });
     return;
   }
+  if (kind === "company-meters") {
+    setProto(protoMeterAddClear());
+    protoRestoreFocus("#astral-fs [data-proto-company-meters='add']");
+    return;
+  }
   if (kind === "company") {
     setProto({
       prototypeCompanyForm: false,
@@ -10578,6 +10584,21 @@ function protoPickSelect(id, value) {
       prototypeTeamForm: true,
       prototypeTeamDraftCompany: protoTeamCompanyId(value),
     });
+    return;
+  }
+  if (id === "company-meter-site") {
+    if (!protoCompanyRecordName()) return;
+    const error = store.prototypeMeterAddError || {};
+    setProto({
+      prototypeSelectOpen: "",
+      prototypeMeterAddSite: String(value || ""),
+      prototypeMeterAddError: error.points ? { points: error.points } : null,
+    });
+    protoRestoreFocus(
+      value === PROTO_NEW_SITE
+        ? "#astral-fs input[name='proto-meter-site-name']"
+        : `#astral-fs [data-proto-select="company-meter-site"] .astral-select-btn`
+    );
     return;
   }
   if (id === "company-type") {
@@ -17093,7 +17114,8 @@ function protoFindOpen(key) {
   const id = key.slice(at + 1);
   store.prototypeFindQuery = "";
   if (kind === "company") {
-    protoOpenCompany(id);
+    if (!protoKnownSeeAsCompany(id)) return;
+    setProto(protoCompanyRecordGo(protoKnownSeeAsCompany(id)));
     return;
   }
   if (kind === "person") {
@@ -17335,7 +17357,7 @@ function protoServiceTable(tab, q) {
       .map((row) =>
         protoServiceRow(
           [
-            escapeHtml(row.name),
+            `<button type="button" class="astral-row-link">${escapeHtml(row.name)}</button>`,
             row.meters ? row.meters.toLocaleString("en-GB") : `<span class="astral-muted">No meters yet</span>`,
             row.percent == null ? "" : `${row.percent}%`,
             row.stale || "0",
@@ -17343,8 +17365,8 @@ function protoServiceTable(tab, q) {
             row.faults || "0",
             row.risks || "0",
           ],
-          { meters: row.meters, sending: row.percent == null ? -1 : row.percent },
-          `data-proto-see-as-company="${escapeHtml(row.name)}"`
+          { company: row.name.toLowerCase(), meters: row.meters, sending: row.percent == null ? -1 : row.percent },
+          `class="is-link" data-proto-company-record="${escapeHtml(row.name)}"`
         )
       );
     return protoTable(
@@ -19508,14 +19530,428 @@ function protoInbox() {
   `);
 }
 
+const PROTO_COMPANY_RECORD_TABS = [
+  { id: "queries", name: "Queries" },
+  { id: "meters", name: "Meters" },
+];
+
+const PROTO_NEW_SITE = "__new__";
+
+function protoCompanyRecordName() {
+  if (!protoSeesCompanies() || protoSeeAs()) return "";
+  return protoKnownSeeAsCompany(store.prototypeCompanyRecord);
+}
+
+function protoCompanyRecordTab() {
+  return store.prototypeCompanyRecordTab === "meters" ? "meters" : "queries";
+}
+
+function protoCompanyRecordGo(name) {
+  return {
+    activePrototypeView: "companies",
+    prototypeCompanyRecord: name,
+    prototypeCompanyRecordTab: "queries",
+    prototypeCompanyMeterQuery: "",
+    prototypeCompanyNote: "",
+    prototypeFullscreen: true,
+    ...protoSeeAsClear(),
+  };
+}
+
+function protoCompanyRecordClear() {
+  return {
+    prototypeCompanyRecord: "",
+    prototypeCompanyRecordTab: "queries",
+    prototypeCompanyMeterQuery: "",
+    prototypeCompanyNote: "",
+    ...protoMeterAddClear(),
+  };
+}
+
+function protoMeterAddClear() {
+  return {
+    prototypeMeterAddForm: false,
+    prototypeMeterAddDraft: "",
+    prototypeMeterAddSite: "",
+    prototypeMeterAddSiteName: "",
+    prototypeMeterAddError: null,
+  };
+}
+
+function protoCompanyMeterMap() {
+  const raw = store.prototypeCompanyMeters;
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? { ...raw } : {};
+}
+
+function protoCompanyAddedMeters(name) {
+  const list = protoCompanyMeterMap()[name];
+  return Array.isArray(list) ? list : [];
+}
+
+function protoUtilityName(kind) {
+  if (kind === "gas") return "Gas";
+  if (kind === "water") return "Water";
+  return "Electricity";
+}
+
+function protoCompanyMeterRows(name) {
+  const own = protoServiceMeters()
+    .filter((meter) => meter.company === name)
+    .map((meter) => ({ ...meter, kind: protoMeterKind(meter.live ? protoMeter(meter.id) : meter) }));
+  const added = protoCompanyAddedMeters(name).map((item) => ({
+    id: `added:${item.point}`,
+    company: name,
+    site: item.site,
+    point: item.point,
+    kind: item.kind,
+    status: "waiting",
+    last: "",
+    live: false,
+    added: true,
+  }));
+  return [...added, ...own];
+}
+
+function protoCompanySiteNames(name) {
+  const names =
+    name === "Network Rail"
+      ? protoSites().map((site) => site.name)
+      : protoServiceMeters()
+          .filter((meter) => meter.company === name)
+          .map((meter) => meter.site);
+  protoCompanyAddedMeters(name).forEach((item) => names.push(item.site));
+  return [...new Set(names.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+// An MPAN core is 13 digits. A full MPAN adds an 8-digit top line. An MPRN is 6 to 10 digits.
+function protoMeterPointRead(line) {
+  const digits = String(line || "").replace(/[\s-]/g, "");
+  if (!/^\d+$/.test(digits)) return null;
+  if (digits.length === 21) return { point: digits.slice(-13), kind: "electricity" };
+  if (digits.length === 13) return { point: digits, kind: "electricity" };
+  if (digits.length >= 6 && digits.length <= 10) return { point: digits, kind: "gas" };
+  return null;
+}
+
+function protoMeterPointsKnown() {
+  const known = new Set(protoServiceMeters().map((meter) => String(meter.point)));
+  Object.values(protoCompanyMeterMap()).forEach((list) => {
+    (Array.isArray(list) ? list : []).forEach((item) => known.add(String(item.point)));
+  });
+  return known;
+}
+
+function protoLineList(numbers) {
+  if (numbers.length === 1) return `Line ${numbers[0]}`;
+  return `Lines ${numbers.slice(0, -1).join(", ")} and ${numbers[numbers.length - 1]}`;
+}
+
+function protoCompanyQueryRows(name) {
+  return protoInboxTickets()
+    .filter((ticket) => ticket.company === name)
+    .map((ticket) =>
+      protoServiceRow(
+        [
+          `<button type="button" class="astral-row-link">${escapeHtml(ticket.ref)}</button>`,
+          escapeHtml(ticket.subject),
+          escapeHtml(ticket.name),
+          escapeHtml(protoAgo(ticket.lastAt)),
+          protoTag(ticket.resolved ? "Resolved" : "Open"),
+        ],
+        { ref: Number(String(ticket.ref).replace(/\D/g, "")), "last-reply": ticket.lastAt },
+        `class="is-link" data-proto-company-query="${escapeHtml(ticket.ref)}"`
+      )
+    );
+}
+
+function protoCompanyMeterTableRows(rows) {
+  return rows.map((meter) => {
+    const open = meter.added ? "" : protoServiceOpenAttr(meter);
+    return protoServiceRow(
+      [
+        open ? `<button type="button" class="astral-row-link">${escapeHtml(meter.point)}</button>` : escapeHtml(meter.point),
+        escapeHtml(meter.site),
+        protoUtilityName(meter.kind),
+        meter.added ? protoServicePill("Waiting for data") : protoStatePill(protoServiceStateWord(meter.status)),
+        meter.added ? `<span class="astral-muted">None yet</span>` : escapeHtml(meter.last || ""),
+      ],
+      {},
+      open ? `class="is-link" ${open}` : ""
+    );
+  });
+}
+
+function protoCompanyRecord(name) {
+  const tab = protoCompanyRecordTab();
+  const queries = protoCompanyQueryRows(name);
+  const meters = protoCompanyMeterRows(name);
+  const added = protoCompanyAddedMeters(name).length;
+  const listed = protoServiceCompanies().find((row) => row.name === name)?.meters || 0;
+  const total = listed + added;
+  const shown = meters.length - added;
+  const tabs = PROTO_COMPANY_RECORD_TABS.map((item) => {
+    const n = item.id === "queries" ? queries.length : total;
+    return { id: item.id, name: n ? `${item.name} · ${n.toLocaleString("en-GB")}` : item.name };
+  });
+  const type = PROTO_COMPANY_TYPES.find((item) => item.id === protoCompanyTypeForName(name))?.name || "";
+  const query = String(store.prototypeCompanyMeterQuery || "");
+  const q = query.trim().toLowerCase();
+  const note = String(store.prototypeCompanyNote || "");
+  const addOpen = Boolean(store.prototypeMeterAddForm);
+  const tools =
+    tab === "meters"
+      ? `
+        <div class="astral-people-tools">
+          ${protoSearchField({
+            name: "proto-company-meter-query",
+            value: query,
+            placeholder: "Search meter point or site",
+            label: "Search meter point or site",
+          })}
+          ${protoGhost(
+            "Add meter points",
+            `data-proto-company-meters="add" aria-haspopup="dialog" aria-expanded="${addOpen ? "true" : "false"}"`
+          )}
+        </div>
+      `
+      : "";
+  const partial =
+    tab === "meters" && shown < listed
+      ? `<p class="astral-muted astral-usage-note">${escapeHtml(
+          added
+            ? `Showing the ${added} you added and the ${shown} that need attention. Log in as company to see all ${total.toLocaleString("en-GB")}.`
+            : `Showing the ${shown} that need attention. Log in as company to see all ${listed.toLocaleString("en-GB")}.`
+        )}</p>`
+      : "";
+  const body =
+    tab === "meters"
+      ? `
+        ${note ? `<p class="astral-banner" role="status">${escapeHtml(note)}</p>` : ""}
+        ${protoTable(
+          ["Meter point", "Site", "Utility", "State", "Last actual"],
+          protoCompanyMeterTableRows(
+            meters.filter((meter) => !q || [meter.point, meter.site].some((text) => String(text).toLowerCase().includes(q)))
+          ),
+          {
+            id: "company-meters",
+            empty: q ? "No meter points match." : "No meter points yet.",
+            rowAttr: (row) => row.attr,
+          }
+        )}
+      `
+      : protoTable(["Ref", "Subject", "Raised by", "Last reply", "State"], queries, {
+          id: "company-queries",
+          empty: "No queries yet.",
+          rowAttr: (row) => row.attr,
+        });
+  return `
+    <section class="astral-card astral-pane astral-service">
+      ${protoPaneShell(
+        `
+          <div class="astral-detail-head">
+            <div class="astral-page-title">
+              ${protoBackLink("Back to companies", "data-proto-company-record-close")}
+              ${protoDetailTitle(name, type)}
+            </div>
+            <div class="astral-detail-tools">
+              ${protoBtn("Log in as company", `data-proto-see-as-company="${escapeHtml(name)}"`)}
+            </div>
+          </div>
+          ${protoTabs(tabs, tab, "data-proto-company-tab", name)}
+          ${tools}
+          ${partial}
+        `,
+        body
+      )}
+    </section>
+    ${protoMeterAddModal(name)}
+  `;
+}
+
+function protoMeterAddModal(name) {
+  if (!store.prototypeMeterAddForm) return "";
+  const draft = String(store.prototypeMeterAddDraft || "");
+  const sites = protoCompanySiteNames(name);
+  const site = sites.length ? String(store.prototypeMeterAddSite || "") : PROTO_NEW_SITE;
+  const isNew = site === PROTO_NEW_SITE;
+  const error = store.prototypeMeterAddError || {};
+  const pointsDescribed = ["astral-meter-points-hint", error.points ? "astral-meter-points-error" : ""]
+    .filter(Boolean)
+    .join(" ");
+  const siteSelect = sites.length
+    ? `
+      <div class="astral-team-field">
+        <p id="astral-meter-site-label">Site</p>
+        ${protoSelect({
+          id: "company-meter-site",
+          label: "Site",
+          labelledby: "astral-meter-site-label",
+          wide: true,
+          value: site,
+          placeholder: "Pick a site",
+          empty: "No sites match.",
+          search:
+            sites.length > 8
+              ? {
+                  name: "proto-report-site-query",
+                  value: protoSelectOpen() === "company-meter-site" ? String(store.prototypeReportSiteQuery || "") : "",
+                  placeholder: "Search sites",
+                  label: "Search sites",
+                }
+              : null,
+          options: [{ value: PROTO_NEW_SITE, label: "New site" }, ...sites.map((item) => ({ value: item, label: item }))],
+        })}
+        ${
+          error.site && !isNew
+            ? `<p class="astral-export-error" id="astral-meter-site-error" role="alert">${escapeHtml(error.site)}</p>`
+            : ""
+        }
+      </div>
+    `
+    : "";
+  const siteName = isNew
+    ? `
+      <label class="astral-field">
+        <span>${sites.length ? "New site name" : "Site name"}</span>
+        <input
+          type="text"
+          name="proto-meter-site-name"
+          value="${escapeHtml(String(store.prototypeMeterAddSiteName || ""))}"
+          maxlength="80"
+          autocomplete="off"
+          ${error.site ? 'aria-invalid="true" aria-describedby="astral-meter-site-error"' : ""}
+        />
+      </label>
+      ${error.site ? `<p class="astral-export-error" id="astral-meter-site-error" role="alert">${escapeHtml(error.site)}</p>` : ""}
+    `
+    : "";
+  return `
+    <div class="astral-modal-back" data-proto-modal="company-meters">
+      <div
+        class="astral-modal is-narrow has-menus"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="astral-meter-add-title"
+      >
+        ${protoModalHead(
+          "astral-meter-add-title",
+          "Add meter points",
+          `Add them to ${escapeHtml(name)}. Astral works out electricity or gas from each number.`,
+          "company-meters"
+        )}
+        <form data-proto-meter-add-form>
+          <div class="astral-modal-body">
+            <label class="astral-field">
+              <span>MPANs and MPRNs</span>
+              <textarea
+                name="proto-meter-points"
+                rows="4"
+                spellcheck="false"
+                autocomplete="off"
+                aria-describedby="${pointsDescribed}"
+                ${error.points ? 'aria-invalid="true"' : ""}
+              >${escapeHtml(draft)}</textarea>
+            </label>
+            <p class="astral-muted" id="astral-meter-points-hint">One per line. An MPAN has 13 digits, or 21 with the top line. An MPRN has 6 to 10 digits.</p>
+            ${error.points ? `<p class="astral-export-error" id="astral-meter-points-error" role="alert">${escapeHtml(error.points)}</p>` : ""}
+            ${siteSelect}
+            ${siteName}
+          </div>
+          <div class="astral-modal-foot">
+            <div class="astral-actions">
+              ${protoBtn("Add meter points", "", { type: "submit" })}
+              ${protoGhost("Cancel", 'data-proto-company-meters="cancel"')}
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
+function protoMeterAddSubmit(form) {
+  const name = protoCompanyRecordName();
+  if (!name) return;
+  const draft = String(form.querySelector("[name='proto-meter-points']")?.value || "");
+  const siteName = String(form.querySelector("[name='proto-meter-site-name']")?.value || "").trim();
+  const sites = protoCompanySiteNames(name);
+  const pick = sites.length ? String(store.prototypeMeterAddSite || "") : PROTO_NEW_SITE;
+  const lines = draft
+    .split(/\r?\n/)
+    .map((text, i) => ({ text: text.trim(), n: i + 1 }))
+    .filter((line) => line.text);
+  const error = {};
+  const bad = lines.filter((line) => !protoMeterPointRead(line.text)).map((line) => line.n);
+  if (!lines.length) error.points = "Enter at least one MPAN or MPRN.";
+  else if (bad.length) {
+    error.points = `${protoLineList(bad)} ${bad.length === 1 ? "is not an MPAN or MPRN" : "are not MPANs or MPRNs"}. Check the number of digits.`;
+  }
+  const site = pick === PROTO_NEW_SITE ? siteName : pick;
+  if (!pick) error.site = "Pick a site.";
+  else if (!site) error.site = "Enter a site name.";
+  const known = protoMeterPointsKnown();
+  const fresh = [];
+  let skipped = 0;
+  if (!error.points) {
+    lines.forEach((line) => {
+      const read = protoMeterPointRead(line.text);
+      if (known.has(read.point)) {
+        skipped += 1;
+        return;
+      }
+      known.add(read.point);
+      fresh.push({ ...read, site });
+    });
+    if (!fresh.length) error.points = skipped === 1 ? "That meter point is already listed." : "Those meter points are already listed.";
+  }
+  if (error.points || error.site) {
+    setProto({
+      prototypeMeterAddDraft: draft,
+      prototypeMeterAddSiteName: siteName,
+      prototypeMeterAddError: error,
+    });
+    protoRestoreFocus(
+      error.points
+        ? "#astral-fs textarea[name='proto-meter-points']"
+        : pick === PROTO_NEW_SITE
+          ? "#astral-fs input[name='proto-meter-site-name']"
+          : "#astral-fs [data-proto-select='company-meter-site'] .astral-select-btn"
+    );
+    return;
+  }
+  const n = fresh.length;
+  const note = `Added ${n} ${n === 1 ? "meter point" : "meter points"} to ${name}.${
+    skipped ? ` Skipped ${skipped} that ${skipped === 1 ? "was" : "were"} already listed.` : ""
+  }`;
+  setProto({
+    prototypeCompanyMeters: { ...protoCompanyMeterMap(), [name]: [...fresh, ...protoCompanyAddedMeters(name)] },
+    prototypeCompanyRecordTab: "meters",
+    prototypeCompanyMeterQuery: "",
+    prototypeCompanyNote: note,
+    ...protoMeterAddClear(),
+  });
+  protoRestoreFocus("#astral-fs [data-proto-company-meters='add']");
+}
+
 function protoCompanies() {
+  const record = protoCompanyRecordName();
+  if (record) {
+    return astralShell(`
+      ${astralPageHead("Companies")}
+      ${protoCompanyRecord(record)}
+    `);
+  }
   const q = String(store.prototypeCompanyQuery || "").trim().toLowerCase();
   const companies = protoTeamCompanyNames().filter(
     (name) => !q || name.toLowerCase().includes(q)
   );
   const rows = companies.map((name) => {
     const n = protoUserPeople().filter((person) => person.company === name).length;
-    return [escapeHtml(name), `${n} ${n === 1 ? "person" : "people"}`];
+    return protoServiceRow(
+      [`<button type="button" class="astral-row-link">${escapeHtml(name)}</button>`, `${n} ${n === 1 ? "person" : "people"}`],
+      { name: name.toLowerCase(), people: n },
+      `class="is-link" data-proto-company-record="${escapeHtml(name)}"`
+    );
   });
   const addOpen = Boolean(store.prototypeCompanyForm);
   return astralShell(`
@@ -19538,8 +19974,7 @@ function protoCompanies() {
         protoTable(["Name", "People"], rows, {
           id: "companies",
           empty: "No companies match.",
-          rowAttr: (row) =>
-            `data-proto-see-as-company="${escapeHtml(protoPlainSortText(row[0]))}"`,
+          rowAttr: (row) => row.attr,
         })
       )}
     </section>
@@ -38187,6 +38622,8 @@ function onPrototype(event) {
             ? { prototypeCompanyQuery: "" }
             : name === "proto-service-query"
             ? { prototypeServiceQuery: "" }
+            : name === "proto-company-meter-query"
+            ? { prototypeCompanyMeterQuery: "" }
             : name === "proto-find-query"
             ? { prototypeFindQuery: "" }
             : name === "proto-inbox-query"
@@ -38561,7 +38998,7 @@ function onPrototype(event) {
     const id = selectToggle.dataset.protoSelectToggle;
     const open = protoSelectOpen() === id;
     if (id === "chart-zone-for") store.prototypeZoneQuery = "";
-    if (String(id).startsWith("site-add-field:")) store.prototypeReportSiteQuery = "";
+    if (String(id).startsWith("site-add-field:") || id === "company-meter-site") store.prototypeReportSiteQuery = "";
     setProto({
       prototypeSelectOpen: open ? "" : id,
       prototypeDateOpen: false,
@@ -38587,6 +39024,11 @@ function onPrototype(event) {
     }
     if (!open && String(id).startsWith("site-add-field:")) {
       protoRestoreFocus("#astral-fs .astral-float-menu input[name='proto-report-site-query']");
+    }
+    if (!open && id === "company-meter-site") {
+      protoRestoreFocus(
+        "#astral-fs .astral-float-menu input[name='proto-report-site-query'], #astral-fs [data-proto-select='company-meter-site'] input[name='proto-report-site-query']"
+      );
     }
     return;
   }
@@ -39186,6 +39628,52 @@ function onPrototype(event) {
       return;
     }
   }
+  const companyRecord = event.target.closest("[data-proto-company-record]");
+  if (companyRecord) {
+    if (!protoSeesCompanies()) return;
+    const name = protoKnownSeeAsCompany(companyRecord.dataset.protoCompanyRecord);
+    if (!name) return;
+    setProto(protoCompanyRecordGo(name));
+    protoFocusWhenDrawn("#astral-fs .astral-pane .astral-back");
+    return;
+  }
+  if (event.target.closest("[data-proto-company-record-close]")) {
+    const name = protoCompanyRecordName();
+    setProto(protoCompanyRecordClear());
+    if (name) protoFocusWhenDrawn(`#astral-fs tr[data-proto-company-record="${CSS.escape(name)}"] .astral-row-link`);
+    return;
+  }
+  const companyTab = event.target.closest("[data-proto-company-tab]");
+  if (companyTab) {
+    setProto({
+      prototypeCompanyRecordTab: companyTab.dataset.protoCompanyTab,
+      prototypeCompanyMeterQuery: "",
+      prototypeCompanyNote: "",
+    });
+    return;
+  }
+  const companyQuery = event.target.closest("tr[data-proto-company-query]");
+  if (companyQuery) {
+    const ref = companyQuery.dataset.protoCompanyQuery;
+    const ticket = protoInboxTickets().find((item) => item.ref === ref);
+    if (!ticket) return;
+    setProto({ ...protoInboxGo(ticket.resolved ? "resolved" : "open", ref), ...protoCompanyRecordClear() });
+    return;
+  }
+  const companyMeters = event.target.closest("[data-proto-company-meters]");
+  if (companyMeters) {
+    const act = companyMeters.dataset.protoCompanyMeters;
+    if (act === "add") {
+      if (!protoCompanyRecordName()) return;
+      setProto({ ...protoMeterAddClear(), prototypeMeterAddForm: true, prototypeCompanyNote: "" });
+      protoRestoreFocus("#astral-fs textarea[name='proto-meter-points']");
+      return;
+    }
+    if (act === "cancel") {
+      protoCloseModal("company-meters");
+      return;
+    }
+  }
   const companyBtn = event.target.closest("[data-proto-company]");
   if (companyBtn) {
     const act = companyBtn.dataset.protoCompany;
@@ -39707,6 +40195,7 @@ function onPrototype(event) {
       activePrototypeView: view,
       prototypeFullscreen: true,
       ...(view === "companies" ? {} : { prototypeCompanyQuery: "" }),
+      ...protoCompanyRecordClear(),
       ...protoClosePersonPatch(),
       ...protoReportEditClear(),
     });
@@ -41174,12 +41663,14 @@ function onPrototypeInput(event) {
   }
   const companySearch = event.target.closest("input[name='proto-company-query']");
   const pageSearch = event.target.closest(
-    "input[name='proto-service-query'], input[name='proto-inbox-query'], input[name='proto-usage-query'], input[name='proto-find-query']"
+    "input[name='proto-service-query'], input[name='proto-inbox-query'], input[name='proto-usage-query'], input[name='proto-find-query'], input[name='proto-company-meter-query']"
   );
   if (pageSearch) {
     const key =
       pageSearch.name === "proto-find-query"
         ? "prototypeFindQuery"
+        : pageSearch.name === "proto-company-meter-query"
+        ? "prototypeCompanyMeterQuery"
         : pageSearch.name === "proto-service-query"
         ? "prototypeServiceQuery"
         : pageSearch.name === "proto-usage-query"
@@ -41230,6 +41721,16 @@ function onPrototypeInput(event) {
     const start = teamName.selectionStart;
     render();
     if (active) protoRestoreFocus("#astral-fs input[name='proto-team-name']", start);
+    return;
+  }
+  const meterPoints = event.target.closest("textarea[name='proto-meter-points']");
+  if (meterPoints) {
+    store.prototypeMeterAddDraft = meterPoints.value.slice(0, 20000);
+    return;
+  }
+  const meterSiteName = event.target.closest("input[name='proto-meter-site-name']");
+  if (meterSiteName) {
+    store.prototypeMeterAddSiteName = meterSiteName.value.slice(0, 80);
     return;
   }
   const companyName = event.target.closest("input[name='proto-company-name']");
@@ -41912,6 +42413,12 @@ function onPrototypeSubmit(event) {
     });
     return;
   }
+  const meterAddForm = event.target.closest("[data-proto-meter-add-form]");
+  if (meterAddForm) {
+    event.preventDefault();
+    protoMeterAddSubmit(meterAddForm);
+    return;
+  }
   const companyForm = event.target.closest("[data-proto-company-form]");
   if (companyForm) {
     event.preventDefault();
@@ -42247,6 +42754,10 @@ function onPrototypeKey(event) {
         prototypeChartPoint: null,
         prototypeOpenQuery: "",
       });
+      return;
+    }
+    if (store.prototypeMeterAddForm) {
+      protoCloseModal("company-meters");
       return;
     }
     if (store.prototypeUserForm) {
