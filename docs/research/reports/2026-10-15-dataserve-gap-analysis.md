@@ -6,7 +6,7 @@ The guide shows what the legacy service lets customers do. It does not show what
 
 ## What is missing or partial
 
-Priority is a desk view, to test in discovery.
+Priority here is a first desk view. The priority matrix below replaces it.
 
 | # | Dataserve feature | What the guide describes | Astral prototype today | Status | Priority |
 | --- | --- | --- | --- | --- | --- |
@@ -161,6 +161,68 @@ IMSERV admin has Companies (pick a company and see as them), Servicing, Inbox, U
 | A6 | Keep site address, postcode, and site ID so they reach downloads | C10 | Partial. Sample addresses only |
 | A7 | Turn on reactive and export channels per meter, so RE and RI can show | C1, C2, C4 | Missing |
 | A8 | Keep help content and contact details, and receive feedback in Inbox | C19, C21 | Missing |
+## Priority matrix
+
+A value and effort matrix. It replaces the desk priority in the first table.
+
+**Value** is reach + frequency + severity, each scored 1 to 3, so 3 to 9. High value is 7 or more.
+
+- Reach. 3 most of the four user groups. 2 some groups. 1 a few customers
+- Frequency. 3 most visits. 2 monthly or with each bill. 1 rarely
+- Severity when it is missing. 3 blocks the task, no workaround. 2 a costly workaround. 1 an inconvenience
+
+**Effort.** 1 copy, or a column or option on data we already show. 2 a new view, report, or flow on existing data. 3 a new data model, service, or back-office process.
+
+**Admin items** take the value of the customer gaps they unblock.
+
+**Confidence.** Low unless a walk named the problem. Every score comes from the legacy guide and desk judgement, not customer evidence. Discovery should move them.
+
+| Quadrant | Rule | What to do |
+| --- | --- | --- |
+| Quick win | Value 7+, effort 1 or 2 | Do first |
+| Big bet | Value 7+, effort 3 | Test in discovery, then plan |
+| Fill-in | Value 6 or less, effort 1 or 2 | Do when there is space |
+| Reconsider | Value 6 or less, effort 3 | Hold until discovery shows a need |
+
+| Order | ID | Gap | Reach | Freq | Severity | Value | Effort | Quadrant | Confidence |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | C27 | Say where times are UTC, and explain BST | 3 | 3 | 2 | 8 | 1 | Quick win | Medium. Data trust was named in Katie's walk |
+| 2 | A2 | Add and remove MPANs for a company | 3 | 2 | 3 | 8 | 2 | Quick win | Medium. Manual setup was named in V's walk |
+| 3 | C22 | Widen or narrow the date range from one end | 3 | 3 | 1 | 7 | 1 | Quick win | Low |
+| 4 | C19 | Help page and contact route, including MPAN requests | 3 | 1 | 3 | 7 | 1 | Quick win | Low |
+| 5 | A8 | Help content, contact details, and feedback in Inbox | 3 | 1 | 3 | 7 | 1 | Quick win | Low |
+| 6 | C11 | Consumption report with day and night units | 3 | 2 | 2 | 7 | 2 | Quick win | Low |
+| 7 | C6 | Totals per time-of-use band | 3 | 2 | 2 | 7 | 2 | Quick win | Low |
+| 8 | A6 | Keep site address, postcode, and site ID | 3 | 2 | 2 | 7 | 2 | Quick win | Low |
+| 9 | C10 | Site details in downloads | 3 | 2 | 2 | 7 | 2 | Quick win | Low |
+| 10 | C18 | IMSERV-raised queries and their steps | 3 | 2 | 2 | 7 | 2 | Quick win. Confirm first | Low |
+| 11 | A3 | Raise a query against a site, with steps | 3 | 2 | 2 | 7 | 2 | Quick win. Confirm first | Low |
+| 12 | C16 | Their own sub-groups of sites | 3 | 3 | 2 | 8 | 3 | Big bet | Low. Clashes with Group as access |
+| 13 | C17 | Bill Checker | 2 | 2 | 3 | 7 | 3 | Big bet | Low |
+| 14 | A1 | Tariffs and switching on Bill Checker | 2 | 2 | 3 | 7 | 3 | Big bet | Low |
+| 15 | C15 | Load factor and maximum kVA in the summary | 2 | 3 | 1 | 6 | 1 | Fill-in | Low |
+| 16 | C3 | Direction column in Source data | 2 | 2 | 2 | 6 | 1 | Fill-in | Low |
+| 17 | C13 | Compare statistics table | 2 | 2 | 2 | 6 | 2 | Fill-in | Low |
+| 18 | C12 | Carbon report by month or year to date | 2 | 2 | 2 | 6 | 2 | Fill-in | Low |
+| 19 | C7 | Register reads on screen, and reads sent to the supplier | 2 | 2 | 2 | 6 | 2 | Fill-in | Low |
+| 20 | C20 | Service notices | 3 | 1 | 2 | 6 | 2 | Fill-in | Low |
+| 21 | A4 | Post service notices | 3 | 1 | 2 | 6 | 2 | Fill-in | Low |
+| 22 | C5 | kW column in downloads | 2 | 2 | 1 | 5 | 1 | Fill-in | Low |
+| 23 | C21 | Feedback route | 3 | 1 | 1 | 5 | 1 | Fill-in | Low |
+| 24 | C26 | Print or copy a chart | 2 | 2 | 1 | 5 | 1 | Fill-in | Low |
+| 25 | C4 | Reactive import (RI) in downloads | 1 | 2 | 2 | 5 | 2 | Fill-in | Low |
+| 26 | C2 | One view of AI, AE, RI, and RE | 1 | 2 | 2 | 5 | 2 | Fill-in | Low |
+| 27 | C23 | Day-by-day half-hour comparison | 2 | 2 | 1 | 5 | 2 | Fill-in | Low |
+| 28 | C8 | Leave quality flags out of a download | 1 | 2 | 1 | 4 | 1 | Fill-in | Low |
+| 29 | C24 | Choice of decimal places | 1 | 2 | 1 | 4 | 1 | Fill-in | Low |
+| 30 | C14 | Compare different sites over different dates | 1 | 1 | 2 | 4 | 2 | Fill-in | Low |
+| 31 | C25 | Rows and columns switch for spreadsheets | 1 | 1 | 1 | 3 | 1 | Fill-in | Low |
+| 32 | C1 | Reactive export (RE) data | 1 | 2 | 3 | 6 | 3 | Reconsider | Low. Generation sites only |
+| 33 | A7 | Reactive and export channels per meter | 1 | 2 | 3 | 6 | 3 | Reconsider | Low |
+| 34 | C9 | Consolidate by MPAN, and include MSID | 1 | 2 | 2 | 5 | 3 | Reconsider | Low |
+| 35 | A5 | MSIDs and more than one meter per MPAN | 1 | 2 | 2 | 5 | 3 | Reconsider | Low |
+
+Within a quadrant, order is value, then confidence, then lower effort. Admin items sit next to the customer gaps they unblock.
 ## Questions for discovery
 
 - Who checks bills today, and with what? Is Bill Checker used, or is it done in a spreadsheet?
