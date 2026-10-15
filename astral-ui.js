@@ -297,6 +297,10 @@ const PROTO_SERVICE_PILLS = {
   "weak signal": ["stale", "signal"],
   estimates: ["stale", "chart-line"],
   recertify: ["info", "calendar"],
+  // Query states. Open and Unread need a reply. Resolved is done.
+  open: ["stale", "hours"],
+  unread: ["missing", "notice"],
+  resolved: ["sending", "tick"],
 };
 
 function protoServicePill(word) {

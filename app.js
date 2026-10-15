@@ -5617,8 +5617,11 @@ const CHROME_FIELDS = [
   "prototypeCompanyRecordTab",
   "prototypeCompanyMeterQuery",
   "prototypeCompanyTicketQuery",
+  "prototypeCompanyLogQuery",
   "prototypeCompanyMeterFilters",
   "prototypeCompanyTicketFilters",
+  "prototypeCompanyLogFilters",
+  "prototypeCompanyLog",
   "prototypeCompanyMeters",
   "prototypeWalkUsers",
   "prototypeTeams",
@@ -6076,14 +6079,25 @@ function applyChrome() {
     : "customer";
   store.prototypeCompanyNameError = Boolean(store.prototypeCompanyNameError);
   store.prototypeCompanyRecord = String(store.prototypeCompanyRecord || "");
-  store.prototypeCompanyRecordTab = store.prototypeCompanyRecordTab === "meters" ? "meters" : "queries";
+  store.prototypeCompanyRecordTab = ["meters", "log"].includes(store.prototypeCompanyRecordTab)
+    ? store.prototypeCompanyRecordTab
+    : "queries";
   store.prototypeCompanyMeterQuery = String(store.prototypeCompanyMeterQuery || "").slice(0, 120);
   store.prototypeCompanyTicketQuery = String(store.prototypeCompanyTicketQuery || "").slice(0, 120);
+  store.prototypeCompanyLogQuery = String(store.prototypeCompanyLogQuery || "").slice(0, 120);
   store.prototypeCompanyMeterFilters = Array.isArray(store.prototypeCompanyMeterFilters)
     ? store.prototypeCompanyMeterFilters.map(String)
     : [];
   store.prototypeCompanyTicketFilters = Array.isArray(store.prototypeCompanyTicketFilters)
     ? store.prototypeCompanyTicketFilters.map(String)
+    : [];
+  store.prototypeCompanyLogFilters = Array.isArray(store.prototypeCompanyLogFilters)
+    ? store.prototypeCompanyLogFilters.map(String)
+    : [];
+  store.prototypeCompanyLog = Array.isArray(store.prototypeCompanyLog)
+    ? store.prototypeCompanyLog
+        .filter((event) => event && typeof event === "object" && event.company && event.text)
+        .slice(-500)
     : [];
   store.prototypeCompanyMeters =
     store.prototypeCompanyMeters &&

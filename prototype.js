@@ -17069,7 +17069,7 @@ function protoFindItem(item) {
         <span class="astral-find-title">${escapeHtml(item.title)}</span>
         <span class="astral-muted">${escapeHtml(item.line)}</span>
       </button>
-      ${item.tag ? protoTag(item.tag) : ""}
+      ${item.tag ? protoServicePill(item.tag) : ""}
       ${login}
     </li>
   `;
@@ -19535,6 +19535,7 @@ function protoInbox() {
 const PROTO_COMPANY_RECORD_TABS = [
   { id: "queries", name: "Queries" },
   { id: "meters", name: "Meters" },
+  { id: "log", name: "Log" },
 ];
 
 const PROTO_NEW_SITE = "__new__";
@@ -19545,7 +19546,8 @@ function protoCompanyRecordName() {
 }
 
 function protoCompanyRecordTab() {
-  return store.prototypeCompanyRecordTab === "meters" ? "meters" : "queries";
+  const tab = store.prototypeCompanyRecordTab;
+  return PROTO_COMPANY_RECORD_TABS.some((item) => item.id === tab) ? tab : "queries";
 }
 
 function protoCompanyRecordGo(name) {
@@ -19564,8 +19566,10 @@ function protoCompanyFindClear() {
   return {
     prototypeCompanyMeterQuery: "",
     prototypeCompanyTicketQuery: "",
+    prototypeCompanyLogQuery: "",
     prototypeCompanyMeterFilters: [],
     prototypeCompanyTicketFilters: [],
+    prototypeCompanyLogFilters: [],
     prototypeCompanyFilterOpen: false,
   };
 }
@@ -19723,12 +19727,79 @@ function protoCompanyQueryRows(name, q = "", picked = []) {
           escapeHtml(ticket.subject),
           escapeHtml(ticket.name),
           escapeHtml(protoAgo(ticket.lastAt)),
-          protoTag(ticket.resolved ? "Resolved" : "Open"),
+          protoServicePill(ticket.resolved ? "Resolved" : "Open"),
         ],
         { ref: Number(String(ticket.ref).replace(/\D/g, "")), "last-reply": ticket.lastAt },
         `class="is-link" data-proto-company-query="${escapeHtml(ticket.ref)}"`
       )
     );
+}
+
+// A company's log. Raised queries come from the tickets. Resolving, reopening and adding meter points or the company
+// are kept as they happen. The newest event comes first.
+function protoCompanyLogList() {
+  return Array.isArray(store.prototypeCompanyLog) ? store.prototypeCompanyLog : [];
+}
+
+function protoCompanyLogBy() {
+  return protoProfileName() || "IMSERV support";
+}
+
+function protoCompanyLogAdd(company, kind, text, ref = "") {
+  if (!company || !text) return {};
+  const event = { company, kind, text, ref, at: new Date().toISOString(), by: protoCompanyLogBy() };
+  return { prototypeCompanyLog: [...protoCompanyLogList(), event].slice(-500) };
+}
+
+function protoCompanyLogEvents(name) {
+  const resolve = protoInboxResolveMap();
+  const events = [];
+  protoInboxTickets()
+    .filter((ticket) => ticket.company === name)
+    .forEach((ticket) => {
+      events.push({ kind: "queries", text: `Raised ${ticket.ref}: ${ticket.subject}`, ref: ticket.ref, at: ticket.firstAt, by: ticket.name });
+      // Queries that came resolved have no resolve event, so their last reply stands in for it.
+      if (ticket.resolved && resolve[ticket.ref] === undefined) {
+        const last = [...ticket.messages].reverse().find((note) => note.from !== "customer");
+        const how = protoResolveName(ticket.reason);
+        events.push({
+          kind: "queries",
+          text: `Resolved ${ticket.ref}${how ? ` as ${how}` : ""}`,
+          ref: ticket.ref,
+          at: ticket.lastAt,
+          by: last?.name || "IMSERV support",
+        });
+      }
+    });
+  protoCompanyLogList()
+    .filter((event) => event.company === name)
+    .forEach((event) => events.push({ ...event }));
+  return events
+    .map((event, i) => ({ ...event, i }))
+    .sort((a, b) => (Date.parse(b.at) || 0) - (Date.parse(a.at) || 0) || b.i - a.i);
+}
+
+function protoCompanyLogMatches(event, q, picked) {
+  if (q && ![event.text, event.by].some((text) => String(text || "").toLowerCase().includes(q))) return false;
+  return protoCompanyGroupsPass(PROTO_COMPANY_LOG_FILTERS, picked || [], () => event.kind);
+}
+
+function protoCompanyLogRows(name, q = "", picked = []) {
+  const known = new Set(protoInboxTickets().map((ticket) => ticket.ref));
+  return protoCompanyLogEvents(name)
+    .filter((event) => protoCompanyLogMatches(event, q, picked))
+    .map((event) => {
+      const link = event.ref && known.has(event.ref);
+      return protoServiceRow(
+        [
+          link ? `<button type="button" class="astral-row-link">${escapeHtml(event.text)}</button>` : escapeHtml(event.text),
+          escapeHtml(event.by || ""),
+          escapeHtml(protoAgo(event.at)),
+        ],
+        { event: event.text.toLowerCase(), by: String(event.by || "").toLowerCase(), when: event.at },
+        link ? `class="is-link" data-proto-company-query="${escapeHtml(event.ref)}"` : ""
+      );
+    });
 }
 
 function protoCompanyMeterTableRows(rows) {
@@ -19781,12 +19852,28 @@ const PROTO_COMPANY_METER_FILTERS = [
   },
 ];
 
+const PROTO_COMPANY_LOG_FILTERS = [
+  {
+    id: "type",
+    name: "Type",
+    items: [
+      { id: "queries", name: "Queries" },
+      { id: "meters", name: "Meters" },
+      { id: "company", name: "Company" },
+    ],
+  },
+];
+
 function protoCompanyFilterGroups() {
-  return protoCompanyRecordTab() === "meters" ? PROTO_COMPANY_METER_FILTERS : PROTO_COMPANY_TICKET_FILTERS;
+  const tab = protoCompanyRecordTab();
+  if (tab === "log") return PROTO_COMPANY_LOG_FILTERS;
+  return tab === "meters" ? PROTO_COMPANY_METER_FILTERS : PROTO_COMPANY_TICKET_FILTERS;
 }
 
 function protoCompanyFilterKey() {
-  return protoCompanyRecordTab() === "meters" ? "prototypeCompanyMeterFilters" : "prototypeCompanyTicketFilters";
+  const tab = protoCompanyRecordTab();
+  if (tab === "log") return "prototypeCompanyLogFilters";
+  return tab === "meters" ? "prototypeCompanyMeterFilters" : "prototypeCompanyTicketFilters";
 }
 
 function protoCompanyFilterIds(raw) {
@@ -19838,6 +19925,9 @@ function protoCompanyFilterCount(id) {
   if (!name || !id) return null;
   if (protoCompanyRecordTab() === "meters") {
     return protoCompanyMeterRows(name).filter((meter) => protoCompanyMeterMatches(meter, "", [id])).length;
+  }
+  if (protoCompanyRecordTab() === "log") {
+    return protoCompanyLogEvents(name).filter((event) => protoCompanyLogMatches(event, "", [id])).length;
   }
   return protoInboxTickets().filter((ticket) => ticket.company === name && protoCompanyTicketMatches(ticket, "", [id]))
     .length;
@@ -19906,8 +19996,10 @@ function protoCompanyRecord(name) {
   const added = protoCompanyAddedMeters(name).length;
   const listed = protoServiceCompanies().find((row) => row.name === name)?.meters || 0;
   const total = listed + added;
+  const logQuery = String(store.prototypeCompanyLogQuery || "");
+  const logTotal = tab === "log" ? protoCompanyLogEvents(name).length : 0;
   const tabs = PROTO_COMPANY_RECORD_TABS.map((item) => {
-    const n = item.id === "queries" ? queryTotal : total;
+    const n = item.id === "queries" ? queryTotal : item.id === "meters" ? total : 0;
     return { id: item.id, name: n ? `${item.name} · ${n.toLocaleString("en-GB")}` : item.name };
   });
   const type = PROTO_COMPANY_TYPES.find((item) => item.id === protoCompanyTypeForName(name))?.name || "";
@@ -19930,6 +20022,19 @@ function protoCompanyRecord(name) {
             "Add meter points",
             `data-proto-company-meters="add" aria-haspopup="dialog" aria-expanded="${addOpen ? "true" : "false"}"`
           )}
+        </div>
+        ${protoCompanyFilterPills()}
+      `
+      : tab === "log"
+      ? `
+        <div class="astral-people-tools">
+          ${protoSearchField({
+            name: "proto-company-log-query",
+            value: logQuery,
+            placeholder: "Search event or person",
+            label: "Search event or person",
+          })}
+          ${protoCompanyFilterControl()}
         </div>
         ${protoCompanyFilterPills()}
       `
@@ -19960,6 +20065,12 @@ function protoCompanyRecord(name) {
           }
         )}
       `
+      : tab === "log"
+      ? protoTable(["Event", "By", "When"], protoCompanyLogRows(name, logQuery.trim().toLowerCase(), picked), {
+          id: "company-log",
+          empty: logTotal && (logQuery.trim() || narrowed) ? "No events match." : "No events yet.",
+          rowAttr: (row) => row.attr,
+        })
       : protoTable(["Ref", "Subject", "Raised by", "Last reply", "State"], queries, {
           id: "company-queries",
           empty: ticketQuery.trim() || narrowed ? "No queries match." : "No queries yet.",
@@ -20145,6 +20256,11 @@ function protoMeterAddSubmit(form) {
   }`;
   setProto({
     prototypeCompanyMeters: { ...protoCompanyMeterMap(), [name]: [...fresh, ...protoCompanyAddedMeters(name)] },
+    ...protoCompanyLogAdd(
+      name,
+      "meters",
+      n === 1 ? `Added meter point ${fresh[0].point} to ${site}` : `Added ${n} meter points to ${site}`
+    ),
     prototypeCompanyRecordTab: "meters",
     ...protoCompanyFindClear(),
     prototypeCompanyNote: note,
@@ -20930,6 +21046,7 @@ function protoFilterCountNoun(attr, count) {
   if (attr === "data-proto-alert-filter") return one ? "flag" : "flags";
   if (attr === "data-proto-user-filter") return one ? "person" : "people";
   if (attr === "data-proto-company-filter" && protoCompanyRecordTab() === "queries") return one ? "query" : "queries";
+  if (attr === "data-proto-company-filter" && protoCompanyRecordTab() === "log") return one ? "event" : "events";
   if (attr === "data-proto-compare-filter") {
     const level = protoCompareLevel();
     if (level === "group") return one ? "group" : "groups";
@@ -38859,6 +38976,8 @@ function onPrototype(event) {
             ? { prototypeCompanyMeterQuery: "" }
             : name === "proto-company-ticket-query"
             ? { prototypeCompanyTicketQuery: "" }
+            : name === "proto-company-log-query"
+            ? { prototypeCompanyLogQuery: "" }
             : name === "proto-find-query"
             ? { prototypeFindQuery: "" }
             : name === "proto-inbox-query"
@@ -40228,8 +40347,11 @@ function onPrototype(event) {
       });
     }
     if (kind === "ticket") {
+      const ticket = protoInboxTickets().find((item) => item.ref === id);
+      const how = protoResolveName(reason);
       setProto({
         prototypeInboxResolve: { ...protoInboxResolveMap(), [id]: reason },
+        ...protoCompanyLogAdd(ticket?.company, "queries", `Resolved ${id}${how ? ` as ${how}` : ""}`, id),
         prototypeAckOpen: "",
       });
     }
@@ -40238,8 +40360,11 @@ function onPrototype(event) {
   const ticketUndo = event.target.closest("[data-proto-ticket-undo]");
   if (ticketUndo) {
     if (!protoCanAct()) return;
+    const ref = ticketUndo.dataset.protoTicketUndo;
+    const ticket = protoInboxTickets().find((item) => item.ref === ref);
     setProto({
-      prototypeInboxResolve: { ...protoInboxResolveMap(), [ticketUndo.dataset.protoTicketUndo]: "" },
+      prototypeInboxResolve: { ...protoInboxResolveMap(), [ref]: "" },
+      ...protoCompanyLogAdd(ticket?.company, "queries", `Reopened ${ref}`, ref),
     });
     return;
   }
@@ -41950,7 +42075,7 @@ function onPrototypeInput(event) {
   }
   const companySearch = event.target.closest("input[name='proto-company-query']");
   const pageSearch = event.target.closest(
-    "input[name='proto-service-query'], input[name='proto-inbox-query'], input[name='proto-usage-query'], input[name='proto-find-query'], input[name='proto-company-meter-query'], input[name='proto-company-ticket-query']"
+    "input[name='proto-service-query'], input[name='proto-inbox-query'], input[name='proto-usage-query'], input[name='proto-find-query'], input[name='proto-company-meter-query'],     input[name='proto-company-ticket-query'], input[name='proto-company-log-query']"
   );
   if (pageSearch) {
     const key =
@@ -41960,6 +42085,8 @@ function onPrototypeInput(event) {
         ? "prototypeCompanyMeterQuery"
         : pageSearch.name === "proto-company-ticket-query"
         ? "prototypeCompanyTicketQuery"
+            : pageSearch.name === "proto-company-log-query"
+            ? "prototypeCompanyLogQuery"
         : pageSearch.name === "proto-service-query"
         ? "prototypeServiceQuery"
         : pageSearch.name === "proto-usage-query"
@@ -42729,6 +42856,7 @@ function onPrototypeSubmit(event) {
     const type = protoCompanyTypeId(store.prototypeCompanyDraftType);
     setProto({
       prototypeAddedCompanies: [...protoAddedCompanies(), { name, type }],
+      ...protoCompanyLogAdd(name, "company", "Added the company"),
       prototypeCompanyForm: false,
       prototypeCompanyDraftName: "",
       prototypeCompanyDraftType: "customer",
