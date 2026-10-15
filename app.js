@@ -5472,6 +5472,10 @@ const CHROME_FIELDS = [
   "prototypeMeterDrafts",
   "prototypeMeterOverrides",
   "prototypeCustomPresets",
+  "prototypeCompanyPresets",
+  "prototypeStandardPresets",
+  "prototypePresetScope",
+  "prototypePresetCompanyQuery",
   "prototypeMeterOwnDrafts",
   "prototypeBreakdownOpen",
   "prototypeListOpen",
@@ -5839,6 +5843,11 @@ function applyChrome() {
   if (store.prototypeCustomPresets != null && (typeof store.prototypeCustomPresets !== "object" || Array.isArray(store.prototypeCustomPresets))) {
     delete store.prototypeCustomPresets;
   }
+  ["prototypeCompanyPresets", "prototypeStandardPresets"].forEach((key) => {
+    if (store[key] != null && (typeof store[key] !== "object" || Array.isArray(store[key]))) delete store[key];
+  });
+  store.prototypePresetScope = String(store.prototypePresetScope || "").slice(0, 120);
+  store.prototypePresetCompanyQuery = String(store.prototypePresetCompanyQuery || "").slice(0, 120);
   store.prototypeMeterOwnDrafts =
     store.prototypeMeterOwnDrafts && typeof store.prototypeMeterOwnDrafts === "object" && !Array.isArray(store.prototypeMeterOwnDrafts)
       ? store.prototypeMeterOwnDrafts

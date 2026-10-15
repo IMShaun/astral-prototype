@@ -2593,48 +2593,125 @@ const PROTO_SAMPLE_PRESETS = (() => {
   };
 })();
 
+// An IMSERV admin manages presets for every company: the standard presets each company starts with, and each company's own.
+// Network Rail's presets are the ones its sites use in the prototype. Other companies keep theirs apart.
+const PROTO_PRESET_HOME = "Network Rail";
+const PROTO_PRESET_STANDARD = "~standard";
+
+function protoPresetAdmin() {
+  return protoSeesCompanies() && !protoSeeAs();
+}
+
+// Whose presets Settings, Presets is showing to an admin: the standard presets, a company's, or "" for the list of companies.
+function protoPresetScope() {
+  const scope = store.prototypePresetScope;
+  if (!scope || store.activePrototypeView !== "settings" || store.prototypeSettingsSection !== "presets") return "";
+  return protoPresetAdmin() ? scope : "";
+}
+
+// Changes reach sites and meters only for the presets the prototype's sites use.
+function protoPresetLive(scope = protoPresetScope()) {
+  return !scope || scope === PROTO_PRESET_STANDARD || scope === PROTO_PRESET_HOME;
+}
+
+function protoStandardPresets(part) {
+  const edited = (store.prototypeStandardPresets || {})[part];
+  return {
+    days: Array.isArray(edited?.days) ? edited.days : PROTO_PERIOD_SPEC[part]?.presets || [],
+    weeks: Array.isArray(edited?.weeks) ? edited.weeks : PROTO_WEEK_PRESETS[part] || [],
+  };
+}
+
+// Each sample company starts with a few of the samples as its own presets. A company added later starts with none.
+const protoCompanyPresetSeeds = new Map();
+
+function protoCompanyPresetSeed(name) {
+  if (protoCompanyPresetSeeds.has(name)) return protoCompanyPresetSeeds.get(name);
+  const seed = {
+    "Scottish Water": { hours: ["week-always", "week-shifts", "day-night"], tou: ["week-single"] },
+    Tesco: { hours: ["week-shop", "week-long", "day-early", "day-evening"], tou: ["week-evening", "week-weekday", "day-evening"] },
+    EDF: { hours: ["week-office", "day-office"], tou: ["week-daynight", "week-late", "day-daynight", "day-late"] },
+    "British Gas": { hours: ["week-office", "week-trade", "week-shutdown", "day-office", "day-maintenance"], tou: [] },
+  }[name];
+  const out = {};
+  ["hours", "tou"].forEach((part) => {
+    const sample = PROTO_SAMPLE_PRESETS[part];
+    const ids = (seed?.[part] || []).map((id) => `sample-${id}`);
+    out[part] = {
+      days: protoCloneProfile(sample.days.filter((item) => ids.includes(item.id))),
+      weeks: protoCloneProfile(sample.weeks.filter((item) => ids.includes(item.id))),
+      seeded: true,
+    };
+  });
+  protoCompanyPresetSeeds.set(name, out);
+  return out;
+}
+
+function protoCompanyPresetsAll(name) {
+  return (store.prototypeCompanyPresets || {})[name] || protoCompanyPresetSeed(name);
+}
+
 // Presets someone saves sit after the standard ones. A saved day holds any periods. A saved week holds every day's times.
-function protoCustomPresets(part) {
-  const own = (store.prototypeCustomPresets || {})[part] || {};
+function protoCustomPresets(part, scope = protoPresetScope()) {
+  if (scope === PROTO_PRESET_STANDARD) return { days: [], weeks: [], seeded: true };
+  const company = scope && scope !== PROTO_PRESET_HOME;
+  const own = (company ? protoCompanyPresetsAll(scope) : store.prototypeCustomPresets || {})[part] || {};
   return {
     days: Array.isArray(own.days) ? own.days : [],
     weeks: Array.isArray(own.weeks) ? own.weeks : [],
-    seeded: Boolean(own.seeded),
+    seeded: company || Boolean(own.seeded),
   };
 }
 
 // What the Use a preset list shows: the user's own saved presets, then the samples.
 // Once someone edits or deletes one, the samples become their own copies, so the change sticks.
-function protoListedPresets(part) {
-  const own = protoCustomPresets(part);
+function protoListedPresets(part, scope = protoPresetScope()) {
+  const own = protoCustomPresets(part, scope);
   if (own.seeded) return { days: own.days, weeks: own.weeks };
   const sample = PROTO_SAMPLE_PRESETS[part] || { days: [], weeks: [] };
   return { days: [...own.days, ...sample.days], weeks: [...own.weeks, ...sample.weeks] };
 }
 
 function protoEditablePresets(part) {
-  return protoCloneProfile(protoListedPresets(part));
+  const scope = protoPresetScope();
+  return protoCloneProfile(scope === PROTO_PRESET_STANDARD ? protoStandardPresets(part) : protoListedPresets(part, scope));
 }
 
 function protoStorePresets(part, listed) {
+  const scope = protoPresetScope();
+  if (scope === PROTO_PRESET_STANDARD) {
+    store.prototypeStandardPresets = {
+      ...(store.prototypeStandardPresets || {}),
+      [part]: { days: listed.days, weeks: listed.weeks },
+    };
+    return;
+  }
+  if (scope && scope !== PROTO_PRESET_HOME) {
+    store.prototypeCompanyPresets = {
+      ...(store.prototypeCompanyPresets || {}),
+      [scope]: { ...protoCompanyPresetsAll(scope), [part]: { days: listed.days, weeks: listed.weeks, seeded: true } },
+    };
+    return;
+  }
   store.prototypeCustomPresets = {
     ...(store.prototypeCustomPresets || {}),
     [part]: { days: listed.days, weeks: listed.weeks, seeded: true },
   };
 }
 
-// Standard presets come with Astral. They cannot be changed or deleted, so every organisation keeps them.
-function protoPresetStandard(part, kind, id) {
-  const list = kind === "week" ? PROTO_WEEK_PRESETS[part] || [] : PROTO_PERIOD_SPEC[part]?.presets || [];
-  return list.some((item) => item.id === id);
+// Standard presets come with Astral. Companies cannot change or delete them, so every company keeps them.
+// Only an IMSERV admin managing the standard presets can change them.
+function protoPresetStandard(part, kind, id, scope = protoPresetScope()) {
+  if (scope === PROTO_PRESET_STANDARD) return false;
+  return protoStandardPresets(part)[kind === "week" ? "weeks" : "days"].some((item) => item.id === id);
 }
 
-function protoDayPresets(part) {
-  return [...(PROTO_PERIOD_SPEC[part]?.presets || []), ...protoListedPresets(part).days];
+function protoDayPresets(part, scope = protoPresetScope()) {
+  return [...protoStandardPresets(part).days, ...protoListedPresets(part, scope).days];
 }
 
-function protoDayPreset(part, id) {
-  return (id && protoDayPresets(part).find((item) => item.id === id)) || null;
+function protoDayPreset(part, id, scope) {
+  return (id && protoDayPresets(part, scope).find((item) => item.id === id)) || null;
 }
 
 function protoSamePeriods(a, b) {
@@ -2650,17 +2727,17 @@ function protoLinkRows(rows, part) {
   return rows.map((row) => {
     if (!row || typeof row !== "object" || !Array.isArray(row.periods)) return row;
     const next = { ...row };
-    if (next.profile && !protoDayPreset(part, next.profile)) {
+    if (next.profile && !protoDayPreset(part, next.profile, "")) {
       const gone = moved[next.profile];
-      const to = gone?.to && protoDayPreset(part, gone.to) ? gone.to : "";
+      const to = gone?.to && protoDayPreset(part, gone.to, "") ? gone.to : "";
       if (!to && Array.isArray(gone?.periods)) next.periods = protoCloneProfile(gone.periods);
       next.profile = to;
     }
-    const preset = protoDayPreset(part, next.profile);
+    const preset = protoDayPreset(part, next.profile, "");
     if (preset) {
       next.periods = protoPresetPeriods(part, preset);
       delete next.base;
-    } else if (next.base && !protoDayPreset(part, next.base)) delete next.base;
+    } else if (next.base && !protoDayPreset(part, next.base, "")) delete next.base;
     return next;
   });
 }
@@ -2690,7 +2767,7 @@ function protoStripBase(profile) {
 }
 
 function protoWeekPresets(part) {
-  return [...(PROTO_WEEK_PRESETS[part] || []), ...protoListedPresets(part).weeks];
+  return [...protoStandardPresets(part).weeks, ...protoListedPresets(part).weeks];
 }
 
 function protoPresetPeriods(part, preset) {
@@ -2708,11 +2785,11 @@ function protoPresetOptions(standard, own) {
 }
 
 function protoDayPresetOptions(part) {
-  return protoPresetOptions(PROTO_PERIOD_SPEC[part].presets, protoListedPresets(part).days);
+  return protoPresetOptions(protoStandardPresets(part).days, protoListedPresets(part).days);
 }
 
 function protoWeekPresetOptions(part) {
-  return protoPresetOptions(PROTO_WEEK_PRESETS[part] || [], protoListedPresets(part).weeks);
+  return protoPresetOptions(protoStandardPresets(part).weeks, protoListedPresets(part).weeks);
 }
 
 // A day's Select preset list. Custom keeps the times and follows no preset. Manage presets opens Settings.
@@ -3115,7 +3192,7 @@ function protoWeekRows(part, week) {
 
 // The week whose days match these rows, so switching to a preset keeps what is already there when it can.
 function protoWeekFor(part, rows) {
-  const weeks = PROTO_WEEK_PRESETS[part] || [];
+  const weeks = protoStandardPresets(part).weeks;
   return (weeks.find((week) => week.days.every((id, d) => rows?.[d]?.profile === id)) || weeks[0])?.id || "";
 }
 
@@ -26794,8 +26871,10 @@ function protoPresetUseAll(part) {
     store.prototypeMeterProfiles,
     store.prototypeMeterOverrides,
     store.prototypeCustomPresets,
+    store.prototypeStandardPresets,
     store.prototypePresetMoved,
     protoProfileSiteMap(),
+    protoPresetScope(),
   ];
   if (!protoPresetUseMemo || protoPresetUseMemo.refs.some((ref, i) => ref !== refs[i])) protoPresetUseMemo = { refs, parts: {} };
   const memo = protoPresetUseMemo.parts;
@@ -26825,7 +26904,7 @@ function protoPresetUseAll(part) {
 }
 
 function protoPresetUse(part, kind, id) {
-  const use = protoPresetUseAll(part).get(`${kind}|${id}`);
+  const use = protoPresetLive() ? protoPresetUseAll(part).get(`${kind}|${id}`) : null;
   return {
     sites: use ? use.sites.size : 0,
     meters: use ? use.meters.size : 0,
@@ -26839,9 +26918,19 @@ function protoPresetUseText(use) {
   return [use.sites ? say(use.sites, "site") : "", use.meters ? say(use.meters, "meter") : ""].filter(Boolean).join(" and ");
 }
 
+// The presets this page can change: the standard presets when an admin manages them, or the company's own.
+function protoPresetOwnLists(part, scope = protoPresetScope()) {
+  return scope === PROTO_PRESET_STANDARD ? protoStandardPresets(part) : protoListedPresets(part, scope);
+}
+
+// Used by counts the prototype's sites, so it shows only for Network Rail's presets.
+function protoPresetShowUse(scope = protoPresetScope()) {
+  return !scope || scope === PROTO_PRESET_HOME;
+}
+
 // Your week presets with a day that follows this day preset.
 function protoPresetDayWeeks(part, id) {
-  return protoListedPresets(part).weeks.filter((week) =>
+  return protoPresetOwnLists(part).weeks.filter((week) =>
     (week.rows || []).some((row) => row?.profile === id) || (week.days || []).includes(id)
   );
 }
@@ -26868,11 +26957,12 @@ function protoPresetEditRows(part, kind, item) {
   });
 }
 
-function protoPresetsRow(part, kind, item, own) {
+function protoPresetsRow(part, kind, item, own, canDelete = own) {
   const key = protoPresetKey(part, kind, item.id);
   const can = protoCanAct();
   const open = store.prototypePresetMenu === key;
-  const use = protoPresetUse(part, kind, item.id);
+  const showUse = protoPresetShowUse();
+  const use = showUse ? protoPresetUse(part, kind, item.id) : null;
   const line =
     kind === "week"
       ? protoPresetLine(part, protoWeekRows(part, item), true)
@@ -26882,7 +26972,7 @@ function protoPresetsRow(part, kind, item, own) {
   const items = [
     own ? `<button type="button" role="menuitem" data-proto-presets-act="edit" ${attrs}>Edit</button>` : "",
     `<button type="button" role="menuitem" data-proto-presets-act="duplicate" ${attrs}>Duplicate</button>`,
-    own ? `<button type="button" role="menuitem" data-proto-presets-act="delete" ${attrs}>Delete</button>` : "",
+    canDelete ? `<button type="button" role="menuitem" data-proto-presets-act="delete" ${attrs}>Delete</button>` : "",
   ].join("");
   const more = can
     ? `<div class="astral-people-more">
@@ -26902,16 +26992,27 @@ function protoPresetsRow(part, kind, item, own) {
       }</th>
       <td class="astral-presets-col-kind">${kind === "week" ? "Week" : "Day"}</td>
       <td class="astral-presets-col-times">${line}</td>
-      <td class="astral-presets-col-use">${
-        use.sites || use.meters ? escapeHtml(protoPresetUseText(use)) : '<span class="astral-muted">Not in use</span>'
-      }</td>
+      ${
+        use
+          ? `<td class="astral-presets-col-use">${
+              use.sites || use.meters ? escapeHtml(protoPresetUseText(use)) : '<span class="astral-muted">Not in use</span>'
+            }</td>`
+          : ""
+      }
       <td class="astral-people-col-more">${more}</td>
     </tr>
   `;
 }
 
+// A standard preset can go while another of its kind is left, so every company keeps at least one day and one week.
+function protoPresetCanDelete(part, kind) {
+  if (protoPresetScope() !== PROTO_PRESET_STANDARD) return true;
+  return protoStandardPresets(part)[kind === "week" ? "weeks" : "days"].length > 1;
+}
+
 function protoPresetsTable(part, list, own, labelId) {
-  const rows = list.map(([kind, item]) => protoPresetsRow(part, kind, item, own)).join("");
+  const showUse = protoPresetShowUse();
+  const rows = list.map(([kind, item]) => protoPresetsRow(part, kind, item, own, own && protoPresetCanDelete(part, kind))).join("");
   return `
     <div class="astral-table-wrap is-tips astral-presets-table">
       <table class="astral-table" aria-labelledby="${labelId}">
@@ -26919,7 +27020,7 @@ function protoPresetsTable(part, list, own, labelId) {
           <col class="astral-presets-col-name" />
           <col class="astral-presets-col-kind" />
           <col class="astral-presets-col-times" />
-          <col class="astral-presets-col-use" />
+          ${showUse ? '<col class="astral-presets-col-use" />' : ""}
           <col class="astral-people-col-more" />
         </colgroup>
         <thead>
@@ -26927,7 +27028,7 @@ function protoPresetsTable(part, list, own, labelId) {
             <th scope="col">Name</th>
             <th scope="col">Kind</th>
             <th scope="col">Times</th>
-            <th scope="col">Used by</th>
+            ${showUse ? '<th scope="col">Used by</th>' : ""}
             <th scope="col"><span class="sr-only">More</span></th>
           </tr>
         </thead>
@@ -26938,36 +27039,55 @@ function protoPresetsTable(part, list, own, labelId) {
 }
 
 function protoPresetsPanel(part, on) {
-  const mine = protoListedPresets(part);
+  const scope = protoPresetScope();
+  const standardScope = scope === PROTO_PRESET_STANDARD;
+  const mine = protoPresetOwnLists(part, scope);
   const own = [...mine.weeks.map((item) => ["week", item]), ...mine.days.map((item) => ["day", item])];
-  const standard = [
-    ...(PROTO_WEEK_PRESETS[part] || []).map((item) => ["week", item]),
-    ...(PROTO_PERIOD_SPEC[part]?.presets || []).map((item) => ["day", item]),
-  ];
+  const std = protoStandardPresets(part);
+  const standard = [...std.weeks.map((item) => ["week", item]), ...std.days.map((item) => ["day", item])];
   const ownId = `astral-presets-own-${part}`;
   const standardId = `astral-presets-standard-${part}`;
+  const keyLine = protoBreakdownKey(Object.values(PROTO_PRESET_LINE[part] || {}));
+  const panel = (inner) => `
+    <div class="astral-presets-panel" role="tabpanel" aria-label="${escapeHtml(PROTO_METER_PART_NAMES[part])}" data-proto-presets-panel="${part}"${
+      on ? "" : " hidden"
+    }>
+      ${keyLine}
+      ${inner}
+    </div>
+  `;
+  if (standardScope) {
+    return panel(`
+      <section class="astral-presets-group">
+        <h4 class="astral-setting-head sr-only" id="${standardId}">Standard presets</h4>
+        ${protoPresetsTable(part, own, true, standardId)}
+      </section>
+    `);
+  }
+  const company = Boolean(scope);
   const ownBody = own.length
     ? protoPresetsTable(part, own, true, ownId)
     : `<div class="astral-empty astral-presets-empty">
         <h5>No presets yet</h5>
-        <p class="astral-muted">Save times from Site settings, or duplicate a standard preset.</p>
+        <p class="astral-muted">${
+          company ? "Duplicate a standard preset to add one." : "Save times from Site settings, or duplicate a standard preset."
+        }</p>
       </div>`;
-  return `
-    <div class="astral-presets-panel" role="tabpanel" aria-label="${escapeHtml(PROTO_METER_PART_NAMES[part])}" data-proto-presets-panel="${part}"${
-      on ? "" : " hidden"
-    }>
-      ${protoBreakdownKey(Object.values(PROTO_PRESET_LINE[part] || {}))}
+  return panel(`
       <section class="astral-presets-group">
-        <h4 class="astral-setting-head" id="${ownId}">Your presets</h4>
+        <h4 class="astral-setting-head" id="${ownId}">${company ? "Company presets" : "Your presets"}</h4>
         ${ownBody}
       </section>
       <section class="astral-presets-group">
         <h4 class="astral-setting-head" id="${standardId}">Standard presets</h4>
-        <p class="astral-muted">Standard presets come with Astral and cannot be changed. Duplicate one to make your own.</p>
+        <p class="astral-muted">${
+          company
+            ? "Every company gets these. Companies can use and duplicate them but cannot change them."
+            : "Standard presets come with Astral and cannot be changed. Duplicate one to make your own."
+        }</p>
         ${protoPresetsTable(part, standard, false, standardId)}
       </section>
-    </div>
-  `;
+  `);
 }
 
 function protoPresetsEditor(edit) {
@@ -26977,7 +27097,9 @@ function protoPresetsEditor(edit) {
   const saved = isNew ? null : protoPresetFind(part, kind, edit.id);
   const from = isNew ? protoPresetFind(part, kind, edit.from) : null;
   const words = PROTO_METER_PART_WORDS[part];
-  const meta = `${week ? "Week" : "Day"} preset for ${words}${from ? `, copied from ${from.name}` : ""}`;
+  const scope = protoPresetScope();
+  const whose = scope === PROTO_PRESET_STANDARD ? "Standard " : scope ? `${scope} ` : "";
+  const meta = `${whose}${week ? (whose ? "week" : "Week") : whose ? "day" : "Day"} preset for ${words}${from ? `, copied from ${from.name}` : ""}`;
   const error = edit.error || "";
   const issue = protoPresetEditIssue(part, edit.rows);
   const note = saved ? protoPresetUpdateNote(saved.name, protoPresetReach(part, kind, saved.id), false) : "";
@@ -27012,7 +27134,7 @@ function protoPresetsEditor(edit) {
         ${protoGhost("Cancel", 'data-proto-presets-back="cancel"')}
         <p class="astral-muted astral-report-issue" data-proto-presets-issue${issue ? "" : " hidden"}>${escapeHtml(issue)}</p>
         ${
-          saved
+          saved && protoPresetCanDelete(part, kind)
             ? protoTextBtn("Delete preset", `data-proto-presets-act="delete" data-proto-presets-key="${escapeHtml(key)}"`, {
                 className: "astral-report-delete",
               })
@@ -27043,8 +27165,19 @@ function protoPresetsCard() {
     return `<section class="astral-card astral-pane astral-presets">${protoPresetsEditor(edit)}</section>${protoPresetDeleteModal()}`;
   }
   const tab = protoPresetTabId();
+  const scope = protoPresetScope();
+  if (protoPresetAdmin() && !scope) return protoPresetsAdminCard();
+  const title = scope === PROTO_PRESET_STANDARD ? "Standard presets" : scope || "Presets";
+  const meta =
+    scope === PROTO_PRESET_STANDARD
+      ? "Every company gets these from the start. Changes reach every company."
+      : scope
+        ? "Presets"
+        : "";
   const head = `
-    <div class="astral-detail-head"><div>${protoDetailTitle("Presets", "")}</div></div>
+    <div class="astral-detail-head"><div${scope ? ' class="astral-page-title"' : ""}>${
+      scope ? protoBackLink("Back to presets", 'data-proto-presets-scope=""') : ""
+    }${protoDetailTitle(title, meta)}</div></div>
     ${protoTabs(
       PROTO_PRESET_PARTS.map((part) => ({ id: part, name: PROTO_METER_PART_NAMES[part] })),
       tab,
@@ -27057,6 +27190,81 @@ function protoPresetsCard() {
     <div class="astral-presets-panels">${PROTO_PRESET_PARTS.map((part) => protoPresetsPanel(part, part === tab)).join("")}</div>
   `;
   return `<section class="astral-card astral-pane astral-presets">${protoPaneShell(head, body)}</section>${protoPresetDeleteModal()}`;
+}
+
+// An IMSERV admin's Presets: the standard presets every company starts with, then each company's own presets.
+function protoPresetsAdminCard() {
+  const q = String(store.prototypePresetCompanyQuery || "").trim().toLowerCase();
+  const count = (n) => (n ? n.toLocaleString("en-GB") : '<span class="astral-muted">None</span>');
+  const standard = PROTO_PRESET_PARTS.map((part) => {
+    const lists = protoStandardPresets(part);
+    return lists.days.length + lists.weeks.length;
+  });
+  const rows = protoTeamCompanyNames()
+    .filter((name) => !q || name.toLowerCase().includes(q))
+    .map((name) => {
+      const counts = PROTO_PRESET_PARTS.map((part) => {
+        const lists = protoListedPresets(part, name);
+        return lists.days.length + lists.weeks.length;
+      });
+      return protoServiceRow(
+        [`<button type="button" class="astral-row-link">${escapeHtml(name)}</button>`, ...counts.map(count)],
+        { company: name.toLowerCase(), "operational-hours": counts[0], "time-of-use": counts[1] },
+        `class="is-link" data-proto-presets-scope="${escapeHtml(name)}"`
+      );
+    });
+  const head = `<div class="astral-detail-head"><div>${protoDetailTitle("Presets", "")}</div></div>`;
+  const body = `
+    ${protoPresetsNotice()}
+    <section class="astral-presets-group">
+      <h4 class="astral-setting-head">Standard presets</h4>
+      <p class="astral-muted">Every company gets these from the start. Companies can use them but cannot change them. ${escapeHtml(
+        `There are ${standard[0]} for operational hours and ${standard[1]} for time of use.`
+      )}</p>
+      <div class="astral-actions">${protoGhost("Manage standard presets", `data-proto-presets-scope="${PROTO_PRESET_STANDARD}"`)}</div>
+    </section>
+    <section class="astral-presets-group">
+      <h4 class="astral-setting-head">Company presets</h4>
+      <p class="astral-muted">Presets each company has made. Select a company to see and change them.</p>
+      <div class="astral-people-tools">
+        ${protoSearchField({
+          name: "proto-presets-company-query",
+          value: store.prototypePresetCompanyQuery || "",
+          placeholder: "Search companies",
+          label: "Search companies",
+        })}
+      </div>
+      ${protoTable(["Company", "Operational hours", "Time of use"], rows, {
+        id: "preset-companies",
+        empty: "No companies match.",
+        rowAttr: (row) => row.attr,
+      })}
+    </section>
+  `;
+  return `<section class="astral-card astral-pane astral-presets">${protoPaneShell(head, body)}</section>`;
+}
+
+// An admin opens the standard presets or a company's presets, or goes back to the list.
+function protoPresetScopeGo(scope) {
+  const next = scope === PROTO_PRESET_STANDARD || !scope ? scope : protoKnownSeeAsCompany(scope);
+  if (!protoPresetAdmin() || (scope && !next)) return;
+  const was = protoPresetScope();
+  setProto({
+    prototypePresetScope: next || "",
+    prototypePresetEdit: null,
+    prototypePresetMenu: "",
+    prototypePresetDelete: null,
+    prototypePresetNotice: null,
+    prototypeSelectOpen: "",
+  });
+  if (next) protoFocusWhenDrawn("#astral-fs .astral-presets .astral-back");
+  else if (was) {
+    protoFocusWhenDrawn(
+      was === PROTO_PRESET_STANDARD
+        ? `#astral-fs button[data-proto-presets-scope="${PROTO_PRESET_STANDARD}"]`
+        : `#astral-fs tr[data-proto-presets-scope="${CSS.escape(was)}"] .astral-row-link`
+    );
+  }
 }
 
 // Tabs switch without a redraw, so the page does not move. Both lists stay drawn in the same place.
@@ -27090,7 +27298,11 @@ function protoPickPresetTab(part) {
 function protoPresetManage(owner, part) {
   protoStashSrcForm(String(owner || ""));
   if (!protoGoSettings("presets")) return;
-  setProto({ prototypePresetTab: PROTO_PRESET_PARTS.includes(part) ? part : "hours", prototypeSelectOpen: "" });
+  setProto({
+    prototypePresetTab: PROTO_PRESET_PARTS.includes(part) ? part : "hours",
+    prototypePresetScope: protoPresetAdmin() ? PROTO_PRESET_HOME : "",
+    prototypeSelectOpen: "",
+  });
   protoRestoreFocus(`#astral-fs [data-proto-presets-tab="${CSS.escape(part)}"]`);
 }
 
@@ -27217,7 +27429,8 @@ function protoPresetEditSave(form) {
   if (protoPresetEditIssue(part, edit.rows)) return;
   const periods = (row) => protoPresetPeriods(part, { periods: protoDayPeriods(row, part) });
   const listed = protoEditablePresets(part);
-  const id = edit.id || `own-${kind}-${Date.now().toString(36)}`;
+  const live = protoPresetLive();
+  const id = edit.id || `${protoPresetScope() === PROTO_PRESET_STANDARD ? "std" : "own"}-${kind}-${Date.now().toString(36)}`;
   let patch = {};
   if (kind === "day") {
     const next = { id, name, periods: periods(edit.rows[0]) };
@@ -27232,7 +27445,7 @@ function protoPresetEditSave(form) {
     });
   } else {
     const rows = edit.rows.map((row) => ({ profile: row.profile || "", periods: periods(row) }));
-    if (edit.id) patch = protoPresetSpreadWeek(part, id, rows);
+    if (edit.id && live) patch = protoPresetSpreadWeek(part, id, rows);
     const next = { id, name, days: rows.map((row) => row.profile), rows };
     const at = listed.weeks.findIndex((item) => item.id === id);
     if (at >= 0) listed.weeks[at] = { ...listed.weeks[at], ...next };
@@ -27248,7 +27461,7 @@ function protoPresetEditSave(form) {
 function protoPresetDeleteOpen(key) {
   if (!protoCanAct()) return;
   const { part, kind, id } = protoPresetFromKey(key);
-  if (!protoPresetFind(part, kind, id) || protoPresetStandard(part, kind, id)) return;
+  if (!protoPresetFind(part, kind, id) || protoPresetStandard(part, kind, id) || !protoPresetCanDelete(part, kind)) return;
   setProto({ prototypePresetDelete: { part, kind, id }, prototypePresetMenu: "", prototypeSelectOpen: "" });
   protoRestoreFocus("#astral-fs #astral-preset-delete .astral-modal-foot .astral-btn");
 }
@@ -27290,10 +27503,17 @@ function protoPresetDeleteGo() {
   if (!del || !protoCanAct()) return;
   const { part, kind, id } = del;
   const item = protoPresetFind(part, kind, id);
-  if (!item || protoPresetStandard(part, kind, id)) return;
+  if (!item || protoPresetStandard(part, kind, id) || !protoPresetCanDelete(part, kind)) return;
   const listed = protoEditablePresets(part);
+  const live = protoPresetLive();
   let patch = {};
   if (kind === "day") {
+    // A week that names its days keeps this day's times as its own copy.
+    listed.weeks.forEach((week) => {
+      if (!Array.isArray(week.rows) && (week.days || []).includes(id)) {
+        week.rows = protoWeekRows(part, week).map((row) => ({ profile: row.profile, periods: row.periods }));
+      }
+    });
     listed.days = listed.days.filter((entry) => entry.id !== id);
     listed.weeks.forEach((week) => {
       (week.rows || []).forEach((row) => {
@@ -27302,13 +27522,15 @@ function protoPresetDeleteGo() {
       week.days = (week.days || []).map((day) => (day === id ? "" : day));
     });
     const moved = store.prototypePresetMoved || {};
-    patch.prototypePresetMoved = {
-      ...moved,
-      [part]: { ...(moved[part] || {}), [id]: { periods: protoPresetPeriods(part, item) } },
-    };
+    if (live) {
+      patch.prototypePresetMoved = {
+        ...moved,
+        [part]: { ...(moved[part] || {}), [id]: { periods: protoPresetPeriods(part, item) } },
+      };
+    }
   } else {
     listed.weeks = listed.weeks.filter((entry) => entry.id !== id);
-    patch = protoPresetDropWeek(part, id);
+    if (live) patch = protoPresetDropWeek(part, id);
   }
   protoStorePresets(part, listed);
   setProto({
@@ -32979,6 +33201,8 @@ function protoGoSettings(section) {
     prototypePresetEdit: null,
     prototypePresetMenu: "",
     prototypePresetDelete: null,
+    prototypePresetScope: "",
+    prototypePresetNotice: null,
     ...protoClosePersonPatch(),
   });
   return true;
@@ -39022,6 +39246,8 @@ function onPrototype(event) {
           ? { prototypeUserQuery: "" }
           : name === "proto-company-query"
             ? { prototypeCompanyQuery: "" }
+            : name === "proto-presets-company-query"
+            ? { prototypePresetCompanyQuery: "" }
             : name === "proto-service-query"
             ? { prototypeServiceQuery: "" }
             : name === "proto-company-meter-query"
@@ -40560,6 +40786,11 @@ function onPrototype(event) {
   const presetsTab = event.target.closest("[data-proto-presets-tab]");
   if (presetsTab) {
     protoPickPresetTab(presetsTab.dataset.protoPresetsTab);
+    return;
+  }
+  const presetsScope = event.target.closest("[data-proto-presets-scope]");
+  if (presetsScope) {
+    protoPresetScopeGo(presetsScope.dataset.protoPresetsScope);
     return;
   }
   const presetsMenu = event.target.closest("[data-proto-presets-menu]");
@@ -42127,12 +42358,14 @@ function onPrototypeInput(event) {
   }
   const companySearch = event.target.closest("input[name='proto-company-query']");
   const pageSearch = event.target.closest(
-    "input[name='proto-service-query'], input[name='proto-inbox-query'], input[name='proto-usage-query'], input[name='proto-find-query'], input[name='proto-company-meter-query'],     input[name='proto-company-ticket-query'], input[name='proto-company-log-query']"
+    "input[name='proto-service-query'], input[name='proto-inbox-query'], input[name='proto-usage-query'], input[name='proto-find-query'], input[name='proto-company-meter-query'],     input[name='proto-company-ticket-query'],     input[name='proto-company-log-query'], input[name='proto-presets-company-query']"
   );
   if (pageSearch) {
     const key =
       pageSearch.name === "proto-find-query"
         ? "prototypeFindQuery"
+            : pageSearch.name === "proto-presets-company-query"
+            ? "prototypePresetCompanyQuery"
         : pageSearch.name === "proto-company-meter-query"
         ? "prototypeCompanyMeterQuery"
         : pageSearch.name === "proto-company-ticket-query"
