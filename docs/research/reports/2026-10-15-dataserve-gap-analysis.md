@@ -19,12 +19,14 @@ Parity comes first. Astral must do everything MeterPower does on day one, so no 
 - **Scheduled delivery.** Reports go by FTP or email, and every scheduled delivery is charged as FTP. Customers can't set up FTP themselves. Some customers on FTP never sign in.
 - **Admin setup is manual.** A D3 file creates the meter record. Jack then puts the meter in a group, and groups set which MPANs a user sees. Sub-groups give someone, such as a consultant, only part of a portfolio. There is no limit on users per customer.
 - **Switch user is broken** in MeterPower after a TMA update. Astral's see-as-them view covers this.
-- **Support.** The Data Provisions and Data Help mailboxes close after the move. Help should route to the new IMSERV customer service model, such as a Tier 3 mailbox or a chatbot.
+- **Support.** The Data Provisions and Data Help mailboxes close after the move. Help should route to the new IMSERV customer service model, such as a Tier 3 mailbox or a chatbot. Pippa and Katie Horton are the contacts for moving support and onboarding, including FTP setup.
+- **Interviews.** About 50 client interviews are done. Internal interviews are still needed for balance. Infinis is a good customer to interview, as a power user across the IMSERV Europe and Scotland portfolios.
 
 **Dependencies, not design gaps**
 
 - IMSERV systems don't deliver channel-level data today. It needs work after a change of agent. The data source feeding Astral must deliver it before launch. This is a pipeline problem, not only a UI one.
 - IMSERV loses MeterPower access through the ScottishPower VPN when the contract ends. Astral must be ready first.
+- TMA won't give Shaun admin access, and ScottishPower controls the environment. The admin side can only be learned from Jack and Lorraine.
 - Proposed migration rule. Set up everyone on the FTP list. Don't set up anyone who hasn't signed in for 6 months and isn't on the FTP list.
 - The PRN workaround for sites where IMSERV isn't the appointed agent won't move to Astral.
 
