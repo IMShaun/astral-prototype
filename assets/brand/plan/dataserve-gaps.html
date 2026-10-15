@@ -5,24 +5,24 @@
 <title>What Astral is missing from SP Dataserve · IMSERV</title>
 <link rel="stylesheet" href="plan.css">
 <style>
-  .one { padding-top: 20mm; }
+  .one { padding-top: 18mm; }
   .one .kicker { font-size: 6.5pt; font-weight: 600; letter-spacing: 0.02em; margin-bottom: 2mm; }
   .one .head { margin-bottom: 4mm; align-items: end; }
   .one .head h2 { font-size: 19pt; }
   .one .head p { font-size: 7.5pt; }
   .quads { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.4mm; margin-bottom: 3.5mm; }
   .quads > div { background: var(--grey-a); padding: 2.4mm 2.8mm; font-size: 6.5pt; line-height: 1.3; }
-  .quads > div.win { background: var(--cyan); }
+  .quads > div.now { background: var(--cyan); }
   .quads b { display: block; font-size: 8pt; font-weight: 600; margin-bottom: 0.6mm; }
   .quads .n { float: right; font-size: 13pt; font-weight: 500; line-height: 1; }
   table.gaps th { font-size: 5.6pt; padding: 0 1.6mm 1.4mm 0; }
-  table.gaps td { font-size: 6.6pt; padding: 0.8mm 1.6mm 0.8mm 0; line-height: 1.2; }
+  table.gaps td { font-size: 6.5pt; padding: 0.5mm 1.6mm 0.5mm 0; line-height: 1.2; }
   table.gaps td:first-child { font-weight: 400; color: var(--grey-c); }
   table.gaps td.id { font-weight: 600; }
   table.gaps td.num, table.gaps th.num { text-align: center; padding-right: 0; }
   table.gaps td.val { font-weight: 600; }
   table.gaps tr.q td { background: var(--black); color: var(--white); font-weight: 600; font-size: 6.2pt; padding: 0.9mm 1.6mm; border: 0; }
-  table.gaps tr.q.win td { background: var(--cyan); color: var(--black); }
+  table.gaps tr.q.now td { background: var(--cyan); color: var(--black); }
   table.gaps tr.q td span { font-weight: 400; margin-left: 2mm; }
   .who { display: inline-block; font-size: 5.2pt; font-weight: 600; padding: 0.2mm 1mm; border: 0.25mm solid var(--black); border-radius: 0.6mm; margin-left: 1.2mm; vertical-align: 0.3mm; }
   .note { margin-top: 3mm; font-size: 6.2pt; color: var(--grey-c); display: grid; grid-template-columns: 1fr 1fr; gap: var(--gutter); }
@@ -35,57 +35,58 @@
 <script>
   // [order, id, gap, reach, frequency, severity, effort, confidence]. Value is reach + frequency + severity.
   const QUADS = [
-    { id: "win", name: "Quick wins", rule: "Value 7+, effort 1 or 2", act: "Do first" },
-    { id: "bet", name: "Big bets", rule: "Value 7+, effort 3", act: "Test in discovery, then plan" },
-    { id: "fill", name: "Fill-ins", rule: "Value 6 or less, effort 1 or 2", act: "Do when there is room" },
-    { id: "hold", name: "Reconsider", rule: "Value 6 or less, effort 3", act: "Hold until discovery shows a need" },
+    { id: "now", name: "Start now", rule: "Day one, effort 3", act: "Data source or data model work. Gates launch" },
+    { id: "win", name: "Quick wins", rule: "Day one, value 7+, effort 1 or 2", act: "Do next" },
+    { id: "fill", name: "Fill-ins", rule: "Day one, value 6 or less, effort 1 or 2", act: "Do before launch" },
+    { id: "hold", name: "Confirm first", rule: "Unused or rarely used today", act: "Agree with Clive if parity needs it" },
   ];
   const ROWS = {
-    win: [
-      [1, "C27", "Say where times are UTC, and explain BST", 3, 3, 2, 1, "Medium. Data trust was named in Katie's walk"],
-      [2, "A2", "Add and remove MPANs for a company", 3, 2, 3, 2, "Medium. Manual setup was named in V's walk"],
-      [3, "C22", "Widen or narrow the date range from one end", 3, 3, 1, 1, "Low"],
-      [4, "C19", "Help page and contact route, including MPAN requests", 3, 1, 3, 1, "Low"],
-      [5, "A8", "Help content, contact details, and feedback in Inbox", 3, 1, 3, 1, "Low"],
-      [6, "C11", "Consumption report with day and night units", 3, 2, 2, 2, "Low"],
-      [7, "C6", "Totals per time-of-use band", 3, 2, 2, 2, "Low"],
-      [8, "A6", "Keep site address, postcode, and site ID", 3, 2, 2, 2, "Low"],
-      [9, "C10", "Site details in downloads", 3, 2, 2, 2, "Low"],
-      [10, "C18", "IMSERV-raised queries and their steps. Confirm first", 3, 2, 2, 2, "Low"],
-      [11, "A3", "Raise a query against a site, with steps. Confirm first", 3, 2, 2, 2, "Low"],
+    now: [
+      [1, "A7", "Channel-level data from the IMSERV data source", 2, 2, 3, 3, "High. The key gap. Not delivered by IMSERV systems today"],
+      [2, "C7", "D10 register reads on screen and in downloads", 2, 2, 3, 3, "High. FIT claims need D10 or monthly totals"],
+      [3, "A9", "Set up sub-groups and limit a user to one", 2, 2, 3, 3, "Medium. Gives consultants part of a portfolio"],
+      [4, "C16", "Sub-groups of a company's MPANs", 2, 2, 3, 3, "Medium. Access, not user-made groups"],
+      [5, "C1", "Reactive export (RE) data", 2, 2, 2, 3, "Medium. One of the 6 channels"],
+      [6, "A5", "MSIDs and more than one meter per MPAN", 2, 2, 2, 3, "Medium. Site, then MPAN, then meter"],
+      [7, "C9", "Consolidate by MPAN, and include MSID", 2, 2, 2, 3, "Medium. A download option today"],
     ],
-    bet: [
-      [12, "C16", "Their own sub-groups of sites", 3, 3, 2, 3, "Low. Clashes with Group as access"],
-      [13, "C17", "Bill Checker", 2, 2, 3, 3, "Low"],
-      [14, "A1", "Tariffs and switching on Bill Checker", 2, 2, 3, 3, "Low"],
+    win: [
+      [8, "A2", "Add and remove MPANs for a company", 3, 2, 3, 2, "High. All setup is by hand today"],
+      [9, "C11", "Consumption report per MPAN", 3, 2, 3, 2, "High. One of the two most used reports"],
+      [10, "C27", "Say where times are UTC, and explain BST", 3, 3, 2, 1, "Medium. Data trust named in Katie's walk"],
+      [11, "C28", "Generation report with monthly export totals", 2, 2, 3, 2, "High. Most used, and needed for FIT claims"],
+      [12, "A8", "Help content, contact details, and feedback in Inbox", 3, 1, 3, 1, "Medium. The old mailboxes close"],
+      [13, "C19", "Help page and contact route, including MPAN requests", 3, 1, 3, 1, "Medium. Route to the new service model"],
+      [14, "A6", "Keep site address, postcode, and site ID", 3, 2, 2, 2, "Medium. A download option today"],
+      [15, "C10", "Site details in downloads", 3, 2, 2, 2, "Medium. A download option today"],
+      [16, "C2", "All channels or one channel, on screen and in downloads", 2, 3, 2, 2, "Medium. Needs A7"],
+      [17, "C22", "Widen or narrow the date range from one end", 3, 3, 1, 1, "Low"],
+      [18, "A3", "Raise a query against a site, with steps. Confirm first", 3, 2, 2, 2, "Low"],
+      [19, "C18", "IMSERV-raised queries and their steps. Confirm first", 3, 2, 2, 2, "Low"],
     ],
     fill: [
-      [15, "C15", "Load factor and maximum kVA in the summary", 2, 3, 1, 1, "Low"],
-      [16, "C3", "Direction column in Source data", 2, 2, 2, 1, "Low"],
-      [17, "C13", "Compare statistics table", 2, 2, 2, 2, "Low"],
-      [18, "C12", "Carbon report by month or year to date", 2, 2, 2, 2, "Low"],
-      [19, "C7", "Register reads on screen, and reads sent to the supplier", 2, 2, 2, 2, "Low"],
-      [20, "C20", "Service notices", 3, 1, 2, 2, "Low"],
-      [21, "A4", "Post service notices", 3, 1, 2, 2, "Low"],
-      [22, "C5", "kW column in downloads", 2, 2, 1, 1, "Low"],
-      [23, "C21", "Feedback route", 3, 1, 1, 1, "Low"],
-      [24, "C26", "Print or copy a chart", 2, 2, 1, 1, "Low"],
-      [25, "C4", "Reactive import (RI) in downloads", 1, 2, 2, 2, "Low"],
-      [26, "C2", "One view of AI, AE, RI, and RE", 1, 2, 2, 2, "Low"],
-      [27, "C23", "Day-by-day half-hour comparison", 2, 2, 1, 2, "Low"],
-      [28, "C8", "Leave quality flags out of a download", 1, 2, 1, 1, "Low"],
-      [29, "C24", "Choice of decimal places", 1, 2, 1, 1, "Low"],
-      [30, "C14", "Compare different sites over different dates", 1, 1, 2, 2, "Low"],
-      [31, "C25", "Rows and columns switch for spreadsheets", 1, 1, 1, 1, "Low"],
+      [20, "C3", "Direction column in Source data", 2, 2, 2, 1, "Medium. Import and export are split"],
+      [21, "C5", "kW column in downloads", 2, 2, 2, 1, "Medium. Some use kW for government reporting"],
+      [22, "A4", "Post service notices", 3, 1, 2, 2, "Medium. A standard section today"],
+      [23, "C20", "Service notices", 3, 1, 2, 2, "Medium. A standard section today"],
+      [24, "C4", "Reactive import (RI) in downloads", 2, 2, 2, 2, "Medium. One of the 6 channels"],
+      [25, "C15", "Load factor and maximum kVA in the summary", 2, 3, 1, 1, "Low"],
+      [26, "C13", "Compare statistics table", 2, 2, 2, 2, "Low"],
+      [27, "C21", "Feedback route", 3, 1, 1, 1, "Low"],
+      [28, "C26", "Print or copy a chart", 2, 2, 1, 1, "Low"],
+      [29, "C23", "Day-by-day half-hour comparison", 2, 2, 1, 2, "Low"],
+      [30, "C8", "Leave quality flags out of a download", 1, 2, 1, 1, "Low"],
+      [31, "C24", "Choice of decimal places", 1, 2, 1, 1, "Low"],
+      [32, "C14", "Compare different sites over different dates", 1, 1, 2, 2, "Low"],
+      [33, "C25", "Rows and columns switch for spreadsheets", 1, 1, 1, 1, "Low"],
     ],
     hold: [
-      [32, "C1", "Reactive export (RE) data", 1, 2, 3, 3, "Low. Generation sites only"],
-      [33, "A7", "Reactive and export channels per meter", 1, 2, 3, 3, "Low"],
-      [34, "C9", "Consolidate by MPAN, and include MSID", 1, 2, 2, 3, "Low"],
-      [35, "A5", "MSIDs and more than one meter per MPAN", 1, 2, 2, 3, "Low"],
+      [34, "C6", "Totals per time-of-use band", 1, 2, 1, 2, "Medium. Rarely used. Most sites are half-hourly"],
+      [35, "C12", "Carbon report by month or year to date", 1, 1, 1, 2, "Medium. Built in but unused"],
+      [36, "A1", "Tariffs and switching on Bill Checker", 1, 1, 1, 3, "Medium. Never used, never asked about"],
+      [37, "C17", "Bill Checker", 1, 1, 1, 3, "Medium. Never used, never asked about"],
     ],
   };
-
   const who = (id) => `<span class="who">${id.startsWith("A") ? "ADMIN" : "CUSTOMER"}</span>`;
   const row = ([n, id, gap, r, f, s, e, conf]) =>
     `<tr><td>${n}</td><td class="id">${id}</td><td>${gap}${who(id)}</td><td class="num">${r}</td><td class="num">${f}</td><td class="num">${s}</td><td class="num val">${r + f + s}</td><td class="num">${e}</td><td>${conf}</td></tr>`;
@@ -96,7 +97,7 @@
     <p class="kicker">ASTRAL · SP DATASERVE GAP ANALYSIS</p>
     <div class="head">
       <h2>What Astral is missing,<br>in priority order</h2>
-      <p>Every SP Dataserve feature, read against the Astral prototype and ranked on value and effort. These are gaps to test in customer discovery, not a list to copy. Scores are a desk view until customers move them.</p>
+      <p>Every SP Dataserve feature, read against the Astral prototype and re-scored after the MeterPower walk-through with Jack and Lorraine. Astral must match MeterPower on day one, so customers lose nothing. Value and effort set the order of work.</p>
     </div>
     <div class="quads">${QUADS.map((q) => `<div class="${q.id}"><span class="n">${ROWS[q.id].length}</span><b>${q.name}</b>${q.rule}<br>${q.act}</div>`).join("")}</div>
     <table class="gaps">
@@ -105,7 +106,7 @@
     </table>
     <div class="note">
       <p><b style="font-weight:600;color:var(--black)">Value</b> is reach + frequency + severity, each 1 to 3. Reach is how many of the four user groups it affects. Severity is how badly its absence blocks the task. <b style="font-weight:600;color:var(--black)">Effort</b> 1 is a column or copy, 2 a new view or report, 3 a new data model or back-office process.</p>
-      <p>Admin items take the value of the customer gaps they unblock. Do the admin item first, such as A2 before C19. Confidence is low unless an internal walk named the problem. Full analysis in the Work Desk: SP Dataserve against Astral.</p>
+      <p>Admin items take the value of the customer gaps they unblock, and go first. Confidence is high when Jack and Lorraine described real use, and medium when they or a walk named it. The data source must deliver channel-level data before launch. Full analysis is in the Work Desk.</p>
     </div>
     <div class="folio"><span>Internal · Draft for review · Astral UX</span></div>`;
   document.fonts.ready.then(() => { window.__ready = true; });
