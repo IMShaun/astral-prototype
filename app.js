@@ -5616,6 +5616,9 @@ const CHROME_FIELDS = [
   "prototypeCompanyRecord",
   "prototypeCompanyRecordTab",
   "prototypeCompanyMeterQuery",
+  "prototypeCompanyTicketQuery",
+  "prototypeCompanyMeterFilters",
+  "prototypeCompanyTicketFilters",
   "prototypeCompanyMeters",
   "prototypeWalkUsers",
   "prototypeTeams",
@@ -6075,6 +6078,13 @@ function applyChrome() {
   store.prototypeCompanyRecord = String(store.prototypeCompanyRecord || "");
   store.prototypeCompanyRecordTab = store.prototypeCompanyRecordTab === "meters" ? "meters" : "queries";
   store.prototypeCompanyMeterQuery = String(store.prototypeCompanyMeterQuery || "").slice(0, 120);
+  store.prototypeCompanyTicketQuery = String(store.prototypeCompanyTicketQuery || "").slice(0, 120);
+  store.prototypeCompanyMeterFilters = Array.isArray(store.prototypeCompanyMeterFilters)
+    ? store.prototypeCompanyMeterFilters.map(String)
+    : [];
+  store.prototypeCompanyTicketFilters = Array.isArray(store.prototypeCompanyTicketFilters)
+    ? store.prototypeCompanyTicketFilters.map(String)
+    : [];
   store.prototypeCompanyMeters =
     store.prototypeCompanyMeters &&
     typeof store.prototypeCompanyMeters === "object" &&

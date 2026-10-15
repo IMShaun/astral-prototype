@@ -707,6 +707,7 @@ function protoPageFilterReset() {
     prototypeCompanyQuery: "",
     prototypeUserRoleFilter: [],
     prototypeUserRoleFilterOpen: false,
+    prototypeCompanyFilterOpen: false,
     prototypeTeam: "",
     prototypeTeamQuery: "",
     prototypeTeamForm: false,
@@ -9752,6 +9753,7 @@ function protoOpenMenuKeys() {
   if (store.prototypeAlertFilterOpen) keys.push("astral-alert-filter-menu");
   if (store.prototypeReportFilterOpen) keys.push("astral-report-filter-menu");
   if (store.prototypeUserRoleFilterOpen) keys.push("astral-user-filter-menu");
+  if (store.prototypeCompanyFilterOpen) keys.push("astral-company-filter-menu");
   if (store.prototypeAckOpen) keys.push(`ack:${store.prototypeAckOpen}`);
   if (store.prototypeQueryMore) keys.push(`more:${store.prototypeQueryMore}`);
   if (store.prototypePointTagOpen) keys.push("astral-point-tag-menu");
@@ -19551,10 +19553,20 @@ function protoCompanyRecordGo(name) {
     activePrototypeView: "companies",
     prototypeCompanyRecord: name,
     prototypeCompanyRecordTab: "queries",
-    prototypeCompanyMeterQuery: "",
+    ...protoCompanyFindClear(),
     prototypeCompanyNote: "",
     prototypeFullscreen: true,
     ...protoSeeAsClear(),
+  };
+}
+
+function protoCompanyFindClear() {
+  return {
+    prototypeCompanyMeterQuery: "",
+    prototypeCompanyTicketQuery: "",
+    prototypeCompanyMeterFilters: [],
+    prototypeCompanyTicketFilters: [],
+    prototypeCompanyFilterOpen: false,
   };
 }
 
@@ -19562,7 +19574,7 @@ function protoCompanyRecordClear() {
   return {
     prototypeCompanyRecord: "",
     prototypeCompanyRecordTab: "queries",
-    prototypeCompanyMeterQuery: "",
+    ...protoCompanyFindClear(),
     prototypeCompanyNote: "",
     ...protoMeterAddClear(),
   };
@@ -19609,7 +19621,53 @@ function protoCompanyMeterRows(name) {
     live: false,
     added: true,
   }));
-  return [...added, ...own];
+  return [...added, ...own, ...protoCompanyFleetMeters(name, own)];
+}
+
+const protoCompanyFleetCache = new Map();
+
+// The healthy meters behind a company's total. Made up, but the same on every visit.
+function protoCompanyFleetMeters(name, own) {
+  const listed = (protoServiceData().companies || []).find((item) => item.name === name);
+  const count = Math.max(0, (Number(listed?.meters) || 0) - own.length);
+  if (!count) return [];
+  const key = `${name}:${count}`;
+  if (!protoCompanyFleetCache.has(key)) {
+    let seed = [...name].reduce((sum, ch) => (sum * 31 + ch.charCodeAt(0)) >>> 0, 7);
+    const rand = () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+    const kinds = new Set(own.map((meter) => meter.kind));
+    const sites = [...new Set([...own.map((meter) => meter.site), ...(listed.sites || [])])];
+    const taken = new Set(own.map((meter) => String(meter.point)));
+    const digits = (n) => Array.from({ length: n }, () => Math.floor(rand() * 10)).join("");
+    const rows = [];
+    for (let i = 0; rows.length < count && i < count * 3; i += 1) {
+      const roll = rand();
+      const kind =
+        kinds.has("water") && roll > 0.86 ? "water" : kinds.has("gas") && roll > 0.72 ? "gas" : "electricity";
+      const point =
+        kind === "water" ? `WS-${digits(5)}` : kind === "gas" ? `${1 + Math.floor(rand() * 9)}${digits(9)}` : `1${digits(12)}`;
+      if (taken.has(point)) continue;
+      taken.add(point);
+      rows.push({
+        id: `fleet:${name}:${point}`,
+        company: name,
+        site: sites[Math.floor(rand() * sites.length)] || name,
+        point,
+        kind,
+        status: "online",
+        hours: 1 + Math.floor(rand() * 20),
+        live: false,
+      });
+    }
+    protoCompanyFleetCache.set(key, rows);
+  }
+  return protoCompanyFleetCache.get(key).map((meter) => ({
+    ...meter,
+    last: protoAgo(new Date(Date.now() - meter.hours * 3600000)),
+  }));
 }
 
 function protoCompanySiteNames(name) {
@@ -19638,6 +19696,9 @@ function protoMeterPointsKnown() {
   Object.values(protoCompanyMeterMap()).forEach((list) => {
     (Array.isArray(list) ? list : []).forEach((item) => known.add(String(item.point)));
   });
+  protoTeamCompanyNames().forEach((name) =>
+    protoCompanyMeterRows(name).forEach((meter) => known.add(String(meter.point)))
+  );
   return known;
 }
 
@@ -19646,9 +19707,9 @@ function protoLineList(numbers) {
   return `Lines ${numbers.slice(0, -1).join(", ")} and ${numbers[numbers.length - 1]}`;
 }
 
-function protoCompanyQueryRows(name) {
+function protoCompanyQueryRows(name, q = "", picked = []) {
   return protoInboxTickets()
-    .filter((ticket) => ticket.company === name)
+    .filter((ticket) => ticket.company === name && protoCompanyTicketMatches(ticket, q, picked))
     .map((ticket) =>
       protoServiceRow(
         [
@@ -19681,16 +19742,166 @@ function protoCompanyMeterTableRows(rows) {
   });
 }
 
+const PROTO_COMPANY_TICKET_FILTERS = [
+  {
+    id: "state",
+    name: "State",
+    items: [
+      { id: "open", name: "Open" },
+      { id: "resolved", name: "Resolved" },
+    ],
+  },
+];
+
+const PROTO_COMPANY_METER_FILTERS = [
+  {
+    id: "utility",
+    name: "Utility",
+    items: [
+      { id: "electricity", name: "Electricity" },
+      { id: "gas", name: "Gas" },
+      { id: "water", name: "Water" },
+    ],
+  },
+  {
+    id: "state",
+    name: "State",
+    items: [
+      { id: "sending", name: "Sending" },
+      { id: "not-sending", name: "Not sending" },
+      { id: "missing-data", name: "Missing data" },
+      { id: "waiting", name: "Waiting for data" },
+    ],
+  },
+];
+
+function protoCompanyFilterGroups() {
+  return protoCompanyRecordTab() === "meters" ? PROTO_COMPANY_METER_FILTERS : PROTO_COMPANY_TICKET_FILTERS;
+}
+
+function protoCompanyFilterKey() {
+  return protoCompanyRecordTab() === "meters" ? "prototypeCompanyMeterFilters" : "prototypeCompanyTicketFilters";
+}
+
+function protoCompanyFilterIds(raw) {
+  const allowed = protoCompanyFilterGroups().flatMap((group) => group.items.map((item) => item.id));
+  const source = raw !== undefined ? raw : store[protoCompanyFilterKey()];
+  return Array.isArray(source) ? source.filter((id) => allowed.includes(id)) : [];
+}
+
+function protoCompanyFilterName(id) {
+  return protoCompanyFilterGroups()
+    .flatMap((group) => group.items)
+    .find((item) => item.id === id)?.name || id;
+}
+
+function protoCompanyMeterStateId(meter) {
+  if (meter.added) return "waiting";
+  if (meter.status === "gaps") return "missing-data";
+  if (meter.status === "stale") return "not-sending";
+  return "sending";
+}
+
+// Ticks in one group widen the list. Ticks in different groups narrow it.
+function protoCompanyGroupsPass(groups, picked, idOf) {
+  return groups.every((group) => {
+    const ids = group.items.map((item) => item.id).filter((id) => picked.includes(id));
+    return !ids.length || ids.includes(idOf(group.id));
+  });
+}
+
+function protoCompanyMeterMatches(meter, q, picked) {
+  if (q && ![meter.point, meter.site].some((text) => String(text).toLowerCase().includes(q))) return false;
+  return protoCompanyGroupsPass(PROTO_COMPANY_METER_FILTERS, picked || [], (group) =>
+    group === "utility" ? meter.kind : protoCompanyMeterStateId(meter)
+  );
+}
+
+function protoCompanyTicketMatches(ticket, q, picked) {
+  if (q && ![ticket.ref, ticket.subject, ticket.name].some((text) => String(text || "").toLowerCase().includes(q))) {
+    return false;
+  }
+  return protoCompanyGroupsPass(PROTO_COMPANY_TICKET_FILTERS, picked || [], () =>
+    ticket.resolved ? "resolved" : "open"
+  );
+}
+
+// How many rows one tick would leave on the open tab. Search does not change it.
+function protoCompanyFilterCount(id) {
+  const name = protoCompanyRecordName();
+  if (!name || !id) return null;
+  if (protoCompanyRecordTab() === "meters") {
+    return protoCompanyMeterRows(name).filter((meter) => protoCompanyMeterMatches(meter, "", [id])).length;
+  }
+  return protoInboxTickets().filter((ticket) => ticket.company === name && protoCompanyTicketMatches(ticket, "", [id]))
+    .length;
+}
+
+function protoCompanyFilterControl() {
+  const picked = protoCompanyFilterIds();
+  return protoFilterShell({
+    hit: `data-proto-company-filter="toggle"`,
+    open: Boolean(store.prototypeCompanyFilterOpen),
+    count: picked.length,
+    menuId: "astral-company-filter-menu",
+    clear: 'data-proto-company-filter="clear"',
+    canClear: picked.length > 0,
+    menu: protoFilterTickGroups(picked, "data-proto-company-filter", protoCompanyFilterGroups()),
+  });
+}
+
+function protoCompanyFilterPills() {
+  const picked = protoCompanyFilterIds();
+  if (!picked.length) return "";
+  const pills = picked
+    .map((id) => {
+      const name = protoCompanyFilterName(id);
+      return `
+        <span class="astral-filter-pill">
+          ${protoFilterFace(id, name)}
+          ${protoClearButton(
+            "astral-filter-pill-clear",
+            `data-proto-company-filter="${escapeHtml(id)}"`,
+            `Clear ${name}`
+          )}
+        </span>
+      `;
+    })
+    .join("");
+  return `
+    <div class="astral-filter-pills">
+      ${pills}
+      ${protoTextBtn("Clear", 'data-proto-company-filter="clear"')}
+    </div>
+  `;
+}
+
+function protoToggleCompanyFilterGroup(groupId) {
+  const group = protoCompanyFilterGroups().find((row) => row.id === groupId);
+  if (!group) return;
+  const picked = protoCompanyFilterIds();
+  const selectAll = protoFilterGroupTickState(group, "data-proto-company-filter", picked) !== "on";
+  setProto({
+    prototypeCompanyFilterOpen: true,
+    [protoCompanyFilterKey()]: protoCompanyFilterIds(
+      protoFilterGroupSelectNext(picked, group, !selectAll, "data-proto-company-filter")
+    ),
+  });
+  protoRestoreFocus(`#astral-company-filter-menu [data-proto-company-filter-all="${CSS.escape(groupId)}"]`);
+}
+
 function protoCompanyRecord(name) {
   const tab = protoCompanyRecordTab();
-  const queries = protoCompanyQueryRows(name);
+  const picked = protoCompanyFilterIds();
+  const ticketQuery = String(store.prototypeCompanyTicketQuery || "");
+  const queries = protoCompanyQueryRows(name, ticketQuery.trim().toLowerCase(), tab === "queries" ? picked : []);
+  const queryTotal = protoInboxTickets().filter((ticket) => ticket.company === name).length;
   const meters = protoCompanyMeterRows(name);
   const added = protoCompanyAddedMeters(name).length;
   const listed = protoServiceCompanies().find((row) => row.name === name)?.meters || 0;
   const total = listed + added;
-  const shown = meters.length - added;
   const tabs = PROTO_COMPANY_RECORD_TABS.map((item) => {
-    const n = item.id === "queries" ? queries.length : total;
+    const n = item.id === "queries" ? queryTotal : total;
     return { id: item.id, name: n ? `${item.name} · ${n.toLocaleString("en-GB")}` : item.name };
   });
   const type = PROTO_COMPANY_TYPES.find((item) => item.id === protoCompanyTypeForName(name))?.name || "";
@@ -19708,40 +19919,44 @@ function protoCompanyRecord(name) {
             placeholder: "Search meter point or site",
             label: "Search meter point or site",
           })}
+          ${protoCompanyFilterControl()}
           ${protoGhost(
             "Add meter points",
             `data-proto-company-meters="add" aria-haspopup="dialog" aria-expanded="${addOpen ? "true" : "false"}"`
           )}
         </div>
+        ${protoCompanyFilterPills()}
       `
-      : "";
-  const partial =
-    tab === "meters" && shown < listed
-      ? `<p class="astral-muted astral-usage-note">${escapeHtml(
-          added
-            ? `Showing the ${added} you added and the ${shown} that need attention. Log in as company to see all ${total.toLocaleString("en-GB")}.`
-            : `Showing the ${shown} that need attention. Log in as company to see all ${listed.toLocaleString("en-GB")}.`
-        )}</p>`
-      : "";
+      : `
+        <div class="astral-people-tools">
+          ${protoSearchField({
+            name: "proto-company-ticket-query",
+            value: ticketQuery,
+            placeholder: "Search ref, subject, or person",
+            label: "Search ref, subject, or person",
+          })}
+          ${protoCompanyFilterControl()}
+        </div>
+        ${protoCompanyFilterPills()}
+      `;
+  const narrowed = Boolean(picked.length);
   const body =
     tab === "meters"
       ? `
         ${note ? `<p class="astral-banner" role="status">${escapeHtml(note)}</p>` : ""}
         ${protoTable(
           ["Meter point", "Site", "Utility", "State", "Last actual"],
-          protoCompanyMeterTableRows(
-            meters.filter((meter) => !q || [meter.point, meter.site].some((text) => String(text).toLowerCase().includes(q)))
-          ),
+          protoCompanyMeterTableRows(meters.filter((meter) => protoCompanyMeterMatches(meter, q, picked))),
           {
             id: "company-meters",
-            empty: q ? "No meter points match." : "No meter points yet.",
+            empty: q || narrowed ? "No meter points match." : "No meter points yet.",
             rowAttr: (row) => row.attr,
           }
         )}
       `
       : protoTable(["Ref", "Subject", "Raised by", "Last reply", "State"], queries, {
           id: "company-queries",
-          empty: "No queries yet.",
+          empty: ticketQuery.trim() || narrowed ? "No queries match." : "No queries yet.",
           rowAttr: (row) => row.attr,
         });
   return `
@@ -19759,7 +19974,6 @@ function protoCompanyRecord(name) {
           </div>
           ${protoTabs(tabs, tab, "data-proto-company-tab", name)}
           ${tools}
-          ${partial}
         `,
         body
       )}
@@ -19926,7 +20140,7 @@ function protoMeterAddSubmit(form) {
   setProto({
     prototypeCompanyMeters: { ...protoCompanyMeterMap(), [name]: [...fresh, ...protoCompanyAddedMeters(name)] },
     prototypeCompanyRecordTab: "meters",
-    prototypeCompanyMeterQuery: "",
+    ...protoCompanyFindClear(),
     prototypeCompanyNote: note,
     ...protoMeterAddClear(),
   });
@@ -20353,6 +20567,7 @@ function protoFilterItemCount(attr, item) {
   if (attr === "data-proto-user-filter") {
     return item?.id ? protoUserPeople().filter((person) => person.role === item.id).length : null;
   }
+  if (attr === "data-proto-company-filter") return protoCompanyFilterCount(item?.id);
   if (attr === "data-proto-compare-filter") {
     return item?.id && PROTO_FILTER_COUNTED.has(item.id) ? protoComparePeerCount(item.id) : null;
   }
@@ -20563,6 +20778,7 @@ const PROTO_FILTER_MENU_IDS = {
   "data-proto-report-filter": "astral-report-filter-menu",
   "data-proto-alert-filter": "astral-alert-filter-menu",
   "data-proto-user-filter": "astral-user-filter-menu",
+  "data-proto-company-filter": "astral-company-filter-menu",
 };
 
 let protoFilterSectionOpen = "";
@@ -20707,6 +20923,7 @@ function protoFilterCountNoun(attr, count) {
   if (attr === "data-proto-download-filter") return one ? "file" : "files";
   if (attr === "data-proto-alert-filter") return one ? "flag" : "flags";
   if (attr === "data-proto-user-filter") return one ? "person" : "people";
+  if (attr === "data-proto-company-filter" && protoCompanyRecordTab() === "queries") return one ? "query" : "queries";
   if (attr === "data-proto-compare-filter") {
     const level = protoCompareLevel();
     if (level === "group") return one ? "group" : "groups";
@@ -38634,6 +38851,8 @@ function onPrototype(event) {
             ? { prototypeServiceQuery: "" }
             : name === "proto-company-meter-query"
             ? { prototypeCompanyMeterQuery: "" }
+            : name === "proto-company-ticket-query"
+            ? { prototypeCompanyTicketQuery: "" }
             : name === "proto-find-query"
             ? { prototypeFindQuery: "" }
             : name === "proto-inbox-query"
@@ -39657,7 +39876,7 @@ function onPrototype(event) {
   if (companyTab) {
     setProto({
       prototypeCompanyRecordTab: companyTab.dataset.protoCompanyTab,
-      prototypeCompanyMeterQuery: "",
+      prototypeCompanyFilterOpen: false,
       prototypeCompanyNote: "",
     });
     return;
@@ -41237,6 +41456,50 @@ function onPrototype(event) {
     );
     return;
   }
+  const companyFilterBtn = event.target.closest("[data-proto-company-filter], [data-proto-company-filter-all]");
+  if (companyFilterBtn) {
+    const groupAll = companyFilterBtn.dataset.protoCompanyFilterAll;
+    if (groupAll) {
+      protoToggleCompanyFilterGroup(groupAll);
+      return;
+    }
+    const act = companyFilterBtn.dataset.protoCompanyFilter;
+    const key = protoCompanyFilterKey();
+    if (act === "toggle") {
+      setProto({
+        prototypeCompanyFilterOpen: !store.prototypeCompanyFilterOpen,
+        prototypeExportOpen: false,
+        prototypeDateOpen: false,
+        prototypeSelectOpen: "",
+        prototypeAckOpen: "",
+        prototypeUserMenu: "",
+      });
+      protoRestoreFocus("#astral-fs [data-proto-company-filter='toggle']");
+      return;
+    }
+    if (act === "clear") {
+      setProto({ [key]: [], prototypeCompanyFilterOpen: false });
+      protoRestoreFocus("#astral-fs [data-proto-company-filter='toggle']");
+      return;
+    }
+    const fromPill = Boolean(companyFilterBtn.closest(".astral-filter-pill"));
+    const cur = protoCompanyFilterIds();
+    const next = fromPill
+      ? cur.filter((id) => id !== act)
+      : cur.includes(act)
+        ? cur.filter((id) => id !== act)
+        : [...cur, act];
+    setProto({
+      prototypeCompanyFilterOpen: fromPill ? Boolean(store.prototypeCompanyFilterOpen) : true,
+      [key]: protoCompanyFilterIds(next),
+    });
+    protoRestoreFocus(
+      fromPill
+        ? "#astral-fs [data-proto-company-filter='toggle']"
+        : `#astral-fs [data-proto-company-filter="${CSS.escape(act)}"]`
+    );
+    return;
+  }
   const downloadFilterBtn = event.target.closest("[data-proto-download-filter], [data-proto-download-filter-all]");
   if (downloadFilterBtn) {
     const groupAll = downloadFilterBtn.dataset.protoDownloadFilterAll;
@@ -41570,6 +41833,14 @@ function protoOutsideClosePatch(target) {
   ) {
     patch.prototypeUserRoleFilterOpen = false;
   }
+  if (
+    store.prototypeCompanyFilterOpen &&
+    !inside(".astral-people-tools .astral-filter") &&
+    !inside(".astral-pane-head > .astral-filter-pills") &&
+    !inside(".astral-filter-menu")
+  ) {
+    patch.prototypeCompanyFilterOpen = false;
+  }
   if (store.prototypeAckOpen && !inside(".astral-ack, .astral-ack-menu")) {
     patch.prototypeAckOpen = "";
   }
@@ -41673,7 +41944,7 @@ function onPrototypeInput(event) {
   }
   const companySearch = event.target.closest("input[name='proto-company-query']");
   const pageSearch = event.target.closest(
-    "input[name='proto-service-query'], input[name='proto-inbox-query'], input[name='proto-usage-query'], input[name='proto-find-query'], input[name='proto-company-meter-query']"
+    "input[name='proto-service-query'], input[name='proto-inbox-query'], input[name='proto-usage-query'], input[name='proto-find-query'], input[name='proto-company-meter-query'], input[name='proto-company-ticket-query']"
   );
   if (pageSearch) {
     const key =
@@ -41681,6 +41952,8 @@ function onPrototypeInput(event) {
         ? "prototypeFindQuery"
         : pageSearch.name === "proto-company-meter-query"
         ? "prototypeCompanyMeterQuery"
+        : pageSearch.name === "proto-company-ticket-query"
+        ? "prototypeCompanyTicketQuery"
         : pageSearch.name === "proto-service-query"
         ? "prototypeServiceQuery"
         : pageSearch.name === "proto-usage-query"
@@ -42738,6 +43011,11 @@ function onPrototypeKey(event) {
     }
     if (store.prototypeUserRoleFilterOpen) {
       setProto({ prototypeUserRoleFilterOpen: false });
+      return;
+    }
+    if (store.prototypeCompanyFilterOpen) {
+      setProto({ prototypeCompanyFilterOpen: false });
+      protoRestoreFocus("#astral-fs [data-proto-company-filter='toggle']");
       return;
     }
     if (store.prototypeRailOpen) {

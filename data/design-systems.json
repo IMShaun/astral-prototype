@@ -8788,15 +8788,47 @@
           "companies": [
             {
               "name": "Scottish Water",
-              "meters": 486
+              "meters": 486,
+              "sites": [
+                "Daldowie works",
+                "Nigg works",
+                "Glencorse works",
+                "Milngavie works",
+                "Kinneil Kerse works",
+                "Hatton works",
+                "Mugdock reservoir",
+                "Turriff works",
+                "Inverness depot",
+                "Stirling depot"
+              ]
             },
             {
               "name": "Tesco",
-              "meters": 734
+              "meters": 734,
+              "sites": [
+                "Manchester Cheetham Hill",
+                "Glasgow Silverburn",
+                "Southampton Portswood",
+                "Norwich Harford",
+                "Milton Keynes Kingston",
+                "Reading Napier Road",
+                "Nottingham Beeston",
+                "Exeter Vision Park",
+                "Doncaster distribution centre",
+                "Livingston distribution centre"
+              ]
             },
             {
               "name": "EDF",
-              "meters": 142
+              "meters": 142,
+              "sites": [
+                "Sizewell B",
+                "Hartlepool",
+                "Torness",
+                "Hinkley Point C",
+                "Crawley offices",
+                "London Grand Buildings"
+              ]
             }
           ],
           "meters": [
