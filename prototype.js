@@ -33487,7 +33487,7 @@ function protoCanPickTeamCompany() {
   return protoSeesCompanies() && protoTeamCompanyChoices().length > 1;
 }
 
-const PROTO_WALK_USERS = "companies-6";
+const PROTO_WALK_USERS = "companies-7";
 const PROTO_WALK_STUB_TEAMS = new Set(["test team", "energy reporting", "test"]);
 const PROTO_WALK_PEOPLE = [
   {
@@ -33823,6 +33823,56 @@ const PROTO_WALK_PEOPLE = [
     expiresOn: "2027-06-01",
     expiresFrom: "2026-05-01",
   },
+  {
+    id: "u-bg-nadia",
+    name: "Nadia Brooks",
+    email: "nadia.brooks@britishgas.co.uk",
+    company: "British Gas",
+    role: "admin",
+    lastActive: "40 mins ago",
+    expiresOn: "2027-12-01",
+    expiresFrom: "2026-04-01",
+  },
+  {
+    id: "u-bg-owen",
+    name: "Owen Price",
+    email: "owen.price@britishgas.co.uk",
+    company: "British Gas",
+    role: "manager",
+    lastActive: "Yesterday",
+    expiresOn: "2027-09-01",
+    expiresFrom: "2026-04-01",
+  },
+  {
+    id: "u-bg-hannah",
+    name: "Hannah Lowe",
+    email: "hannah.lowe@britishgas.co.uk",
+    company: "British Gas",
+    role: "contributor",
+    lastActive: "3 days ago",
+    expiresOn: "2027-07-01",
+    expiresFrom: "2026-04-01",
+  },
+  {
+    id: "u-bg-ravi",
+    name: "Ravi Mehta",
+    email: "ravi.mehta@britishgas.co.uk",
+    company: "British Gas",
+    role: "contributor",
+    lastActive: "2 weeks ago",
+    expiresOn: "2027-03-01",
+    expiresFrom: "2026-04-01",
+  },
+  {
+    id: "u-bg-ellen",
+    name: "Ellen Ford",
+    email: "ellen.ford@britishgas.co.uk",
+    company: "British Gas",
+    role: "viewer",
+    lastActive: "Invited",
+    expiresOn: "2026-12-01",
+    expiresFrom: "2026-06-01",
+  },
 ];
 const PROTO_WALK_TEAMS = [
   {
@@ -33924,9 +33974,11 @@ function protoReadTeams() {
 }
 
 function protoSeedWalkUsers() {
-  if (!store || store.prototypeWalkUsers === PROTO_WALK_USERS) return;
+  if (!store) return;
   const invited = protoInvitedUsers();
   const walkEmails = new Set(PROTO_WALK_PEOPLE.map((item) => item.email));
+  // The seed mark is shared in the board, but people are kept per browser, so a new visitor has the mark and no people.
+  if (store.prototypeWalkUsers === PROTO_WALK_USERS && invited.some((item) => walkEmails.has(item.email))) return;
   const extras = invited.filter((item) => !walkEmails.has(item.email));
   const extrasTeams = protoReadTeams().filter(
     (item) =>
