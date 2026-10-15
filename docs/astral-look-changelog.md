@@ -4,6 +4,24 @@ The newest version sits at the top. `tools/build-library.js` reads the first hea
 
 Versions: a new major (v4) when tokens, CSS, theme, components, icons or files change. A point release (v3.1) when only this changelog or ANSWERS change. The build fails if the payload changes and the version does not.
 
+## v4 — 2026-10-15
+
+The generated section below compares against v3 as published (`7dca9d5`).
+
+### Added
+
+- `--color-category-new-ink` (`#015f58`) for the import "New" tag text. 6.5:1 on `--color-category-new-fill`.
+- `.astral-row-link`, the row-header button for clickable table rows (ANSWERS 9). It shares its look with `.astral-meter-row-link`.
+
+### Changed
+
+- The import "New" tag text reads `--color-category-new-ink`. v3 used `--color-brand-primary`, which was 4.1:1 on the fill.
+- Usage tables: company rows, and people rows when you can manage people, are clickable through a `.astral-row-link` button in the row header. The rows no longer take `tabindex`. People rows are not links when you cannot manage people.
+
+### Removed
+
+- `.astral-usage .astral-table tbody tr.is-link:focus-visible`. Rows no longer take focus; the button has its own ring.
+
 ## v3 — 2026-10-15
 
 "v3" means this release. Older answers used "v3" for the pre-v2 zip of 23 Sep. That zip is still called pre-v2. The generated section below compares against v2 as published (`83d3062`).

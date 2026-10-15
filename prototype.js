@@ -19056,22 +19056,25 @@ function protoUsageTableRows(tab, people, q) {
   }
   if (tab === "people") {
     const state = protoUsageState();
+    // ANSWERS 9: a row is clickable only through a real button in its row header.
+    const canOpen = protoCanManagePeople();
     return people
       .filter((person) => !state || person.state === state)
       .filter((person) => protoUsageMatch(q, person.name, person.email, person.company))
       .sort((a, b) => b.signIns - a.signIns || (a.days ?? 1e6) - (b.days ?? 1e6))
-      .map((person) =>
-        protoUsageRow(
+      .map((person) => {
+        const who = `<span class="astral-usage-who"><span class="astral-person-avatar"><span class="astral-person-mark" aria-hidden="true">${escapeHtml(
+          protoUserInitials(person)
+        )}</span>${protoPresenceDot(person.state)}</span><span class="astral-usage-person"><span>${escapeHtml(
+          person.you ? `${person.name} (you)` : person.name
+        )}</span>${
+          person.email && person.email !== person.name
+            ? `<span class="astral-muted">${escapeHtml(person.email)}</span>`
+            : ""
+        }</span></span>`;
+        return protoUsageRow(
           [
-            `<span class="astral-usage-who"><span class="astral-person-avatar"><span class="astral-person-mark" aria-hidden="true">${escapeHtml(
-              protoUserInitials(person)
-            )}</span>${protoPresenceDot(person.state)}</span><span class="astral-usage-person"><span>${escapeHtml(
-              person.you ? `${person.name} (you)` : person.name
-            )}</span>${
-              person.email && person.email !== person.name
-                ? `<span class="astral-muted">${escapeHtml(person.email)}</span>`
-                : ""
-            }</span></span>`,
+            canOpen ? `<button type="button" class="astral-row-link">${who}</button>` : who,
             escapeHtml(person.company),
             escapeHtml(protoUserRoleName(person.role)),
             person.signIns.toLocaleString("en-GB"),
@@ -19084,9 +19087,9 @@ function protoUsageTableRows(tab, people, q) {
             "last-sign-in": person.days ?? 1e6,
             state: person.state,
           },
-          `class="is-link" data-proto-usage-person="${escapeHtml(person.id)}" tabindex="0"`
-        )
-      );
+          canOpen ? `class="is-link" data-proto-usage-person="${escapeHtml(person.id)}"` : ""
+        );
+      });
   }
   return protoUsageCompanies(people)
     .filter((row) => protoUsageMatch(q, row.name))
@@ -19095,7 +19098,7 @@ function protoUsageTableRows(tab, people, q) {
       const pct = protoUsageChangePct(row.signIns, row.prev);
       return protoUsageRow(
         [
-          escapeHtml(row.name),
+          `<button type="button" class="astral-row-link">${escapeHtml(row.name)}</button>`,
           escapeHtml(protoUsageTypeName(row.type)),
           none ? `<span class="astral-muted">No people yet</span>` : String(row.people),
           none ? "" : `${row.signedIn} of ${row.withAccess}`,
@@ -19110,7 +19113,7 @@ function protoUsageTableRows(tab, people, q) {
           change: Number.isFinite(pct) ? pct : 1e6,
           "last-sign-in": row.latest ? row.latest.days : 1e6,
         },
-        `class="is-link" data-proto-usage-company="${escapeHtml(row.name)}" tabindex="0"`
+        `class="is-link" data-proto-usage-company="${escapeHtml(row.name)}"`
       );
     });
 }
@@ -42092,12 +42095,6 @@ function onPrototypeKey(event) {
   if (breakdownHit && (event.key === "Enter" || event.key === " ")) {
     event.preventDefault();
     breakdownHit.click();
-    return;
-  }
-  const usageRow = event.target.closest("tr[data-proto-usage-company], tr[data-proto-usage-person]");
-  if (usageRow && usageRow === event.target && (event.key === "Enter" || event.key === " ")) {
-    event.preventDefault();
-    usageRow.click();
     return;
   }
   const homeLink = event.target.closest("[data-proto-home-go][role='link']");

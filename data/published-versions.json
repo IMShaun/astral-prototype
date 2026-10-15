@@ -1,6 +1,7 @@
 {
   "about": "The commit that published each version, where it is not simply the last commit of library-site/astral-lib.js under that version. tools/build-library.js diffs a new version against the commit listed for the version it replaces. v2 was rebuilt four times under the same label after the consumer vendored it, so the vendored v2 is pinned here.",
   "versions": {
-    "v2": "83d3062defb8a2390fc37be06c9c5eefe2eb3913"
+    "v2": "83d3062defb8a2390fc37be06c9c5eefe2eb3913",
+    "v3": "7dca9d57e9539fbffff3779e22c33b90d39e0e72"
   }
 }

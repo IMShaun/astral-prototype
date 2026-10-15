@@ -97,8 +97,9 @@
   --color-category-table-ink: #134e48;
   --color-category-image-fill: #fce7f6;
   --color-category-image-ink: #851651;
-  /* The import "New" tag. Same value as the info status fill, but not a status. */
+  /* The import "New" tag. Same fill as the info status, but not a status. The ink is 6.5:1 on the fill. */
   --color-category-new-fill: #ddf3f1;
+  --color-category-new-ink: #015f58;
   /* A drop zone waiting for a file. */
   --color-highlight-drop: #ddf3f1;
   --scrollbar-size: 12px;
@@ -6786,6 +6787,7 @@ button.astral-state {
 }
 
 /* The meter name opens the row, so it reads as the name, not a link. */
+.astral-row-link,
 .astral-meter-row-link {
   appearance: none;
   min-width: 0;
@@ -6799,6 +6801,7 @@ button.astral-state {
   cursor: pointer;
 }
 
+.astral-row-link:focus-visible,
 .astral-meter-row-link:focus-visible {
   outline: 2px solid var(--color-focus-contrast);
   outline-offset: 2px;
@@ -12973,7 +12976,7 @@ tr.is-off .astral-person-mark {
 
 .astral-import-tag.is-new {
   background: var(--color-category-new-fill);
-  color: var(--color-brand-primary);
+  color: var(--color-category-new-ink);
 }
 
 .astral-import-tag.is-same {
@@ -15187,11 +15190,6 @@ button.astral-state:focus-visible,
 .astral-usage .astral-table tbody tr:not(.is-link),
 .astral-usage .astral-table tbody tr:not(.is-link) th {
   cursor: default;
-}
-
-.astral-usage .astral-table tbody tr.is-link:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: -2px;
 }
 
 .astral-usage-note {

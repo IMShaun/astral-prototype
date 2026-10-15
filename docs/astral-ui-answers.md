@@ -26,6 +26,7 @@ Decisions for the team building Astral in React. Each one is closed unless it sa
 - Every control edge uses `--color-border-control`. Change the one token and every control follows. Nothing else hard-codes `#DFDFDF`.
 - Data marks use category pairs: `--color-category-{name}-fill` behind `--color-category-{name}-ink`. The names are threshold, missing-data, no-signal, neutral, data, dcda, billing, template, report, document, table and image. Every pair is at least 6.5:1, and seven reach AAA. The 28px and 18px mark sizes are plain values, not tokens. (New in v3)
 - `--color-status-info-subtle` is for status only. The import "New" tag uses `--color-category-new-fill` and drop zones use `--color-highlight-drop`. Same value today, separate jobs. (New in v3)
+- The "New" tag text is `--color-category-new-ink` (`#015f58`), 6.5:1 on its fill. v3 used `--color-brand-primary`, which is only 4.1:1 there. (New in v4)
 - `--layout-nav-height` is 60px. The nav uses it, and anything pinned under the nav offsets from it, like the export toast. (New in v3, MANIFEST 40)
 - Two shadows: `--shadow-float` for everything floating (menus, popovers, tips, the toast, the colour picker, the query pin) and `--shadow-modal`, one step up, for modals. There are no other levels. The rail and side panel cast the float shadow sideways (`8px 0 24px`) as a literal. (New in v3, MANIFEST 40)
 - `--astral-head-h` is declared in `:root` at 45px, the body row height. `protoSyncTableHeads` overrides it per table so headers match the rows beneath them. (Declared from v3. Before, only a 45px fallback held it up.)
@@ -86,6 +87,7 @@ Answered 28 Sep 2026. The prototype is the source of truth, so where the prototy
 - Headers stick only when the table fills the page (`.astral-stage-body > .astral-card:only-child .astral-table thead th`). The meters breakdown also sticks its first column. Other tables scroll with the page.
 - Numbers stay left-aligned. There is no numeric class. Only action columns align right, set by each table.
 - A clickable row needs a real button in its row-header cell (`<th scope="row">`). That button is the row's name, focus stop and action. Without it, the row is not clickable. (Changed in v3)
+- The row-header button is `.astral-row-link`: no button chrome, so it reads as the name, with the standard focus ring. The Usage tables use it. (New in v4)
 - `tr.is-link` is only the look: a pointer and hover on the whole row. A click anywhere on the row triggers the row-header button. It never makes the row focusable. No `tabindex` on the `tr`.
 - `tr.is-link.is-on` is the selected row (subtle fill). When it means "this one is open", put `aria-current="true"` on the row-header button. Do not use `aria-selected`. It is only valid in a grid or treegrid, and `.astral-table` is a plain table. When `is-on` mirrors a checkbox, as in the import rows, `aria-checked` on the checkbox is enough.
 - Downloads rows are not clickable. Their actions are the icon buttons in the last cell, so they do not take `tr.is-link`. A pointer on a row that does nothing would mislead. The Downloads hover comes from its own rule.
