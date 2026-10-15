@@ -19710,6 +19710,12 @@ function protoLineList(numbers) {
 function protoCompanyQueryRows(name, q = "", picked = []) {
   return protoInboxTickets()
     .filter((ticket) => ticket.company === name && protoCompanyTicketMatches(ticket, q, picked))
+    // Open queries come first, then the latest reply.
+    .sort(
+      (a, b) =>
+        Number(Boolean(a.resolved)) - Number(Boolean(b.resolved)) ||
+        (Date.parse(b.lastAt) || 0) - (Date.parse(a.lastAt) || 0)
+    )
     .map((ticket) =>
       protoServiceRow(
         [
