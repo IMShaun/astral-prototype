@@ -56,6 +56,7 @@ const els = {
   researchStrategy: document.getElementById("research-strategy"),
   researchAnalytics: document.getElementById("research-analytics"),
   researchReporting: document.getElementById("research-reporting"),
+  researchDocuments: document.getElementById("research-documents"),
   analyticsCount: document.getElementById("analytics-count"),
   analyticsKeis: document.getElementById("analytics-keis"),
   analyticsChart: document.getElementById("analytics-chart"),
@@ -217,6 +218,11 @@ const RESEARCH_TABS = [
     id: "reporting",
     name: "Reporting",
     lead: "Reports written up from the research. Open one to read it here.",
+  },
+  {
+    id: "documents",
+    name: "Documents",
+    lead: "Every PDF made for the research, in one place. Plans, scripts, one-pagers, reports, and templates. Project documents also stay on their project. Pick a card to filter, pick it again for everything.",
   },
 ];
 
@@ -478,6 +484,7 @@ function researchBoard() {
   if (!Array.isArray(current.research.plans)) current.research.plans = [];
   if (!Array.isArray(current.research.reports)) current.research.reports = [];
   if (!Array.isArray(current.research.moves)) current.research.moves = [];
+  if (!Array.isArray(current.research.documents)) current.research.documents = [];
   return current.research;
 }
 
@@ -4046,6 +4053,10 @@ function researchOpenItem() {
     const item = (pack.moves || []).find((entry) => entry.id === id);
     return item ? { kind, item } : null;
   }
+  if (kind === "file") {
+    const item = researchDocuments().find((entry) => entry.key === id);
+    return item ? { kind, item } : null;
+  }
   // A project's document opens as "doc:<project id>/<document id>".
   if (kind === "doc") {
     const [planId, docId] = String(id || "").split("/");
@@ -4061,6 +4072,11 @@ function researchKindTag(item) {
   return deskTag(item.kind, "draft");
 }
 
+function pageCount(n) {
+  if (!n) return "";
+  return Number(n) === 1 ? "1 page" : `${n} pages`;
+}
+
 function researchStudyMeta(item) {
   const count = studyInsights(item).length;
   const docs = (item.documents || []).length;
@@ -4068,7 +4084,7 @@ function researchStudyMeta(item) {
     researchDate(item.date),
     docs ? (docs === 1 ? "1 document" : `${docs} documents`) : "",
     count ? (count === 1 ? "1 insight" : `${count} insights`) : "",
-    item.pages ? `${item.pages} pages` : "",
+    pageCount(item.pages),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -4160,7 +4176,7 @@ function researchStudyPage(item) {
   const insights = studyInsights(item);
   const report = (researchBoard().reports || []).find((entry) => entry.id === item.report);
   const notes = (item.notes || []).map((line) => `<li>${escapeHtml(line)}</li>`).join("");
-  const format = [item.pages ? `${item.pages} pages` : "", item.format || ""].filter(Boolean).join(" · ");
+  const format = [pageCount(item.pages), item.format || ""].filter(Boolean).join(" · ");
   return `
     ${deskDetailHead({
       back: "research-back",
@@ -4216,7 +4232,7 @@ function researchDocumentsSection(plan) {
         deskRow({
           open: researchDocumentOpen(plan, doc),
           title: `${doc.n}. ${doc.title || ""}`,
-          cells: [researchStudyTag(doc), escapeHtml(doc.pages ? `${doc.pages} pages` : "")],
+          cells: [researchStudyTag(doc), escapeHtml(pageCount(doc.pages))],
         })
       )
     ),
@@ -4235,7 +4251,7 @@ function researchDocumentPage(plan, step) {
           `${label}: ${other.n}. ${other.title}`
         )}</button>`
       : "";
-  const format = [step.pages ? `${step.pages} pages` : "", step.format || ""].filter(Boolean).join(" · ");
+  const format = [pageCount(step.pages), step.format || ""].filter(Boolean).join(" · ");
   return `
     ${deskDetailHead({
       back: "research-back",
@@ -4352,7 +4368,7 @@ function researchReportPage(item) {
   const pdf = /\.pdf$/i.test(String(item.file || ""));
   const text = pdf ? "" : researchReportText(item.file);
   const notes = (item.notes || []).map((line) => `<li>${escapeHtml(line)}</li>`).join("");
-  const format = [item.pages ? `${item.pages} pages` : "", item.format || ""].filter(Boolean).join(" · ");
+  const format = [pageCount(item.pages), item.format || ""].filter(Boolean).join(" · ");
   let body = `<p class="astral-muted">Loading the report.</p>`;
   if (text === false) body = emptyCard("Could not load this report.");
   if (text) body = `<div class="desk-prose">${researchMarkdown(text)}</div>`;
@@ -4384,6 +4400,136 @@ function researchReportPage(item) {
     )}
     ${pdf ? researchFile(item) : deskSection("Report", body)}
   `;
+}
+
+const RESEARCH_DOC_SOURCES = [
+  { id: "project", name: "Projects" },
+  { id: "report", name: "Reports" },
+  { id: "template", name: "Templates" },
+  { id: "own", name: "Not in a project" },
+];
+
+const isPdf = (file) => /\.pdf$/i.test(String(file || ""));
+
+// Every PDF on the desk in one list: project documents, reports, templates, and research.documents.
+function researchDocuments() {
+  const pack = researchBoard();
+  const plans = pack.plans || [];
+  const list = [];
+  plans.forEach((plan) => {
+    (plan.documents || []).forEach((doc) => {
+      if (!isPdf(doc.file)) return;
+      list.push({ ...doc, key: `p/${plan.id}/${doc.id}`, source: "project", plan, date: doc.date || plan.date });
+    });
+    if (isPdf(plan.file)) {
+      list.push({ ...plan, key: `p/${plan.id}`, source: plan.template ? "template" : "project", plan: plan.template ? null : plan });
+    }
+  });
+  (pack.reports || []).forEach((report) => {
+    if (!isPdf(report.file)) return;
+    const plan = plans.find((entry) => entry.id === report.study) || null;
+    list.push({ ...report, key: `r/${report.id}`, source: "report", plan, report });
+  });
+  (pack.documents || []).forEach((doc) => {
+    if (!isPdf(doc.file)) return;
+    const plan = plans.find((entry) => entry.id === doc.study) || null;
+    const report = (pack.reports || []).find((entry) => entry.id === doc.report) || null;
+    list.push({ ...doc, key: `d/${doc.id}`, source: plan ? "project" : "own", plan, report });
+  });
+  return list.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+}
+
+function researchDocSourceName(id) {
+  return RESEARCH_DOC_SOURCES.find((item) => item.id === id)?.name || "";
+}
+
+function activeResearchDocSource() {
+  const id = store?.researchDocSource;
+  return RESEARCH_DOC_SOURCES.some((item) => item.id === id) ? id : "all";
+}
+
+function researchDocFrom(item) {
+  if (item.plan) return item.plan.title || "";
+  if (item.source === "own") return item.report?.title || "Not in a project";
+  return "";
+}
+
+function researchDocMeta(item) {
+  return [researchDocFrom(item), researchDate(item.date), pageCount(item.pages)]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function researchDocTags(item) {
+  const source = item.source === "own" ? deskTag("Not in a project", "waiting") : deskTag(researchDocSourceName(item.source).replace(/s$/, ""), "draft");
+  return `<span class="desk-card-tags">${source}${item.status ? researchStudyTag(item) : ""}</span>`;
+}
+
+function researchDocOpen(item) {
+  return { "data-action": "research-open", "data-id": `file:${item.key}` };
+}
+
+function researchDocCard(item) {
+  const meta = researchDocMeta(item);
+  return deskCard({
+    open: researchDocOpen(item),
+    title: item.title || "",
+    tags: researchDocTags(item),
+    body: escapeHtml(cardLine(item, item.summary)),
+    foot: meta ? `<span class="astral-muted">${escapeHtml(meta)}</span>` : "",
+  });
+}
+
+function researchDocRow(item) {
+  return deskRow({
+    open: researchDocOpen(item),
+    title: item.title || "",
+    cells: [
+      escapeHtml(researchDocFrom(item)),
+      escapeHtml(item.kind || researchDocSourceName(item.source).replace(/s$/, "")),
+      escapeHtml(researchDate(item.date)),
+      escapeHtml(item.pages ? String(item.pages) : ""),
+    ],
+  });
+}
+
+function researchDocPage(item) {
+  const format = [pageCount(item.pages), item.format || ""].filter(Boolean).join(" · ");
+  const links = [
+    item.plan
+      ? `<button type="button" class="astral-btn" data-action="research-open" data-id="plan:${escapeHtml(item.plan.id)}">Open the project</button>`
+      : "",
+    item.report && item.source !== "report"
+      ? `<button type="button" class="astral-btn is-secondary" data-action="research-open" data-id="report:${escapeHtml(item.report.id)}">Read the report</button>`
+      : "",
+  ].join("");
+  return `
+    ${deskDetailHead({
+      back: "research-back",
+      where: "Documents",
+      kicker: researchDocTags(item),
+      title: item.title || "",
+      lead: item.summary || "",
+    })}
+    ${deskSection(
+      "About",
+      `<dl class="fact-grid">
+        ${factRow("From", researchDocFrom(item))}
+        ${factRow("When", researchDate(item.date))}
+        ${factRow("Format", format)}
+      </dl>
+      ${links ? `<div class="astral-actions">${links}</div>` : ""}
+      <p class="token-path">${escapeHtml(String(item.file).replace(/^\//, ""))}</p>`
+    )}
+    ${researchFile(item)}
+  `;
+}
+
+function researchTabFor(id) {
+  if (id.startsWith("report:")) return "reporting";
+  if (id.startsWith("move:")) return "strategy";
+  if (id.startsWith("file:")) return "documents";
+  return "planning";
 }
 
 // Only rewrite a host when its markup changes, so an open PDF keeps its place.
@@ -4655,7 +4801,8 @@ function renderResearch() {
     Boolean(open) &&
     (((open.kind === "plan" || open.kind === "doc") && tab === "planning") ||
       (open.kind === "report" && tab === "reporting") ||
-      (open.kind === "move" && tab === "strategy"));
+      (open.kind === "move" && tab === "strategy") ||
+      (open.kind === "file" && tab === "documents"));
   if (!detail) store.researchOpen = "";
   setPanelDetail("research", detail);
 
@@ -4668,6 +4815,7 @@ function renderResearch() {
       insights: insights.length,
       planning: plans.length,
       reporting: reports.length,
+      documents: researchDocuments().length,
       strategy: researchMoves().filter((move) => moveState(move) !== "done").length,
       analytics: teamKeis().length,
     };
@@ -4716,6 +4864,17 @@ function renderResearch() {
         activeResearchActivity(),
         "data-research-activity",
         "Research activity"
+      );
+    } else if (tab === "documents") {
+      const docs = researchDocuments();
+      els.researchFilters.innerHTML = deskStats(
+        RESEARCH_DOC_SOURCES.map((item) => {
+          const count = docs.filter((entry) => entry.source === item.id).length;
+          return { id: item.id, name: item.name, count, disabled: !count };
+        }),
+        activeResearchDocSource(),
+        "data-research-doc-source",
+        "Where the document sits"
       );
     } else if (tab === "strategy") {
       const moves = researchMoves();
@@ -4815,6 +4974,33 @@ function renderResearch() {
     setResearchHost(els.researchReporting, html);
   }
 
+  if (els.researchDocuments) {
+    els.researchDocuments.hidden = tab !== "documents";
+    let html = "";
+    if (tab === "documents" && detail) {
+      html = researchDocPage(open.item);
+    } else if (tab === "documents") {
+      const docs = researchDocuments();
+      const source = activeResearchDocSource();
+      const matched = docs.filter(
+        (item) =>
+          (source === "all" || item.source === source) &&
+          deskMatch("research-docs", item.title, item.kind, item.summary, researchDocFrom(item))
+      );
+      html = docs.length
+        ? deskSheet("research-docs", {
+            placeholder: "Search documents",
+            label: "Search documents",
+            cards: matched.map(researchDocCard),
+            cols: ["Document", "From", "Kind", "When", "Pages"],
+            rows: matched.map(researchDocRow),
+            empty: "Nothing matches that search.",
+          })
+        : emptyCard("No documents yet.");
+    }
+    setResearchHost(els.researchDocuments, html);
+  }
+
   if (els.researchAnalytics) els.researchAnalytics.hidden = tab !== "analytics";
 
   if (els.researchStrategy) {
@@ -4883,7 +5069,7 @@ function onResearchPage(event) {
   const opener = event.target.closest("[data-action='research-open']");
   if (!opener) return;
   const id = String(opener.dataset.id || "");
-  store.researchTab = id.startsWith("report:") ? "reporting" : id.startsWith("move:") ? "strategy" : "planning";
+  store.researchTab = researchTabFor(id);
   store.researchOpen = id;
   render();
   persistChrome();
@@ -5244,6 +5430,7 @@ const CHROME_FIELDS = [
   "researchOpen",
   "researchActivity",
   "researchMoveActivity",
+  "researchDocSource",
   "deskViews",
   "deskQueries",
   "patternStatus",
@@ -5628,6 +5815,7 @@ function applyChrome() {
   store.researchTab = activeResearchTab();
   store.researchActivity = activeResearchActivity();
   store.researchMoveActivity = activeMoveActivity();
+  store.researchDocSource = activeResearchDocSource();
   store.researchOpen = String(store.researchOpen || "");
   store.activePrototypeView = protoViewId(store.activePrototypeView);
   // A refresh keeps the place. Opening Portfolio from the rail still lands on All.
@@ -6044,7 +6232,7 @@ function onGroupClick(event) {
     store.activeSection = "research";
     store.activeGroup = "";
     store.groupReturn = "";
-    store.researchTab = id.startsWith("report:") ? "reporting" : id.startsWith("move:") ? "strategy" : "planning";
+    store.researchTab = researchTabFor(id);
     store.researchOpen = id;
     render();
     persistChrome();
@@ -6277,6 +6465,14 @@ function onResearchClick(event) {
   const view = event.target.closest("[data-research-view]");
   if (view) {
     store.researchView = view.dataset.researchView === "list" ? "list" : "cards";
+    render();
+    persistChrome();
+    return;
+  }
+  const docSource = event.target.closest("[data-research-doc-source]");
+  if (docSource) {
+    const id = docSource.dataset.researchDocSource;
+    store.researchDocSource = id !== activeResearchDocSource() ? id : "all";
     render();
     persistChrome();
     return;
@@ -6724,6 +6920,7 @@ if (els.researchTabs) els.researchTabs.addEventListener("click", onResearchTab);
 if (els.researchPlanning) els.researchPlanning.addEventListener("click", onResearchPage);
 if (els.researchStrategy) els.researchStrategy.addEventListener("click", onResearchPage);
 if (els.researchReporting) els.researchReporting.addEventListener("click", onResearchPage);
+if (els.researchDocuments) els.researchDocuments.addEventListener("click", onResearchPage);
 if (els.analyticsKeis) els.analyticsKeis.addEventListener("click", onAnalyticsClick);
 if (els.patternsList) els.patternsList.addEventListener("click", onPatternNav);
 if (els.skillsList) els.skillsList.addEventListener("click", onSkillNav);

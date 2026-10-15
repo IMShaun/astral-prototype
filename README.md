@@ -27,7 +27,7 @@ The Work Desk is hidden from people walking the prototype. To open it:
 1. Open the prototype. If the preview bar is shut, press Expand.
 2. Hold Shift and click the Library tab three times, quickly.
 
-The page reloads as the Work Desk: Today, User groups, Research (with Strategy, Projects, Insights, Analytics, and Reporting as tabs), UI library, Language, Patterns, Prototype, Branding, and Skills. Do the same again from the prototype preview bar to go back. It only lasts for that browser tab.
+The page reloads as the Work Desk: Today, User groups, Research (with Strategy, Projects, Insights, Analytics, Reporting, and Documents as tabs), UI library, Language, Patterns, Prototype, Branding, and Skills. Do the same again from the prototype preview bar to go back. It only lasts for that browser tab.
 
 Desk content lives in `data/board.json`, `data/skills.json`, `data/resources.json`, `data/roadmap.json`, `docs/research`, `docs/ux`, and `assets/brand`. Transcripts wait in `inbox/` and move to `archive/` once tidied. The server never serves `inbox/`, `archive/`, or `.cursor/`.
 

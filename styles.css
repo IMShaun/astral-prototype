@@ -17021,7 +17021,8 @@ body:not(.is-share) .desk-shell {
 /* Research tab hosts stack their blocks like the page does. */
 #research-planning:not([hidden]),
 #research-strategy:not([hidden]),
-#research-reporting:not([hidden]) {
+#research-reporting:not([hidden]),
+#research-documents:not([hidden]) {
   display: grid;
   gap: var(--space-stack-default);
 }
