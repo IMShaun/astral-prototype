@@ -19945,11 +19945,21 @@ function protoCompanies() {
   const companies = protoTeamCompanyNames().filter(
     (name) => !q || name.toLowerCase().includes(q)
   );
+  const listed = protoServiceCompanies();
+  const tickets = protoInboxTickets();
   const rows = companies.map((name) => {
     const n = protoUserPeople().filter((person) => person.company === name).length;
+    const meters =
+      (listed.find((row) => row.name === name)?.meters || 0) + protoCompanyAddedMeters(name).length;
+    const open = tickets.filter((ticket) => ticket.company === name && !ticket.resolved).length;
     return protoServiceRow(
-      [`<button type="button" class="astral-row-link">${escapeHtml(name)}</button>`, `${n} ${n === 1 ? "person" : "people"}`],
-      { name: name.toLowerCase(), people: n },
+      [
+        `<button type="button" class="astral-row-link">${escapeHtml(name)}</button>`,
+        meters ? meters.toLocaleString("en-GB") : `<span class="astral-muted">No meters yet</span>`,
+        String(open),
+        `${n} ${n === 1 ? "person" : "people"}`,
+      ],
+      { name: name.toLowerCase(), meters, "open-queries": open, people: n },
       `class="is-link" data-proto-company-record="${escapeHtml(name)}"`
     );
   });
@@ -19971,7 +19981,7 @@ function protoCompanies() {
             }"`)}
           </div>
         `,
-        protoTable(["Name", "People"], rows, {
+        protoTable(["Name", "Meters", "Open queries", "People"], rows, {
           id: "companies",
           empty: "No companies match.",
           rowAttr: (row) => row.attr,
