@@ -17,7 +17,6 @@
     "Roobert-Medium.otf": "src/theme/fonts/Roobert-Medium.otf",
     "Roobert-SemiBold.otf": "src/theme/fonts/Roobert-SemiBold.otf",
     "imserv-logomark.svg": "src/assets/imserv-logomark.svg",
-    "auth-texture.png": "src/assets/auth-texture.png",
   };
 
   function crc32(bytes) {
@@ -226,7 +225,6 @@
         "src/prototype is a React start for the live screens. Flow is Main product, Onboarding, Sign-up, Sign in, Password recovery, and Invite link. Pass flow on App. Do not store a password or a code.",
         "",
         "- src/assets/imserv-logomark.svg is the default organisation mark.",
-        "- src/assets/auth-texture.png is the grid overlay on Infra Grey for sign in, sign-up, and password recovery.",
         ""
       );
     }
@@ -707,7 +705,7 @@
   }
 
   function isPrototypeAsset(name) {
-    return name === "imserv-logomark.svg" || name === "auth-texture.png";
+    return name === "imserv-logomark.svg";
   }
 
   async function packFiles(data, parts) {

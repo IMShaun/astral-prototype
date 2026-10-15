@@ -72,6 +72,35 @@
   --color-icon-danger: #b42318;
   --color-icon-success: #067647;
   --color-icon-warning: #b54708;
+  /* Category colours: a type's light fill and dark ink, for the type badge and type tag. Not status colours. Every pair is at least 6.5:1. */
+  --color-category-threshold-fill: #fef0c7;
+  --color-category-threshold-ink: #93370d;
+  --color-category-missing-data-fill: #e0eaff;
+  --color-category-missing-data-ink: #2d3282;
+  --color-category-no-signal-fill: #ffe4e8;
+  --color-category-no-signal-ink: #a11043;
+  --color-category-neutral-fill: var(--color-background-subtle);
+  --color-category-neutral-ink: #525252;
+  --color-category-data-fill: #d1e9ff;
+  --color-category-data-ink: #194185;
+  --color-category-dcda-fill: #ece9fe;
+  --color-category-dcda-ink: #491c96;
+  --color-category-billing-fill: #dcfae6;
+  --color-category-billing-ink: #085d3a;
+  --color-category-template-fill: #eaecf5;
+  --color-category-template-ink: #363f72;
+  --color-category-report-fill: #cff9fe;
+  --color-category-report-ink: #155b75;
+  --color-category-document-fill: #fdead7;
+  --color-category-document-ink: #932f19;
+  --color-category-table-fill: #ccfbef;
+  --color-category-table-ink: #134e48;
+  --color-category-image-fill: #fce7f6;
+  --color-category-image-ink: #851651;
+  /* The import "New" tag. Same value as the info status fill, but not a status. */
+  --color-category-new-fill: #ddf3f1;
+  /* A drop zone waiting for a file. */
+  --color-highlight-drop: #ddf3f1;
   --scrollbar-size: 12px;
   --radius-xs: 2px;
   --radius-sm: 4px;
@@ -105,6 +134,14 @@
   --control-height: 48px;
   --control-height-sm: 36px;
   --control-height-field: 88px;
+  /* Anything pinned under the top nav offsets from this. */
+  --layout-nav-height: 60px;
+  /* Table column headers; protoSyncTableHeads overrides it per table to match the body rows. */
+  --astral-head-h: 45px;
+  /* Everything that floats over the page: menus, popovers, tips, the toast, the colour picker. */
+  --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.12);
+  /* One step up, for modals. */
+  --shadow-modal: 0 16px 48px rgba(0, 2, 11, 0.16);
   --motion-control: 100ms;
   --motion-panel: 200ms;
   --motion-slide: 360ms;
@@ -2097,7 +2134,7 @@ button.chip {
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-field);
   font-size: 0.875rem;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 8%);
+  box-shadow: var(--shadow-float);
 }
 
 .ds-banner {
@@ -3375,7 +3412,7 @@ body.is-proto-fs .stage {
   align-items: center;
   gap: 16px;
   width: 100%;
-  height: 60px;
+  height: var(--layout-nav-height);
   margin: 0;
   padding: 0 12px 0 30px;
   border: 0;
@@ -4001,7 +4038,7 @@ button.astral-avatar {
   border-radius: 16px;
   background: var(--color-nav);
   color: var(--color-on-nav);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-float);
 }
 
 .astral-account-menu[hidden] {
@@ -4085,7 +4122,7 @@ button.astral-avatar {
   border-radius: 16px;
   background: #fff;
   color: #000;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-float);
 }
 
 .astral-notice-menu[hidden] {
@@ -4540,7 +4577,7 @@ button.astral-avatar {
   border-radius: 12px;
   background: #fff;
   color: #000;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-float);
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
@@ -7430,7 +7467,6 @@ button.astral-value-pill.astral-tip-host {
 }
 
 .astral-date-menu,
-.astral-export-menu,
 .astral-filter-menu,
 .astral-ack-menu,
 .astral-select-menu,
@@ -7447,7 +7483,7 @@ button.astral-value-pill.astral-tip-host {
   border: 1px solid var(--color-border-strong);
   border-radius: 16px;
   background: #fff;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-float);
 }
 
 .astral-select-menu {
@@ -7505,8 +7541,11 @@ button.astral-value-pill.astral-tip-host {
   flex: none;
 }
 
+/* As wide as its longest option, never narrower than the button and never wider than 20rem or the screen. Long options wrap. */
 .astral-date-menu {
-  min-width: max-content;
+  width: max-content;
+  min-width: 100%;
+  max-width: min(20rem, calc(100vw - 32px));
 }
 
 .astral-day-cal {
@@ -7532,10 +7571,6 @@ button.astral-value-pill.astral-tip-host {
 
 .astral-report-add .astral-select {
   min-width: 16rem;
-}
-
-.astral-export-menu {
-  min-width: 8rem;
 }
 
 .astral-filter-menu {
@@ -7735,7 +7770,6 @@ button.astral-value-pill.astral-tip-host {
 }
 
 .astral-date-menu[hidden],
-.astral-export-menu[hidden],
 .astral-filter-menu[hidden],
 .astral-ack-menu[hidden],
 .astral-select-menu[hidden],
@@ -7777,7 +7811,6 @@ button.astral-value-pill.astral-tip-host {
 
 .astral-select-menu.is-enter,
 .astral-date-menu.is-enter,
-.astral-export-menu.is-enter,
 .astral-filter-menu.is-enter,
 .astral-ack-menu.is-enter,
 .astral-account-menu.is-enter,
@@ -7807,7 +7840,6 @@ button.astral-value-pill.astral-tip-host {
 @media (prefers-reduced-motion: reduce) {
   .astral-select-menu.is-enter,
   .astral-date-menu.is-enter,
-  .astral-export-menu.is-enter,
   .astral-filter-menu.is-enter,
   .astral-ack-menu.is-enter,
   .astral-account-menu.is-enter,
@@ -7822,7 +7854,6 @@ button.astral-value-pill.astral-tip-host {
 }
 
 .astral-date-menu button,
-.astral-export-menu button,
 .astral-filter-menu button,
 .astral-ack-menu button,
 .astral-select-options button {
@@ -7903,7 +7934,7 @@ button.astral-value-pill.astral-tip-host {
   border: 1px solid var(--color-border-strong);
   border-radius: 16px;
   background: #fff;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-float);
   box-sizing: border-box;
 }
 
@@ -8036,7 +8067,6 @@ button.astral-value-pill.astral-tip-host {
 }
 
 .astral-date-menu button:hover,
-.astral-export-menu button:hover,
 .astral-filter-menu button:hover,
 .astral-ack-menu button:hover,
 .astral-select-options button:hover {
@@ -8814,7 +8844,7 @@ button.astral-value-pill.astral-tip-host {
   border: 1px solid var(--color-border-strong);
   border-radius: 16px;
   background: #fff;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-float);
   pointer-events: auto;
   cursor: grab;
   touch-action: none;
@@ -9765,6 +9795,10 @@ button.astral-value-pill.astral-tip-host {
   max-width: 16rem;
 }
 
+.astral-date-menu button {
+  white-space: normal;
+}
+
 .astral-date-menu button.is-disabled,
 .astral-date-menu button.is-disabled:hover {
   background: none;
@@ -10035,7 +10069,7 @@ button.astral-value-pill.astral-tip-host {
   border-radius: 12px;
   background: #fff;
   color: #000;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-float);
   pointer-events: none;
 }
 
@@ -10465,7 +10499,7 @@ button.astral-value-pill.astral-tip-host {
 }
 
 .astral-breakdown-cols.is-meters thead th.astral-breakdown-meter {
-  height: var(--astral-head-h, 45px);
+  height: var(--astral-head-h);
   box-sizing: border-box;
   padding: 0 8px;
   vertical-align: middle;
@@ -11921,7 +11955,7 @@ tr.is-off .astral-person-mark {
   padding: 24px;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-card);
-  background: var(--color-background-primary, #fff);
+  background: var(--color-background-surface);
 }
 
 .astral-accordion-note {
@@ -12938,7 +12972,7 @@ tr.is-off .astral-person-mark {
 }
 
 .astral-import-tag.is-new {
-  background: var(--color-status-info-subtle);
+  background: var(--color-category-new-fill);
   color: var(--color-brand-primary);
 }
 
@@ -13197,14 +13231,14 @@ tr.is-off .astral-person-mark {
   padding: var(--space-32) var(--space-24);
   border: 2px dashed var(--color-border-strong);
   border-radius: var(--radius-card);
-  background: var(--color-status-info-subtle);
+  background: var(--color-highlight-drop);
   text-align: center;
   transition: background-color var(--motion-panel) ease, border-color var(--motion-panel) ease;
 }
 
 .astral-site-add-drop.is-over {
   border-color: var(--color-brand-primary);
-  background: color-mix(in srgb, var(--color-status-info-subtle) 80%, var(--color-brand-primary));
+  background: color-mix(in srgb, var(--color-highlight-drop) 80%, var(--color-brand-primary));
 }
 
 .astral-site-add-drop p {
@@ -14277,7 +14311,7 @@ tr.is-off .astral-person-mark {
   border: 1px solid var(--color-border-strong);
   border-radius: 16px;
   background: #fff;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-float);
   overflow: hidden;
 }
 
@@ -14415,7 +14449,7 @@ tr.is-off .astral-person-mark {
 
 .astral-export-toast {
   position: absolute;
-  top: calc(16px + 60px + 12px + 8px);
+  top: calc(16px + var(--layout-nav-height) + 12px + 8px);
   left: 50%;
   z-index: 30;
   display: flex;
@@ -14424,7 +14458,7 @@ tr.is-off .astral-person-mark {
   max-width: min(36rem, calc(100% - 48px));
   border: 1px solid var(--color-border-strong);
   background: var(--color-background-surface);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-float);
 }
 
 .astral-export-toast .astral-icon-tip {
@@ -14580,32 +14614,32 @@ tr.is-off .astral-person-mark {
   height: 18px;
 }
 
-.astral-type-badge[data-mark="threshold"], .astral-tag[data-mark="threshold"] { --mark-bg: #fef0c7; --mark-ink: #93370d; }
-.astral-type-badge[data-mark="missing-data"], .astral-tag[data-mark="missing-data"] { --mark-bg: #e0eaff; --mark-ink: #2d3282; }
-.astral-type-badge[data-mark="no-signal"], .astral-tag[data-mark="no-signal"] { --mark-bg: #ffe4e8; --mark-ink: #a11043; }
+.astral-type-badge[data-mark="threshold"], .astral-tag[data-mark="threshold"] { --mark-bg: var(--color-category-threshold-fill); --mark-ink: var(--color-category-threshold-ink); }
+.astral-type-badge[data-mark="missing-data"], .astral-tag[data-mark="missing-data"] { --mark-bg: var(--color-category-missing-data-fill); --mark-ink: var(--color-category-missing-data-ink); }
+.astral-type-badge[data-mark="no-signal"], .astral-tag[data-mark="no-signal"] { --mark-bg: var(--color-category-no-signal-fill); --mark-ink: var(--color-category-no-signal-ink); }
 /* Groups that mix types, such as the "all" cards and Resolved as, are neutral. A colour would suggest one type. */
 .astral-type-badge:is([data-mark="all"], [data-mark="open"], [data-mark="resolved"], [data-mark="fixed"], [data-mark="expected"], [data-mark="duplicate"]),
-.astral-tag:is([data-mark="fixed"], [data-mark="expected"], [data-mark="duplicate"]) { --mark-bg: var(--color-background-subtle); --mark-ink: #525252; }
+.astral-tag:is([data-mark="fixed"], [data-mark="expected"], [data-mark="duplicate"]) { --mark-bg: var(--color-category-neutral-fill); --mark-ink: var(--color-category-neutral-ink); }
 /* Report types. */
-.astral-type-badge[data-mark="extract"], .astral-tag[data-mark="extract"] { --mark-bg: #d1e9ff; --mark-ink: #194185; }
-.astral-type-badge[data-mark="dcda"], .astral-tag[data-mark="dcda"] { --mark-bg: #ece9fe; --mark-ink: #491c96; }
-.astral-type-badge[data-mark="billing"], .astral-tag[data-mark="billing"] { --mark-bg: #dcfae6; --mark-ink: #085d3a; }
-.astral-type-badge[data-mark="template"], .astral-tag[data-mark="template"] { --mark-bg: #eaecf5; --mark-ink: #363f72; }
+.astral-type-badge[data-mark="extract"], .astral-tag[data-mark="extract"] { --mark-bg: var(--color-category-data-fill); --mark-ink: var(--color-category-data-ink); }
+.astral-type-badge[data-mark="dcda"], .astral-tag[data-mark="dcda"] { --mark-bg: var(--color-category-dcda-fill); --mark-ink: var(--color-category-dcda-ink); }
+.astral-type-badge[data-mark="billing"], .astral-tag[data-mark="billing"] { --mark-bg: var(--color-category-billing-fill); --mark-ink: var(--color-category-billing-ink); }
+.astral-type-badge[data-mark="template"], .astral-tag[data-mark="template"] { --mark-bg: var(--color-category-template-fill); --mark-ink: var(--color-category-template-ink); }
 /* Download types. A data export is data, like a data extract, so it shares the blue. */
-.astral-type-badge[data-mark="download-report"], .astral-tag[data-mark="download-report"] { --mark-bg: #cff9fe; --mark-ink: #155b75; }
-.astral-type-badge[data-mark="download-export"], .astral-tag[data-mark="download-export"] { --mark-bg: #d1e9ff; --mark-ink: #194185; }
-.astral-type-badge[data-mark="download-document"], .astral-tag[data-mark="download-document"] { --mark-bg: #fdead7; --mark-ink: #932f19; }
+.astral-type-badge[data-mark="download-report"], .astral-tag[data-mark="download-report"] { --mark-bg: var(--color-category-report-fill); --mark-ink: var(--color-category-report-ink); }
+.astral-type-badge[data-mark="download-export"], .astral-tag[data-mark="download-export"] { --mark-bg: var(--color-category-data-fill); --mark-ink: var(--color-category-data-ink); }
+.astral-type-badge[data-mark="download-document"], .astral-tag[data-mark="download-document"] { --mark-bg: var(--color-category-document-fill); --mark-ink: var(--color-category-document-ink); }
 
 /* Export kinds. Source data matches interval-data extracts, PDF matches Documents. */
-.astral-type-badge:is([data-mark="export-chart"], [data-mark="export-table"]) { --mark-bg: #ccfbef; --mark-ink: #134e48; }
-.astral-type-badge[data-mark="export-source"] { --mark-bg: #d1e9ff; --mark-ink: #194185; }
-.astral-type-badge[data-mark="export-image"] { --mark-bg: #fce7f6; --mark-ink: #851651; }
-.astral-type-badge[data-mark="export-pdf"] { --mark-bg: #fdead7; --mark-ink: #932f19; }
+.astral-type-badge:is([data-mark="export-chart"], [data-mark="export-table"]) { --mark-bg: var(--color-category-table-fill); --mark-ink: var(--color-category-table-ink); }
+.astral-type-badge[data-mark="export-source"] { --mark-bg: var(--color-category-data-fill); --mark-ink: var(--color-category-data-ink); }
+.astral-type-badge[data-mark="export-image"] { --mark-bg: var(--color-category-image-fill); --mark-ink: var(--color-category-image-ink); }
+.astral-type-badge[data-mark="export-pdf"] { --mark-bg: var(--color-category-document-fill); --mark-ink: var(--color-category-document-ink); }
 
 /* Ways to add site settings, and the file someone adds. CSV and TXT are data, like Source data. XLSX is a spreadsheet, like a table. */
-.astral-type-badge[data-mark="add-paste"] { --mark-bg: #eaecf5; --mark-ink: #363f72; }
-.astral-type-badge:is([data-mark="add-upload"], [data-mark="file-csv"], [data-mark="file-txt"]) { --mark-bg: #d1e9ff; --mark-ink: #194185; }
-.astral-type-badge[data-mark="file-xlsx"] { --mark-bg: #ccfbef; --mark-ink: #134e48; }
+.astral-type-badge[data-mark="add-paste"] { --mark-bg: var(--color-category-template-fill); --mark-ink: var(--color-category-template-ink); }
+.astral-type-badge:is([data-mark="add-upload"], [data-mark="file-csv"], [data-mark="file-txt"]) { --mark-bg: var(--color-category-data-fill); --mark-ink: var(--color-category-data-ink); }
+.astral-type-badge[data-mark="file-xlsx"] { --mark-bg: var(--color-category-table-fill); --mark-ink: var(--color-category-table-ink); }
 
 /* On a card the type is a boxed icon before the heading, not a pill. The tip names the type. */
 .astral-report-name {
@@ -14755,7 +14789,6 @@ button.astral-state:focus-visible,
 .astral-date-btn:focus-visible,
 .astral-select-btn:focus-visible,
 .astral-date-menu button:focus-visible,
-.astral-export-menu button:focus-visible,
 .astral-filter-menu button:focus-visible,
 .astral-ack-menu button:focus-visible,
 .astral-select-options button:focus-visible,
@@ -15855,7 +15888,7 @@ html.is-classic-scroll #astral-fs .is-scroll-near {
   padding: var(--space-8) 6px;
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-control);
-  background: var(--color-background-default, #fff);
+  background: var(--color-background-surface);
   color: inherit;
   font: inherit;
   text-align: left;
@@ -17159,7 +17192,7 @@ body:not(.is-share) .desk-shell {
   border: 1px solid var(--color-border-strong);
   border-radius: 16px;
   background: #fff;
-  box-shadow: 0 16px 48px rgba(0, 2, 11, 0.16);
+  box-shadow: var(--shadow-modal);
   overflow: auto;
 }
 
@@ -17201,7 +17234,7 @@ body:not(.is-share) .desk-shell {
 #access-modal.modal {
   border: 1px solid var(--color-border-strong);
   border-radius: 16px;
-  box-shadow: 0 16px 48px rgba(0, 2, 11, 0.16);
+  box-shadow: var(--shadow-modal);
 }
 
 #access-modal.modal::backdrop {
