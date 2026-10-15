@@ -7,23 +7,30 @@
  * styles.css :root is the source of truth for tokens.css. Nothing is merged back from the previous export.
  * A token can only leave by being listed in data/retired-tokens.json. The build fails otherwise.
  *
+ * The build also fails if the payload differs from the committed library-site/astral-lib.js under the same version.
+ * A change to tokens, CSS, theme, components, icons or files needs a new major version (v4).
+ * A change to the changelog or answers alone needs at least a new minor version (v3.1).
+ *
  *   node tools/build-library.js          write the library
  *   node tools/build-library.js --check  report only
  */
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
+const cp = require("child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
 const CHECK = process.argv.includes("--check");
 
-// Prototype chrome that never ships: the desk, the preview menu, the prototype export menu.
-const CHROME = /\.astral-(preview|export|lib-host)\b|data-proto|#skills-list|\.ds-/;
+// Prototype chrome that never ships: the desk and the preview menu. .astral-export-* is the product Export from v3.
+const CHROME = /\.astral-(preview|lib-host)\b|data-proto|#skills-list|\.ds-/;
 const HOST = "#astral-fs";
 const HOST_HOOK = ":is(#astral-fs, .astral-root)";
 // Short aliases the prototype desk sets on :root. The product never reads them.
 const DESK_VARS = new Set(["--paper", "--ink", "--muted", "--line", "--surface", "--mark", "--mark-soft", "--warn", "--warn-soft", "--next", "--next-soft", "--shadow", "--radius", "--side", "--pad", "--font"]);
+// Assets the export stops carrying. auth-texture.png: nothing in the product uses it (ANSWERS 22).
+const DROPPED_FILES = new Set(["auth-texture.png"]);
 
 function parse(src) {
   const items = [];
@@ -174,13 +181,71 @@ function fontFaces(items) {
 
 function readChangelog() {
   const text = read("docs/astral-look-changelog.md");
-  const m = text.match(/^## (v\d+)\s+.\s+(\d{4}-\d{2}-\d{2})/m);
-  if (!m) throw new Error("docs/astral-look-changelog.md needs a '## vN — YYYY-MM-DD' heading");
+  const m = text.match(/^## (v\d+(?:\.\d+)?)\s+.\s+(\d{4}-\d{2}-\d{2})/m);
+  if (!m) throw new Error("docs/astral-look-changelog.md needs a '## vN — YYYY-MM-DD' or '## vN.M — YYYY-MM-DD' heading");
   return { version: m[1], date: m[2], text };
 }
 
+// What the consumer vendors and checksums. Look keys need a new major version, doc keys at least a new minor one.
+const LOOK_KEYS = ["tokensCss", "lookCss", "themeTs", "components", "icons", "files"];
+const DOC_KEYS = ["changelog", "answers"];
+
+function parseVersion(v) {
+  const m = /^v(\d+)(?:\.(\d+))?$/.exec(v || "");
+  return m ? { major: Number(m[1]), minor: Number(m[2] || 0) } : null;
+}
+
+function loadLib(src) {
+  const sandbox = { window: {} };
+  vm.runInNewContext(src, sandbox);
+  return sandbox.window.ASTRAL_LIB;
+}
+
+// The library as committed at ref, or null when git or the file is not there.
+function gitLib(ref) {
+  try {
+    const src = cp.execFileSync("git", ["show", `${ref}:library-site/astral-lib.js`], {
+      cwd: ROOT,
+      maxBuffer: 1 << 30,
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    return loadLib(src.toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function readPublished() {
+  const file = path.join(ROOT, "data", "published-versions.json");
+  return fs.existsSync(file) ? JSON.parse(read("data/published-versions.json")).versions || {} : {};
+}
+
+// Product class names in the look, for the class diff.
+function classesOf(css) {
+  return [...new Set([...String(css || "").matchAll(/\.(astral-[\w-]+)/g)].map((m) => m[1]))].sort();
+}
+
+// The payload must not change under a version that is already committed.
+function versionErrors(next, committed) {
+  const differs = (k) => JSON.stringify(next[k] ?? null) !== JSON.stringify(committed[k] ?? null);
+  const look = LOOK_KEYS.filter(differs);
+  const docs = DOC_KEYS.filter(differs);
+  if (!look.length && !docs.length) return [];
+  const was = parseVersion(committed.version);
+  const now = parseVersion(next.version);
+  if (!was || !now) return [];
+  const changed = [...look, ...docs].join(", ");
+  if (look.length && now.major <= was.major) {
+    return [`${changed} changed since the committed ${committed.version}. Tokens, CSS, theme, components, icons or files changed, so add a '## v${was.major + 1} — YYYY-MM-DD' heading to docs/astral-look-changelog.md.`];
+  }
+  if (now.major < was.major || (now.major === was.major && now.minor <= was.minor)) {
+    return [`${changed} changed since the committed ${committed.version}. Add a '## v${was.major}.${was.minor + 1} — YYYY-MM-DD' heading to docs/astral-look-changelog.md.`];
+  }
+  return [];
+}
+
 // Custom properties in these families are tokens. A var() in one of them with no token is a bug, not a runtime var.
-const TOKEN_FAMILY = /^--(color|space|radius|font|motion|ease|control|scrollbar|tip)-/;
+const TOKEN_FAMILY = /^--(color|space|radius|font|motion|ease|control|layout|shadow|scrollbar|tip)-/;
 
 function readRetired() {
   const list = JSON.parse(read("data/retired-tokens.json")).tokens;
@@ -304,7 +369,7 @@ function buildSiteTokens(oldList, vars, docTokens, themeTs) {
   const old = new Map((oldList || []).map((t) => [t.cssVar, t]));
   const doc = new Map((docTokens || []).map((t) => [t.cssVar, t]));
   const { theme } = loadTheme(themeTs);
-  const kind = (k) => (k.startsWith("--color-") ? "colour" : k.startsWith("--radius-") ? "shape" : k.startsWith("--font-") ? "type" : "space");
+  const kind = (k) => (k.startsWith("--color-") ? "colour" : k.startsWith("--radius-") || k.startsWith("--shadow-") ? "shape" : k.startsWith("--font-") ? "type" : "space");
   return [...vars].map(([k, value]) => {
     if (old.has(k)) return { ...old.get(k), value };
     const d = doc.get(k) || {};
@@ -398,6 +463,11 @@ function oldComponentFile(c) {
   return componentFile(c) || `src/components/${String(c.react || c.name || "Component").replace(/\s+/g, "")}.tsx`;
 }
 
+// Where library-pack.js puts each shipped asset in the zip, so a dropped asset is listed like a dropped component.
+function assetFile(f) {
+  return /\.(otf|woff2?|ttf)$/i.test(f.name) ? `src/theme/fonts/${f.name}` : `src/assets/${f.name}`;
+}
+
 function buildComponents(docs, oldComponents, iconSource) {
   const old = new Map(oldComponents.map((c) => [c.id, c]));
   return docs
@@ -456,6 +526,12 @@ function diffNotes(version, diff, scoped) {
     "",
     listOrNone(diff.filesRemoved),
     "",
+    `### Classes removed (${diff.classesRemoved.length})`,
+    "",
+    `Classes in ${diff.base} components.css that are not in ${version}.`,
+    "",
+    listOrNone(diff.classesRemoved),
+    "",
     `### Tokens added (${diff.tokensAdded.length})`,
     "",
     listOrNone(diff.tokensAdded),
@@ -463,6 +539,10 @@ function diffNotes(version, diff, scoped) {
     `### Files added (${diff.filesAdded.length})`,
     "",
     listOrNone(diff.filesAdded),
+    "",
+    `### Classes added (${diff.classesAdded.length})`,
+    "",
+    listOrNone(diff.classesAdded),
     "",
     `### Guidance only, no file (${diff.guidanceOnly.length})`,
     "",
@@ -485,6 +565,8 @@ function main() {
   vm.runInNewContext(fs.readFileSync(libPath, "utf8"), sandbox);
   const lib = sandbox.window.ASTRAL_LIB;
   const href = sandbox.window.ASTRAL_PROTOTYPE_HREF;
+  // The guard and the diff base read the committed library, not a local rebuild.
+  const committed = gitLib("HEAD") || lib;
 
   const log = readChangelog();
   const stamp = `${log.version} (${log.date})`;
@@ -516,19 +598,26 @@ function main() {
   const docs = JSON.parse(read("data/design-systems.json")).systems.imserv;
   const answersPath = path.join(ROOT, "docs", "astral-ui-answers.md");
 
-  const sameVersion = lib.version === log.version && lib.base;
+  const sameVersion = committed.version === log.version && committed.base;
   // The unversioned zips were called v1. The partner team labels them by date; the base is the newest one.
   const relabel = (v) => (v === "v1 (unversioned)" ? "pre-v2 (23 Sep)" : v);
+  // A new version diffs against the one it replaces, as published. data/published-versions.json pins a version
+  // whose last commit is not what was published.
+  const pinned = readPublished()[committed.version];
+  const prev = (pinned && gitLib(pinned)) || committed;
   const base = sameVersion
-    ? { ...lib.base, version: relabel(lib.base.version) }
+    ? { ...committed.base, version: relabel(committed.base.version) }
     : {
-        version: relabel(lib.version || "v1 (unversioned)"),
-        tokens: [...rootVars(parse(lib.tokensCss)).keys()],
-        files: (lib.components || []).map(oldComponentFile),
+        version: relabel(prev.version || "v1 (unversioned)"),
+        tokens: [...rootVars(parse(prev.tokensCss)).keys()],
+        files: [...(prev.components || []).map(oldComponentFile), ...(prev.files || []).map(assetFile)],
+        classes: classesOf(prev.lookCss),
       };
   const retired = readRetired();
   const components = buildComponents(docs.components, lib.components, buildIconSource(marks));
-  const files = components.map(componentFile);
+  const assets = (lib.files || []).filter((f) => !DROPPED_FILES.has(f.name));
+  const files = [...components.map(componentFile), ...assets.map(assetFile)];
+  const classes = classesOf(lookCss);
   const diff = {
     base: base.version,
     tokensAdded: [...tokens.vars.keys()].filter((k) => !base.tokens.includes(k)),
@@ -536,6 +625,8 @@ function main() {
     tokensRetired: [...retired.values()],
     filesAdded: files.filter((f) => !base.files.includes(f)),
     filesRemoved: base.files.filter((f) => !files.includes(f)),
+    classesAdded: classes.filter((c) => !(base.classes || []).includes(c)),
+    classesRemoved: (base.classes || []).filter((c) => !classes.includes(c)),
     guidanceOnly: docs.components.filter((c) => c.id !== "figma" && !componentFile(c)).map((c) => c.react || c.name),
   };
   let themeTs = "";
@@ -595,6 +686,7 @@ function main() {
     lookCss,
     components,
     icons: marks,
+    files: assets,
   };
 
   const media = rules.filter((r) => r.startsWith("@media")).length;
@@ -603,12 +695,17 @@ function main() {
       `Astral look ${stamp}`,
       `rules ${rules.length} (media ${media}), keyframes ${frames.length}, lookCss ${lookCss.length} chars`,
       `tokens ${tokens.vars.size}, icons ${Object.keys(marks).length}, components ${next.components.length}`,
-      `since ${diff.base}: tokens +${diff.tokensAdded.length} -${diff.tokensRemoved.length}, files +${diff.filesAdded.length} -${diff.filesRemoved.length}${diff.filesRemoved.length ? ` (${diff.filesRemoved.join(", ")})` : ""}`,
+      `since ${diff.base}: tokens +${diff.tokensAdded.length} -${diff.tokensRemoved.length}, files +${diff.filesAdded.length} -${diff.filesRemoved.length}${diff.filesRemoved.length ? ` (${diff.filesRemoved.join(", ")})` : ""}, classes +${diff.classesAdded.length} -${diff.classesRemoved.length}`,
       `retired tokens: ${retired.size}`,
       `scoped under .astral-root: ${scoped.length} selectors`,
       loose.length ? `vars with no token (set by JS or inline): ${loose.join(", ")}` : "every var() has a token",
     ].join("\n")
   );
+  const bump = versionErrors(next, committed);
+  if (bump.length) {
+    console.error(`Astral look ${stamp}: version not bumped\n${bump.map((e) => `- ${e}`).join("\n")}`);
+    process.exit(1);
+  }
   if (CHECK) return;
   fs.writeFileSync(
     libPath,
