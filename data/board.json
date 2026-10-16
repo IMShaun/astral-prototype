@@ -3354,9 +3354,9 @@
             "date": "2026-10-15",
             "source": "team",
             "report": "dataserve-gap-analysis",
-            "where": "SP Dataserve customer help guide, read against the Astral prototype.",
-            "summary": "The legacy guide lists 14 features. Bill Checker, user-made sub-groups, and a compare statistics table are missing. Consumption, carbon, and register reports are partial.",
-            "card": "Bill Checker, user-made sub-groups, and compare statistics are missing from Astral. Test each in discovery before building.",
+            "where": "SP Dataserve customer help guide, read against the Astral prototype, then re-scored after the MeterPower walk-through with Jack and Lorraine.",
+            "summary": "Astral must match MeterPower on day one. Channel-level data, D10 reads, sub-groups, and more than one meter per MPAN need data work and should start now. The generation report is missing. Bill Checker and the carbon report are unused, so confirm them first.",
+            "card": "Channel-level data is the key gap and needs the data source to deliver it. Start that now. Confirm Bill Checker before building, as nobody uses it.",
             "documents": [
               {
                 "id": "priorities",
@@ -3364,7 +3364,7 @@
                 "title": "What Astral is missing, in priority order",
                 "status": "done",
                 "date": "2026-10-15",
-                "summary": "All 35 gaps on one page, ranked on value and effort into quick wins, big bets, fill-ins, and ones to reconsider.",
+                "summary": "All 37 gaps on one page, re-scored after the walk-through with Jack and Lorraine. Grouped into start now, quick wins, fill-ins, and confirm first.",
                 "file": "/docs/research/reports/2026-10-15-dataserve-priorities.pdf",
                 "pages": 1,
                 "format": "A4 PDF"
@@ -3551,8 +3551,8 @@
             "date": "2026-10-15",
             "study": "dataserve-help-gap",
             "file": "/docs/research/reports/2026-10-15-dataserve-gap-analysis.md",
-            "summary": "Each SP Dataserve help guide feature, read against the Astral prototype. 17 gaps, each marked Missing or Partial, with a desk priority and questions for discovery. Not a study.",
-            "card": "What the legacy service does that Astral does not yet. Gaps to test in discovery, not a parity list."
+            "summary": "Each SP Dataserve feature, read against the Astral prototype and re-scored after the MeterPower walk-through with Jack and Lorraine. 37 customer and admin gaps in priority order, with dependencies, follow-ups, and questions for discovery. Not a study.",
+            "card": "What MeterPower does that Astral does not yet. Astral must match it on day one, apart from features nobody uses."
           },
           {
             "id": "astral-product-model",
