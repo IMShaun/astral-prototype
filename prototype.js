@@ -744,6 +744,7 @@ function protoPageFilterReset() {
     prototypeDateCompareDraftFlow: "",
     prototypeMeterOpen: "none",
     prototypeMeterSettings: "",
+    prototypeMeterView: "",
     prototypeMeterOwn: "",
     prototypeMeterFold: "",
     prototypeMeterAttrTab: "",
@@ -812,6 +813,7 @@ function protoPortfolioHomePatch() {
     prototypeChartPoint: null,
     prototypeMeterOpen: "none",
     prototypeMeterSettings: "",
+    prototypeMeterView: "",
     prototypeMeterOwn: "",
     prototypeMeterFold: "",
     prototypeMeterAttrTab: "",
@@ -22579,8 +22581,11 @@ function protoPowerSum(label, name, parts, quality) {
   return row;
 }
 
-function protoPowerRows(meters) {
-  const list = protoPowerMeters(meters);
+// A meter's own channels read export too, so anyDirection keeps an outgoing MPAN in.
+function protoPowerRows(meters, options = {}) {
+  const list = options.anyDirection
+    ? (meters || []).filter((meter) => protoMeterKind(meter) === "electricity")
+    : protoPowerMeters(meters);
   if (!list.length) return [];
   const span = protoDateSpan();
   const zone = protoChartZone();
@@ -22624,7 +22629,7 @@ function protoPowerRows(meters) {
     const start = new Date(span.from.getFullYear(), span.from.getMonth() + i, 1);
     const monthEnd = new Date(start.getFullYear(), start.getMonth() + 1, 0);
     const end = monthEnd > span.to ? span.to : monthEnd;
-    const days = start > end ? [] : protoWithSpan({ from: start, to: end, kind: "day" }, () => protoPowerRows(list));
+    const days = start > end ? [] : protoWithSpan({ from: start, to: end, kind: "day" }, () => protoPowerRows(list, options));
     const have = days.filter((row) => row.slots);
     const quality = have.some((row) => row.quality === "estimated") ? "estimated" : have.length ? "actual" : "missing";
     return protoPowerSum(label, label, have, quality);
@@ -25470,6 +25475,7 @@ function protoMeterSettingsMeter() {
 function protoMeterSettingsReset() {
   return {
     prototypeMeterSettings: "",
+    prototypeMeterView: "",
     prototypeMeterOwn: "",
     prototypeMeterFold: "",
     prototypeMeterAttrTab: "",
@@ -27674,15 +27680,10 @@ function protoMeterRow(meter) {
   const own = protoMeterOverride(meter.id);
   const modes = protoMeterOwnParts(meter.id).map((part) => protoSrcMode(own, part, true));
   const source = protoMeterSourceTag(modes.includes("own") ? "own" : modes[0] || "site");
-  const name = `<span>${escapeHtml(title)}</span>`;
-  const site = protoSiteByMeter(meter.id);
-  const settingsId = protoCanAct() ? site?.meters?.[0]?.id || "" : "";
   // The meter name is the row's button, so the Partial tip keeps its own focus stop.
-  const ref = settingsId
-    ? `<button type="button" class="astral-meter-row-link" data-proto-meter-attrs="${escapeHtml(meter.id)}" aria-label="${escapeHtml(
-        `${title}. Open attributes in site settings`
-      )}">${escapeHtml(title)}</button>`
-    : name;
+  const ref = `<button type="button" class="astral-meter-row-link" data-proto-meter-view="${escapeHtml(
+    meter.id
+  )}" aria-label="${escapeHtml(`${title}. Open meter`)}">${escapeHtml(title)}</button>`;
   const cells = `
         <span class="astral-meter-ref">${protoMeterMark(meter.commodity)}${ref}</span>
         <span class="astral-meter-channel">${protoFlowPill(protoFlowKind(channel) || "in")}</span>
@@ -27690,13 +27691,10 @@ function protoMeterRow(meter) {
         <span class="astral-meter-read">${escapeHtml(meter.lastReading || "None")}</span>
         <span class="astral-meter-use">${protoMeterUseCell(meter)}</span>
   `;
-  // A row opens Attributes in Site settings on this meter's utility. Without the right to change settings it is a record.
-  if (settingsId) {
-    return `<article class="astral-meter-row"><div class="astral-meter-row-head" data-proto-meter-attrs-row="${escapeHtml(
-      meter.id
-    )}">${cells}</div></article>`;
-  }
-  return `<article class="astral-meter-row is-static"><div class="astral-meter-row-head">${cells}</div></article>`;
+  // A row opens the meter, with its channels and readings. Anyone who can see the site can read it.
+  return `<article class="astral-meter-row"><div class="astral-meter-row-head" data-proto-meter-view-row="${escapeHtml(
+    meter.id
+  )}">${cells}</div></article>`;
 }
 
 function protoMeterList(meters) {
@@ -27717,6 +27715,295 @@ function protoMeterList(meters) {
       ${rows.map((meter) => protoMeterRow(meter)).join("")}
     </div>
   `;
+}
+
+// P266 six-channel half-hourly mapping. An import MPAN records on 1, 3 and 6, an export MPAN on 2, 4 and 5.
+// Every other channel on the meter is UN, unused. Q1 and Q3 are lagging, Q2 and Q4 leading.
+const PROTO_HH_CHANNELS = [
+  { no: 1, measures: "Active energy", type: "Active", unit: "kWh", flow: "in", mqid: { in: "AI" }, read: "kwh" },
+  { no: 2, measures: "Active energy", type: "Active", unit: "kWh", flow: "out", mqid: { out: "AE" }, read: "kwh" },
+  { no: 3, measures: "Quadrant 1, lagging", type: "Reactive", unit: "kVArh", flow: "in", mqid: { in: "RI" }, read: "lag" },
+  { no: 4, measures: "Quadrant 2, leading", type: "Reactive", unit: "kVArh", flow: "out", mqid: { out: "RI" }, read: "lead" },
+  { no: 5, measures: "Quadrant 3, lagging", type: "Reactive", unit: "kVArh", flow: "out", mqid: { out: "RE" }, read: "lag" },
+  { no: 6, measures: "Quadrant 4, leading", type: "Reactive", unit: "kVArh", flow: "in", mqid: { in: "RE" }, read: "lead" },
+];
+
+const PROTO_METER_MAKES = {
+  electricity: ["EDMI Mk10E", "Landis+Gyr E650", "Elster A1700"],
+  gas: ["Elster BK-G6", "Itron Gallus"],
+  water: ["Kent PSM", "Elster V200"],
+};
+
+function protoMeterViewMeter() {
+  const id = String(store.prototypeMeterView || "");
+  return id ? protoMeter(id) : null;
+}
+
+function protoMeterDay(date) {
+  return `${date.getDate()} ${PROTO_MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+// One MPAN can have several meters over time. Each has a make, a serial and the dates it recorded.
+// Crewe depot's supply, and about 1 in 5 others, had its meter replaced in the last year.
+function protoMeterInstalls(meter) {
+  const kind = protoMeterKind(meter);
+  const rand = (key) => protoWeatherRand(`${meter.id}|install|${key}`);
+  const makes = PROTO_METER_MAKES[kind] || PROTO_METER_MAKES.electricity;
+  const pick = (key, list) => list[Math.floor(rand(key) * list.length)];
+  const serial = (key, date) => {
+    const year = String(date.getFullYear()).slice(2);
+    const digits = String(10000 + Math.floor(rand(`${key}-n`) * 90000));
+    if (kind !== "electricity") return `${kind === "gas" ? "G" : "W"}${year}${digits}`;
+    return `${pick(`${key}-l`, ["E", "K", "L"])}${year}${pick(`${key}-m`, [..."ABCDEFGHJK"])}${digits}`;
+  };
+  const fitted = new Date(2014 + Math.floor(rand("year") * 5), Math.floor(rand("month") * 12), 1 + Math.floor(rand("day") * 27));
+  const swapped = kind === "electricity" && (meter.id === "nr-crewe-in" || rand("swap") < 0.2);
+  if (!swapped) {
+    return [{ key: "a", make: pick("make", makes), serial: serial("a", fitted), from: fitted, to: null }];
+  }
+  const swap = protoAddDays(protoToday(), -(40 + Math.floor(rand("swap-at") * 300)));
+  return [
+    { key: "b", make: makes[0], serial: serial("b", swap), from: swap, to: null },
+    { key: "a", make: makes[2], serial: serial("a", fitted), from: fitted, to: protoAddDays(swap, -1) },
+  ];
+}
+
+function protoMeterChannels(meter) {
+  const kind = protoMeterKind(meter);
+  if (kind !== "electricity") {
+    return [
+      {
+        no: 1,
+        measures: kind === "gas" ? "Gas volume, as energy" : "Water volume",
+        unit: kind === "gas" ? "kWh" : "m³",
+        flow: "in",
+        read: "value",
+        used: true,
+      },
+    ];
+  }
+  const side = meter.direction === "Export" ? "out" : "in";
+  return PROTO_HH_CHANNELS.map((channel) => ({
+    ...channel,
+    mqid: channel.mqid[side] || "UN",
+    used: Boolean(channel.mqid[side]),
+  }));
+}
+
+// One row per step on the date range, with a value per channel. Electricity adds its reactive channels.
+function protoMeterChannelRows(meter) {
+  const span = protoDateSpan();
+  const dayOf = (i) =>
+    span.kind === "interval"
+      ? span.from
+      : span.kind === "month"
+        ? new Date(span.from.getFullYear(), span.from.getMonth() + i, 1)
+        : protoAddDays(span.from, i);
+  if (protoMeterKind(meter) !== "electricity") {
+    return protoSiteSeries(meter).map((point, i) => ({
+      label: point.label,
+      day: protoIso(dayOf(i)),
+      quality: point.value == null ? "missing" : point.quality,
+      values: { value: point.value },
+    }));
+  }
+  return protoPowerRows([meter], { anyDirection: true }).map((row, i) => {
+    const missing = !row.slots || row.quality === "missing";
+    return {
+      label: row.label,
+      day: protoIso(dayOf(i)),
+      quality: missing ? "missing" : row.quality,
+      values: missing ? {} : { kwh: row.kwh, lag: row.lag, lead: row.lead },
+    };
+  });
+}
+
+function protoMeterInstallHas(install, day) {
+  return day >= protoIso(install.from) && (!install.to || day <= protoIso(install.to));
+}
+
+function protoMeterChannelTotal(channel, install, rows) {
+  if (!channel.used) return `<span class="astral-muted">None</span>`;
+  const own = rows.filter((row) => protoMeterInstallHas(install, row.day));
+  const read = own.filter((row) => row.quality !== "missing");
+  if (!read.length) return `<span class="astral-muted">None</span>`;
+  const total = read.reduce((n, row) => n + (row.values[channel.read] || 0), 0);
+  const tag =
+    read.length < own.length ? ` ${protoTag("Partial", "Some readings are missing for these dates.", "is-quiet")}` : "";
+  return `<span class="astral-meter-use">${escapeHtml(protoFormatReading(total, channel.unit))}${tag}</span>`;
+}
+
+function protoMeterChannelState(channel, install) {
+  if (!channel.used) return protoTag("Unused", "This MPAN does not record on this channel.", "is-quiet");
+  if (install.to) return protoTag("Closed", `Closed on ${protoMeterDay(install.to)}, when the meter was replaced.`, "is-quiet");
+  return `<span class="astral-state is-sending">${protoIconMark("tick", "astral-state-icon")}<span>Open</span></span>`;
+}
+
+function protoMeterInstallCard(meter, install, rows) {
+  const electricity = protoMeterKind(meter) === "electricity";
+  const span = protoDateSpan();
+  const id = `astral-meter-install-${install.key}`;
+  const note = install.to
+    ? `Recorded from ${protoMeterDay(install.from)} to ${protoMeterDay(install.to)}.`
+    : `Recording since ${protoMeterDay(install.from)}.`;
+  const heads = [
+    "Channel",
+    "Measures",
+    ...(electricity ? ["Type", "MQID"] : []),
+    "Direction",
+    "Unit",
+    "From",
+    "State",
+    "Total",
+  ];
+  const body = protoMeterChannels(meter)
+    .map((channel) => {
+      const cells = [
+        ...(electricity ? [escapeHtml(channel.type), channel.used ? escapeHtml(channel.mqid) : `<span class="astral-muted">UN</span>`] : []),
+        protoFlowPill(channel.flow),
+        escapeHtml(channel.unit),
+        channel.used ? escapeHtml(protoMeterDay(install.from)) : `<span class="astral-muted">None</span>`,
+        protoMeterChannelState(channel, install),
+        protoMeterChannelTotal(channel, install, rows),
+      ];
+      return `<tr${channel.used ? "" : ` class="is-unused"`}><th scope="row">${channel.no}</th><td>${escapeHtml(
+        channel.measures
+      )}</td>${cells.map((cell) => `<td>${cell}</td>`).join("")}</tr>`;
+    })
+    .join("");
+  return `
+    <section class="astral-meter-view-card" aria-labelledby="${id}">
+      <div class="astral-meter-view-card-head">
+        <h4 class="astral-meter-list-title" id="${id}">${escapeHtml(install.make)} <span>${escapeHtml(
+          `${electricity ? "MSID" : "Serial"} ${install.serial}`
+        )}</span></h4>
+        <p>${escapeHtml(`${note} Totals are for ${protoRangeWords(span.from, span.to)}.`)}</p>
+      </div>
+      <div class="astral-table-wrap is-tips">
+        <table class="astral-table astral-meter-channels">
+          <thead><tr>${heads.map((head) => `<th scope="col">${escapeHtml(head)}</th>`).join("")}</tr></thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+const PROTO_METER_STEP_WORDS = { interval: "Half-hourly", day: "Daily", month: "Monthly" };
+
+function protoMeterReadingsCard(meter, rows) {
+  const channels = protoMeterChannels(meter).filter((channel) => channel.used);
+  const step = PROTO_METER_STEP_WORDS[protoDateSpan().kind] || "Daily";
+  const estimated = rows.some((row) => row.quality === "estimated");
+  const heads = channels
+    .map((channel) =>
+      protoBreakdownMeterHead(`Channel ${channel.no}`, [channel.mqid && channel.mqid !== "UN" ? channel.mqid : "", channel.unit].filter(Boolean).join(", "))
+    )
+    .join("");
+  const body = rows
+    .map((row) => {
+      const cells = channels
+        .map((channel) => {
+          const value = row.values[channel.read];
+          return `<td>${
+            row.quality === "missing" || value == null
+              ? `<span class="astral-muted">No reading</span>`
+              : protoBreakdownReading(protoRoundReading(value, 1), row.quality)
+          }</td>`;
+        })
+        .join("");
+      return `<tr><th scope="row">${escapeHtml(row.label)}</th>${cells}</tr>`;
+    })
+    .join("");
+  return `
+    <section class="astral-meter-view-card" aria-labelledby="astral-meter-readings">
+      <div class="astral-meter-view-card-head">
+        <h4 class="astral-meter-list-title" id="astral-meter-readings">${escapeHtml(`${step} readings`)}</h4>
+        <p>${escapeHtml(`${protoChartWhen()} ${protoChartZone()}. One column for each channel in use.`)}</p>
+      </div>
+      ${protoBreakdownKey(new Set(), estimated)}
+      <div class="astral-table-wrap">
+        <table class="astral-table astral-meter-readings">
+          <thead><tr>${protoBreakdownMeterHead("Time", "", { time: true })}${heads}</tr></thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+// The other side of the supply, so an import MPAN links to its export MPAN and back.
+function protoMeterViewPair(meter, site) {
+  if (protoMeterKind(meter) !== "electricity") return "";
+  const pair = (site?.meters || []).find(
+    (item) =>
+      item.id !== meter.id &&
+      protoMeterKind(item) === "electricity" &&
+      (item.direction === "Export") !== (meter.direction === "Export")
+  );
+  if (!pair) return "";
+  return `<span>${escapeHtml(pair.direction === "Export" ? "Outgoing MPAN" : "Incoming MPAN")} <button type="button" class="astral-row-link astral-meter-view-pair" data-proto-meter-view="${escapeHtml(
+    pair.id
+  )}">${escapeHtml(protoMeterRef(pair))}</button></span>`;
+}
+
+function protoMeterViewPage(meter) {
+  const site = protoSiteByMeter(meter.id);
+  const facts = protoMeterFacts(meter);
+  const rows = protoMeterChannelRows(meter);
+  const installs = protoMeterInstalls(meter);
+  return protoPaneShell(
+    `
+        <div class="astral-detail-head">
+          <div class="astral-detail-lead">
+            ${protoIconBtn("prev", "Back", "data-proto-meter-view-close")}
+            <div>
+              ${protoPaneKicker(site?.name || facts.site)}
+              <h3>${escapeHtml(`${facts.refName} ${facts.ref}`)}</h3>
+            </div>
+          </div>
+          <div class="astral-detail-tools">${protoDateControl()}</div>
+        </div>
+        <p class="astral-meter-view-facts">
+          <span class="astral-meter-ref">${protoIconMark(protoMeterKind(meter), "astral-meter-mark")}<span>${escapeHtml(protoMeterUtility(meter))}</span></span>
+          ${protoFlowPill(meter.direction === "Export" ? "out" : "in")}
+          <span>${escapeHtml(`Last reading ${meter.lastReading || "None"}`)}</span>
+          ${protoMeterViewPair(meter, site)}
+        </p>
+    `,
+    `<div class="astral-meter-view">${installs.map((install) => protoMeterInstallCard(meter, install, rows)).join("")}${protoMeterReadingsCard(
+      meter,
+      rows
+    )}</div>`
+  );
+}
+
+// Under the graph on a site: the meter points, each opening its own meter view.
+function protoMeterPointRow(meter, second) {
+  const words = [
+    ...new Set(
+      (protoData()?.alerts || []).filter((item) => item.meterId === meter.id).map((item) => protoMeterAlertWord(item.kind))
+    ),
+  ];
+  return `
+    <tr class="is-link" data-proto-meter-view="${escapeHtml(meter.id)}">
+      <td><span class="astral-meter-ref">${protoMeterMark(meter.commodity)}<button type="button" class="astral-row-link">${escapeHtml(
+        protoMeterRef(meter)
+      )}</button></span></td>
+      <td>${second}</td>
+      <td>${protoStateCells(words, protoStatus(meter.status))}</td>
+    </tr>
+  `;
+}
+
+function protoSiteMeterFold(site) {
+  const meters = protoProfileListMeters(site);
+  if (!meters.length) return "";
+  return protoPaneListTable(
+    [protoBelowSiteHeading(1), "Direction", "State"],
+    meters.map((meter) => protoMeterPointRow(meter, protoFlowPill(meter.direction === "Export" ? "out" : "in"))).join(""),
+    protoBelowSiteHeading(2)
+  );
 }
 
 function protoProfileFactMark(kind) {
@@ -29906,6 +30193,8 @@ function protoBreakdownCountNote(track, unit) {
 }
 
 function protoCompareDetail() {
+  const viewMeter = protoMeterViewMeter();
+  if (viewMeter) return protoMeterViewPage(viewMeter);
   const bundle = protoCompareBundle();
   const allMeters = protoMetersForPane(bundle.meters || []);
   const meters = protoCompareViewMeters(allMeters);
@@ -29968,21 +30257,7 @@ function protoCompareDetail() {
           .join("")
       : bundle.level === "meter"
         ? meters
-            .map((meter) => {
-              const site = protoSiteByMeter(meter.id);
-              const words = [...new Set(
-                (protoData()?.alerts || [])
-                  .filter((item) => item.meterId === meter.id)
-                  .map((item) => protoMeterAlertWord(item.kind))
-              )];
-              return `
-                <tr data-proto-meter="${escapeHtml(meter.id)}">
-                  <td>${escapeHtml(protoMeterRef(meter))}</td>
-                  <td>${escapeHtml(site?.name || "")}</td>
-                  <td>${protoStateCells(words, protoStatus(meter.status))}</td>
-                </tr>
-              `;
-            })
+            .map((meter) => protoMeterPointRow(meter, escapeHtml(protoSiteByMeter(meter.id)?.name || "")))
             .join("")
         : profileSites
             .map((site) => {
@@ -30280,6 +30555,7 @@ function protoScrollPaneKey() {
     scope === "site" ? store.activePrototypeMeter || "" : store.prototypeGroup || "",
     protoSiteImport() ? "import" : "",
     protoSiteAdd() ? `add-${protoSiteAdd().step}` : "",
+    store.prototypeMeterView || "",
   ].join("|");
 }
 
@@ -30575,6 +30851,8 @@ function protoPortfolioDetail() {
     return protoCompareOn() ? protoCompareDetail() : protoGroupDetail(currentGroup);
   }
   if (current && currentSite) {
+    const viewMeter = protoMeterViewMeter();
+    if (viewMeter) return protoMeterViewPage(viewMeter);
     const settingsMeter = protoMeterSettingsMeter();
     if (settingsMeter && protoPaneId() === "profile" && !protoCompareOn()) {
       return protoMeterSettingsPage(settingsMeter, currentSite);
@@ -30589,6 +30867,7 @@ function protoPortfolioDetail() {
     const queries = protoQueriesForMeters(viewMeters, [currentSite]);
     const pane = protoPaneId();
     const limit = protoGraphLimit(csvId);
+    const meterFold = protoSiteMeterFold(currentSite);
     return protoCompareOn()
       ? protoCompareDetail()
       : protoPaneShell(
@@ -30613,15 +30892,13 @@ function protoPortfolioDetail() {
                 : pane === "weather"
                 ? protoWeatherPane([currentSite])
                 : pane === "power"
-                ? protoPowerPane(viewMeters)
+                ? `${protoPowerPane(viewMeters)}${meterFold}`
                 : pane === "demand"
-                ? limit
-                  ? protoGraphLimitHtml(limit)
-                  : protoDemandPane(viewMeters)
+                ? `${limit ? protoGraphLimitHtml(limit) : protoDemandPane(viewMeters)}${meterFold}`
                 : protoNoReadings(viewMeters)
-                ? protoNoReadingsHtml(viewMeters)
+                ? `${protoNoReadingsHtml(viewMeters)}${meterFold}`
                 : limit
-                ? protoGraphLimitHtml(limit)
+                ? `${protoGraphLimitHtml(limit)}${meterFold}`
                 : `
         ${protoPaneChart(viewMeters, protoMetersForPane(currentSite.meters))}
         ${
@@ -30641,6 +30918,7 @@ function protoPortfolioDetail() {
           dual,
           by: protoBelowSiteNoun(1),
         })}
+        ${meterFold}
             `
         );
   }
@@ -40999,23 +41277,24 @@ function onPrototype(event) {
     );
     return;
   }
-  const meterAttrs = event.target.closest("[data-proto-meter-attrs], [data-proto-meter-attrs-row]");
-  if (meterAttrs) {
-    const meter = protoMeter(String(meterAttrs.dataset.protoMeterAttrs || meterAttrs.dataset.protoMeterAttrsRow || ""));
-    const id = protoSiteByMeter(meter?.id)?.meters?.[0]?.id || "";
-    if (!id) return;
-    protoCommitPortfolioTree(
-      {
-        ...protoMeterSettingsReset(),
-        prototypeMeterSettings: id,
-        prototypeMeterOpen: id,
-        prototypeMeterFold: "rates",
-        prototypeMeterAttrTab: protoMeterKind(meter),
-        prototypePane: "profile",
-      },
-      { pane: true }
-    );
-    protoRestoreFocus(`#astral-fs [data-proto-meter-fold="rates"]`);
+  const meterViewClose = event.target.closest("[data-proto-meter-view-close]");
+  if (meterViewClose) {
+    const was = String(store.prototypeMeterView || "");
+    protoCommitPortfolioTree({ prototypeMeterView: "", prototypeDateOpen: false }, { pane: true });
+    if (was) {
+      const id = CSS.escape(was);
+      protoRestoreFocus(
+        `#astral-fs .astral-meter-row-link[data-proto-meter-view="${id}"], #astral-fs tr[data-proto-meter-view="${id}"] .astral-row-link`
+      );
+    }
+    return;
+  }
+  const meterView = event.target.closest("[data-proto-meter-view], [data-proto-meter-view-row]");
+  if (meterView) {
+    const meter = protoMeter(String(meterView.dataset.protoMeterView || meterView.dataset.protoMeterViewRow || ""));
+    if (!meter) return;
+    protoCommitPortfolioTree({ prototypeMeterView: meter.id, prototypeDateOpen: false }, { pane: true });
+    protoRestoreFocus("#astral-fs [data-proto-meter-view-close]");
     return;
   }
   const valuePill = event.target.closest("[data-proto-value-pill]");

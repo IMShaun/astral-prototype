@@ -6835,6 +6835,68 @@ button.astral-state {
   font-weight: 500;
 }
 
+/* Meter view: one card per meter fitted on the MPAN, then the readings for each channel in use. */
+.astral-meter-view {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.astral-meter-view-card {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  padding: 24px;
+  background: #fff;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-card);
+}
+
+.astral-meter-view-card-head .astral-meter-list-title {
+  margin: 0;
+}
+
+.astral-meter-view-card-head p {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+}
+
+.astral-meter-view-card .astral-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.astral-meter-view-card tr.is-unused > * {
+  color: var(--color-text-secondary);
+}
+
+.astral-meter-view-card tr.is-unused .astral-flow-pill {
+  opacity: 0.6;
+}
+
+.astral-meter-view-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 8px 0 0;
+  color: var(--color-text-secondary);
+}
+
+.astral-meter-view-facts .astral-meter-ref {
+  color: var(--color-text-primary);
+}
+
+.astral-meter-view-pair {
+  color: var(--color-text-primary);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.astral-meter-view-pair:hover {
+  text-decoration-thickness: 2px;
+}
+
 .astral-meter-row.is-open > .astral-meter-row-head {
   background: var(--color-background-subtle);
   color: var(--color-brand-extra-2);
