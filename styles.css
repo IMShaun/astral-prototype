@@ -6835,7 +6835,7 @@ button.astral-state {
   font-weight: 500;
 }
 
-/* Meter view: one card per meter fitted on the MPAN, then the readings for each channel in use. */
+/* Meter view: one card per meter fitted on the supply, with import and export MPANs together, then the readings for each channel in use. */
 .astral-meter-view {
   display: grid;
   gap: 16px;
@@ -6875,6 +6875,13 @@ button.astral-state {
 
 .astral-meter-view-title {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+}
+
+.astral-meter-view-ref {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
 }
@@ -6898,17 +6905,6 @@ button.astral-state {
 
 .astral-meter-view-facts .astral-meter-ref {
   color: var(--color-text-primary);
-}
-
-.astral-meter-view-pair {
-  color: var(--color-text-primary);
-  font-weight: 500;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.astral-meter-view-pair:hover {
-  text-decoration-thickness: 2px;
 }
 
 .astral-meter-row.is-open > .astral-meter-row-head {
