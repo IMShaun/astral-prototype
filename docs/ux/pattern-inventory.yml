@@ -121,6 +121,34 @@ patterns:
     health: healthy
     last_reviewed: "2026-10-06"
     decision_refs: []
+  - id: foundation.table-in-fold
+    name: Table in a fold
+    level: foundation
+    user_goal: Read a fold's table without a gap above the headers or a doubled line below the last row
+    objects: [fold, accordion, table]
+    actions: [scan, expand]
+    used_in: [Users]
+    entry_points:
+      - A fold whose body is a table and whose row draws its own bottom rule
+    structure: Fold head, then the table with no top padding, last row without a border, then the fold's rule
+    components: [astral-people-fold, astral-people, astral-table]
+    states: [open, closed, nested]
+    permissions: all
+    content_terms: []
+    variants: []
+    exceptions:
+      - A table boxed in .astral-fold-panel is closed by the panel
+      - A fold with a top rule only, such as Breakdown, keeps the last row's line
+    accessibility: No change to table semantics. Focus is a 2px black edge.
+    implementation_refs:
+      - styles.css .astral-people-fold .astral-people
+      - prototype.js protoUsersTable
+    evidence:
+      - User correction on 2026-10-16. Uneven padding and a doubled bottom line in the people folds (commit 3482c0a).
+    maturity: emerging
+    health: healthy
+    last_reviewed: "2026-10-16"
+    decision_refs: []
   - id: foundation.type-tags
     name: Type tags
     level: foundation
