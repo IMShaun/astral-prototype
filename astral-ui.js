@@ -416,10 +416,12 @@ function protoCard(title, body) {
   }</article>`;
 }
 
-function protoEmpty(title, body) {
-  return `<div class="astral-empty"><h3>${protoEsc(title)}</h3>${
+// One look for every empty list or section, the same as No readings on a graph:
+// a bordered box, a title, one line, and at most one way out.
+function protoEmpty(title, body, actionHtml = "", extraClass = "") {
+  return `<div class="astral-empty${extraClass ? ` ${protoEsc(extraClass)}` : ""}" role="status"><h3>${protoEsc(title)}</h3>${
     body ? `<p>${protoEsc(body)}</p>` : ""
-  }</div>`;
+  }${actionHtml ? `<div class="astral-actions">${actionHtml}</div>` : ""}</div>`;
 }
 
 function protoPaneHead(kicker, title, extraHtml) {
@@ -577,7 +579,12 @@ function protoTable(headers, rows, opts) {
         : protoSortHead(tableId, keys[i], labelOf(item))
     )
     .join("");
-  const cols = Math.max(1, (headers || []).length);
+  // No rows: the empty state takes the table's place. A "match" message means a search or filter hid them.
+  if (!listed.length && opts?.empty) {
+    const title = String(opts.empty).replace(/\.$/, "");
+    const body = opts.emptyBody ?? (/\bmatch/i.test(title) ? "Try another word or fewer filters." : "");
+    return protoEmpty(title, body, opts.emptyAction || "");
+  }
   const body =
     listed
       .map((row) => {
@@ -590,10 +597,7 @@ function protoTable(headers, rows, opts) {
             : String(opts?.rowAttr || "").trim();
         return `<tr${extra ? ` ${extra}` : ""}>${cells}</tr>`;
       })
-      .join("") ||
-    (opts?.empty
-      ? `<tr><td colspan="${cols}">${protoEsc(opts.empty)}</td></tr>`
-      : "");
+      .join("");
   return `
     <div class="astral-table-wrap">
       <table class="astral-table">

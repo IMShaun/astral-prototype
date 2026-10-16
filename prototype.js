@@ -18358,10 +18358,11 @@ function protoTemplatesView() {
         </table>
       </div>
     `
-    : `<div class="astral-empty"><h3>No templates match</h3><p class="astral-muted">Try another word or show every state.</p>${protoTextBtn(
-        "Clear search and filters",
-        'data-proto-template-filter="reset"'
-      )}</div>`;
+    : protoEmpty(
+        "No templates match",
+        "Try another word or show every state.",
+        protoGhost("Clear search and filters", 'data-proto-template-filter="reset"')
+      );
   return astralShell(`
     <header class="astral-page-head astral-page-tools">
       <div><h2>Report templates</h2></div>
@@ -19520,7 +19521,7 @@ function protoInboxDetail(ticket) {
   if (!ticket) {
     return protoPaneShell(
       `<div class="astral-detail-head"><div><h3>Inbox</h3></div></div>`,
-      `<div class="astral-empty"><p>Pick a ticket to read it.</p></div>`
+      protoEmpty("Select a ticket", "Its messages show here.")
     );
   }
   const meter = ticket.meterId ? protoServiceMeterMap().get(ticket.meterId) : null;
@@ -26336,12 +26337,12 @@ function protoPresetPickList(pick) {
   const week = pick.kind === "week";
   const list = protoSavedPresets(pick.part, pick.kind);
   if (!list.length) {
-    return `
-      <div class="astral-empty astral-preset-empty">
-        <h3>${week ? "No saved weeks yet" : "No saved days yet"}</h3>
-        <p class="astral-muted">Select Save preset to save the times as ${week ? "a week" : "a day"}.</p>
-      </div>
-    `;
+    return protoEmpty(
+      week ? "No saved weeks yet" : "No saved days yet",
+      `Select Save preset to save the times as ${week ? "a week" : "a day"}.`,
+      "",
+      "is-compact"
+    );
   }
   const cards = list
     .map((item) =>
@@ -27073,12 +27074,12 @@ function protoPresetsPanel(part, on) {
   const company = Boolean(scope);
   const ownBody = own.length
     ? protoPresetsTable(part, own, true, ownId)
-    : `<div class="astral-empty astral-presets-empty">
-        <h5>No presets yet</h5>
-        <p class="astral-muted">${
-          company ? "Duplicate a standard preset to add one." : "Save times from Site settings, or duplicate a standard preset."
-        }</p>
-      </div>`;
+    : protoEmpty(
+        "No presets yet",
+        company ? "Duplicate a standard preset to add one." : "Save times from Site settings, or duplicate a standard preset.",
+        "",
+        "is-compact"
+      );
   return panel(`
       <section class="astral-presets-group">
         <h4 class="astral-setting-head" id="${ownId}">${company ? "Company presets" : "Your presets"}</h4>
@@ -27701,7 +27702,7 @@ function protoMeterRow(meter) {
 function protoMeterList(meters) {
   const rows = (meters || []).filter(Boolean);
   if (!rows.length) {
-    return `<p class="astral-muted astral-meter-list-empty">No meters match these filters.</p>`;
+    return protoEmpty("No meters match", "Try another word or fewer filters.");
   }
   return `
     <div class="astral-meter-list">
@@ -27753,7 +27754,7 @@ function protoProfilePane(sites) {
     return "";
   });
   if (!rows.length) {
-    return `<p class="astral-muted">No sites match these filters.</p>`;
+    return protoEmpty("No sites match", "Try another word or fewer filters.");
   }
   if (rows.length === 1) {
     const meters = protoProfileListMeters(rows[0]);
@@ -28641,7 +28642,7 @@ function protoDownloadsSection() {
           `;
         })
         .join("")
-    : `<tr><td colspan="7" class="astral-muted">${escapeHtml(empty)}</td></tr>`;
+    : "";
   return `
     <section class="astral-card astral-downloads" id="astral-downloads">
       <div class="astral-downloads-head">
@@ -28656,7 +28657,9 @@ function protoDownloadsSection() {
         </div>
         ${protoDownloadFilterPills()}
       </div>
-      <div class="astral-table-wrap is-tips">
+      ${
+        rows.length
+          ? `<div class="astral-table-wrap is-tips">
         <table class="astral-table">
           <thead>
             <tr>
@@ -28671,7 +28674,13 @@ function protoDownloadsSection() {
           </thead>
           <tbody>${body}</tbody>
         </table>
-      </div>
+      </div>`
+          : protoEmpty(
+              empty.replace(/\.$/, ""),
+              all.length ? "Try another word or fewer filters." : "Files you download from Astral show here.",
+              all.length ? protoGhost("Clear search and filters", 'data-proto-downloads="reset"') : ""
+            )
+      }
     </section>
   `;
 }
@@ -29470,6 +29479,9 @@ function protoQueryTable(rows) {
     if (key === "status") return protoQueryStatusLabel(row);
     return "";
   });
+  if (!listed.length) {
+    return protoEmpty("No queries yet", "Queries you raise on a meter show here.");
+  }
   return `
     <div class="astral-table-wrap is-tips astral-query-table">
       <table class="astral-table">
@@ -30632,12 +30644,7 @@ function protoPortfolioDetail() {
             `
         );
   }
-  return `
-    <div class="astral-empty">
-      <h3>Select a group or a site</h3>
-      <p>Pick All, a group, or a site.</p>
-    </div>
-  `;
+  return protoEmpty("Select a group or a site", "Pick All, a group, or a site.");
 }
 
 function protoQualityWord(quality, value) {
@@ -32407,11 +32414,14 @@ function protoAlerts() {
   const cards = alerts.map((item) => protoAlertCard(item, item.meter, { kind: true })).join("");
   const narrowed = Boolean(q.trim() || protoAlertFilterPicks().length);
   const empty = narrowed
-    ? `<div class="astral-empty"><h3>No flags match</h3><p class="astral-muted">Try another word or fewer filters.</p>${protoTextBtn(
-        "Clear search and filters",
-        'data-proto-alert-filter="reset"'
-      )}</div>`
-    : `<p class="astral-empty">${resolved ? "No resolved flags yet. Resolve a flag on Activity and it moves here." : "No open flags. All clear."}</p>`;
+    ? protoEmpty(
+        "No flags match",
+        "Try another word or fewer filters.",
+        protoGhost("Clear search and filters", 'data-proto-alert-filter="reset"')
+      )
+    : resolved
+      ? protoEmpty("No resolved flags yet", "Resolve a flag on Activity and it moves here.")
+      : protoEmpty("No open flags", "All clear. New flags show here.");
   return astralShell(`
     ${protoReportsAreaHead(resolved ? PROTO_ALERT_HISTORY_VIEW : "alerts", protoAlertFacetCards())}
     <section class="astral-card astral-reports-sheet astral-alerts-sheet">
@@ -32482,18 +32492,20 @@ function protoReports() {
   if (protoTemplateAdmin()) return protoTemplatesView();
   if (protoReportPageOpen()) return protoReportPage();
   const defs = protoReportDefs().filter((def) => protoReportTabOf(def.type) === "reports");
-  const empty = protoCanAddReports()
-    ? `<h3>No reports yet</h3><p class="astral-muted">Add a data extract, DC and DA report, or tenant bill.</p>`
-    : `<h3>No reports yet</h3><p class="astral-muted">Reports your admin sets up show here.</p>`;
+  const empty = protoEmpty(
+    "No reports yet",
+    protoCanAddReports() ? "Add a data extract, DC and DA report, or tenant bill." : "Reports your admin sets up show here."
+  );
   return protoReportsSheet("reports", defs, empty);
 }
 
 function protoAlertRules() {
   if (protoReportPageOpen()) return protoReportPage();
   const defs = protoReportDefs().filter((def) => protoReportTabOf(def.type) === "alerts");
-  const empty = protoCanAddReports()
-    ? `<h3>No alerts yet</h3><p class="astral-muted">Add a threshold alert or a missing data alert.</p>`
-    : `<h3>No alerts yet</h3><p class="astral-muted">Alerts your admin sets up show here.</p>`;
+  const empty = protoEmpty(
+    "No alerts yet",
+    protoCanAddReports() ? "Add a threshold alert or a missing data alert." : "Alerts your admin sets up show here."
+  );
   return protoReportsSheet(PROTO_ALERT_RULES_VIEW, defs, empty);
 }
 
@@ -32865,7 +32877,7 @@ function protoReportsSheet(active, defs, empty) {
   if (!defs.length) {
     return astralShell(`
       ${top}
-      <section class="astral-card astral-reports-sheet"><div class="astral-empty">${empty}</div></section>
+      <section class="astral-card astral-reports-sheet">${empty}</section>
     `);
   }
   const q = protoReportQuery();
@@ -32875,10 +32887,11 @@ function protoReportsSheet(active, defs, empty) {
   const layout = protoReportLayout();
   const noun = tab === "alerts" ? "alerts" : "reports";
   const body = !shown.length
-    ? `<div class="astral-empty"><h3>No ${noun} match</h3><p class="astral-muted">Try another word or fewer filters.</p>${protoTextBtn(
-        "Clear search and filters",
-        'data-proto-report-filter="reset"'
-      )}</div>`
+    ? protoEmpty(
+        `No ${noun} match`,
+        "Try another word or fewer filters.",
+        protoGhost("Clear search and filters", 'data-proto-report-filter="reset"')
+      )
     : layout === "list"
       ? protoReportTable(tab, shown)
       : `<div class="astral-report-grid">${shown.map((def) => protoReportCard(def)).join("")}${
@@ -42179,6 +42192,11 @@ function onPrototype(event) {
         ...(hidden ? { prototypeDownloadQuery: "", prototypeDownloadFilters: [] } : {}),
       });
       if (item) protoShowDownloadRow(item.id);
+      return;
+    }
+    if (act === "reset") {
+      setProto({ prototypeDownloadQuery: "", prototypeDownloadFilters: [] });
+      protoRestoreFocus("#astral-fs input[name='proto-download-query']");
       return;
     }
     return;

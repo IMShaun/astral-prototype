@@ -5488,8 +5488,9 @@ button.astral-catch {
   min-height: 18rem;
   display: grid;
   place-content: center;
+  justify-items: center;
   text-align: center;
-  gap: 8px;
+  gap: var(--space-16);
   padding: var(--space-24);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-card);
@@ -6000,12 +6001,6 @@ button.astral-catch {
   align-content: start;
 }
 
-.astral-reports-sheet > .astral-empty {
-  border: 0;
-  padding: 0;
-  background: transparent;
-}
-
 .astral-stage-body > .astral-card:only-child:not(:has(> .astral-table-wrap)):not(.astral-reports-sheet) {
   overflow: auto;
   overscroll-behavior: contain;
@@ -6175,11 +6170,6 @@ button.astral-catch {
 .astral-report-row-switch {
   display: inline-flex;
   cursor: pointer;
-}
-
-.astral-reports-sheet > .astral-empty .astral-text {
-  justify-self: start;
-  margin-top: 8px;
 }
 
 .astral-downloads .astral-table {
@@ -6843,14 +6833,6 @@ button.astral-state {
 .astral-meter-list-title > span {
   color: var(--color-text-secondary);
   font-weight: 500;
-}
-
-.astral-meter-list-empty {
-  margin: 0;
-  padding: var(--space-24);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-card);
-  text-align: center;
 }
 
 .astral-meter-row.is-open > .astral-meter-row-head {
@@ -8672,17 +8654,21 @@ button.astral-value-pill.astral-tip-host {
 }
 
 .astral-chart-mix h3,
-.astral-chart-mix p {
+.astral-chart-mix p,
+.astral-empty h3,
+.astral-empty p {
   margin: 0;
   max-width: 28rem;
 }
 
-.astral-chart-mix h3 {
+.astral-chart-mix h3,
+.astral-empty h3 {
   font-size: inherit;
   font-weight: 600;
 }
 
-.astral-chart-mix .astral-actions {
+.astral-chart-mix .astral-actions,
+.astral-empty .astral-actions {
   justify-content: center;
 }
 
@@ -11801,21 +11787,6 @@ tr.is-off .astral-person-mark {
   overflow: visible;
 }
 
-.astral-presets-empty {
-  min-height: 0;
-  padding: 24px;
-}
-
-.astral-presets-empty h5 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.astral-presets-empty p {
-  margin: 4px 0 0;
-}
-
 .astral-select-manage {
   display: inline-flex;
   align-items: center;
@@ -11866,7 +11837,7 @@ tr.is-off .astral-person-mark {
   background: #fff;
 }
 
-.astral-empty.astral-preset-empty {
+.astral-empty.is-compact {
   min-height: 10rem;
 }
 
