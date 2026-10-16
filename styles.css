@@ -11169,8 +11169,13 @@ button.astral-value-pill.astral-tip-host {
 }
 
 .astral-people-fold .astral-people {
-  padding: 16px;
+  padding: 0 16px 8px;
   min-width: 0;
+}
+
+/* The fold's own rule closes the table, so the last row drops its line. */
+.astral-people-fold .astral-table > tbody:last-child > tr:last-child > :is(td, th) {
+  border-bottom: 0;
 }
 
 .astral-people-fold-body > .astral-muted {
