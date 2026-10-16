@@ -10877,7 +10877,7 @@ function protoPickSelect(id, value) {
     return;
   }
   if (id.startsWith("user-role:")) {
-    const personId = id.slice("user-role:".length);
+    const personId = id.slice("user-role:".length).split("@")[0];
     if (personId === "me") {
       const role = protoUserRoleId(value);
       const company = protoCompany();
@@ -34949,14 +34949,16 @@ function protoUsersSorted(people) {
   });
 }
 
-function protoUsersTable(people, pool, showTeam) {
+function protoUsersTable(people, pool, showTeam, scope) {
   const canManage = protoCanManagePeople();
   const menu = store.prototypeUserMenu || "";
   const cols = showTeam ? 5 : 4;
   const rows =
     people
       .map((person) => {
-        const open = menu === person.id;
+        // A person can sit in several team tables, so menus are keyed per table.
+        const menuKey = `${scope}|${person.id}`;
+        const open = menu === menuKey;
         const teamNames = protoTeamsForPerson(person.id);
         const state = protoPersonState(person);
         const dots = protoShowsImserv();
@@ -35000,7 +35002,7 @@ function protoUsersTable(people, pool, showTeam) {
               ${
                 protoCanEditPersonRole(person)
                   ? protoSelect({
-                      id: `user-role:${person.id}`,
+                      id: `user-role:${person.id}@${scope}`,
                       label: `Role for ${person.you ? "you" : person.email}`,
                       value: person.role,
                       options: protoPersonRoleChoices(person),
@@ -35018,11 +35020,11 @@ function protoUsersTable(people, pool, showTeam) {
                         "more",
                         `More for ${person.email}`,
                         `data-proto-user-menu="${escapeHtml(
-                          person.id
+                          menuKey
                         )}" aria-haspopup="menu" aria-expanded="${open ? "true" : "false"}"`,
                         { className: "is-plain", tipLabel: "More" }
                       )}
-                      <div class="astral-people-menu${open ? protoMenuEnterClass(`people:${person.id}`) : ""}" role="menu"${open ? "" : " hidden"}>
+                      <div class="astral-people-menu${open ? protoMenuEnterClass(`people:${menuKey}`) : ""}" role="menu"${open ? "" : " hidden"}>
                         ${
                           protoCanTurnOffPerson(person) && state !== "ended"
                             ? `<button type="button" role="menuitem" data-proto-user-access="${
@@ -35091,7 +35093,7 @@ function protoUsersList(q, picked) {
       name: "All people",
       count: all.length,
       open: allOpen,
-      inner: protoUsersTable(shown, all, true),
+      inner: protoUsersTable(shown, all, true, "all"),
     }),
     ...protoTeamBuckets("").map((item) => {
       const bucketOpen = fold.kind === "bucket" && fold.id === item.id;
@@ -35099,7 +35101,7 @@ function protoUsersList(q, picked) {
       const open = bucketOpen || teamOpen;
       let inner = "";
       if (item.imserv) {
-        inner = protoUsersTable(filterPeople(item.people), item.people, false);
+        inner = protoUsersTable(filterPeople(item.people), item.people, false, `b-${item.id}`);
       } else if (seesCompanies) {
         const teams = item.teams;
         inner = teams.length
@@ -35114,13 +35116,13 @@ function protoUsersList(q, picked) {
                   count: pool.length,
                   open: on,
                   nested: true,
-                  inner: protoUsersTable(filterPeople(pool), pool, false),
+                  inner: protoUsersTable(filterPeople(pool), pool, false, `t-${team.id}`),
                 });
               })
               .join("")
           : `<p class="astral-muted">No teams yet.</p>`;
       } else {
-        inner = protoUsersTable(filterPeople(item.people), item.people, false);
+        inner = protoUsersTable(filterPeople(item.people), item.people, false, `b-${item.id}`);
       }
       return protoPeopleFold({
         id: item.id,
