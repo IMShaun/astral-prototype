@@ -6852,6 +6852,14 @@ button.astral-state {
   border-radius: var(--radius-card);
 }
 
+.astral-meter-view-card {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.astral-meter-readings-body {
+  min-width: 0;
+}
+
 .astral-meter-view-card-head .astral-meter-list-title {
   margin: 0;
 }
@@ -10502,6 +10510,7 @@ button.astral-value-pill.astral-tip-host {
 /* Frozen panes, as in Excel: the table scrolls in its own box so the column heads stay on top
    and the Time column stays on the left. */
 .astral-breakdown-scroll {
+  position: relative;
   max-height: min(34rem, 70vh);
   overflow: auto;
 }

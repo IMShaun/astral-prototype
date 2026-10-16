@@ -27940,12 +27940,21 @@ function protoMeterReadingsCard(supply, rowsBy) {
         <h4 class="astral-meter-list-title" id="astral-meter-readings">${escapeHtml(`${step} readings`)}</h4>
         <p>${escapeHtml(`${protoChartWhen()} ${protoChartZone()}. One column for each channel in use.`)}</p>
       </div>
-      ${protoBreakdownKey(new Set(), estimated)}
-      <div class="astral-table-wrap">
-        <table class="astral-table astral-meter-readings">
-          <thead><tr>${protoBreakdownMeterHead("Time", "", { time: true })}${heads}</tr></thead>
-          <tbody>${body}</tbody>
-        </table>
+      <div class="astral-meter-readings-body">
+        <div class="astral-breakdown-top">
+          ${protoBreakdownKey(new Set(), estimated)}
+          <div class="astral-breakdown-bar" data-proto-breakdown-nav hidden>
+            <p class="astral-muted" data-proto-breakdown-range aria-live="polite"></p>
+            ${protoIconBtn("prev", "Previous columns", 'data-proto-breakdown-page="prev"', { disabled: true })}
+            ${protoIconBtn("next", "Next columns", 'data-proto-breakdown-page="next"')}
+          </div>
+        </div>
+        <div class="astral-table-wrap astral-breakdown-scroll" tabindex="0" role="region" aria-label="${escapeHtml(`${step} readings by channel`)}">
+          <table class="astral-table astral-breakdown-cols is-meters astral-meter-readings" style="min-width:${6 + channels.length * 13}rem">
+            <thead><tr>${protoBreakdownMeterHead("Time", "", { time: true })}${heads}</tr></thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
       </div>
     </section>
   `;
@@ -31244,7 +31253,7 @@ function protoBreakdownNavSyncWrap(el) {
 }
 
 function protoBreakdownPage(dir, btn) {
-  const parts = protoBreakdownNavParts(btn?.closest(".astral-breakdown-body")?.querySelector(".astral-breakdown-scroll"));
+  const parts = protoBreakdownNavParts(btn?.closest(".astral-breakdown-top")?.parentElement?.querySelector(".astral-breakdown-scroll"));
   if (!parts) return;
   const { wrap, sticky, heads } = parts;
   const view = wrap.clientWidth - sticky;
