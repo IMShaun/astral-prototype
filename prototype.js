@@ -6614,7 +6614,14 @@ function protoGraphPills(all, viewIds, options = {}) {
           const label = item.tipAfter
             ? `${name}${tipText ? `<span class="sr-only">. ${escapeHtml(tipText)}</span>` : ""}`
             : `${spoken}${name}`;
-          const tip = tipText ? protoTip(tipText) : "";
+          // A meter's tip leads with its utility icon, as the meter lists do.
+          const tip = !tipText
+            ? ""
+            : item.tipMark
+              ? `<span class="astral-icon-tip is-mark" role="tooltip">${protoIconMark(item.tipMark, "astral-meter-mark")}<span>${escapeHtml(
+                  tipText
+                )}</span></span>`
+              : protoTip(tipText);
           const host = tipText ? " astral-tip-host" : "";
           if (!toggle) {
             return `
@@ -6658,6 +6665,7 @@ function protoMeterPills(meters, options = {}) {
     id: meter.id,
     label: protoMeterRef(meter),
     tip: protoMeterUtility(meter),
+    tipMark: protoMeterKind(meter),
     color: protoMeterSwatch(meter, i, list),
   }));
   return protoGraphPills(
@@ -21454,21 +21462,41 @@ function protoSiteMeterNoun(meters) {
   return protoBelowSiteNoun((meters || []).length);
 }
 
+// A meter count's tip: how many, then one line per meter with its utility icon.
+function protoMeterCountTip(meters) {
+  const list = (meters || []).filter(Boolean);
+  const head = `${list.length} ${protoSiteMeterNoun(list)}`;
+  const refs = list.map((item) => protoMeterRef(item)).filter(Boolean);
+  const spoken = refs.length ? `${head}. ${refs.join(". ")}` : head;
+  const lines = list
+    .filter((item) => protoMeterRef(item))
+    .map(
+      (item) =>
+        `<span class="astral-tip-line">${protoIconMark(protoMeterKind(item), "astral-meter-mark")}<span>${escapeHtml(
+          protoMeterRef(item)
+        )}</span></span>`
+    )
+    .join("");
+  const html = `<span class="astral-icon-tip is-list" role="tooltip"><span class="is-head">${escapeHtml(head)}</span>${lines}</span>`;
+  return { spoken, html };
+}
+
+function protoMeterCount(meters, attrs = "") {
+  const list = meters || [];
+  if (!list.length) return "";
+  const tip = protoMeterCountTip(list);
+  return `<span class="astral-tip-host"><span class="astral-count"${attrs} aria-label="${escapeHtml(tip.spoken)}">${list.length}</span>${tip.html}</span>`;
+}
+
 function protoSiteButton(site, on) {
   const listed = site.listed || site.meters;
-  const n = listed.length;
-  const noun = protoSiteMeterNoun(listed);
-  const refs = listed.map((item) => protoMeterRef(item)).filter(Boolean);
-  const tip = refs.length ? `${n} ${noun}. ${refs.join(". ")}` : `${n} ${noun}`;
-  const count = n
-    ? protoIconTip(`<span class="astral-count">${n}</span>`, tip)
-    : "";
+  const count = protoMeterCount(listed);
   return `
     <button
       type="button"
       class="astral-site${on ? " is-on" : ""}"
       data-proto-site="${escapeHtml(site.meters[0]?.id || "")}"
-      aria-label="${escapeHtml(`${site.name}, ${n} ${noun}`)}"
+      aria-label="${escapeHtml(`${site.name}, ${listed.length} ${protoSiteMeterNoun(listed)}`)}"
     >
       <span class="astral-site-copy">${escapeHtml(site.name)}</span>
       ${count}
@@ -30006,15 +30034,7 @@ function protoMetersForComparePick(id) {
 
 function protoCompareMeterNote(meters) {
   const list = meters || [];
-  const n = list.length;
-  if (!n) return "";
-  const label = `${n} ${protoSiteMeterNoun(list)}`;
-  const refs = list.map((item) => protoMeterRef(item)).filter(Boolean);
-  const tip = refs.length ? `${label}. ${refs.join(". ")}` : label;
-  return protoIconTip(
-    `<span class="astral-count" tabindex="0" aria-label="${escapeHtml(tip)}">${n}</span>`,
-    tip
-  );
+  return protoMeterCount(list, ` tabindex="0"`);
 }
 
 function protoCompareMeterLine(meter) {

@@ -10412,6 +10412,13 @@ button.astral-value-pill.astral-tip-host {
   display: block;
 }
 
+.astral-icon-tip.is-list > .astral-tip-line,
+.astral-icon-tip.is-mark {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .astral-breakdown {
   border-top: 1px solid var(--color-border-strong);
 }
