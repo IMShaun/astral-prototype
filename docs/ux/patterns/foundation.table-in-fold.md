@@ -8,12 +8,11 @@ Open a fold and read its rows without a gap above the column headers or a double
 
 ## When to use
 
-A fold whose body is a table and whose row draws its own bottom rule, such as Settings > Users, where each team is a fold of people.
+A fold whose body is a table and which ends on a rule: its own bottom rule, or the top rule of the next fold. Examples are Settings > Users, where each team is a fold of people, and the Breakdown, Meter point breakdown and list folds under a graph.
 
 ## When not to use
 
 - A table boxed in a panel inside a fold, such as a meter's hours and time of use. The panel closes the table. See `.astral-fold-panel` in `styles.css`.
-- A fold with a top rule only, such as Breakdown. The last row's line closes the table there.
 
 ## Anatomy
 
@@ -52,11 +51,13 @@ No change. The table keeps its headers and row headers. Focus stays a 2px black 
 
 ## Product surfaces using it
 
-Settings > Users: All people, every team fold and nested team fold (`protoUsersTable` in `.astral-people-fold`).
+- Settings > Users: All people, every team fold and nested team fold (`protoUsersTable` in `.astral-people-fold`).
+- Portfolio graph tabs on a group, site or comparison: Breakdown, Meter point breakdown, and the Sites, Groups and Meter points lists (`.astral-breakdown-body`). When a key or column paging shows above the table, that bar keeps its 16px above. When the bar is empty it is hidden, so it adds no gap.
 
 ## Evidence
 
 - User correction on 16 October 2026: padding above and below the people table looked uneven, and the last row's line doubled the fold's rule (commit `3482c0a`).
+- User correction on 16 October 2026: the Meter points fold had the same gap above the headers and the same doubled line under the last row.
 
 ## Related patterns / decisions
 

@@ -10421,6 +10421,31 @@ button.astral-value-pill.astral-tip-host {
   min-height: min-content;
 }
 
+/* A table in a fold: its header row is as tall as a body row, so it needs no space above, and the
+   fold's rule closes it, so the last row drops its line. See foundation.table-in-fold. */
+/* With no key and no column paging, the bar above the Breakdown table is empty, so it takes no gap. */
+.astral-breakdown-top:not(:has(> :not([hidden]))) {
+  display: none;
+}
+
+/* :has() cannot nest, so the bar above the Breakdown table carries the space itself when it shows. */
+.astral-breakdown-body:has(> :is(.astral-table, .astral-table-wrap, .astral-breakdown-top):first-child) {
+  padding-top: 0;
+}
+
+.astral-breakdown-body > .astral-breakdown-top:first-child {
+  padding-top: var(--space-stack-default);
+}
+
+.astral-breakdown-body:has(> :is(.astral-table, .astral-table-wrap):last-child) {
+  padding-bottom: 8px;
+}
+
+.astral-breakdown-body > .astral-table > tbody:last-child > tr:last-child > :is(td, th),
+.astral-breakdown-body > .astral-table-wrap > .astral-table > tbody:last-child > tr:last-child > :is(td, th) {
+  border-bottom: 0;
+}
+
 .astral-breakdown-cols {
   table-layout: fixed;
 }
