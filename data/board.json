@@ -3359,14 +3359,14 @@
             "card": "Channel-level data is the key gap and needs the data source to deliver it. Start that now. Confirm Bill Checker before building, as nobody uses it.",
             "documents": [
               {
-                "id": "priorities",
+                "id": "tma-gaps",
                 "n": 1,
-                "title": "What Astral is missing, in priority order",
+                "title": "What Astral needs before TMA switches off",
                 "status": "done",
-                "date": "2026-10-15",
-                "summary": "All 37 gaps on one page, re-scored after the walk-through with Jack and Lorraine. Grouped into start now, quick wins, fill-ins, and confirm first.",
-                "file": "/docs/research/reports/2026-10-15-dataserve-priorities.pdf",
-                "pages": 1,
+                "date": "2026-10-16",
+                "summary": "Clive's gap analysis of TMA MeterPower against Astral V1 and V1.1. 36 capabilities: 6 critical, 7 high, 12 medium, 4 low, 1 already covered, and 6 not worth rebuilding. Includes the V1.1 parity risk, the V1 rows to rewrite, conflicts, and actions before the go/no-go.",
+                "file": "/docs/research/reports/2026-10-16-tma-gap-analysis.pdf",
+                "pages": 6,
                 "format": "A4 PDF"
               }
             ]

@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>TMA MeterPower gap analysis against Astral V1 and V1.1 · IMSERV</title>
+<link rel="stylesheet" href="plan.css">
+<style>
+  /* Source of truth: TMA_Gap_Analysis_Astral_V1_V1.1_2026-10-16.docx (Clive Richardson). Pages fill from the flow below. */
+  .page { padding: 0; }
+  .flow { position: absolute; left: var(--inset); right: var(--inset); top: 22mm; bottom: 16mm; overflow: hidden; }
+  .kicker { font-size: 6.5pt; font-weight: 600; letter-spacing: 0.02em; margin-bottom: 2mm; }
+  .title { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gutter); align-items: end; margin-bottom: 5mm; }
+  .title h2 { font-size: 21pt; line-height: 1.08; }
+  .title p { font-size: 7.5pt; }
+  .counts { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2.4mm; margin-bottom: 5mm; }
+  .counts > div { background: var(--grey-a); padding: 2.4mm 2.8mm; font-size: 6.5pt; line-height: 1.3; }
+  .counts > div.crit { background: var(--black); color: var(--white); }
+  .counts > div.high { background: var(--cyan); }
+  .counts b { display: block; font-size: 15pt; font-weight: 500; line-height: 1; margin-bottom: 1mm; }
+  h3.sec { font-size: 12pt; line-height: 1.2; margin: 6mm 0 2mm; padding-top: 2mm; border-top: 0.6mm solid var(--black); }
+  .flow > h3.sec:first-child { margin-top: 0; }
+  h4.sub { font-size: 8.5pt; font-weight: 600; margin: 4mm 0 1.6mm; }
+  .flow p { font-size: 7.6pt; line-height: 1.4; margin-bottom: 2mm; }
+  .flow p + p { margin-top: 0; }
+  ul.pts { margin: 0 0 2.4mm; padding-left: 4mm; font-size: 7.6pt; line-height: 1.4; }
+  ul.pts li { margin-bottom: 1.2mm; }
+  ul.pts li b { font-weight: 600; }
+  ul.acts { list-style: none; margin: 0 0 2.4mm; padding: 0; font-size: 7.6pt; line-height: 1.4; }
+  ul.acts li { display: grid; grid-template-columns: 4.5mm 1fr; padding: 1.2mm 0; border-bottom: 0.25mm solid var(--grey-b); }
+  ul.acts li::before { content: ""; width: 2.6mm; height: 2.6mm; border: 0.3mm solid var(--black); margin-top: 0.5mm; }
+  ul.acts li span { color: var(--grey-c); }
+  table.reg { margin-bottom: 3mm; }
+  table.reg th { font-size: 5.8pt; padding: 0 2mm 1.4mm 0; }
+  table.reg td { font-size: 6.6pt; line-height: 1.3; padding: 1.2mm 2mm 1.2mm 0; }
+  table.reg td:first-child { font-weight: 600; }
+  table.reg td.who { color: var(--grey-c); }
+  .rate { display: inline-block; font-size: 5.6pt; font-weight: 600; padding: 0.3mm 1.2mm; border-radius: 0.6mm; border: 0.25mm solid var(--black); white-space: nowrap; }
+  .rate.critical { background: var(--black); color: var(--white); }
+  .rate.high { background: var(--cyan); border-color: var(--cyan); }
+  .rate.low { border-color: var(--grey-b); color: var(--grey-c); }
+  .note { background: var(--grey-a); border-left: 0.6mm solid var(--cyan); padding: 2.4mm 3mm; margin-bottom: 3mm; }
+  .flow .note p { margin: 0; }
+  .folio::after { content: "16 Oct 2026 · " counter(pg, decimal-leading-zero); }
+</style>
+</head>
+<body>
+<div id="pages"></div>
+<template id="chrome">
+  <img class="mark mark-left" src="logo/imserv-black.svg" alt="IMSERV">
+  <span class="site">imserv.com</span>
+  <div class="flow"></div>
+  <div class="folio"><span>Internal · TMA gap analysis · Astral</span></div>
+</template>
+<script>
+  const P = (text) => ({ t: "p", text });
+  const H = (text) => ({ t: "h3", text });
+  const S = (text) => ({ t: "h4", text });
+  const L = (items) => ({ t: "ul", items });
+  const T = (head, rows, widths) => ({ t: "table", head, rows, widths });
+  const rate = (r) => `<span class="rate ${r.toLowerCase()}">${r}</span>`;
+
+  const FLOW = [
+    { t: "html", html: `
+      <p class="kicker">ASTRAL · TMA METERPOWER GAP ANALYSIS · V1 AND V1.1</p>
+      <div class="title">
+        <h2>What Astral needs<br>before TMA switches off</h2>
+        <p>The TMA MeterPower walk-through on 15 October, Jac's MeterPower overview on 16 October, and a row-by-row check of requirements register v6 and the V1 scope sheet. 36 TMA capabilities in one register. Clive Richardson, 16 October 2026.</p>
+      </div>
+      <div class="counts">
+        <div class="crit"><b>6</b>Critical. These block switch-off</div>
+        <div class="high"><b>7</b>High</div>
+        <div><b>12</b>Medium</div>
+        <div><b>4</b>Low</div>
+        <div><b>1</b>Already covered</div>
+        <div><b>6</b>Not worth rebuilding</div>
+      </div>` },
+    H("Bottom line"),
+    P("V1 as scoped replaces TMA's screens but not its data, feeds or complex-site handling, so on today's evidence it does not replace TMA."),
+    L([
+      "<b>The gap is the data, not the UI.</b> Channel-level data is a V1 row (Planned), but its detail is in neither the register nor the scope sheet. The July channel spec describes it and parks it outside V1: MSID, MQID mapped from source, effective-dated channels, many meters per MPAN. The import route was still unagreed on 7 Sep, and the register still holds channel data (J-R19) at V4, Open.",
+      "<b>Complex sites have no home.</b> Complex and shared-supply sites use a settlement MPAN plus a pseudo MPAN for the raw meters, linked only by a spreadsheet. The settlement value is calculated, not summed: 9,307 against 9,359 from the raw meter on Jac's example.",
+      "<b>TMA's 55 FTP customers sit outside the SFTP epic.</b> AST-E-01 (US-04) lists \"TMA schedules (Doug's separate migration project)\" as out of scope and covers push only. TMA also runs pull feeds.",
+      "<b>The feed may not exist in time.</b> Channel data from IMSERV systems needs change of agent, and secondary-dial MPANs arrive through a dummy PRN file. No requirement row covers either.",
+      "<b>V1.1 carries TMA parity it cannot afford to drop,</b> and the three \"TMA-confirmed\" V1 rows have no TMA source and no user story.",
+    ]),
+    { t: "note", text: "Wave 1 (w/c 2 Nov) includes all 269 live TMA users, and TMA costs between about £120k and £133k a month. The sources disagree; see Conflicts. On this evidence TMA should not go in wave 1 unless the six critical gaps have named owners and dates at the go/no-go." },
+
+    H("What the session showed TMA actually is"),
+    P("TMA (MeterPower v4.3.0, branded Dataserve UK, reached through the ScottishPower VPN) is a thin portal over a rich channel-level data store, plus an admin console Ops use to run the service. IMSERV loses access when the ScottishPower contract ends, and TMA declined admin access for Shaun."),
+    T(["Area", "What we saw", "Evidence"], [
+      ["What customers use", "Consumption report, generation report, Data Download. Carbon and TOU rarely; Bill Checker never; water and gas \"wishful thinking\"", "Jac, transcript"],
+      ["Estate", "1,652 logins, 269 used in the last 45 days (May snapshot); 13,664 unique MPANs across 50,340 group rows. Anna quoted about 12,500 in session", "ELT transition deck v2; transcript"],
+      ["Appointments", "64,665 appointment rows, open and closed, all organisations", "Admin report screenshot"],
+      ["Largest group", "All HH Scottish Water: 845 MPANs in one group, four FTP groups of 1,000+", "Data Download screenshot; Jac"],
+      ["Ingestion", "D0003 files load automatically; the morning file runs 15 to 17.6 MB, about 4,800 to 5,500 flows, 3 to 4.5 minutes. D0010 register-read files also load. Every file in the 1 to 14 Oct log shows zero errors", "Log Viewer screenshots"],
+      ["Channels", "Not fixed: standard 1 to 6, but Bathgate WWTW PV uses 1, 2, 8, 9. Import MPAN carries 1, 3, 6 (AI, RI, RE); export MPAN 2, 4, 5 (AE, RI, RE); the rest show \"Unused\". Channels are effective-dated per MSID", "Profile and MPAN admin screenshots"],
+      ["Meters", "Multiple meters per MPAN (one MPAN has 16) and multiple MPANs per site", "Jac, Lorraine"],
+      ["Time basis", "All data in GMT/UTC; help text warns of the one-hour BST offset", "Features page"],
+      ["Access model", "Organisation, Group, Sub Group; users sit at group level; a group grants features; master groups see everything; one MPAN can sit in several groups (customer, consultant, billing marker)", "Jac walk-through; MPAN admin screenshot"],
+      ["Onboarding", "Every customer set up by hand by an admin; no self-registration; MPANs added through the account manager", "Anna, Help page"],
+      ["Feeds", "Dataserve pulls data and sends it through Serafin, file server or email; customer self-scheduled email reports count as FTP and are charged", "Jac, transcript"],
+      ["Support", "Data Provisions mailbox (Sue, Jack on escalations) and the Supplier Help Desk, both IMSERV Scotland branded", "Transcript"],
+      ["Data quality", "Agreed site capacity read 0 kVA on all four profiles viewed; the PACE MPANs carry no site address", "Profile screenshots"],
+    ], ["24mm", "", "38mm"]),
+
+    H("Gap register"),
+    P("Six gaps block switch-off on 31 Dec. Three are build (C1, C2, C5) and three are dependencies outside the Astral team (C3, C4, C6). Coverage today quotes requirements register v6 (row ID, version) and the V1 scope sheet (5 Oct status)."),
+    S("Critical: these block switch-off"),
+    T(["ID", "Gap", "Coverage today", "What closes it (owner)"], [
+      ["C1", "Channel-level data model: MSID, channel, MQID (AI, AE, RI, RE) mapped from source rather than by channel position, effective-dated channels with a closed state, many meters per MPAN. Channel numbers vary by meter operator (1, 2, 8, 9 seen)", "V1 row \"Meter / channel level data\", Planned. J-R19 still V4 Open, \"awaiting scope + data-model check\". E2E plan, 7 Sep: \"need to agree import route. Needs Data Engineer\"", "Commit the model and import route as V1; re-version J-R19 on the Challenges tab (Gordon, Anna)"],
+      ["C2", "Register reads (D10): loaded by hand once a month today; customers view and export them; export customers need a monthly export total to claim FIT, Scottish Water for Ofgem reclaim", "ST-04 (V1) covers viewing register reads; a register readings output file reached UAT on 14 Oct. Nothing covers D10 ingestion or monthly export totals; SCW-1 export view is a V1.1 candidate only", "Add D10 ingestion and a monthly export total per export MPAN to V1 (Anna, data team)"],
+      ["C3", "Source feed: channel-level data, D10 reads and secondary-dial MPANs arriving automatically; depends on change of agent", "No requirement row. The TMA workbook lists it only as dependencies (\"Secondary Dial to be set up\", \"Update the master CoA plan\")", "Change-of-agent date per cohort and feed confirmed (Lorraine, Lisa)"],
+      ["C4", "History before access ends. IMSERV systems lack channel-level history for these MPANs, and TMA Group is for sale", "Generic only: ST-13 historic load; \"Access to historical data\", To scope. TMA workbook question \"Data Extract from TMA for continuity of data? How long, ...\" unanswered", "Extract plan and retention period agreed (Anna, Tricia)"],
+      ["C5", "Complex sites, shared SVAs, pseudo MPANs. The settlement MPAN (meter \"COMPLEX\") carries a calculated value; a 99-prefixed pseudo MPAN carries the raw meters; the link lives only in a spreadsheet; calculated and raw totals differ. The TMA workbook holds 121 99-prefixed MPANs, mostly Welsh Water, FTP and Mercia", "None. ST-R6 and J-R12 concern DataVision dummy MPAN labels. TMA workbook, pot 12: \"Risk as very complex... 4 weeks effort by Ian Hall\"", "Model the settlement and pseudo pair; calculated values arrive from upstream, never recomputed; the linking spreadsheet becomes migration data (Gordon, Lisa)"],
+      ["C6", "TMA FTP feeds: 55 customers (17 include meter serial, 2 not consolidated by MPAN); pull to Serafile and push to customer servers; a charged service", "V1 SFTP row exists, but epic AST-E-01 (US-04) lists as out of scope \"TMA schedules (Doug's separate migration project)\" and covers push only", "Confirm Doug's project scope, owner and date, or bring TMA feeds into AST-E-01 (Anna)"],
+    ], ["8mm", "", "", "40mm"]),
+    S("High, medium and low"),
+    T(["ID", "Gap", "Coverage today", "Rating", "What closes it (owner)"], [
+      ["H1", "Data Download options: MQs, kWh or kW, actuals only, A/E flags on or off, consolidate by MPAN, aggregate by group, MSID, site details, interval, cumulative or TOU; search across 845 MPANs; runs as a background job", "\"Data download / export\" Partial; LCC-03, ST-02, VMO2-R2, ST-R1, VR-03 (V1) are generic; the option set is unspecified", "High", "Parity spec from Jac's option list; golden extracts as acceptance tests (Anna, Jac)"],
+      ["H3", "Organisation, Group, Sub Group access with group-level feature rights; one MPAN in many groups (12,803 of 13,658 MPANs sit in more than one, up to 11)", "JV-R1, ST-R5, SW-04, VR-04 (V1); SCW-11/12 V1.1 candidates. \"Group Functionality\" is MVP+ in the tracker but V1 in the scope sheet", "High", "Settle the version conflict as V1; confirm many-to-many (Gordon)"],
+      ["H4", "Generation and consumption reports, the main reasons customers log in", "Generation widget Built; GS-R8 and ST-11 (V1) cover import and export data; no named reports", "High", "Add both as V1 report rows (Anna)"],
+      ["H6", "Related import and export MPAN pairs; MPAN type", "ST-11 per-site import/export flag only", "High", "Add related MPAN to site attributes (Gordon)"],
+      ["H7", "Users with no email (about 308 of 1,653 user rows in the TMA workbook; the ELT deck counts 1,652 logins); third-party authorisation held in free-text notes", "VR-11 (V1) moves login and reset to email, which conflicts. LOA row Built per the 7 Sep E2E plan, To scope per 5 Oct", "High", "No-email rule in the transition plan; notes into the authority gate (Anna, Tricia)"],
+      ["H8", "Stale portfolios: a D0151 does not reliably close the link and nothing removes sites afterwards", "GS-R3 (V1) de-appointment notification only", "High", "Cleanse against current appointments before migration (Lisa, Tricia)"],
+      ["H9", "Three data cuts a day (about 7:30, 9 to 10 and 3 to 4pm)", "TW-01, ST-05, JV-R18, LCC-08, VMO2-R8, SW-01 (V1) cover freshness; none states intraday", "High", "Confirm refresh frequency or tell customers (data team)"],
+      ["M1", "Profile table: 48 periods per channel, kW, kWh or kVA, transpose, summary of total, max and min, max demand kVA and load factor", "Tabular interval view To scope; Statistics tab Built", "Medium", "Specify per channel with the summary block (Shaun)"],
+      ["M2", "Compare Data in three modes, with summary statistics", "Comparison overlay Partial; SCW-9/10", "Medium", "Confirm modes 2 and 3 (Shaun)"],
+      ["M3", "Enquiry: read-only history of queries IMSERV raised per MPAN", "Capture-only flag in V1; query management through Salesforce, 2027", "Medium", "Accept; say so in comms (Anna)"],
+      ["M4", "Alarm report and alarm email", "Alerts Not started", "Medium", "Usage unknown (Jac cannot see it); decide with account managers (Anna)"],
+      ["M5", "All data in GMT", "Report content includes UTC", "Medium", "Default TMA exports to GMT (Gordon)"],
+      ["M6", "Ops monitoring: flow log, flow listing, channel overlap, flow loading reports", "Not in portal scope", "Medium", "Name where ingestion monitoring lives (Lisa)"],
+      ["M7", "Support through the Data Provisions mailbox and Supplier Help Desk; Katie Horton runs onboarding and FTP links", "No portal-wide support row; DD-10 covers document delivery only", "Medium", "Route into the tier model before wave 1 (Anna, Pippa)"],
+      ["M8", "ROC and LEC, tariffs, DUOS and TUOS, category", "ROC and LEC V3; tariffs In progress; DUOS and TUOS not itemized", "Medium", "Second session with Jac (Anna)"],
+      ["M9", "Manual MPAN maintenance when the feed is wrong", "Address read-only; no channel admin", "Medium", "Define the exception route (Lisa)"],
+      ["M10", "Agreed capacity 0 kVA and missing addresses on MPANs viewed", "Address read-only from source; V1.1 capacity relies on customer entry", "Medium", "Size ASC and address coverage (data team)"],
+      ["M11", "Dummy meter held against an MPAN until MOP technical details arrive", "None", "Medium", "Model allows a placeholder meter (Gordon)"],
+      ["M12", "Sub-meters to set up (TMA workbook: \"500 / 900\")", "JCH sub-metering treatment; SCW-4 candidate", "Medium", "Confirm count and treatment (Lisa)"],
+      ["L1", "Carbon report", "Site emissions Planned", "Low", "Covered once built"],
+      ["L2", "Notices panel", "Not itemized", "Low", "Banner on the help framework"],
+      ["L3", "Features and Help pages", "Help screens Planning", "Low", "Covered"],
+      ["L4", "Simulate User View (broken in TMA today)", "Login as a user Planned", "Low", "Covered"],
+    ].map((r) => [r[0], r[1], r[2], rate(r[3]), r[4]]), ["8mm", "", "", "14mm", "38mm"]),
+    { t: "note", text: "Already covered: missing and estimated data. WS-27, ST-14 and JC-R1 (V1), the data quality flags row (Planning) and story 4070 cover it. Jac says it is the main reason customers raise queries (N/A for missing, blue for estimated, ND for no data), so it must not slip." },
+
+    H("V1.1 is carrying TMA parity"),
+    P("Three of the nine V1.1 candidates are things TMA customers have today, and a fourth (data health) exists in basic form. Yet the 6 Oct migration plan defines V1.1 as the droppable tranche, cut first if V1 slips. Anything a TMA customer needs on 1 Jan cannot sit there."),
+    T(["V1.1 candidate", "TMA has it today?", "Position for TMA switch-off"], [
+      ["Export and sub-meter channel data (SCW-1)", "Yes: channel view, export MPANs", "Move to V1 (part of C1, C2); also re-version J-R19 from V4"],
+      ["Group-by-class reporting (SCW-4)", "Yes: groups such as All HH Scottish Water, All AMR Sites", "Move to V1"],
+      ["Granular and framework access (SCW-11, 12)", "Yes: sub-groups scope consultants", "Move to V1 (H3; also a version conflict, MVP+ against V1)"],
+      ["Data-health view", "Basic form: missing and no-data reports", "Basic reporting already V1 (WS-27, ST-14, JC-R1); rich view stays V1.1"],
+      ["Capacity and kVA", "Partly: ASC and max demand kVA on the profile", "Stays V1.1; ASC data is thin (M10)"],
+      ["Threshold alerts with LOA status", "Partly: alarm report and email", "Stays V1.1 unless alarm usage is material (M4)"],
+      ["Cross-site league tables", "No", "Stays V1.1"],
+      ["what3words overlay", "No", "Stays V1.1"],
+      ["Company-level map", "No", "Stays V1.1"],
+    ], ["52mm", "", ""]),
+    P("One definition to settle: the sources use V1.1 three ways. The register documents treat it as the pull-forward candidates above. An earlier prototype session scoped it as Portfolio, Reports, Alerts, Queries, Settings and Notifications. The ELT transition deck uses it for CRM-enforced access. This analysis uses the register definition (Reports v1/v1.1 document, 24 Sep). The locked register has no V1.1 column, only V1 to V4, so nothing in V1.1 is formally committed."),
+
+    H("Where the session challenges current V1 rows"),
+    P("The three \"TMA-confirmed\" rows added to V1 do not match what TMA does. The TMA requirements folder holds one document, Portal Requirements.docx, which reads as a generic best-practice list for a commercial energy portal, not a TMA baseline. The rows look derived from it, though that is inference. What is fact: the scope sheet calls them \"directed additions\", the 15 Sep story reconciliation marks all three \"NO STORY\", and no interview or TMA document supports them. One traces to a register row: external data ingestion maps to MO-R4 (V1), a third-party and sub-metering upload need, not a TMA one. \"Supplier D3\" may be a mislabelled D0003, the standard half-hourly flow."),
+    T(["Current V1 row", "What the session showed", "Proposed rewrite"], [
+      ["Meter read submission (user submits a read)", "Customers do not submit reads in TMA. IMSERV loads D10 register reads and customers view and export them", "Register read (D10) ingestion, display and export, plus monthly export totals (C2)"],
+      ["External data ingestion (for example, supplier D3)", "Manual upload of D3, PRN/MTD, site setup and appoint/assign files is an Ops workaround; Lorraine wants it automated", "Automated feed for appointed and secondary-dial MPANs, channel-level, from the governed layer (C3); manual upload as an admin exception only"],
+      ["Data collector / aggregator (DC/DA) reports", "No DC/DA report was shown. \"DC/DA Customer Invoicing via CDAM\" is a billing-marker group, not a report", "Replace with the generation and consumption reports customers actually use (H4); confirm whether any DC/DA report exists"],
+    ], ["40mm", "", ""]),
+    L([
+      "<b>The walk-through is the baseline the migration plan asked for, half done.</b> The 6 Oct plan made a TMA baseline the gating item. The session largely answered section A and questions 16, 17, 19, 20, 22, 27 and 30 of the 45 baseline questions, and part of 23. Sections B (estate depth), G (contracts) and H (switch-off) are untouched.",
+      "<b>Lorraine's scope guard is useful.</b> Several admin functions exist to run IMSERV's own processes (billing groups, manual site setup) and need not come into Astral, but Ops must own those processes somewhere else before TMA goes.",
+    ]),
+
+    H("Drop list: do not rebuild"),
+    P("Six TMA features should not come into Astral on the evidence so far. Each still needs one line in customer comms or an Ops owner. Usage data does not exist (Jac cannot see what customers access), so this rests on query history and judgement."),
+    T(["Feature", "Evidence", "Action"], [
+      ["Bill Checker", "Jac: never used, never had a question about it; turned on only on request", "Drop. Scottish Water validate bills from exported data, which H1 covers"],
+      ["Water and gas commodities", "Jac: \"wishful thinking\", irrelevant", "Confirm before dropping: the TMA workbook holds gas MPRNs, which contradicts Jac"],
+      ["TOU data download option", "Jac: not many use it; the estate is mostly half-hourly", "Drop the option; keep TOU registers inside D10 export (C2)"],
+      ["Billing-marker groups (for example, \"A. DC/DA Customer Invoicing via CDAM\")", "Used to tell the billing team what not to bill; Lorraine: business process, not portal", "Ops moves the marker to the billing system or Salesforce before switch-off"],
+      ["Manual upload screens (PRN/MTD, flow, site setup, appoint/assign, tariff)", "Most loading is automated; manual is the workaround", "Replace with the automated feed (C3); keep one admin exception route (M9)"],
+      ["MDR Scheduler", "The dialler's desktop tool, shown alongside the portal", "Out of Astral scope; stays with data collection"],
+    ], ["44mm", "", ""]),
+
+    H("Conflicts and open questions"),
+    P("Nine facts disagree across sources. Each needs one answer before the ELT sees the TMA wave again."),
+    T(["Item", "What the sources say", "Who settles it"], [
+      ["MPANs in TMA", "13,664 unique (workbook note); 13,658 counted in 50,340 group rows; about 12,500 (Anna, in session)", "Lorraine"],
+      ["MPANs to migrate", "5,098 \"To Migrate\" across the workbook's pots; pot 11 Scottish Water 403; Scottish Water groups hold 4,741 unique MPANs; \"Scottish Water: 6,000 sites\" (Granola, 24 Aug)", "Lorraine, Emma Stewart"],
+      ["TMA monthly cost", "£133k slip cost (confirmed Sept); about £120k (migration plan); £77k a month plus the £50k TSA data line, about £130k (Granola)", "Amy"],
+      ["TMA notice period", "30 days (24 Aug) against 60 days (3 and 7 Sep)", "Tricia"],
+      ["Which users get set up", "Session: active in 6 months or on the FTP list; ELT Decision 3: full parity, dormant created dormant; workbook: 45 days", "Lisa, Clive (ELT Decision 3)"],
+      ["Gas and water", "Jac: \"wishful thinking\"; the TMA workbook holds gas MPRNs", "Jac"],
+      ["Channel data version", "Confirmed V1 (12 Aug) and a V1 scope row; J-R19 still V4 Open in the locked register", "Anna (Challenges tab)"],
+      ["SFTP and LOA build status", "Built (E2E plan, 7 Sep); To scope (scope sheet, 5 Oct); no user story (reconciliation, 15 Sep)", "Danny"],
+      ["Wave 1 content", "All 269 live TMA users w/c 2 Nov (ELT deck) against C1 to C6 open", "Go/no-go"],
+    ], ["34mm", "", "36mm"]),
+    S("Still open"),
+    L([
+      "ROC and LEC: what is calculated or reported, and for which clients?",
+      "Tariffs, DUOS and TUOS, Category: used by customers, by Ops, or not at all?",
+      "How many years of history must come across, by channel?",
+      "Shared SVAs (Infinis): now part of C5. How many complex and shared SVA sites are there?",
+      "Full feed inventory: every FTP and email recipient, file format and schedule (on SharePoint; access pending).",
+      "Charging: FTP is a chargeable service today. Does that charge continue in Astral, and who bills it?",
+      "Where TMA users land: Astral V1 or ADS/MSA with no portal (ELT Decision 5: Lisa and Anna to decide, not yet confirmed).",
+      "External parties who must change something when TMA stops, and their lead times (baseline section H).",
+      "The D3 sample file Lorraine offered to share: check it arrived.",
+      "TMA Group is for sale (logged 30 Sep). Does that change export cooperation for the history extract in C4?",
+    ]),
+
+    H("Actions before the go/no-go"),
+    P("Clive is away w/c 19 Oct, so every action has an owner who is not Clive. The test for TMA in wave 1: C1 to C6 each have an owner and a date. If not, TMA users move out of wave 1 and the ELT is told the monthly cost. The ELT deck dates the go/no-go 24 Oct, a Saturday; Anna to confirm the real date."),
+    { t: "acts", items: [
+      ["Name who holds the TMA decision while Clive is away", "Clive, 16 Oct"],
+      ["Grant SharePoint access to the IMSERV Scotland Project site for Clive, Anna, Gordon and Shaun; Clive's account is currently denied", "Lorraine, 20 Oct"],
+      ["Change-of-agent date per TMA cohort; confirm channel-level, D10 and secondary-dial MPANs reach the governed layer before wave 1", "Lorraine, Lisa, 20 Oct"],
+      ["Size C1, C2, C5, H3 and H6: channel model, D10, complex and pseudo MPANs, many-to-many groups, related MPANs", "Gordon, Danny, 20 Oct"],
+      ["Confirm Doug's TMA feed migration project: scope, owner, date, pull and push", "Anna, 22 Oct"],
+      ["TMA history extract plan and retention period", "Anna, Tricia, 22 Oct"],
+      ["Challenges tab: re-version J-R19 to V1; settle Group Functionality as V1; add D10 ingestion, export totals, generation and consumption reports, related MPANs; rewrite or remove the three unsourced TMA rows", "Anna, 22 Oct"],
+      ["Portfolio cleanse against current appointments, and the no-email user rule", "Lisa, Anna"],
+      ["Golden extracts and FTP files saved while access remains", "Jac"],
+      ["Second session with Jac: ROC and LEC, tariffs, DUOS and TUOS, gas and water, complex site count, history depth, switch-off dependencies", "Anna, 23 Oct"],
+      ["Settle the nine conflicts above, each with its named owner", "Anna"],
+      ["Use this register as the test script for Shaun's show-and-tell", "Shaun"],
+      ["Decide TMA's place in wave 1 against the test above", "Go/no-go group"],
+    ] },
+
+    H("Sources and method"),
+    P("All 46 walk-through screenshots were viewed as images, alongside the full transcript and the six images in Jac's overview. V1 status is as recorded in the scope sheet on 5 Oct and may lag the build. An independent review checked requirement IDs, quotes and numbers against the source files; its corrections are included."),
+    L([
+      "TMA Walkthru, Granola note and transcript, 15 Oct 2026 (Jac Finkle, Lorraine Asplin, Anna Bridgen, Shaun Leishman, Clive)",
+      "MeterPower Information (overview), Jac Finkle, 16 Oct 2026",
+      "IMSERV_Astral_Customer_Requirements_Register_LOCKED_v6_2026-08-28.xlsx, all tabs, row by row",
+      "IMSERV_Astral_v1_Scope.xlsx (86 functions and decision log, 5 Oct) and IMSERV_Astral_v1_Scope_Summary_Ops_IT.docx (7 Oct)",
+      "IMSERV Astral V1 Scope - E2E Test Planning.xlsx (7 Sep)",
+      "IMSERV_Astral_v1_UserStory_Coverage_Reconciliation_2026-09-15.xlsx and AST-E-01 SFTP Report Delivery user stories",
+      "IMSERV Astral Reports v1v1.1.docx (24 Sep); v1.1 Scope Candidates (13 Aug); ScottishWater v1.1 Candidates (25 Aug)",
+      "IMSERV_Astral_V4_Intake_ScottishWater_TMA_2026-08-21.xlsx and Interview Analysis - Scottish Water 210826.docx",
+      "IMSERV_Astral_Channel_Level_Data_Spec.html (31 Jul)",
+      "Portal Solution for IMServ Scotland.xlsx (TMA users, MPAN and migration workbook)",
+      "IMSERV_Astral_Migration_Plan_TMA_First_v2.docx and IMSERV_Astral_TMA_Baseline_Questions.docx (6 Oct)",
+      "DV and TMA to Astral V1, Client Transition Plan, ELT v2 (9 Oct)",
+      "IMSERV_Astral_By_Version_v_TMA_Stark.pptx (5 Oct); TMA requirements: Portal Requirements.docx",
+      "Granola meeting summaries on TMA, MeterPower and Scottish Water, Aug to Oct 2026 (summaries, not transcripts)",
+    ]),
+    P("Not read: the three SharePoint files Jac linked (FTP file format, MeterPower and FTP Combined list, Shared SVA and Complex numbers), because Clive's account is denied access; the dev tracker \"Requirement and Sprints 1906\"; and the DevOps backlog. The TMA workbook holds personal data and some passwords in its notes; none is reproduced here."),
+  ];
+
+  const pages = document.getElementById("pages");
+  const chrome = document.getElementById("chrome");
+  let flow;
+  const newPage = () => {
+    const page = document.createElement("div");
+    page.className = "page paper";
+    page.appendChild(chrome.content.cloneNode(true));
+    pages.appendChild(page);
+    flow = page.querySelector(".flow");
+  };
+  const fits = () => flow.scrollHeight <= flow.clientHeight + 0.5;
+  const el = (html) => { const d = document.createElement("div"); d.innerHTML = html.trim(); return d.firstElementChild; };
+  // A heading never ends a page on its own: it moves down with the block after it.
+  const place = (node, keepWith) => {
+    flow.appendChild(node);
+    if (fits()) return;
+    flow.removeChild(node);
+    const moved = keepWith && flow.lastElementChild === keepWith ? keepWith : null;
+    if (moved) flow.removeChild(moved);
+    newPage();
+    if (moved) flow.appendChild(moved);
+    flow.appendChild(node);
+  };
+  const tableHead = (b) => `<table class="reg"><colgroup>${b.head.map((_, i) => `<col${b.widths?.[i] ? ` style="width:${b.widths[i]}"` : ""}>`).join("")}</colgroup><thead><tr>${b.head.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody></tbody></table>`;
+
+  const run = () => {
+    newPage();
+    let lastHead = null;
+    for (const b of FLOW) {
+      if (b.t === "h3" || b.t === "h4") {
+        const node = el(b.t === "h3" ? `<h3 class="sec">${b.text}</h3>` : `<h4 class="sub">${b.text}</h4>`);
+        place(node, b.t === "h4" ? lastHead : null);
+        lastHead = node;
+        continue;
+      }
+      if (b.t === "table") {
+        let table = el(tableHead(b));
+        place(table, lastHead);
+        for (const r of b.rows) {
+          const tr = el(`<table><tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr></table>`).querySelector("tr");
+          table.tBodies[0].appendChild(tr);
+          if (fits()) continue;
+          table.tBodies[0].removeChild(tr);
+          if (!table.tBodies[0].rows.length) flow.removeChild(table);
+          newPage();
+          table = el(tableHead(b));
+          flow.appendChild(table);
+          table.tBodies[0].appendChild(tr);
+        }
+        lastHead = null;
+        continue;
+      }
+      if (b.t === "ul" || b.t === "acts") {
+        const cls = b.t === "ul" ? "pts" : "acts";
+        let list = el(`<ul class="${cls}"></ul>`);
+        place(list, lastHead);
+        for (const item of b.items) {
+          const li = el(b.t === "ul" ? `<li>${item}</li>` : `<li><div>${item[0]} <span>(${item[1]})</span></div></li>`);
+          list.appendChild(li);
+          if (fits()) continue;
+          list.removeChild(li);
+          if (!list.children.length) flow.removeChild(list);
+          newPage();
+          list = el(`<ul class="${cls}"></ul>`);
+          flow.appendChild(list);
+          list.appendChild(li);
+        }
+        lastHead = null;
+        continue;
+      }
+      const node = b.t === "html" ? el(`<div>${b.html}</div>`) : b.t === "note" ? el(`<div class="note"><p>${b.text}</p></div>`) : el(`<p>${b.text}</p>`);
+      place(node, lastHead);
+      lastHead = null;
+    }
+    window.__pages = pages.children.length;
+    window.__ready = true;
+  };
+  document.fonts.ready.then(run);
+</script>
+</body>
+</html>
