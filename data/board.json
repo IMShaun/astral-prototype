@@ -282,15 +282,6 @@
       ],
       "today": [
         {
-          "id": "tma-gap-c5",
-          "title": "TMA gap C5: Complex sites, settlement and pseudo MPANs",
-          "note": "Doing. Pair the settlement MPAN (meter COMPLEX, calculated value) with its 99-prefixed pseudo MPAN (raw meters). Show both totals and why they differ. Never recompute the calculated value. Astral builds this in the prototype. Gordon and Lisa own the model.",
-          "project": "Astral",
-          "kind": "ux",
-          "added": "2026-10-16",
-          "doing": true
-        },
-        {
           "id": "tma-gap-c3",
           "title": "TMA gap C3: Source feed for channel data, D10 reads and secondary dials",
           "note": "Owned outside the Astral team (Lorraine, Lisa). Track it; nothing to build yet. Needs the change-of-agent date per cohort and feed.",
@@ -852,6 +843,15 @@
         }
       ],
       "done": [
+        {
+          "id": "tma-gap-c5",
+          "title": "TMA gap C5: Complex sites, settlement and pseudo MPANs",
+          "note": "Done in the prototype on Cardiff Central. Agreed: 1. One site, with the billed MPAN first and the actual readings (99 pseudo MPAN) underneath. 2. Actual readings are never added to totals. 3. Customers and IMSERV staff both see them. 4. Show both numbers, the difference and one plain-English line on why they differ. Astral shows the billed number as received and never works it out. Gordon and Lisa still own the model and the linking spreadsheet migration.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-10-16",
+          "doneOn": "2026-10-16"
+        },
         {
           "id": "tma-gap-c1",
           "title": "TMA gap C1: Channel-level data model and meter channel view",

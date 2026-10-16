@@ -1224,7 +1224,8 @@ const PROTO_WALK_GROUPS = [
       { name: "Reading", kind: "station", status: "stale", lastReading: "1 day ago" },
       { name: "Oxford", kind: "station" },
       { name: "Bristol Temple Meads", kind: "station", meters: ["in", "gas"] },
-      { name: "Cardiff Central", kind: "station", meters: ["in", "gas"] },
+      // A complex site: the billed MPAN is worked out upstream from the meters on a 99 pseudo MPAN.
+      { name: "Cardiff Central", kind: "station", meters: ["in", "gas"], complex: true },
       { name: "Swindon depot", kind: "depot", days: { Saturday: "closed", Sunday: "closed" } },
       { name: "Exeter St Davids", kind: "station" },
       { name: "Plymouth", kind: "station" },
@@ -1384,6 +1385,7 @@ function protoWalkMakeMeter(group, site, kind, index, extra) {
     meter.ratePence = 185;
   } else if (gas) meter.mprn = String(2100000000 + index);
   else meter.mpan = String(1600009000000 + index);
+  if (site.complex && kind === "in") meter.complex = { pseudo: `99${meter.mpan.slice(2)}` };
   if (extra.owned || site.owned) meter.owned = extra.owned || site.owned;
   if (site.readingsTo) meter.readingsTo = site.readingsTo;
   return meter;
@@ -27810,6 +27812,8 @@ function protoMeterInstalls(meter) {
     return `${pick(`${key}-l`, ["E", "K", "L"])}${year}${pick(`${key}-m`, [..."ABCDEFGHJK"])}${digits}`;
   };
   const fitted = new Date(2014 + Math.floor(rand("year") * 5), Math.floor(rand("month") * 12), 1 + Math.floor(rand("day") * 27));
+  // A billed MPAN on a complex site has no meter of its own. The industry records its meter as COMPLEX.
+  if (meter.complex) return [{ key: "a", make: "Worked out from other meters", serial: "COMPLEX", from: fitted, to: null }];
   const swapped = kind === "electricity" && (meter.id === "nr-crewe-in" || rand("swap") < 0.2);
   if (!swapped) {
     return [{ key: "a", make: pick("make", makes), serial: serial("a", fitted), from: fitted, to: null }];
@@ -28140,6 +28144,99 @@ function protoMeterRegisterCard(supply) {
   `;
 }
 
+// Complex sites: the billed MPAN carries a number worked out upstream from the meters on a 99 pseudo MPAN.
+// Astral shows both as received and never adds the actual readings to any total.
+function protoComplexMeters(meter) {
+  const rand = (key) => protoWeatherRand(`${meter.id}|complex|${key}`);
+  const weights = [0.5 + 0.2 * rand("a"), 0.3 + 0.1 * rand("b"), 0.12 + 0.08 * rand("c")];
+  const sum = weights.reduce((n, w) => n + w, 0);
+  return weights.map((weight, i) => ({
+    key: `m${i + 1}`,
+    make: PROTO_METER_MAKES.electricity[i % PROTO_METER_MAKES.electricity.length],
+    serial: `${"EKL"[i]}${17 + i}${"ABC"[i]}${10000 + Math.floor(rand(`serial-${i}`) * 90000)}`,
+    share: weight / sum,
+  }));
+}
+
+function protoComplexRows(meter) {
+  return protoMeterChannelRows(meter).map((row) => {
+    if (row.quality === "missing" || row.values.kwh == null) return { ...row, billed: null, actual: null };
+    const lift = 1.02 + 0.04 * protoWeatherRand(`${meter.id}|complex-lift|${row.day}|${row.label}`);
+    return { ...row, billed: row.values.kwh, actual: row.values.kwh * lift };
+  });
+}
+
+function protoComplexGap(billed, actual) {
+  if (billed == null || actual == null) return `<span class="astral-muted">None</span>`;
+  const gap = actual - billed;
+  const sign = gap > 0 ? "+" : gap < 0 ? "\u2212" : "";
+  const percent = billed ? `${Math.abs((gap / billed) * 100).toFixed(1)} percent` : "";
+  return `<span class="astral-complex-gap">${escapeHtml(`${sign}${protoFormatReading(Math.abs(gap), "kWh")}`)}${
+    percent ? `<span class="astral-muted">${escapeHtml(percent)}</span>` : ""
+  }</span>`;
+}
+
+function protoComplexCard(meter) {
+  const span = protoDateSpan();
+  const rows = protoComplexRows(meter);
+  const read = rows.filter((row) => row.billed != null);
+  const billed = read.reduce((n, row) => n + row.billed, 0);
+  const actual = read.reduce((n, row) => n + row.actual, 0);
+  const amount = (value) =>
+    value == null ? `<span class="astral-muted">No reading</span>` : escapeHtml(protoFormatReading(value, "kWh"));
+  const when = span.kind === "interval" ? "Time" : "Date";
+  const body = rows
+    .map(
+      (row) =>
+        `<tr><th scope="row">${escapeHtml(row.label)}</th><td>${amount(row.billed)}</td><td>${amount(
+          row.actual
+        )}</td><td>${protoComplexGap(row.billed, row.actual)}</td></tr>`
+    )
+    .join("");
+  const meters = protoComplexMeters(meter)
+    .map(
+      (item) =>
+        `<tr><th scope="row">${escapeHtml(item.make)} <span class="astral-muted">${escapeHtml(
+          `Serial ${item.serial}`
+        )}</span></th><td>${read.length ? amount(actual * item.share) : amount(null)}</td></tr>`
+    )
+    .join("");
+  return `
+    <section class="astral-meter-view-card" aria-labelledby="astral-meter-complex">
+      <div class="astral-meter-view-card-head">
+        <h4 class="astral-meter-list-title" id="astral-meter-complex">Billed and actual readings</h4>
+        <p>${escapeHtml(
+          `${protoChartWhen()}. The billed number is worked out from several meters before it reaches us, so it will not match the actual readings exactly.`
+        )}</p>
+      </div>
+      <div class="astral-table-wrap is-tips">
+        <table class="astral-table astral-complex-table">
+          <thead><tr><th scope="col">${when}</th><th scope="col">Billed</th><th scope="col">Actual</th><th scope="col">Difference</th></tr></thead>
+          <tbody>${body}</tbody>
+          <tfoot><tr><th scope="row">Total</th><td>${amount(read.length ? billed : null)}</td><td>${amount(
+            read.length ? actual : null
+          )}</td><td>${read.length ? protoComplexGap(billed, actual) : protoComplexGap(null, null)}</td></tr></tfoot>
+        </table>
+      </div>
+    </section>
+    <section class="astral-meter-view-card" aria-labelledby="astral-meter-complex-meters">
+      <div class="astral-meter-view-card-head">
+        <h4 class="astral-meter-list-title" id="astral-meter-complex-meters">Meters behind the actual readings</h4>
+        <p>${escapeHtml(
+          `They record on MPAN ${meter.complex.pseudo}. Totals are for ${protoRangeWords(span.from, span.to)} and are not added to your site totals.`
+        )}</p>
+      </div>
+      <div class="astral-table-wrap">
+        <table class="astral-table astral-complex-table">
+          <thead><tr><th scope="col">Meter</th><th scope="col">Actual</th></tr></thead>
+          <tbody>${meters}</tbody>
+          <tfoot><tr><th scope="row">Total</th><td>${amount(read.length ? actual : null)}</td></tr></tfoot>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
 const PROTO_METER_REF_WORDS = {
   MPAN: "Meter point administration number. It identifies an electricity supply.",
   MPRN: "Meter point reference number. It identifies a gas supply.",
@@ -28156,11 +28253,13 @@ function protoMeterViewPage(meter) {
   const lead = supply[0];
   const rowsBy = Object.fromEntries(supply.map((item) => [item.id, protoMeterChannelRows(item)]));
   const installs = protoMeterInstalls(lead);
-  const active = protoMeterTabId();
+  const active = protoMeterTabId(lead);
+  const tabs = protoMeterTabList(lead);
   const panels = {
     channels: () => installs.map((install) => protoMeterInstallCard(supply, install, rowsBy)).join(""),
     readings: () => protoMeterReadingsCard(supply, rowsBy),
     display: () => protoMeterRegisterCard(supply),
+    billed: () => protoComplexCard(lead),
   };
   const refs = supply
     .map((item) => {
@@ -28186,9 +28285,9 @@ function protoMeterViewPage(meter) {
           <span class="astral-meter-ref">${protoIconMark(protoMeterKind(lead), "astral-meter-mark")}<span>${escapeHtml(protoMeterUtility(lead))}</span></span>
           <span>${escapeHtml(`Last reading ${lead.lastReading || "None"}`)}</span>
         </p>
-        ${protoTabs(PROTO_METER_TABS, active, "data-proto-meter-tab", "Channels, Readings, and Display readings")}
+        ${protoTabs(tabs, active, "data-proto-meter-tab", protoListWords(tabs.map((tab) => tab.name)))}
     `,
-    `<div class="astral-meter-view">${PROTO_METER_TABS.map(
+    `<div class="astral-meter-view">${tabs.map(
       (tab) =>
         `<div class="astral-meter-view-panel" role="tabpanel" aria-label="${escapeHtml(tab.name)}" data-proto-meter-panel="${tab.id}"${
           tab.id === active ? "" : " hidden"
@@ -28203,14 +28302,27 @@ const PROTO_METER_TABS = [
   { id: "display", name: "Display readings" },
 ];
 
-function protoMeterTabId() {
+// A complex site adds its billed and actual readings, after the tabs every meter has.
+const PROTO_METER_COMPLEX_TAB = { id: "billed", name: "Billed and actual" };
+
+function protoMeterTabList(meter) {
+  return meter?.complex ? [...PROTO_METER_TABS, PROTO_METER_COMPLEX_TAB] : PROTO_METER_TABS;
+}
+
+function protoListWords(words) {
+  if (words.length < 3) return words.join(" and ");
+  return `${words.slice(0, -1).join(", ")}, and ${words[words.length - 1]}`;
+}
+
+function protoMeterTabId(meter = protoMeterViewMeter()) {
   const raw = String(store.prototypeMeterTab || "");
-  return PROTO_METER_TABS.some((tab) => tab.id === raw) ? raw : PROTO_METER_TABS[0].id;
+  const tabs = protoMeterTabList(meter);
+  return tabs.some((tab) => tab.id === raw) ? raw : tabs[0].id;
 }
 
 // Tabs switch without a redraw, so the page does not move. A table drawn while hidden measures its columns once it shows.
 function protoPickMeterTab(id) {
-  if (!PROTO_METER_TABS.some((tab) => tab.id === id)) return;
+  if (!protoMeterTabList(protoMeterViewMeter()).some((tab) => tab.id === id)) return;
   store.prototypeMeterTab = id;
   persistChrome();
   const root = document.querySelector("#astral-fs .astral-detail");
@@ -28242,10 +28354,32 @@ function protoMeterPointRow(meter, second) {
     <tr class="is-link" data-proto-meter-view="${escapeHtml(meter.id)}">
       <td><span class="astral-meter-ref">${protoMeterMark(meter.commodity)}<button type="button" class="astral-row-link">${escapeHtml(
         protoMeterRef(meter)
-      )}</button></span></td>
+      )}</button>${
+        meter.complex
+          ? protoTag("Billed", "Worked out from the meters on the MPAN below. It is the number used for billing.", "is-quiet")
+          : ""
+      }</span></td>
       ${second == null ? "" : `<td>${second}</td>`}
       <td>${protoMeterChannels([meter]).filter((channel) => channel.used).length}</td>
       <td>${protoStateCells(words, protoStatus(meter.status))}</td>
+    </tr>${meter.complex ? protoComplexPointRow(meter, second) : ""}
+  `;
+}
+
+// Sits under the billed MPAN and opens its meter view on Billed and actual.
+function protoComplexPointRow(meter, second) {
+  return `
+    <tr class="is-link is-sub" data-proto-meter-view="${escapeHtml(meter.id)}" data-proto-meter-view-tab="billed">
+      <td><span class="astral-meter-ref astral-meter-sub-ref">${protoMeterMark(meter.commodity)}<button type="button" class="astral-row-link">${escapeHtml(
+        meter.complex.pseudo
+      )}</button>${protoTag(
+        "Actual",
+        "What the meters recorded. It is not added to your totals.",
+        "is-quiet"
+      )}</span></td>
+      ${second == null ? "" : `<td>${second}</td>`}
+      <td>${protoMeterChannels([meter]).filter((channel) => channel.used).length}</td>
+      <td>${protoStateCells([], protoStatus(meter.status))}</td>
     </tr>
   `;
 }
@@ -41582,6 +41716,8 @@ function onPrototype(event) {
   if (meterView) {
     const meter = protoMeter(String(meterView.dataset.protoMeterView || meterView.dataset.protoMeterViewRow || ""));
     if (!meter) return;
+    const tab = String(meterView.dataset.protoMeterViewTab || "");
+    if (tab) store.prototypeMeterTab = tab;
     protoCommitPortfolioTree({ prototypeMeterView: meter.id, prototypeDateOpen: false }, { pane: true });
     protoRestoreFocus("#astral-fs [data-proto-meter-view-close]");
     return;
