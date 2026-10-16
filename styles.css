@@ -6873,6 +6873,20 @@ button.astral-state {
   opacity: 0.6;
 }
 
+.astral-meter-view-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The pane clips above the head, so the full term opens below the tag. */
+.astral-meter-view-title .astral-icon-tip {
+  bottom: auto;
+  top: calc(100% + 8px);
+  left: 0;
+  transform: none;
+}
+
 .astral-meter-view-facts {
   display: flex;
   flex-wrap: wrap;

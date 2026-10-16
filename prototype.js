@@ -27849,7 +27849,7 @@ function protoMeterInstallCard(meter, install, rows) {
   const heads = [
     "Channel",
     "Measures",
-    ...(electricity ? ["Type", "MQID"] : []),
+    ...(electricity ? ["Type"] : []),
     "Direction",
     "Unit",
     "From",
@@ -27859,7 +27859,7 @@ function protoMeterInstallCard(meter, install, rows) {
   const body = protoMeterChannels(meter)
     .map((channel) => {
       const cells = [
-        ...(electricity ? [escapeHtml(channel.type), channel.used ? escapeHtml(channel.mqid) : `<span class="astral-muted">UN</span>`] : []),
+        ...(electricity ? [escapeHtml(channel.type)] : []),
         protoFlowPill(channel.flow),
         escapeHtml(channel.unit),
         channel.used ? escapeHtml(protoMeterDay(install.from)) : `<span class="astral-muted">None</span>`,
@@ -27875,7 +27875,7 @@ function protoMeterInstallCard(meter, install, rows) {
     <section class="astral-meter-view-card" aria-labelledby="${id}">
       <div class="astral-meter-view-card-head">
         <h4 class="astral-meter-list-title" id="${id}">${escapeHtml(install.make)} <span>${escapeHtml(
-          `${electricity ? "MSID" : "Serial"} ${install.serial}`
+          `Serial ${install.serial}`
         )}</span></h4>
         <p>${escapeHtml(`${note} Totals are for ${protoRangeWords(span.from, span.to)}.`)}</p>
       </div>
@@ -27892,12 +27892,13 @@ function protoMeterInstallCard(meter, install, rows) {
 const PROTO_METER_STEP_WORDS = { interval: "Half-hourly", day: "Daily", month: "Monthly" };
 
 function protoMeterReadingsCard(meter, rows) {
+  const electricity = protoMeterKind(meter) === "electricity";
   const channels = protoMeterChannels(meter).filter((channel) => channel.used);
   const step = PROTO_METER_STEP_WORDS[protoDateSpan().kind] || "Daily";
   const estimated = rows.some((row) => row.quality === "estimated");
   const heads = channels
     .map((channel) =>
-      protoBreakdownMeterHead(`Channel ${channel.no}`, [channel.mqid && channel.mqid !== "UN" ? channel.mqid : "", channel.unit].filter(Boolean).join(", "))
+      protoBreakdownMeterHead(`Channel ${channel.no}`, [electricity ? channel.measures : "", channel.unit].filter(Boolean).join(", "))
     )
     .join("");
   const body = rows
@@ -27932,6 +27933,16 @@ function protoMeterReadingsCard(meter, rows) {
   `;
 }
 
+const PROTO_METER_REF_WORDS = {
+  MPAN: "Meter point administration number. It identifies an electricity supply.",
+  MPRN: "Meter point reference number. It identifies a gas supply.",
+};
+
+// Industry references stay as tags so hover or focus gives the full term.
+function protoMeterRefTag(refName) {
+  return PROTO_METER_REF_WORDS[refName] ? protoTag(refName, PROTO_METER_REF_WORDS[refName], "is-quiet") : escapeHtml(refName);
+}
+
 // The other side of the supply, so an import MPAN links to its export MPAN and back.
 function protoMeterViewPair(meter, site) {
   if (protoMeterKind(meter) !== "electricity") return "";
@@ -27942,7 +27953,7 @@ function protoMeterViewPair(meter, site) {
       (item.direction === "Export") !== (meter.direction === "Export")
   );
   if (!pair) return "";
-  return `<span>${escapeHtml(pair.direction === "Export" ? "Outgoing MPAN" : "Incoming MPAN")} <button type="button" class="astral-row-link astral-meter-view-pair" data-proto-meter-view="${escapeHtml(
+  return `<span>${escapeHtml(pair.direction === "Export" ? "Export" : "Import")} ${protoMeterRefTag("MPAN")} <button type="button" class="astral-row-link astral-meter-view-pair" data-proto-meter-view="${escapeHtml(
     pair.id
   )}">${escapeHtml(protoMeterRef(pair))}</button></span>`;
 }
@@ -27959,7 +27970,7 @@ function protoMeterViewPage(meter) {
             ${protoIconBtn("prev", "Back", "data-proto-meter-view-close")}
             <div>
               ${protoPaneKicker(site?.name || facts.site)}
-              <h3>${escapeHtml(`${facts.refName} ${facts.ref}`)}</h3>
+              <h3 class="astral-meter-view-title">${protoMeterRefTag(facts.refName)} ${escapeHtml(facts.ref)}</h3>
             </div>
           </div>
           <div class="astral-detail-tools">${protoDateControl()}</div>
