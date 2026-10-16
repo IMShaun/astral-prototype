@@ -1697,6 +1697,7 @@ function taskItem(task, done) {
   const project = task.project
     ? `<span class="astral-tag">${escapeHtml(task.project)}</span>`
     : "";
+  const doing = !done && task.doing ? deskTag("Doing", RESEARCH_STUDY_STATUS.doing) : "";
   return `
     <li class="task">
       <input type="checkbox" ${done ? "checked" : ""} data-id="${escapeHtml(task.id)}" />
@@ -1708,7 +1709,7 @@ function taskItem(task, done) {
         aria-haspopup="dialog"
       >
         <span class="task-title">${escapeHtml(task.title)}</span>
-        <span class="task-meta">${project}</span>
+        <span class="task-meta">${doing}${project}</span>
       </button>
     </li>
   `;
@@ -3402,7 +3403,7 @@ function fillDetail() {
     const found = findTask(id);
     if (!found) return false;
     const task = found.task;
-    els.detailKicker.textContent = found.list === "done" ? "Done" : "To do list";
+    els.detailKicker.textContent = found.list === "done" ? "Done" : task.doing ? "Doing" : "To do list";
     els.detailTitle.textContent = task.title;
     const added = task.added
       ? DAY_FMT.format(new Date(`${task.added}T12:00:00`))
@@ -6197,7 +6198,7 @@ function onCheck(event) {
   if (box.checked && found.list === "today") {
     current.today = current.today.filter((task) => task.id !== found.task.id);
     current.done = [
-      { ...found.task, doneOn: todayIso() },
+      (({ doing, ...rest }) => ({ ...rest, doneOn: todayIso() }))(found.task),
       ...(current.done || []),
     ];
   } else if (!box.checked && found.list === "done") {

@@ -282,6 +282,223 @@
       ],
       "today": [
         {
+          "id": "tma-gap-c5",
+          "title": "TMA gap C5: Complex sites, settlement and pseudo MPANs",
+          "note": "Doing. Pair the settlement MPAN (meter COMPLEX, calculated value) with its 99-prefixed pseudo MPAN (raw meters). Show both totals and why they differ. Never recompute the calculated value. Astral builds this in the prototype. Gordon and Lisa own the model.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-10-16",
+          "doing": true
+        },
+        {
+          "id": "tma-gap-c3",
+          "title": "TMA gap C3: Source feed for channel data, D10 reads and secondary dials",
+          "note": "Owned outside the Astral team (Lorraine, Lisa). Track it; nothing to build yet. Needs the change-of-agent date per cohort and feed.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-c4",
+          "title": "TMA gap C4: History before TMA access ends",
+          "note": "Owned outside the Astral team (Anna, Tricia). Track it; nothing to build yet. Needs an extract plan and an agreed retention period.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-c6",
+          "title": "TMA gap C6: TMA FTP feeds for 55 customers",
+          "note": "Owned outside the Astral team (Anna). Track it; nothing to build yet. Confirm the scope, owner and date of Doug's project, or bring TMA feeds into AST-E-01.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-h1",
+          "title": "TMA gap H1: Data Download options at TMA parity",
+          "note": "Units, actuals only, flags, consolidation by MPAN, grouping, interval, cumulative or TOU, search across 845 MPANs, run as a background job. Astral builds this in the prototype. Spec from Jac's option list (Anna, Jac).",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-h3",
+          "title": "TMA gap H3: Organisation, Group and Sub Group access",
+          "note": "Group-level feature rights; one MPAN in many groups. Astral builds this in the prototype. Gordon settles the version conflict as V1.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-h4",
+          "title": "TMA gap H4: Generation and consumption reports",
+          "note": "The main reasons customers log in. Astral builds this in the prototype. Anna adds both as V1 report rows.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-h6",
+          "title": "TMA gap H6: Related import and export MPAN pairs",
+          "note": "Partly shown: the meter view pairs import and export. Add the related MPAN and MPAN type to site attributes. Astral builds this in the prototype.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-h7",
+          "title": "TMA gap H7: Users with no email and third-party authorisation",
+          "note": "Owned outside the Astral team (Anna, Tricia). Track it; nothing to build yet. No-email rule in the transition plan; notes into the authority gate.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-h8",
+          "title": "TMA gap H8: Stale portfolios after D0151",
+          "note": "Owned outside the Astral team (Lisa, Tricia). Track it; nothing to build yet. Cleanse against current appointments before migration.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-h9",
+          "title": "TMA gap H9: Three data cuts a day",
+          "note": "Owned outside the Astral team (data team). Track it; nothing to build yet. Confirm refresh frequency or tell customers.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-m1",
+          "title": "TMA gap M1: Profile table per channel",
+          "note": "48 periods per channel in kW, kWh or kVA, transposable, with total, max, min, max demand kVA and load factor. Astral builds this in the prototype. Owner: Shaun.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-m2",
+          "title": "TMA gap M2: Compare Data in three modes",
+          "note": "With summary statistics. Confirm modes 2 and 3. Astral builds this in the prototype. Owner: Shaun.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-m3",
+          "title": "TMA gap M3: Enquiry history per MPAN",
+          "note": "Owned outside the Astral team (Anna). Track it; nothing to build yet. Accept capture-only in V1 and say so in comms.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-m4",
+          "title": "TMA gap M4: Alarm report and alarm email",
+          "note": "Owned outside the Astral team (Anna). Track it; nothing to build yet. Decide with account managers; usage unknown.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-m5",
+          "title": "TMA gap M5: All data in GMT",
+          "note": "Owned outside the Astral team (Gordon). Track it; nothing to build yet. Default TMA exports to GMT.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-m6",
+          "title": "TMA gap M6: Ops monitoring reports",
+          "note": "Owned outside the Astral team (Lisa). Track it; nothing to build yet. Name where ingestion monitoring lives.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-m7",
+          "title": "TMA gap M7: Support routes before wave 1",
+          "note": "Owned outside the Astral team (Anna, Pippa). Track it; nothing to build yet. Route the mailbox and help desk into the tier model.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-m8",
+          "title": "TMA gap M8: ROC, LEC, tariffs, DUOS and TUOS",
+          "note": "Owned outside the Astral team (Anna). Track it; nothing to build yet. Second session with Jac.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-m9",
+          "title": "TMA gap M9: Manual MPAN maintenance when the feed is wrong",
+          "note": "Owned outside the Astral team (Lisa). Track it; nothing to build yet. Define the exception route.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-m10",
+          "title": "TMA gap M10: Agreed capacity and missing addresses",
+          "note": "Owned outside the Astral team (data team). Track it; nothing to build yet. Size ASC and address coverage.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-m11",
+          "title": "TMA gap M11: Placeholder meter until MOP details arrive",
+          "note": "Owned outside the Astral team (Gordon). Track it; nothing to build yet. The model allows a placeholder meter.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-m12",
+          "title": "TMA gap M12: Sub-meters to set up",
+          "note": "Owned outside the Astral team (Lisa). Track it; nothing to build yet. Confirm count and treatment.",
+          "project": "Astral",
+          "kind": "admin",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-l1",
+          "title": "TMA gap L1: Carbon report",
+          "note": "Covered once site emissions is built.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-l2",
+          "title": "TMA gap L2: Notices panel",
+          "note": "Banner on the help framework.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-l3",
+          "title": "TMA gap L3: Features and Help pages",
+          "note": "Covered by the help screens work.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-l4",
+          "title": "TMA gap L4: Simulate User View",
+          "note": "Covered by login as a user.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-10-16"
+        },
+        {
           "id": "ds-figma-flows",
           "title": "Convert prototype flows into Figma, screen by screen",
           "note": "Developers need a linear reference. Keep the prototype as the source until those frames exist.",
@@ -635,6 +852,24 @@
         }
       ],
       "done": [
+        {
+          "id": "tma-gap-c1",
+          "title": "TMA gap C1: Channel-level data model and meter channel view",
+          "note": "Done. Meter view shows each meter, its channels (AI, AE, RI, RE) and effective dates. Closes the prototype side; Gordon and Anna still commit the model and import route as V1.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-10-16",
+          "doneOn": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-c2",
+          "title": "TMA gap C2: Display readings with a monthly export total",
+          "note": "Done in 6f84c9c and 6e0ee68. Customers view and export display readings, with a monthly export total per export MPAN. Anna and the data team still add D10 ingestion to V1.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-10-16",
+          "doneOn": "2026-10-16"
+        },
         {
           "id": "pg-manage-mpans",
           "title": "Define how MPANs are added or removed from a group",
