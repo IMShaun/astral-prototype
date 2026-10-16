@@ -28008,13 +28008,6 @@ function protoMeterViewPage(meter) {
   );
 }
 
-// The channels this meter point records, out of the channels on the meter when it has more.
-function protoMeterChannelCount(meter) {
-  const channels = protoMeterChannels([meter]);
-  const used = channels.filter((channel) => channel.used).length;
-  return used < channels.length ? `${used} of ${channels.length}` : String(used);
-}
-
 // Under the graph on a site: the meter points, each opening its own meter view.
 function protoMeterPointRow(meter, second) {
   const words = [
@@ -28028,7 +28021,7 @@ function protoMeterPointRow(meter, second) {
         protoMeterRef(meter)
       )}</button></span></td>
       ${second == null ? "" : `<td>${second}</td>`}
-      <td>${protoMeterChannelCount(meter)}</td>
+      <td>${protoMeterChannels([meter]).filter((channel) => channel.used).length}</td>
       <td>${protoStateCells(words, protoStatus(meter.status))}</td>
     </tr>
   `;
