@@ -6860,6 +6860,16 @@ button.astral-state {
   min-width: 0;
 }
 
+.astral-meter-view-panel {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.astral-meter-view-panel[hidden] {
+  display: none;
+}
+
 .astral-meter-view-card-head .astral-meter-list-title {
   margin: 0;
 }

@@ -28156,6 +28156,12 @@ function protoMeterViewPage(meter) {
   const lead = supply[0];
   const rowsBy = Object.fromEntries(supply.map((item) => [item.id, protoMeterChannelRows(item)]));
   const installs = protoMeterInstalls(lead);
+  const active = protoMeterTabId();
+  const panels = {
+    channels: () => installs.map((install) => protoMeterInstallCard(supply, install, rowsBy)).join(""),
+    readings: () => protoMeterReadingsCard(supply, rowsBy),
+    display: () => protoMeterRegisterCard(supply),
+  };
   const refs = supply
     .map((item) => {
       const facts = protoMeterFacts(item);
@@ -28180,12 +28186,49 @@ function protoMeterViewPage(meter) {
           <span class="astral-meter-ref">${protoIconMark(protoMeterKind(lead), "astral-meter-mark")}<span>${escapeHtml(protoMeterUtility(lead))}</span></span>
           <span>${escapeHtml(`Last reading ${lead.lastReading || "None"}`)}</span>
         </p>
+        ${protoTabs(PROTO_METER_TABS, active, "data-proto-meter-tab", "Channels, Readings, and Display readings")}
     `,
-    `<div class="astral-meter-view">${installs.map((install) => protoMeterInstallCard(supply, install, rowsBy)).join("")}${protoMeterReadingsCard(
-      supply,
-      rowsBy
-    )}${protoMeterRegisterCard(supply)}</div>`
+    `<div class="astral-meter-view">${PROTO_METER_TABS.map(
+      (tab) =>
+        `<div class="astral-meter-view-panel" role="tabpanel" aria-label="${escapeHtml(tab.name)}" data-proto-meter-panel="${tab.id}"${
+          tab.id === active ? "" : " hidden"
+        }>${panels[tab.id]()}</div>`
+    ).join("")}</div>`
   );
+}
+
+const PROTO_METER_TABS = [
+  { id: "channels", name: "Channels" },
+  { id: "readings", name: "Readings" },
+  { id: "display", name: "Display readings" },
+];
+
+function protoMeterTabId() {
+  const raw = String(store.prototypeMeterTab || "");
+  return PROTO_METER_TABS.some((tab) => tab.id === raw) ? raw : PROTO_METER_TABS[0].id;
+}
+
+// Tabs switch without a redraw, so the page does not move. A table drawn while hidden measures its columns once it shows.
+function protoPickMeterTab(id) {
+  if (!PROTO_METER_TABS.some((tab) => tab.id === id)) return;
+  store.prototypeMeterTab = id;
+  persistChrome();
+  const root = document.querySelector("#astral-fs .astral-detail");
+  if (!root || !root.querySelector("[data-proto-meter-panel]")) {
+    render();
+    return;
+  }
+  root.querySelectorAll("[data-proto-meter-tab]").forEach((tab) => {
+    const on = tab.dataset.protoMeterTab === id;
+    tab.classList.toggle("is-on", on);
+    tab.setAttribute("aria-selected", on ? "true" : "false");
+    tab.tabIndex = on ? 0 : -1;
+  });
+  root.querySelectorAll("[data-proto-meter-panel]").forEach((panel) => {
+    panel.hidden = panel.dataset.protoMeterPanel !== id;
+  });
+  protoSlideHost(root.querySelector(".astral-pane-head > .astral-tabs"), "button.is-on", "tabs", false);
+  protoBindBreakdownNav();
 }
 
 // Under the graph on a site: the meter points, each opening its own meter view.
@@ -41807,6 +41850,11 @@ function onPrototype(event) {
   const meterAttrTab = event.target.closest("[data-proto-meter-attr-tab]");
   if (meterAttrTab) {
     protoPickMeterAttrTab(String(meterAttrTab.dataset.protoMeterAttrTab || ""));
+    return;
+  }
+  const meterTab = event.target.closest("[data-proto-meter-tab]");
+  if (meterTab) {
+    protoPickMeterTab(String(meterTab.dataset.protoMeterTab || ""));
     return;
   }
   const meterFold = event.target.closest("[data-proto-meter-fold]");
