@@ -10013,6 +10013,12 @@ function protoCloseModal(kind) {
     setProto(protoRenewClear());
     return;
   }
+  if (kind === "user-delete") {
+    const key = String(store.prototypeUserDelete || "");
+    setProto({ prototypeUserDelete: "" });
+    if (key) protoRestoreFocus(`#astral-fs [data-proto-user-menu="${CSS.escape(key)}"]`);
+    return;
+  }
   if (kind === "compare") {
     setProto({ prototypeCompareOpen: false, ...protoCompareModalReset() });
     return;
@@ -33164,6 +33170,7 @@ function protoClosePersonPatch() {
   return {
     prototypeUserOpen: "",
     prototypeUserMenu: "",
+    prototypeUserDelete: "",
     prototypePersonTeamQuery: "",
     prototypePersonSitesQuery: "",
     prototypeContractFileError: false,
@@ -35025,6 +35032,7 @@ function protoUsersTable(people, pool, showTeam, scope) {
                         { className: "is-plain", tipLabel: "More" }
                       )}
                       <div class="astral-people-menu${open ? protoMenuEnterClass(`people:${menuKey}`) : ""}" role="menu"${open ? "" : " hidden"}>
+                        <button type="button" role="menuitem" data-proto-person="${escapeHtml(person.id)}">Edit</button>
                         ${
                           protoCanTurnOffPerson(person) && state !== "ended"
                             ? `<button type="button" role="menuitem" data-proto-user-access="${
@@ -35034,9 +35042,13 @@ function protoUsersTable(people, pool, showTeam, scope) {
                               }</button>`
                             : ""
                         }
-                        <button type="button" role="menuitem" data-proto-user-withdraw="${escapeHtml(
-                          person.id
-                        )}">Withdraw</button>
+                        ${
+                          person.imserv
+                            ? ""
+                            : `<button type="button" role="menuitem" data-proto-user-delete="${escapeHtml(
+                                menuKey
+                              )}">Delete</button>`
+                        }
                       </div>
                     </div>`
               }
@@ -35339,6 +35351,33 @@ function protoUsersPane() {
     ${canManage ? protoUserInviteModal() : ""}
     ${canManage ? protoTeamAddModal() : ""}
     ${protoCanAdminCompany() ? protoRenewModal() : ""}
+    ${canManage ? protoUserDeleteModal() : ""}
+  `;
+}
+
+// The key is table|person, so focus goes back to the More button the menu came from.
+function protoUserDeleteModal() {
+  const key = String(store.prototypeUserDelete || "");
+  const id = key.split("|").pop();
+  const person = id && protoUserPeople().find((item) => item.id === id && !item.you && !item.imserv);
+  if (!person) return "";
+  return `
+    <div class="astral-modal-back" data-proto-modal="user-delete">
+      <div class="astral-modal" id="astral-user-delete" role="dialog" aria-modal="true" aria-labelledby="astral-user-delete-title">
+        ${protoModalHead(
+          "astral-user-delete-title",
+          `Delete ${person.name}?`,
+          "They can no longer sign in, and they leave every team. To give them access again, invite them.",
+          "user-delete"
+        )}
+        <div class="astral-modal-foot">
+          <div class="astral-actions">
+            ${protoBtn("Delete user", 'data-proto-user-delete-go="1"')}
+            ${protoGhost("Cancel", 'data-proto-modal-close="user-delete"')}
+          </div>
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -40455,6 +40494,7 @@ function onPrototype(event) {
     const person = protoUserPeople().find((item) => item.id === id);
     if (!protoCanTurnOffPerson(person)) return;
     const off = userAccessBtn.dataset.protoUserAccess === "off";
+    const menuKey = String(store.prototypeUserMenu || "");
     const now = new Date();
     const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     setProto({
@@ -40465,21 +40505,31 @@ function onPrototype(event) {
       ),
       prototypeUserMenu: "",
     });
+    if (menuKey) protoRestoreFocus(`#astral-fs [data-proto-user-menu="${CSS.escape(menuKey)}"]`);
     return;
   }
-  const withdrawBtn = event.target.closest("[data-proto-user-withdraw]");
-  if (withdrawBtn) {
+  const deleteBtn = event.target.closest("[data-proto-user-delete]");
+  if (deleteBtn) {
     if (!protoCanManagePeople()) return;
-    const id = withdrawBtn.dataset.protoUserWithdraw;
+    setProto({ prototypeUserDelete: deleteBtn.dataset.protoUserDelete, prototypeUserMenu: "" });
+    protoRestoreFocus("#astral-fs #astral-user-delete .astral-modal-foot .astral-btn");
+    return;
+  }
+  if (event.target.closest("[data-proto-user-delete-go]")) {
+    if (!protoCanManagePeople()) return;
+    const id = String(store.prototypeUserDelete || "").split("|").pop();
+    if (!id || id === "me") return;
     setProto({
       prototypeInvitedUsers: protoInvitedUsers().filter((item) => item.id !== id),
       prototypeTeams: protoTeams().map((team) => ({
         ...team,
         people: team.people.filter((personId) => personId !== id),
       })),
+      prototypeUserDelete: "",
       prototypeUserMenu: "",
       prototypeUserOpen: store.prototypeUserOpen === id ? "" : store.prototypeUserOpen,
     });
+    protoRestoreFocus('#astral-fs [name="proto-user-query"]');
     return;
   }
   const draftRemove = event.target.closest("[data-proto-user-draft-remove]");
