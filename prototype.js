@@ -11066,7 +11066,7 @@ const PROTO_REPORT_TYPES = [
     id: "extract",
     name: "Scheduled data extract",
     short: "Data extract",
-    blurb: "Interval data, meter reads or missing data, sent on a schedule.",
+    blurb: "Interval data, display readings or missing data, sent on a schedule.",
     mark: "extract",
   },
   {
@@ -11296,7 +11296,7 @@ const PROTO_REPORT_DELIVERY = [
 
 const PROTO_REPORT_CONTENT = [
   { id: "interval", name: "Interval data", note: "Every half hour" },
-  { id: "reads", name: "Meter reads", note: "One read a day" },
+  { id: "reads", name: "Display readings", note: "One reading a day" },
   { id: "missing", name: "Missing data", note: "Only the gaps" },
 ];
 
@@ -17706,8 +17706,8 @@ const PROTO_TEMPLATE_SOURCES = [
   },
   {
     id: "reads",
-    name: "Meter reads",
-    note: "Register reads from each meter.",
+    name: "Display readings",
+    note: "The number on each meter's display.",
     columns: [
       { id: "register", name: "Register" },
       { id: "read", name: "Read" },
@@ -17819,7 +17819,7 @@ function protoTemplateTypes() {
 
 // Built-in types keep their own forms. Only these settings follow the template.
 const PROTO_TEMPLATE_BUILT_IN = {
-  extract: { source: "Interval data, meter reads or missing data", settings: ["utility", "channel", "quality", "format"], use: [41, 4] },
+  extract: { source: "Interval data, display readings or missing data", settings: ["utility", "channel", "quality", "format"], use: [41, 4] },
   dcda: { source: "DC/DA reads", settings: ["format"], use: [12, 3] },
   billing: { source: "Tenant billing", settings: [], use: [9, 2] },
   alert: { source: "Site use against a threshold", settings: [], use: [27, 4] },
@@ -21525,10 +21525,10 @@ const PROTO_EXPORT_SOURCE_FORMATS = [
   { id: "xlsx", name: "XLSX", ext: "xlsx" },
 ];
 
-// Source data is either the half-hourly readings or the monthly register reads.
+// Source data is either the half-hourly readings or the monthly display readings.
 const PROTO_EXPORT_SOURCE_DATA = [
   { id: "hh", name: "Half-hourly readings" },
-  { id: "reads", name: "Register reads" },
+  { id: "reads", name: "Display readings" },
 ];
 
 // A meter view exports its own supply, so Source data is the only choice.
@@ -21669,7 +21669,7 @@ function protoExportSummary(state) {
   if (file === "users") text += protoExportPlural(protoUserPeople().length, "person", "people");
   else if (file === "usage") text += protoExportPlural(protoUsagePack().rows.length, "row", "rows");
   else {
-    if (what === "source" && prefs.data === "reads") text += "register reads for ";
+    if (what === "source" && prefs.data === "reads") text += "display readings for ";
     text += protoExportPlural(protoExportMeters(file).length, "meter point", "meter points");
     const dates = what === "source" ? protoExportSourceDates(state) : protoExportGraphDates();
     if (dates.from && dates.to && protoDayStamp(dates.from) <= protoDayStamp(dates.to)) {
@@ -22008,7 +22008,7 @@ async function protoExportGo() {
     const { from, to } = protoExportSourceDates(state);
     const format = protoExportSourceFormat(prefs.format);
     const reads = prefs.data === "reads";
-    const name = `${protoExportSourceName(file)} ${reads ? "register reads" : "source data"} ${protoIso(from)} to ${protoIso(to)}`;
+    const name = `${protoExportSourceName(file)} ${reads ? "display readings" : "source data"} ${protoIso(from)} to ${protoIso(to)}`;
     protoQueueExport(format.ext === "xlsx" ? "xlsx" : "csv", file, {
       name,
       spec: {
@@ -28013,7 +28013,7 @@ function protoMeterReadingsCard(supply, rowsBy) {
   `;
 }
 
-// Register reads are the meter's running total, read on the 1st of each month. A replaced meter starts again from 0.
+// Display readings are the number on the meter's display, its running total, read on the 1st of each month. A replaced meter starts again from 0.
 function protoRegisterName(meter) {
   if (protoMeterKind(meter) !== "electricity") return protoMeterUtility(meter);
   return meter.direction === "Export" ? "Export" : "Import";
@@ -28082,14 +28082,14 @@ function protoMeterRegisterCard(supply) {
   );
   const head = `
       <div class="astral-meter-view-card-head">
-        <h4 class="astral-meter-list-title" id="astral-meter-registers">Register reads</h4>
-        <p>${escapeHtml(`${protoChartWhen()}. The meter's running total, read on the 1st of each month.`)}</p>
+        <h4 class="astral-meter-list-title" id="astral-meter-registers">Display readings</h4>
+        <p>${escapeHtml(`${protoChartWhen()}. The number on the meter's display, read on the 1st of each month.`)}</p>
       </div>`;
   if (!days.length) {
     return `
       <section class="astral-meter-view-card" aria-labelledby="astral-meter-registers">
         ${head}
-        ${protoEmpty("No register reads in these dates", "Choose dates that include the 1st of a month.")}
+        ${protoEmpty("No display readings in these dates", "Choose dates that include the 1st of a month.")}
       </section>
     `;
   }
@@ -28129,7 +28129,7 @@ function protoMeterRegisterCard(supply) {
             ${protoIconBtn("next", "Next columns", 'data-proto-breakdown-page="next"')}
           </div>
         </div>
-        <div class="astral-table-wrap astral-breakdown-scroll" tabindex="0" role="region" aria-label="Register reads by register">
+        <div class="astral-table-wrap astral-breakdown-scroll" tabindex="0" role="region" aria-label="Display readings by register">
           <table class="astral-table astral-breakdown-cols is-meters astral-meter-readings" style="min-width:${6 + width * 13}rem">
             <thead><tr>${protoBreakdownMeterHead("Read on", "", { time: true })}${heads}</tr></thead>
             <tbody>${body}</tbody>
@@ -38251,7 +38251,7 @@ function protoRegisterRows(meters, from, to, spec) {
   });
   if (!rows.length) {
     rows.push([
-      spec.quality === "actual" ? "No actual register reads in these dates." : "No register reads in these dates.",
+      spec.quality === "actual" ? "No actual display readings in these dates." : "No display readings in these dates.",
     ]);
   }
   return [headers, ...rows];
@@ -38264,7 +38264,7 @@ function protoSourceData(item) {
   const name = `${item.name}.${format.ext}`;
   if (format.ext === "xlsx") {
     protoFileDownload(
-      protoXlsxBytes(rows, spec.data === "reads" ? "Register reads" : "Source data"),
+      protoXlsxBytes(rows, spec.data === "reads" ? "Display readings" : "Source data"),
       name,
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
