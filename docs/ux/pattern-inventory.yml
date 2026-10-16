@@ -149,6 +149,34 @@ patterns:
     health: healthy
     last_reviewed: "2026-10-16"
     decision_refs: []
+  - id: foundation.frozen-panes
+    name: Frozen panes
+    level: foundation
+    user_goal: Read a value deep in a long or wide readings table and still see its time and column
+    objects: [table, readings]
+    actions: [scan, scroll, page]
+    used_in: [Portfolio, Meter view]
+    entry_points:
+      - A table with one row per time step and one column per meter, channel or series
+    structure: Key and column paging, then a capped scroll box with sticky column headers and a sticky Time column
+    components: [astral-breakdown-scroll, astral-breakdown-cols, astral-breakdown-bar]
+    states: [fits, wide, scrolled]
+    permissions: all
+    content_terms: []
+    variants: []
+    exceptions:
+      - Short lists with a few fixed columns grow with the page
+    accessibility: The scroll box is a focusable labelled region. The column range is a polite live region.
+    implementation_refs:
+      - styles.css .astral-breakdown-scroll
+      - prototype.js protoBreakdownPanel
+      - prototype.js protoMeterReadingsCard
+    evidence:
+      - User correction on 2026-10-16. The meter view readings needed sticky headers and sideways scrolling, on every table like it (commit 40211d2).
+    maturity: emerging
+    health: healthy
+    last_reviewed: "2026-10-16"
+    decision_refs: []
   - id: foundation.type-tags
     name: Type tags
     level: foundation
