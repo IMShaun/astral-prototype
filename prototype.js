@@ -21525,12 +21525,24 @@ const PROTO_EXPORT_SOURCE_FORMATS = [
   { id: "xlsx", name: "XLSX", ext: "xlsx" },
 ];
 
+// Source data is either the half-hourly readings or the monthly register reads.
+const PROTO_EXPORT_SOURCE_DATA = [
+  { id: "hh", name: "Half-hourly readings" },
+  { id: "reads", name: "Register reads" },
+];
+
+// A meter view exports its own supply, so Source data is the only choice.
+function protoExportIsMeter(fileId) {
+  return String(fileId || "").startsWith("meter:");
+}
+
 function protoExportIsTable(fileId) {
   return fileId === "users" || fileId === "usage";
 }
 
 function protoExportChoices(fileId) {
   if (protoExportIsTable(fileId)) return PROTO_EXPORT_TABLE_WHAT;
+  if (protoExportIsMeter(fileId)) return PROTO_EXPORT_WHAT.filter((item) => item.id === "source");
   return PROTO_EXPORT_WHAT.filter((item) => item.id !== "image" || protoPaneIsGraph());
 }
 
@@ -21539,6 +21551,7 @@ function protoExportPrefs() {
   const raw = store.prototypeExportPrefs && typeof store.prototypeExportPrefs === "object" ? store.prototypeExportPrefs : {};
   return {
     what: PROTO_EXPORT_WHAT.some((item) => item.id === raw.what) ? raw.what : "chart",
+    data: raw.data === "reads" ? "reads" : "hh",
     format: PROTO_EXPORT_SOURCE_FORMATS.some((item) => item.id === raw.format) ? raw.format : "csv",
     quality: raw.quality === "actual" ? "actual" : "all",
     time: raw.time === "uk" ? "uk" : "utc",
@@ -21560,13 +21573,15 @@ function protoExportModalState() {
   const prefs = protoExportPrefs();
   // Too large to graph opens on Source data. Chart data and Image are still built from the same data in the background.
   const limit = raw.limit === true && Boolean(protoGraphLimit(file));
-  const what = protoExportChoices(file).some((item) => item.id === prefs.what) ? prefs.what : "chart";
+  const choices = protoExportChoices(file);
+  const what = choices.some((item) => item.id === prefs.what) ? prefs.what : choices[0].id;
   const errors = raw.errors && typeof raw.errors === "object" ? raw.errors : {};
-  // Source data needs more fields, so they sit on a second step.
-  const step = what === "source" && raw.step === 2 ? 2 : 1;
+  // Source data needs more fields, so they sit on a second step. With nothing else to pick, it opens there.
+  const only = choices.length === 1 && what === "source";
+  const step = what === "source" && (raw.step === 2 || only) ? 2 : 1;
   const dir = raw.dir === "next" || raw.dir === "back" ? raw.dir : "";
   // Source data step 2 exists for the dates, so the From and To fields always show.
-  return { file, what, prefs, step, dir, limit, more: raw.more === true, edit: what === "source", errors };
+  return { file, what, prefs, step, only, dir, limit, more: raw.more === true, edit: what === "source", errors };
 }
 
 function protoExportSourceFormat(id) {
@@ -21575,6 +21590,10 @@ function protoExportSourceFormat(id) {
 
 // Meter points are always the ones on the graph now.
 function protoExportMeters(fileId) {
+  if (protoExportIsMeter(fileId)) {
+    const meter = protoMeter(String(fileId).slice(6));
+    return meter ? protoMeterSupply(meter) : [];
+  }
   if (fileId === "all" && store.prototypeScope !== "group") {
     const site = protoSiteByMeter(store.activePrototypeMeter);
     return site ? protoSiteViewMeters(site) : [];
@@ -21650,6 +21669,7 @@ function protoExportSummary(state) {
   if (file === "users") text += protoExportPlural(protoUserPeople().length, "person", "people");
   else if (file === "usage") text += protoExportPlural(protoUsagePack().rows.length, "row", "rows");
   else {
+    if (what === "source" && prefs.data === "reads") text += "register reads for ";
     text += protoExportPlural(protoExportMeters(file).length, "meter point", "meter points");
     const dates = what === "source" ? protoExportSourceDates(state) : protoExportGraphDates();
     if (dates.from && dates.to && protoDayStamp(dates.from) <= protoDayStamp(dates.to)) {
@@ -21660,7 +21680,7 @@ function protoExportSummary(state) {
     text += ` as ${PROTO_EXPORT_SUM_FORMAT[protoExportSourceFormat(prefs.format).id]}`;
     const extras = [];
     if (prefs.quality === "actual") extras.push("actual readings only");
-    if (prefs.time === "uk") extras.push("in UK time");
+    if (prefs.time === "uk" && prefs.data !== "reads") extras.push("in UK time");
     if (prefs.ids) extras.push("with source IDs");
     if (extras.length) text += `, ${extras.join(", ")}`;
   } else {
@@ -21687,6 +21707,7 @@ function protoGraphDays() {
 function protoGraphLimit(fileId) {
   if (!protoPaneIsGraph() && protoPaneId() !== "demand") return null;
   const id = String(fileId || "");
+  if (protoExportIsMeter(id)) return null;
   const meters = protoExportMeters(id);
   if (!meters.length || protoConsumptionUnitsMixed(meters)) return null;
   const days = protoGraphDays();
@@ -21800,7 +21821,9 @@ function protoExportFieldsHtml(state) {
   const fixed = what === "image" ? "PNG" : "CSV, comma";
   const facts = [dates, `<div><dt>Format</dt><dd>${escapeHtml(fixed)}</dd></div>`].filter(Boolean).join("");
   if (what !== "source") return `<dl class="astral-export-facts">${facts}</dl>`;
+  const reads = prefs.data === "reads";
   return `
+    ${protoExportRadioSet("data", "Data", PROTO_EXPORT_SOURCE_DATA, prefs.data)}
     ${dates}
     ${protoReportOptionSelect("export-format", "Format", PROTO_EXPORT_SOURCE_FORMATS, prefs.format)}
     ${protoAccordion({
@@ -21811,7 +21834,7 @@ function protoExportFieldsHtml(state) {
       modifier: "astral-export-more",
       inner: `
         ${protoExportRadioSet("quality", "Data quality", PROTO_REPORT_QUALITY, prefs.quality)}
-        ${protoExportRadioSet("time", "Time zone", PROTO_REPORT_TIME, prefs.time)}
+        ${reads ? "" : protoExportRadioSet("time", "Time zone", PROTO_REPORT_TIME, prefs.time)}
         <button
           type="button"
           role="checkbox"
@@ -21885,7 +21908,7 @@ function protoExportModal() {
       >
         ${
           sourceStep
-            ? protoModalHead("astral-export-pick-title", "Export source data", "", "export", 'data-proto-export-step="back"')
+            ? protoModalHead("astral-export-pick-title", "Export source data", "", "export", state.only ? "" : 'data-proto-export-step="back"')
             : protoModalHead("astral-export-pick-title", "Export", "", "export")
         }
         <div class="astral-modal-body">
@@ -21984,11 +22007,13 @@ async function protoExportGo() {
   } else {
     const { from, to } = protoExportSourceDates(state);
     const format = protoExportSourceFormat(prefs.format);
-    const name = `${protoExportSourceName(file)} source data ${protoIso(from)} to ${protoIso(to)}`;
+    const reads = prefs.data === "reads";
+    const name = `${protoExportSourceName(file)} ${reads ? "register reads" : "source data"} ${protoIso(from)} to ${protoIso(to)}`;
     protoQueueExport(format.ext === "xlsx" ? "xlsx" : "csv", file, {
       name,
       spec: {
         what: "source",
+        data: prefs.data,
         from: protoIso(from),
         to: protoIso(to),
         format: format.id,
@@ -27988,6 +28013,133 @@ function protoMeterReadingsCard(supply, rowsBy) {
   `;
 }
 
+// Register reads are the meter's running total, read on the 1st of each month. A replaced meter starts again from 0.
+function protoRegisterName(meter) {
+  if (protoMeterKind(meter) !== "electricity") return protoMeterUtility(meter);
+  return meter.direction === "Export" ? "Export" : "Import";
+}
+
+// Gas peaks in winter and solar export in summer.
+function protoRegisterDayUse(meter, month) {
+  const kind = protoMeterKind(meter);
+  const winter = Math.cos((2 * Math.PI * month.getMonth()) / 12);
+  const season =
+    kind === "gas"
+      ? 1 + 0.6 * winter
+      : kind === "water"
+        ? 1 - 0.05 * winter
+        : meter.direction === "Export"
+          ? 1 - 0.6 * winter
+          : 1 + 0.12 * winter;
+  const jitter = 0.92 + 0.16 * protoWeatherRand(`${meter.id}|register|${month.getFullYear()}-${month.getMonth()}`);
+  return protoDayKwh(meter) * season * jitter;
+}
+
+function protoRegisterUse(meter, start, end) {
+  let total = 0;
+  let at = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  while (at < end) {
+    const next = new Date(at.getFullYear(), at.getMonth() + 1, 1);
+    const stop = next < end ? next : end;
+    total += protoRegisterDayUse(meter, at) * Math.round((protoDayStamp(stop) - protoDayStamp(at)) / 86400000);
+    at = stop;
+  }
+  return total;
+}
+
+function protoRegisterRead(meter, installs, day) {
+  const install = installs.find((item) => protoIso(item.from) <= protoIso(day) && (!item.to || protoIso(day) <= protoIso(item.to)));
+  if (!install) return null;
+  const base = install.key === "a" ? Math.floor(protoWeatherRand(`${meter.id}|register-base`) * 40000) : 0;
+  return { install, value: Math.round(base + protoRegisterUse(meter, install.from, day)) };
+}
+
+// One read on the 1st of each month in the dates, with the use since the read before.
+function protoRegisterReads(meter, from, to) {
+  if (!from || !to) return [];
+  const installs = protoMeterInstalls(protoMeterSupply(meter)[0]);
+  const last = protoIso(to) < protoIso(protoToday()) ? protoIso(to) : protoIso(protoToday());
+  const reads = [];
+  let day = new Date(from.getFullYear(), from.getMonth() + (from.getDate() > 1 ? 1 : 0), 1);
+  for (; protoIso(day) <= last && reads.length < 120; day = new Date(day.getFullYear(), day.getMonth() + 1, 1)) {
+    const now = protoRegisterRead(meter, installs, day);
+    if (!now) continue;
+    const prev = new Date(day.getFullYear(), day.getMonth() - 1, 1);
+    const before = protoRegisterRead(meter, installs, prev);
+    const since = before && before.install === now.install ? now.value - before.value : Math.round(protoRegisterUse(meter, prev, day));
+    const estimated = protoWeatherRand(`${meter.id}|register-est|${protoIso(day)}`) < 0.12;
+    reads.push({ day, value: now.value, since, quality: estimated ? "estimated" : "actual" });
+  }
+  return reads;
+}
+
+// One row per read date and one column per register. An export register adds what was exported that month.
+function protoMeterRegisterCard(supply) {
+  const span = protoDateSpan();
+  const cols = supply.map((meter) => ({ meter, reads: protoRegisterReads(meter, span.from, span.to) }));
+  const days = [...new Map(cols.flatMap((col) => col.reads.map((read) => [protoIso(read.day), read.day]))).entries()].sort(
+    (a, b) => a[0].localeCompare(b[0])
+  );
+  const head = `
+      <div class="astral-meter-view-card-head">
+        <h4 class="astral-meter-list-title" id="astral-meter-registers">Register reads</h4>
+        <p>${escapeHtml(`${protoChartWhen()}. The meter's running total, read on the 1st of each month.`)}</p>
+      </div>`;
+  if (!days.length) {
+    return `
+      <section class="astral-meter-view-card" aria-labelledby="astral-meter-registers">
+        ${head}
+        ${protoEmpty("No register reads in these dates", "Choose dates that include the 1st of a month.")}
+      </section>
+    `;
+  }
+  const exportsTo = (meter) => meter.direction === "Export";
+  const estimated = cols.some((col) => col.reads.some((read) => read.quality === "estimated"));
+  const heads = cols
+    .map(({ meter }) => {
+      const unit = protoMeterUseUnit(meter);
+      return `${protoBreakdownMeterHead(protoRegisterName(meter), unit)}${
+        exportsTo(meter) ? protoBreakdownMeterHead("Monthly export", `${unit}, since the last read`) : ""
+      }`;
+    })
+    .join("");
+  const width = cols.reduce((n, col) => n + (exportsTo(col.meter) ? 2 : 1), 0);
+  const body = days
+    .map(([iso, day]) => {
+      const cells = cols
+        .map(({ meter, reads }) => {
+          const read = reads.find((item) => protoIso(item.day) === iso);
+          const cell = (value) =>
+            `<td>${read ? protoBreakdownReading(value, read.quality) : `<span class="astral-muted">No reading</span>`}</td>`;
+          return `${cell(read?.value)}${exportsTo(meter) ? cell(read?.since) : ""}`;
+        })
+        .join("");
+      return `<tr><th scope="row">${escapeHtml(protoMeterDay(day))}</th>${cells}</tr>`;
+    })
+    .join("");
+  return `
+    <section class="astral-meter-view-card" aria-labelledby="astral-meter-registers">
+      ${head}
+      <div class="astral-meter-readings-body">
+        <div class="astral-breakdown-top">
+          ${protoBreakdownKey(new Set(), estimated)}
+          <div class="astral-breakdown-bar" data-proto-breakdown-nav hidden>
+            <p class="astral-muted" data-proto-breakdown-range aria-live="polite"></p>
+            ${protoIconBtn("prev", "Previous columns", 'data-proto-breakdown-page="prev"', { disabled: true })}
+            ${protoIconBtn("next", "Next columns", 'data-proto-breakdown-page="next"')}
+          </div>
+        </div>
+        <div class="astral-table-wrap astral-breakdown-scroll" tabindex="0" role="region" aria-label="Register reads by register">
+          <table class="astral-table astral-breakdown-cols is-meters astral-meter-readings" style="min-width:${6 + width * 13}rem">
+            <thead><tr>${protoBreakdownMeterHead("Read on", "", { time: true })}${heads}</tr></thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 const PROTO_METER_REF_WORDS = {
   MPAN: "Meter point administration number. It identifies an electricity supply.",
   MPRN: "Meter point reference number. It identifies a gas supply.",
@@ -28022,7 +28174,7 @@ function protoMeterViewPage(meter) {
               <h3 class="astral-meter-view-title">${refs}</h3>
             </div>
           </div>
-          <div class="astral-detail-tools">${protoDateControl()}</div>
+          <div class="astral-detail-tools">${protoDateControl()}${protoExportControl(`meter:${lead.id}`)}</div>
         </div>
         <p class="astral-meter-view-facts">
           <span class="astral-meter-ref">${protoIconMark(protoMeterKind(lead), "astral-meter-mark")}<span>${escapeHtml(protoMeterUtility(lead))}</span></span>
@@ -28032,7 +28184,7 @@ function protoMeterViewPage(meter) {
     `<div class="astral-meter-view">${installs.map((install) => protoMeterInstallCard(supply, install, rowsBy)).join("")}${protoMeterReadingsCard(
       supply,
       rowsBy
-    )}</div>`
+    )}${protoMeterRegisterCard(supply)}</div>`
   );
 }
 
@@ -28171,6 +28323,7 @@ function protoExportSpecFrom(raw) {
   if (!from || !to) return null;
   return {
     what: "source",
+    data: raw.data === "reads" ? "reads" : "hh",
     from,
     to,
     format: ["csv", "csv-semicolon", "csv-tab", "xlsx"].includes(raw.format) ? raw.format : "csv",
@@ -28696,6 +28849,10 @@ function protoExportPlaceName(fileId) {
   if (fileId === "users") return "People";
   if (fileId === "usage") return "Usage";
   if (fileId === "compare") return "Compare";
+  if (protoExportIsMeter(fileId)) {
+    const meter = protoMeter(String(fileId).slice(6));
+    return meter ? `${protoSiteByMeter(meter.id)?.name || meter.site || ""} ${protoMeterRef(meter)}`.trim() : "Meter";
+  }
   const pack = protoIntervalPack(fileId);
   return pack?.title || "Interval";
 }
@@ -38039,6 +38196,7 @@ function protoSourceRows(fileId, spec) {
   const days = [];
   for (let day = from; day && to && day <= to && days.length < 800; day = protoAddDays(day, 1)) days.push(day);
   days.splice(0, Math.max(0, days.length - PROTO_REPORT_FILE_DAYS));
+  if (spec.data === "reads") return protoRegisterRows(meters, from, to, spec);
   const headers = ["Meter point", "Site", "Date", "Time", "Value", "Unit", "Quality"];
   if (spec.ids) headers.push("Source ID", "Stream");
   const rows = [];
@@ -38069,6 +38227,36 @@ function protoSourceRows(fileId, spec) {
   return [headers, ...rows];
 }
 
+// A row per meter point per read. Since last read gives the monthly total, such as the export for a Feed-in Tariff claim.
+function protoRegisterRows(meters, from, to, spec) {
+  const headers = ["Meter point", "Site", "Date", "Register", "Read", "Since last read", "Unit", "Quality"];
+  if (spec.ids) headers.push("Source ID", "Stream");
+  const rows = [];
+  meters.forEach((meter) => {
+    const source = meter.mpan || meter.mprn || meter.serial || "";
+    protoRegisterReads(meter, from, to).forEach((read) => {
+      if (!protoReportQualityOk(spec.quality, read.quality)) return;
+      const row = [
+        meter.name || "",
+        meter.site || "",
+        protoFormatUkDate(read.day),
+        protoRegisterName(meter),
+        read.value,
+        read.since,
+        protoMeterUseUnit(meter),
+        read.quality === "estimated" ? "Estimated" : "Actual",
+      ];
+      rows.push(spec.ids ? [...row, source, source ? `${source}-CUM` : ""] : row);
+    });
+  });
+  if (!rows.length) {
+    rows.push([
+      spec.quality === "actual" ? "No actual register reads in these dates." : "No register reads in these dates.",
+    ]);
+  }
+  return [headers, ...rows];
+}
+
 function protoSourceData(item) {
   const spec = item.spec;
   const format = protoExportSourceFormat(spec.format);
@@ -38076,7 +38264,7 @@ function protoSourceData(item) {
   const name = `${item.name}.${format.ext}`;
   if (format.ext === "xlsx") {
     protoFileDownload(
-      protoXlsxBytes(rows, "Source data"),
+      protoXlsxBytes(rows, spec.data === "reads" ? "Register reads" : "Source data"),
       name,
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
@@ -42161,7 +42349,7 @@ function onPrototype(event) {
   const exportOpt = event.target.closest("[data-proto-export-opt]");
   if (exportOpt) {
     const [key, value] = exportOpt.dataset.protoExportOpt.split(":");
-    if (key !== "quality" && key !== "time") return;
+    if (key !== "quality" && key !== "time" && key !== "data") return;
     protoSetExportPrefs({ [key]: value });
     protoRestoreFocus(`#astral-fs [data-proto-export-opt^="${key}:"][aria-checked="true"]`);
     return;
