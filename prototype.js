@@ -28020,7 +28020,8 @@ function protoMeterPointRow(meter, second) {
       <td><span class="astral-meter-ref">${protoMeterMark(meter.commodity)}<button type="button" class="astral-row-link">${escapeHtml(
         protoMeterRef(meter)
       )}</button></span></td>
-      <td>${second}</td>
+      ${second == null ? "" : `<td>${second}</td>`}
+      <td>${protoMeterChannels([meter]).filter((channel) => channel.used).length}</td>
       <td>${protoStateCells(words, protoStatus(meter.status))}</td>
     </tr>
   `;
@@ -28029,9 +28030,15 @@ function protoMeterPointRow(meter, second) {
 function protoSiteMeterFold(site) {
   const meters = protoProfileListMeters(site);
   if (!meters.length) return "";
+  // Direction only tells the user something when the site also exports.
+  const exports = meters.some((meter) => meter.direction === "Export");
   return protoPaneListTable(
-    [protoBelowSiteHeading(1), "Direction", "State"],
-    meters.map((meter) => protoMeterPointRow(meter, protoFlowPill(meter.direction === "Export" ? "out" : "in"))).join(""),
+    [protoBelowSiteHeading(1), ...(exports ? ["Direction"] : []), "Channels", "State"],
+    meters
+      .map((meter) =>
+        protoMeterPointRow(meter, exports ? protoFlowPill(meter.direction === "Export" ? "out" : "in") : null)
+      )
+      .join(""),
     protoBelowSiteHeading(2)
   );
 }
@@ -30317,6 +30324,7 @@ function protoCompareDetail() {
         [
           bundle.level === "group" ? "Group" : bundle.level === "meter" ? protoBelowSiteHeading(1) : "Site",
           bundle.level === "group" ? "Sites" : bundle.level === "meter" ? "Site" : protoBelowSiteHeading(2),
+          ...(bundle.level === "meter" ? ["Channels"] : []),
           "State",
         ],
         rows,
