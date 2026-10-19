@@ -15,7 +15,7 @@ Make the common choice quick, and keep a pop-up short enough to scan, without hi
 
 - Every option needs about the same fields. Show them on one step, below the choice.
 - Only 1 or 2 extra fields are needed. Show them below the choice.
-- The extra fields are optional settings. Put them in a "More options" disclosure instead.
+- The extra fields are optional settings. Put them in a "More options" disclosure instead. Choices that change what the file holds are not optional settings. Show them in a headed section on the step, as File does on Export > Source data.
 
 ## Canonical behaviour
 

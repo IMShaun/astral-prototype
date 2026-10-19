@@ -11959,7 +11959,7 @@ function protoReportNormalize(raw) {
     sftpPassword: String(raw.sftpPassword || "").slice(0, 120),
     sftpFingerprint: String(raw.sftpFingerprint || "").trim().slice(0, 120),
     attach: raw.attach !== false,
-    // Show data as replaced By site. A report saved with bySite false is one total for each utility.
+    // Totals for replaced By site. A report saved with bySite false is one total for each utility.
     ...protoDataOpts({ ...raw, totals: raw.totals || (raw.bySite === false ? "all" : "meter") }),
     bySite: (raw.totals || (raw.bySite === false ? "all" : "meter")) !== "all",
     tenants: type === "billing" ? protoReportNormalizeTenants(raw, known) : [],
@@ -13539,10 +13539,12 @@ function protoRangeFieldsHtml(range, cfg) {
             ${protoCheck(on)}
             <span class="astral-report-consent-copy"><span>${escapeHtml(`Include ${unit.current}`)}</span></span>
           </button>`;
+  // cfg.labelledBy names a heading that already says Dates, so the question would only repeat it.
+  const labelId = cfg.labelledBy || `astral-${cfg.key}-range-label`;
   return `
     <div class="astral-report-type-field">
-      <span class="astral-report-type-label" id="astral-${cfg.key}-range-label">How do you want to set the dates?</span>
-      <div class="astral-report-types is-three" role="radiogroup" aria-labelledby="astral-${cfg.key}-range-label">
+      ${cfg.labelledBy ? "" : `<span class="astral-report-type-label" id="${labelId}">How do you want to set the dates?</span>`}
+      <div class="astral-report-types is-three" role="radiogroup" aria-labelledby="${labelId}">
         ${PROTO_REPORT_RANGE_MODES.map((item) => {
           const picked = item.id === mode;
           return `
@@ -13697,7 +13699,7 @@ function protoReportBySiteField(draft) {
   const totals = protoReportDataOpts(draft).totals;
   return `
     <div class="astral-report-type-field">
-      <span class="astral-report-type-label" id="astral-report-bysite-label">Show data as</span>
+      <span class="astral-report-type-label" id="astral-report-bysite-label">Totals for</span>
       <div class="astral-report-types is-pair" role="radiogroup" aria-labelledby="astral-report-bysite-label">
         ${PROTO_DATA_TOTALS.map((item) => {
           const on = item.id === totals;
@@ -13720,7 +13722,7 @@ function protoReportBySiteField(draft) {
   `;
 }
 
-// Reports saved before Show data as had four choices only carry bySite.
+// Reports saved before Totals for had four choices only carry bySite.
 function protoReportDataOpts(def) {
   return protoDataOpts({ ...def, totals: def.totals || (def.bySite === false ? "all" : "meter") });
 }
@@ -21912,6 +21914,7 @@ function protoExportDatesHtml(state) {
     return `
       ${protoRangeFieldsHtml(prefs, {
         key: "export",
+        labelledBy: "astral-export-dates-title",
         ref: protoToday(),
         from: "exportFrom",
         to: "exportTo",
@@ -21927,6 +21930,32 @@ function protoExportDatesHtml(state) {
   return `<div><dt>Dates</dt><dd>${escapeHtml(protoRangeWords(from, to))}</dd></div>`;
 }
 
+// Source data asks what, when and how the file is laid out, each under its own heading.
+function protoExportSection(id, title, inner) {
+  const titleId = `astral-export-${id}-title`;
+  return `
+    <section class="astral-export-section" aria-labelledby="${titleId}">
+      <h4 class="astral-export-section-title" id="${titleId}">${escapeHtml(title)}</h4>
+      ${inner}
+    </section>
+  `;
+}
+
+// Closed More options still says what it holds, so nobody exports in kWh or UTC without knowing.
+function protoExportMoreNote(prefs, opts, { reads, electricity, ids }) {
+  const name = (list, id) => (list.find((item) => item.id === id) || list[0]).name;
+  const parts = [];
+  if (!reads && electricity) parts.push(name(PROTO_DATA_UNITS, opts.units));
+  const quality = name(PROTO_REPORT_QUALITY, prefs.quality);
+  parts.push(parts.length ? quality.toLowerCase() : quality);
+  if (!reads) parts.push(name(PROTO_REPORT_TIME, prefs.time));
+  const with_ = [];
+  if (!reads && opts.flags) with_.push("quality flags");
+  if (ids && prefs.ids) with_.push("source IDs");
+  if (with_.length) parts.push(`with ${with_.join(" and ")}`);
+  return parts.join(", ");
+}
+
 function protoExportFieldsHtml(state) {
   const { what, prefs } = state;
   const dates = protoExportDatesHtml(state);
@@ -21936,36 +21965,42 @@ function protoExportFieldsHtml(state) {
   const reads = prefs.data === "reads";
   const opts = protoDataOpts(prefs);
   const electricity = protoDataHasElectricity(protoExportSourceMeters(state.file));
-  const shape = reads
-    ? ""
+  const ids = reads || opts.totals === "meter";
+  const format = protoReportOptionSelect("export-format", "Format", PROTO_EXPORT_SOURCE_FORMATS, prefs.format);
+  const file = reads
+    ? `<div class="astral-report-pair">${format}</div>`
     : `
         <div class="astral-report-pair">
           ${protoReportOptionSelect("export-interval", "Interval", PROTO_DATA_INTERVAL, opts.interval)}
           ${protoReportOptionSelect("export-values", "Values", PROTO_DATA_VALUES, opts.values)}
         </div>
         <div class="astral-report-pair">
-          ${protoReportOptionSelect("export-totals", "Show data as", PROTO_DATA_TOTALS, opts.totals)}
-          ${electricity ? protoDataUnitsSelect("export-units", opts) : ""}
+          ${protoReportOptionSelect("export-totals", "Totals for", PROTO_DATA_TOTALS, opts.totals)}
+          ${format}
         </div>
       `;
   return `
-    ${protoExportRadioSet("data", "Data", PROTO_EXPORT_SOURCE_DATA, prefs.data)}
-    ${protoExportMetersField(state)}
-    ${dates}
-    ${protoReportOptionSelect("export-format", "Format", PROTO_EXPORT_SOURCE_FORMATS, prefs.format)}
+    ${protoExportSection(
+      "what",
+      "What to export",
+      `${protoExportRadioSet("data", "Readings", PROTO_EXPORT_SOURCE_DATA, prefs.data)}${protoExportMetersField(state)}`
+    )}
+    ${protoExportSection("dates", "Dates", dates)}
+    ${protoExportSection("file", "File", file)}
     ${protoAccordion({
       id: "astral-export-more",
       open: state.more,
       name: "More options",
+      note: protoExportMoreNote(prefs, opts, { reads, electricity, ids }),
       attr: "data-proto-export-more",
       modifier: "astral-export-more",
       inner: `
-        ${shape}
+        ${!reads && electricity ? `<div class="astral-report-pair">${protoDataUnitsSelect("export-units", opts)}</div>` : ""}
         ${protoExportRadioSet("quality", "Data quality", PROTO_REPORT_QUALITY, prefs.quality)}
         ${reads ? "" : protoExportRadioSet("time", "Time zone", PROTO_REPORT_TIME, prefs.time)}
         ${reads ? "" : protoDataFlagsCheck("data-proto-export-flags", opts.flags)}
         ${
-          !reads && opts.totals !== "meter"
+          !ids
             ? ""
             : `<button
           type="button"
@@ -38531,7 +38566,7 @@ const PROTO_DATA_TOTALS = [
   { id: "meter", name: "Each meter point", note: "One for each meter point, labelled with its site" },
   { id: "site", name: "Each site", note: "Each utility added up for each site" },
   { id: "group", name: "Each group", note: "Each utility added up for each group" },
-  { id: "all", name: "One total", note: "Each utility added up across everything picked" },
+  { id: "all", name: "Everything together", note: "Each utility added up across everything picked" },
 ];
 
 const PROTO_DATA_RUNNING_UNIT = "A running total adds up energy, so it is in kWh.";

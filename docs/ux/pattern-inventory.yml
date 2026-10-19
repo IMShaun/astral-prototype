@@ -369,8 +369,8 @@ patterns:
     used_in: [Export]
     entry_points:
       - Export pop-up, Source data step
-    structure: Labels stacked above controls. Label to control 4 to 8px, disclosure head to first section 8px, section to section 16px. Checkboxes and radios centre on the first label line, not on the label and hint. Self-explanatory choice cards show the name only, on one line, all the same size
-    components: [astral-field, astral-report-split, astral-export-more-body, astral-check, astral-radio, astral-report-consent, astral-report-types, astral-report-type]
+    structure: Labels stacked above controls. Label to control 4 to 8px, disclosure head to first section 8px, section to section 16px. Checkboxes and radios centre on the first label line, not on the label and hint. Self-explanatory choice cards show the name only, on one line, all the same size. A step with several kinds of choice splits into headed sections, and a closed More options lists what it is set to
+    components: [astral-field, astral-report-split, astral-export-more-body, astral-export-section, astral-check, astral-radio, astral-report-consent, astral-report-types, astral-report-type]
     states: [default, expanded]
     permissions: anyone who can act
     content_terms: []
@@ -380,6 +380,8 @@ patterns:
     accessibility: stacked labels survive reflow (WCAG 1.4.10), proximity plus fieldset and legend group labels with controls (WCAG 1.3.1)
     implementation_refs:
       - prototype.js protoExportDatesHtml
+      - prototype.js protoExportSection
+      - prototype.js protoExportMoreNote
       - styles.css astral-report-split
       - styles.css astral-export-more-body
       - prototype.js protoRangeFieldsHtml
@@ -387,9 +389,10 @@ patterns:
     evidence:
       - User corrections on 2026-10-06 on Dates alignment and More options spacing (commit 5c057b4).
       - User corrections on 2026-10-06 on the Date range cards, hints removed and pop-up widened so names fit on one line (commit 44e3e9a).
+      - UX patterns and writing review on 2026-10-19. Source data split into What to export, Dates and File, and More options lists its settings when closed.
     maturity: emerging
     health: needs-evidence
-    last_reviewed: "2026-10-06"
+    last_reviewed: "2026-10-19"
     decision_refs: []
   - id: foundation.why-off-tips
     name: Why-off tips

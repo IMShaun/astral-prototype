@@ -12351,6 +12351,46 @@ tr.is-off .astral-person-mark {
   padding-top: 8px;
 }
 
+/* Source data sections: What to export, Dates and File. A rule and 16px above each later one, 8px under each heading. */
+.astral-export-section {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.astral-export-section + .astral-export-section {
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border-default);
+}
+
+.astral-export-section-title {
+  margin: 0 0 -8px;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.astral-export-section + .astral-export-more {
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border-default);
+}
+
+/* The closed fold lists what it holds, so the whole list shows and wraps rather than trailing off. */
+.astral-export-more .astral-export-more-name {
+  flex: none;
+}
+
+.astral-export-more .astral-accordion-note {
+  flex: 1 1 auto;
+  max-width: none;
+  white-space: normal;
+  text-align: right;
+}
+
+/* Open, the options themselves show, so the list would only repeat them. */
+.astral-export-more-head[aria-expanded="true"] .astral-accordion-note {
+  display: none;
+}
+
 .astral-day-cal .astral-date-input[aria-invalid="true"] {
   border-color: var(--color-text-danger);
 }
