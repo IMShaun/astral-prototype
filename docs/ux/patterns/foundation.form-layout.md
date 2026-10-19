@@ -34,10 +34,10 @@ Any form, pop-up or disclosure that holds fields, radio groups or read-only valu
 - Choice cards (`.astral-report-type`) whose names explain themselves show the name only. Drop the hint, so every card in the set is the same size. The Date range cards (Exact dates, Common range, Custom range) need no hint, because the fields below them show what each one does.
 - Keep every choice card name on one line. If a name wraps, widen the pop-up rather than shorten the name. The cards share `grid-auto-rows: 1fr`, so one wrapped name makes every card taller. The Export pop-up is 40rem wide (`.astral-export-pick`) so Common range fits beside the other two.
 - Give a disclosure body (`{modifier}-body` from `protoAccordion`) its own grid and gap. It has no spacing of its own, so sections inside it touch.
-- When a step holds more than one kind of choice, split it into headed sections in task order, such as What to export, Dates and File on Export > Source data (`protoExportSection`). Each heading is an `h4` at 1.125rem, 8px above its own content. A rule and 16px sit above each later section.
-- Keep the choices that change what the file holds visible, in a section. Interval, Values, Totals for and Format sit in File, not in More options.
-- When More options is closed, list what it is set to in the head (`protoExportMoreNote`), for example "kWh, actual and estimated, UTC, with quality flags". Let the list wrap rather than trail off. Hide it while the fold is open.
-- If a section heading already says what a choice group is, label the group by the heading (`aria-labelledby`) and drop the visible question. Export's Dates heading labels the Exact dates, Common range and Custom range cards.
+- When a form has many settings that most people keep, show them first as a review of name and value rows, and put the fields on stages (see [Modal steps](foundation.modal-steps.md)). Export > Source data does this.
+- Keep the choices that change what the file holds or how it reads on the review, never behind a fold. Interval, Values, Totals for, Electricity units, Time zone and Data quality each have a row.
+- Group optional extra columns under a legend that says what they add, such as "Extra columns" for quality flags and source IDs. Do not call it "More options".
+- When a choice group sits among plain labels, give it a plain label too (`protoRangeFieldsHtml` `label`). Export's date cards are labelled Dates, not "How do you want to set the dates?".
 - Measure the rendered gaps in the browser after the change.
 
 ### Don't
@@ -57,7 +57,7 @@ Stacked labels keep the label and the control together when the text is enlarged
 
 ## Product surfaces using it
 
-- Export pop-up, Source data step: What to export, Dates and File sections, and More options with its settings listed when closed (commit `5c057b4`, then the 19 October 2026 review)
+- Export pop-up, Source data: the review rows and the Data and dates, and Values and file stages (19 October 2026)
 - Date range choice cards in Reports and Export, name only (commit `44e3e9a`)
 - Follow site or Set for this meter only choice cards in Site settings and a meter's own settings, with a short hint
 - Checkbox rows with a hint: "Include source IDs" in Export, the Reports consent row and multi-select options with a note
@@ -75,6 +75,7 @@ Stacked labels keep the label and the control together when the text is enlarged
 - User correction on 6 October 2026: "take out the sub text so they can all be the same size" on the Date range cards, then "Make the modal wider so it can allow the common range to fit on one line". Measured after: 3 cards at 189 by 58px, each name on 1 line.
 - User correction on 6 October 2026: "Checkboxes and radio buttons in these circumstances need to be centre aligned with the text on the right (heading)" on "Include source IDs". The box centre sat 2px above the centre of the label line.
 - UX patterns and UX writing review on 19 October 2026, approved by the user: "make it obvious to the user that they have important filters and options to choose" without showing everything at once. The Data extract report already showed Interval and Values openly, while Export hid them in More options.
+- User feedback on 19 October 2026: "the user has to scroll and open accordions to actually see the important stuff". The sections became a review with Customise stages.
 
 ## Related patterns / decisions
 

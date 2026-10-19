@@ -338,27 +338,33 @@ patterns:
     used_in: [Export]
     entry_points:
       - Export pop-up, Source data, Continue
-    structure: Step 1 holds the choice with Continue for the long option. Step 2 has a Back icon before the title, the fields, the summary and the final action
-    components: [astral-modal, astral-modal-lead, astral-detail-lead, is-step-next, is-step-back]
-    states: [step-1, step-2, error]
+    structure: Step 1 holds the choice with Continue for the long option. Step 2 has a Back icon before the title, the fields, the summary and the final action. Export source data opens on a review of name and value rows with Change for each stage and a file preview, and Customise export walks 2 named stages before returning to the review
+    components: [astral-modal, astral-modal-lead, astral-detail-lead, is-step-next, is-step-back, astral-export-review, astral-export-preview]
+    states: [step-1, step-2, review, stage, error]
     permissions: anyone who can act
-    content_terms: [Continue, Back, Export source data]
+    content_terms: [Continue, Back, Export source data, Customise export, Change, Data and dates, Values and file, Step 1 of 2]
     variants: []
     exceptions:
       - Choices that need only 1 or 2 extra fields keep them on step 1
-      - Optional settings go in More options, not a step
+      - Settings that change how values read show on the review, never under More options or Advanced
     accessibility: explicit Continue, never advance on radio selection (WCAG 3.2.2), focus to step heading, Back returns focus to the selected option, slide off for reduced motion
     implementation_refs:
       - astral-ui.js protoModalHead backAttr
       - prototype.js protoExportStep
+      - prototype.js protoExportStage
+      - prototype.js protoExportNext
+      - prototype.js protoExportReviewHtml
+      - prototype.js protoExportStageHtml
+      - prototype.js protoExportPreviewHtml
       - prototype.js protoExportModal
       - prototype.js protoExportModalState
       - styles.css astral-modal-step-next and astral-modal-step-back
     evidence:
       - User request on 2026-10-06 to move Source data to a second step with Back (commit 740f5dd).
+      - User decision on 2026-10-19 for a review with Customise stages inside the pop-up, named Data and dates, and Values and file.
     maturity: emerging
     health: needs-evidence
-    last_reviewed: "2026-10-06"
+    last_reviewed: "2026-10-19"
     decision_refs: []
   - id: foundation.form-layout
     name: Form layout
@@ -369,8 +375,8 @@ patterns:
     used_in: [Export]
     entry_points:
       - Export pop-up, Source data step
-    structure: Labels stacked above controls. Label to control 4 to 8px, disclosure head to first section 8px, section to section 16px. Checkboxes and radios centre on the first label line, not on the label and hint. Self-explanatory choice cards show the name only, on one line, all the same size. A step with several kinds of choice splits into headed sections, and a closed More options lists what it is set to
-    components: [astral-field, astral-report-split, astral-export-more-body, astral-export-section, astral-check, astral-radio, astral-report-consent, astral-report-types, astral-report-type]
+    structure: Labels stacked above controls. Label to control 4 to 8px, disclosure head to first section 8px, section to section 16px. Checkboxes and radios centre on the first label line, not on the label and hint. Self-explanatory choice cards show the name only, on one line, all the same size. A form with many kept settings shows them as review rows first, with the fields on stages. Optional extra columns sit under a legend that says what they add
+    components: [astral-field, astral-report-split, astral-export-extras, astral-export-review, astral-check, astral-radio, astral-report-consent, astral-report-types, astral-report-type]
     states: [default, expanded]
     permissions: anyone who can act
     content_terms: []
@@ -380,16 +386,17 @@ patterns:
     accessibility: stacked labels survive reflow (WCAG 1.4.10), proximity plus fieldset and legend group labels with controls (WCAG 1.3.1)
     implementation_refs:
       - prototype.js protoExportDatesHtml
-      - prototype.js protoExportSection
-      - prototype.js protoExportMoreNote
+      - prototype.js protoExportStageHtml
+      - prototype.js protoExportReviewRows
       - styles.css astral-report-split
-      - styles.css astral-export-more-body
+      - styles.css astral-export-review-list
       - prototype.js protoRangeFieldsHtml
       - styles.css astral-export-pick
     evidence:
       - User corrections on 2026-10-06 on Dates alignment and More options spacing (commit 5c057b4).
       - User corrections on 2026-10-06 on the Date range cards, hints removed and pop-up widened so names fit on one line (commit 44e3e9a).
       - UX patterns and writing review on 2026-10-19. Source data split into What to export, Dates and File, and More options lists its settings when closed.
+      - User feedback on 2026-10-19 that people had to scroll and open accordions. Source data became review rows with Customise stages.
     maturity: emerging
     health: needs-evidence
     last_reviewed: "2026-10-19"

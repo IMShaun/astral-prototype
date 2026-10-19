@@ -13539,11 +13539,11 @@ function protoRangeFieldsHtml(range, cfg) {
             ${protoCheck(on)}
             <span class="astral-report-consent-copy"><span>${escapeHtml(`Include ${unit.current}`)}</span></span>
           </button>`;
-  // cfg.labelledBy names a heading that already says Dates, so the question would only repeat it.
-  const labelId = cfg.labelledBy || `astral-${cfg.key}-range-label`;
+  // cfg.label replaces the question where the field sits among plain labels, such as Dates in Export.
+  const labelId = `astral-${cfg.key}-range-label`;
   return `
     <div class="astral-report-type-field">
-      ${cfg.labelledBy ? "" : `<span class="astral-report-type-label" id="${labelId}">How do you want to set the dates?</span>`}
+      <span class="astral-report-type-label" id="${labelId}">${escapeHtml(cfg.label || "How do you want to set the dates?")}</span>
       <div class="astral-report-types is-three" role="radiogroup" aria-labelledby="${labelId}">
         ${PROTO_REPORT_RANGE_MODES.map((item) => {
           const picked = item.id === mode;
@@ -21565,6 +21565,12 @@ const PROTO_EXPORT_SOURCE_DATA = [
   { id: "reads", name: "Display readings" },
 ];
 
+// Customise export walks these in order, then returns to the review.
+const PROTO_EXPORT_STAGES = [
+  { id: "data", name: "Data and dates" },
+  { id: "file", name: "Values and file" },
+];
+
 // A meter view exports its own supply, so Source data is the only choice.
 function protoExportIsMeter(fileId) {
   return String(fileId || "").startsWith("meter:");
@@ -21615,8 +21621,9 @@ function protoExportModalState() {
   const only = choices.length === 1 && what === "source";
   const step = what === "source" && (raw.step === 2 || only) ? 2 : 1;
   const dir = raw.dir === "next" || raw.dir === "back" ? raw.dir : "";
-  // Source data step 2 exists for the dates, so the From and To fields always show.
-  return { file, what, prefs, step, only, dir, limit, more: raw.more === true, edit: what === "source", errors };
+  // Source data opens on a review of every choice. Customise export walks its stages, and Change opens one, then returns.
+  const stage = PROTO_EXPORT_STAGES.some((item) => item.id === raw.stage) ? raw.stage : "";
+  return { file, what, prefs, step, only, dir, limit, stage, change: raw.change === true, edit: what === "source", errors };
 }
 
 function protoExportSourceFormat(id) {
@@ -21914,7 +21921,7 @@ function protoExportDatesHtml(state) {
     return `
       ${protoRangeFieldsHtml(prefs, {
         key: "export",
-        labelledBy: "astral-export-dates-title",
+        label: "Dates",
         ref: protoToday(),
         from: "exportFrom",
         to: "exportTo",
@@ -21930,79 +21937,183 @@ function protoExportDatesHtml(state) {
   return `<div><dt>Dates</dt><dd>${escapeHtml(protoRangeWords(from, to))}</dd></div>`;
 }
 
-// Source data asks what, when and how the file is laid out, each under its own heading.
-function protoExportSection(id, title, inner) {
-  const titleId = `astral-export-${id}-title`;
+const PROTO_EXPORT_PREVIEW_ROWS = 3;
+let protoExportPreviewMemo = { key: "", value: null };
+
+// The first rows of the real file, from the same code as the download, so the preview and the file always agree.
+// It reads only the days those rows need, then keeps the result until an option changes.
+function protoExportPreviewRows(state) {
+  const { file, prefs } = state;
+  const meters = protoExportSourceMeters(file);
+  const dates = protoExportSourceDates(state);
+  const today = protoDayStamp(protoToday());
+  const ok = Boolean(
+    dates.from && dates.to && protoDayStamp(dates.from) <= protoDayStamp(dates.to) && protoDayStamp(dates.to) <= today
+  );
+  const opts = protoDataOpts(prefs);
+  const spec = { data: prefs.data, quality: prefs.quality, time: prefs.time, ids: prefs.ids, ...opts, meters: meters.map((m) => m.id) };
+  let from = ok ? dates.from : protoAddDays(protoToday(), -1);
+  let to = ok ? dates.to : from;
+  if (ok && prefs.data !== "reads") {
+    // A long range keeps only its last PROTO_REPORT_FILE_DAYS days, as protoSourceRows does. Display readings keep it all.
+    const span = Math.round((protoDayStamp(to) - protoDayStamp(from)) / 86400000) + 1;
+    from = protoAddDays(from, Math.max(0, Math.min(span, 800) - PROTO_REPORT_FILE_DAYS));
+    const need = { hh: 1, hour: 1, day: 3, week: 35, month: 93 }[opts.interval] || 1;
+    const end = protoAddDays(from, need - 1);
+    if (protoDayStamp(end) < protoDayStamp(to)) to = end;
+  }
+  const key = JSON.stringify([file, spec, protoIso(from), protoIso(to), ok]);
+  if (protoExportPreviewMemo.key !== key) {
+    const build = (list) =>
+      protoSourceRows(file, { ...spec, meters: list.map((m) => m.id), from: protoIso(from), to: protoIso(to) });
+    const first = protoExportPreviewMeters(meters, prefs.data === "reads" ? "meter" : opts.totals);
+    let rows = build(first);
+    // The first meter points may not fill the preview, for example with Actual only, so then it reads them all.
+    if (first.length < meters.length && rows.length - 1 < PROTO_EXPORT_PREVIEW_ROWS) rows = build(meters);
+    protoExportPreviewMemo = { key, value: { head: rows[0], rows: ok ? rows.slice(1, 1 + PROTO_EXPORT_PREVIEW_ROWS) : [], ok } };
+  }
+  return protoExportPreviewMemo.value;
+}
+
+// Only the meter points behind the file's first rows: the first one, or those added into the first total.
+function protoExportPreviewMeters(meters, totals) {
+  const sorted = protoSourceSort(meters);
+  const first = sorted[0];
+  if (!first || totals === "meter") return sorted.slice(0, 1);
+  const utility = protoDataUtility(first);
+  const groupOf = new Map();
+  if (totals === "group") {
+    protoGroups().forEach((group) =>
+      group.sites.forEach((site) => (site.meters || []).forEach((meter) => groupOf.set(meter.id, group.name)))
+    );
+  }
+  const place = (meter) =>
+    totals === "site" ? meter.site || "" : totals === "group" ? groupOf.get(meter.id) || meter.site || "" : "";
+  return sorted.filter((meter) => protoDataUtility(meter) === utility && place(meter) === place(first));
+}
+
+// Shows the file before it is made, so a wrong layout is caught here rather than in a spreadsheet.
+function protoExportPreviewHtml(state) {
+  const { head, rows, ok } = protoExportPreviewRows(state);
+  const cols = head.length;
+  const cell = (value) => escapeHtml(String(value ?? ""));
+  const note = (text) => `<tr><td colspan="${cols}" class="astral-export-preview-note">${escapeHtml(text)}</td></tr>`;
+  const body = !ok
+    ? note("Enter the dates to see the first rows.")
+    : rows
+        .map((row) => (row.length === 1 && cols > 1 ? note(row[0]) : `<tr>${row.map((value) => `<td>${cell(value)}</td>`).join("")}</tr>`))
+        .join("");
+  const real = ok && rows.length > 1 ? rows.length : 0;
   return `
-    <section class="astral-export-section" aria-labelledby="${titleId}">
-      <h4 class="astral-export-section-title" id="${titleId}">${escapeHtml(title)}</h4>
-      ${inner}
+    <section class="astral-export-preview" aria-labelledby="astral-export-preview-title">
+      <div class="astral-export-preview-head">
+        <h4 class="astral-export-preview-title" id="astral-export-preview-title">Preview</h4>
+        ${real ? `<span class="astral-muted">First ${real} rows of the file</span>` : ""}
+      </div>
+      <div class="astral-export-preview-scroll" role="region" aria-labelledby="astral-export-preview-title" tabindex="0">
+        <table class="astral-export-preview-table">
+          <thead><tr>${head.map((name) => `<th scope="col">${cell(name)}</th>`).join("")}</tr></thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>
     </section>
   `;
 }
 
-// Closed More options still says what it holds, so nobody exports in kWh or UTC without knowing.
-function protoExportMoreNote(prefs, opts, { reads, electricity, ids }) {
-  const name = (list, id) => (list.find((item) => item.id === id) || list[0]).name;
-  const parts = [];
-  if (!reads && electricity) parts.push(name(PROTO_DATA_UNITS, opts.units));
-  const quality = name(PROTO_REPORT_QUALITY, prefs.quality);
-  parts.push(parts.length ? quality.toLowerCase() : quality);
-  if (!reads) parts.push(name(PROTO_REPORT_TIME, prefs.time));
-  const with_ = [];
-  if (!reads && opts.flags) with_.push("quality flags");
-  if (ids && prefs.ids) with_.push("source IDs");
-  if (with_.length) parts.push(`with ${with_.join(" and ")}`);
-  return parts.join(", ");
+// "1 meter point in this view", or the count picked.
+function protoExportMetersText(state) {
+  const any = protoReportPicksAny(protoExportPick());
+  const n = any ? protoExportSourceMeters(state.file).length : protoExportMeters(state.file).length;
+  return `${protoExportPlural(n, "meter point", "meter points")}${any ? "" : " in this view"}`;
 }
 
-function protoExportFieldsHtml(state) {
-  const { what, prefs } = state;
-  const dates = protoExportDatesHtml(state);
-  const fixed = what === "image" ? "PNG" : "CSV, comma";
-  const facts = [dates, `<div><dt>Format</dt><dd>${escapeHtml(fixed)}</dd></div>`].filter(Boolean).join("");
-  if (what !== "source") return `<dl class="astral-export-facts">${facts}</dl>`;
+function protoExportName(list, id) {
+  return (list.find((item) => item.id === id) || list[0]).name;
+}
+
+// Each choice, under the stage that sets it, in the order of its fields. The review shows the whole export without opening anything.
+function protoExportReviewRows(state) {
+  const { prefs } = state;
   const reads = prefs.data === "reads";
   const opts = protoDataOpts(prefs);
   const electricity = protoDataHasElectricity(protoExportSourceMeters(state.file));
+  const dates = protoExportSourceDates(state);
+  const datesOk = dates.from && dates.to && protoDayStamp(dates.from) <= protoDayStamp(dates.to);
+  const extras = [];
+  if (!reads && opts.flags) extras.push("quality flags");
+  if (prefs.ids && (reads || opts.totals === "meter")) extras.push("source IDs");
+  const extra = extras.join(" and ");
+  return {
+    data: [
+      ["Readings", protoExportName(PROTO_EXPORT_SOURCE_DATA, prefs.data)],
+      ["Meter points", protoExportMetersText(state)],
+      ["Dates", datesOk ? protoRangeWords(dates.from, dates.to) : "Not set"],
+      ...(reads ? [] : [["Interval", protoExportName(PROTO_DATA_INTERVAL, opts.interval)]]),
+    ],
+    file: [
+      ...(reads
+        ? []
+        : [
+            ["Values", protoExportName(PROTO_DATA_VALUES, opts.values)],
+            ["Totals for", protoExportName(PROTO_DATA_TOTALS, opts.totals)],
+          ]),
+      ...(!reads && electricity ? [["Electricity units", protoExportName(PROTO_DATA_UNITS, opts.units)]] : []),
+      ["Format", protoExportSourceFormat(prefs.format).name],
+      ...(reads ? [] : [["Time zone", protoExportName(PROTO_REPORT_TIME, prefs.time)]]),
+      ["Data quality", protoExportName(PROTO_REPORT_QUALITY, prefs.quality)],
+      ["Extra columns", extra ? extra[0].toUpperCase() + extra.slice(1) : "None"],
+    ],
+  };
+}
+
+// The short path. Every choice is on show with a Change for its stage, then the first rows of the file.
+function protoExportReviewHtml(state) {
+  const rows = protoExportReviewRows(state);
+  const card = (stage) => {
+    const id = `astral-export-review-${stage.id}`;
+    return `
+      <section class="astral-export-review" aria-labelledby="${id}">
+        <div class="astral-export-review-head">
+          <h4 id="${id}">${escapeHtml(stage.name)}</h4>
+          ${protoTextBtn(
+            `Change<span class="sr-only"> ${escapeHtml(stage.name.toLowerCase())}</span>`,
+            `data-proto-export-stage="${stage.id}" data-proto-export-change`,
+            { html: true }
+          )}
+        </div>
+        <dl class="astral-export-review-list">
+          ${rows[stage.id].map(([name, value]) => `<div><dt>${escapeHtml(name)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}
+        </dl>
+      </section>
+    `;
+  };
+  return `${PROTO_EXPORT_STAGES.map(card).join("")}${protoExportPreviewHtml(state)}`;
+}
+
+// Data and dates sets what goes in the file. Values and file sets how it is written.
+function protoExportStageHtml(state) {
+  const { prefs } = state;
+  const reads = prefs.data === "reads";
+  const opts = protoDataOpts(prefs);
+  if (state.stage === "data") {
+    return `
+      ${protoExportRadioSet("data", "Readings", PROTO_EXPORT_SOURCE_DATA, prefs.data)}
+      ${protoExportMetersField(state)}
+      ${protoExportDatesHtml(state)}
+      ${
+        reads
+          ? ""
+          : `<div class="astral-report-pair">${protoReportOptionSelect("export-interval", "Interval", PROTO_DATA_INTERVAL, opts.interval)}</div>`
+      }
+    `;
+  }
+  const electricity = protoDataHasElectricity(protoExportSourceMeters(state.file));
   const ids = reads || opts.totals === "meter";
   const format = protoReportOptionSelect("export-format", "Format", PROTO_EXPORT_SOURCE_FORMATS, prefs.format);
-  const file = reads
-    ? `<div class="astral-report-pair">${format}</div>`
-    : `
-        <div class="astral-report-pair">
-          ${protoReportOptionSelect("export-interval", "Interval", PROTO_DATA_INTERVAL, opts.interval)}
-          ${protoReportOptionSelect("export-values", "Values", PROTO_DATA_VALUES, opts.values)}
-        </div>
-        <div class="astral-report-pair">
-          ${protoReportOptionSelect("export-totals", "Totals for", PROTO_DATA_TOTALS, opts.totals)}
-          ${format}
-        </div>
-      `;
-  return `
-    ${protoExportSection(
-      "what",
-      "What to export",
-      `${protoExportRadioSet("data", "Readings", PROTO_EXPORT_SOURCE_DATA, prefs.data)}${protoExportMetersField(state)}`
-    )}
-    ${protoExportSection("dates", "Dates", dates)}
-    ${protoExportSection("file", "File", file)}
-    ${protoAccordion({
-      id: "astral-export-more",
-      open: state.more,
-      name: "More options",
-      note: protoExportMoreNote(prefs, opts, { reads, electricity, ids }),
-      attr: "data-proto-export-more",
-      modifier: "astral-export-more",
-      inner: `
-        ${!reads && electricity ? `<div class="astral-report-pair">${protoDataUnitsSelect("export-units", opts)}</div>` : ""}
-        ${protoExportRadioSet("quality", "Data quality", PROTO_REPORT_QUALITY, prefs.quality)}
-        ${reads ? "" : protoExportRadioSet("time", "Time zone", PROTO_REPORT_TIME, prefs.time)}
-        ${reads ? "" : protoDataFlagsCheck("data-proto-export-flags", opts.flags)}
-        ${
-          !ids
-            ? ""
-            : `<button
+  const extras = [
+    reads ? "" : protoDataFlagsCheck("data-proto-export-flags", opts.flags),
+    ids
+      ? `<button
           type="button"
           role="checkbox"
           class="astral-report-consent"
@@ -22015,10 +22126,31 @@ function protoExportFieldsHtml(state) {
             <span class="astral-muted">Adds the meter point ID and the cumulative data stream, where there is one.</span>
           </span>
         </button>`
-        }
-      `,
-    })}
+      : "",
+  ].join("");
+  return `
+    ${
+      reads
+        ? ""
+        : `<div class="astral-report-pair">
+            ${protoReportOptionSelect("export-values", "Values", PROTO_DATA_VALUES, opts.values)}
+            ${protoReportOptionSelect("export-totals", "Totals for", PROTO_DATA_TOTALS, opts.totals)}
+          </div>`
+    }
+    <div class="astral-report-pair">${!reads && electricity ? protoDataUnitsSelect("export-units", opts) : ""}${format}</div>
+    ${reads ? "" : protoExportRadioSet("time", "Time zone", PROTO_REPORT_TIME, prefs.time)}
+    ${protoExportRadioSet("quality", "Data quality", PROTO_REPORT_QUALITY, prefs.quality)}
+    ${extras ? `<fieldset class="astral-report-split astral-export-extras"><legend>Extra columns</legend>${extras}</fieldset>` : ""}
   `;
+}
+
+function protoExportFieldsHtml(state) {
+  const { what } = state;
+  if (what === "source") return state.stage ? protoExportStageHtml(state) : protoExportReviewHtml(state);
+  const dates = protoExportDatesHtml(state);
+  const fixed = what === "image" ? "PNG" : "CSV, comma";
+  const facts = [dates, `<div><dt>Format</dt><dd>${escapeHtml(fixed)}</dd></div>`].filter(Boolean).join("");
+  return `<dl class="astral-export-facts">${facts}</dl>`;
 }
 
 function protoExportModal() {
@@ -22065,6 +22197,30 @@ function protoExportModal() {
           ${sourcePick ? "" : protoExportFieldsHtml(state)}
         `;
   const motion = state.dir ? ` is-step-${state.dir}` : "";
+  const stageAt = sourceStep ? PROTO_EXPORT_STAGES.findIndex((item) => item.id === state.stage) : -1;
+  const stage = PROTO_EXPORT_STAGES[stageAt];
+  // A stage opened from Change goes back to the review. Otherwise back is the stage before.
+  const stageBack = stage && (state.change || stageAt === 0 ? "review" : PROTO_EXPORT_STAGES[stageAt - 1].id);
+  const head = stage
+    ? protoModalHead(
+        "astral-export-pick-title",
+        stage.name,
+        escapeHtml(`Step ${stageAt + 1} of ${PROTO_EXPORT_STAGES.length}`),
+        "export",
+        `data-proto-export-stage="${stageBack}" data-proto-export-back`
+      )
+    : sourceStep
+      ? protoModalHead("astral-export-pick-title", "Export source data", "", "export", state.only ? "" : 'data-proto-export-step="back"')
+      : protoModalHead("astral-export-pick-title", "Export", "", "export");
+  const actions = sourcePick
+    ? protoBtn("Continue", 'data-proto-export-step="next"')
+    : stage
+      ? protoBtn("Continue", "data-proto-export-next")
+      : `${protoBtn("Export", 'data-proto-export="go"')}${
+          sourceStep ? protoGhost("Customise export", 'data-proto-export-stage="data"') : ""
+        }`;
+  // The review lists every choice, so the sentence shows only while a stage changes them.
+  const sum = sourcePick || (sourceStep && !stage) ? "" : `<p class="astral-export-sum" aria-live="polite">${escapeHtml(protoExportSummary(state))}</p>`;
   return `
     <div class="astral-modal-back" data-proto-modal="export">
       <div
@@ -22074,18 +22230,14 @@ function protoExportModal() {
         aria-modal="true"
         aria-labelledby="astral-export-pick-title"
       >
-        ${
-          sourceStep
-            ? protoModalHead("astral-export-pick-title", "Export source data", "", "export", state.only ? "" : 'data-proto-export-step="back"')
-            : protoModalHead("astral-export-pick-title", "Export", "", "export")
-        }
+        ${head}
         <div class="astral-modal-body">
           ${body}
         </div>
         <div class="astral-modal-foot">
-          ${sourcePick ? "" : `<p class="astral-export-sum" aria-live="polite">${escapeHtml(protoExportSummary(state))}</p>`}
+          ${sum}
           <div class="astral-actions">
-            ${sourcePick ? protoBtn("Continue", 'data-proto-export-step="next"') : protoBtn("Export", 'data-proto-export="go"')}
+            ${actions}
             ${protoGhost("Cancel", 'data-proto-modal-close="export"')}
           </div>
         </div>
@@ -22098,10 +22250,50 @@ function protoExportModal() {
 function protoExportStep(step) {
   const raw = store.prototypeExportModal;
   if (!raw || !protoExportModalState()) return;
-  setProto({ prototypeExportModal: { ...raw, step, dir: step === 2 ? "next" : "back", errors: {} } });
+  setProto({ prototypeExportModal: { ...raw, step, stage: "", change: false, dir: step === 2 ? "next" : "back", errors: {} } });
   store.prototypeExportModal = { ...store.prototypeExportModal, dir: "" };
-  if (step === 2) protoRestoreFocus('#astral-fs #astral-export-pick [data-proto-export-step="back"]');
+  if (step === 2) protoRestoreFocus(protoExportReviewFocus());
   else protoRestoreFocus(PROTO_EXPORT_PICK_FOCUS);
+}
+
+// Back, or Export when Source data is the only choice and there is no back.
+function protoExportReviewFocus(from = "") {
+  const pick = "#astral-fs #astral-export-pick";
+  if (from) return `${pick} [data-proto-export-change][data-proto-export-stage="${from}"]`;
+  return `${pick} [data-proto-export-step="back"], ${pick} [data-proto-export="go"]`;
+}
+
+// Opens a Source data stage, or the review when stage is "review". Back to the review focuses the Change that left it.
+function protoExportStage(stage, { dir = "next", change = false, errors = {} } = {}) {
+  const raw = store.prototypeExportModal;
+  const state = protoExportModalState();
+  if (!raw || !state) return;
+  const to = PROTO_EXPORT_STAGES.some((item) => item.id === stage) ? stage : "";
+  setProto({ prototypeExportModal: { ...raw, step: 2, stage: to, change: to ? change : false, dir, errors } });
+  store.prototypeExportModal = { ...store.prototypeExportModal, dir: "" };
+  if (Object.keys(errors).length) protoExportDateFocus(errors);
+  else if (to) protoRestoreFocus("#astral-fs #astral-export-pick [data-proto-export-back]");
+  else protoRestoreFocus(protoExportReviewFocus(state.stage));
+}
+
+function protoExportDateFocus(errors) {
+  if (errors.count) protoRestoreFocus('#astral-fs input[name="proto-export-range-count"]');
+  else protoFocusDayCalInput(`#astral-fs input[name="proto-export-${errors.from ? "from" : "to"}"]`);
+}
+
+// Continue checks the dates before leaving Data and dates. From Change, it goes straight back to the review.
+function protoExportNext() {
+  const state = protoExportModalState();
+  if (!state?.stage) return;
+  const errors = state.stage === "data" ? protoExportDateErrors() : {};
+  if (Object.keys(errors).length) {
+    setProto({ prototypeExportModal: { ...store.prototypeExportModal, errors } });
+    protoExportDateFocus(errors);
+    return;
+  }
+  const at = PROTO_EXPORT_STAGES.findIndex((item) => item.id === state.stage);
+  const next = state.change ? "" : PROTO_EXPORT_STAGES[at + 1]?.id || "";
+  protoExportStage(next || "review", { change: state.change });
 }
 
 // True while an arrow key moves a radio pick, so a pick that opens the next step waits for a click, Enter or Space.
@@ -22153,9 +22345,8 @@ async function protoExportGo() {
   if (what === "source" && state.edit) {
     const errors = protoExportDateErrors();
     if (Object.keys(errors).length) {
-      setProto({ prototypeExportModal: { ...store.prototypeExportModal, errors } });
-      if (errors.count) protoRestoreFocus('#astral-fs input[name="proto-export-range-count"]');
-      else protoFocusDayCalInput(`#astral-fs input[name="proto-export-${errors.from ? "from" : "to"}"]`);
+      // The dates live on Data and dates, so Export opens it with the error. Continue then returns to the review.
+      protoExportStage("data", { change: true, errors });
       return;
     }
   }
@@ -38758,12 +38949,19 @@ function protoDataBuild(meters, days, opts, quality, time) {
   return { series: [...series.values()], buckets: order };
 }
 
+// The file's order: by site, then meter point name.
+function protoSourceSort(meters) {
+  return meters
+    .slice()
+    .sort(
+      (a, b) => String(a.site || "").localeCompare(String(b.site || "")) || String(a.name || "").localeCompare(String(b.name || ""))
+    );
+}
+
 // Source data is long: a row per meter point, site, group or utility per interval. kWh and m³ share a file because Unit tells them apart.
 function protoSourceRows(fileId, spec) {
   const listed = (spec.meters || []).map((id) => protoMeter(id)).filter(Boolean);
-  const meters = (listed.length ? listed : protoExportMeters(fileId)).slice().sort(
-    (a, b) => String(a.site || "").localeCompare(String(b.site || "")) || String(a.name || "").localeCompare(String(b.name || ""))
-  );
+  const meters = protoSourceSort(listed.length ? listed : protoExportMeters(fileId));
   const from = protoFromIso(spec.from);
   const to = protoFromIso(spec.to);
   const days = [];
@@ -42963,15 +43161,16 @@ function onPrototype(event) {
     protoRestoreFocus("#astral-fs [data-proto-export-flags]");
     return;
   }
-  const exportMore = event.target.closest("[data-proto-export-more]");
-  if (exportMore) {
-    const raw = store.prototypeExportModal;
-    if (!raw) return;
-    const open = raw.more !== true;
-    // Opening in place keeps the slide, as a render would jump.
-    store.prototypeExportModal = { ...raw, more: open };
-    exportMore.setAttribute("aria-expanded", open ? "true" : "false");
-    protoSyncFoldClip(exportMore.closest(".astral-accordion"), open);
+  if (event.target.closest("[data-proto-export-next]")) {
+    protoExportNext();
+    return;
+  }
+  const exportStageBtn = event.target.closest("[data-proto-export-stage]");
+  if (exportStageBtn) {
+    protoExportStage(exportStageBtn.dataset.protoExportStage, {
+      dir: exportStageBtn.hasAttribute("data-proto-export-back") ? "back" : "next",
+      change: exportStageBtn.hasAttribute("data-proto-export-change"),
+    });
     return;
   }
   const exportRangeMode =  event.target.closest("[data-proto-export-range-mode]");

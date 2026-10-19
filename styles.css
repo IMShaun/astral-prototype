@@ -12344,51 +12344,112 @@ tr.is-off .astral-person-mark {
   margin: 0;
 }
 
-/* Sections inside More options sit 16px apart, as in the modal body. Each heading stays closer to its own options. */
-.astral-export-more-body {
+/* Export > Source data: the first rows of the file, under the review. */
+.astral-export-preview {
   display: grid;
-  gap: 16px;
-  padding-top: 8px;
-}
-
-/* Source data sections: What to export, Dates and File. A rule and 16px above each later one, 8px under each heading. */
-.astral-export-section {
-  display: grid;
-  gap: 16px;
+  gap: 8px;
   min-width: 0;
 }
 
-.astral-export-section + .astral-export-section {
-  padding-top: 16px;
-  border-top: 1px solid var(--color-border-default);
+.astral-export-preview-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
 }
 
-.astral-export-section-title {
-  margin: 0 0 -8px;
+.astral-export-preview-title {
+  margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
 }
 
-.astral-export-section + .astral-export-more {
-  padding-top: 8px;
+.astral-export-preview-head .astral-muted {
+  font-size: 0.875rem;
+}
+
+/* Wide files scroll sideways inside the frame, so the pop-up keeps its width. */
+.astral-export-preview-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-card);
+}
+
+.astral-export-preview-scroll:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
+
+.astral-export-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.astral-export-preview-table th,
+.astral-export-preview-table td {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--color-border-default);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.astral-export-preview-table th {
+  background: var(--color-background-subtle);
+  font-weight: 600;
+}
+
+.astral-export-preview-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.astral-export-preview-table .astral-export-preview-note {
+  color: var(--color-text-secondary);
+  white-space: normal;
+}
+
+/* The review: each stage's choices as name and value rows, with Change in the heading. */
+.astral-export-review {
+  display: grid;
+  gap: 4px;
+}
+
+.astral-export-review-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.astral-export-review-head h4 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.astral-export-review-list {
+  display: grid;
+  margin: 0;
   border-top: 1px solid var(--color-border-default);
 }
 
-/* The closed fold lists what it holds, so the whole list shows and wraps rather than trailing off. */
-.astral-export-more .astral-export-more-name {
-  flex: none;
+.astral-export-review-list > div {
+  display: grid;
+  grid-template-columns: 9.5rem minmax(0, 1fr);
+  gap: 16px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border-default);
+  font-size: 0.875rem;
 }
 
-.astral-export-more .astral-accordion-note {
-  flex: 1 1 auto;
-  max-width: none;
-  white-space: normal;
-  text-align: right;
+.astral-export-review-list dt {
+  font-weight: 500;
 }
 
-/* Open, the options themselves show, so the list would only repeat them. */
-.astral-export-more-head[aria-expanded="true"] .astral-accordion-note {
-  display: none;
+.astral-export-review-list dd {
+  margin: 0;
 }
 
 .astral-day-cal .astral-date-input[aria-invalid="true"] {
