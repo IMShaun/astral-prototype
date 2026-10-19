@@ -1410,6 +1410,151 @@
     return ((data.access && data.access.layers) || []).filter((layer) => layer && layer.id);
   }
 
+  // Each group and sub group, flattened, so a site's group count and a person's sites come from one place.
+  function accessGroupsOf(tree) {
+    return (tree.groups || []).flatMap((group) => [
+      { name: group.name, sites: group.sites || [] },
+      ...(group.subs || []).map((sub) => ({ name: sub.name, sites: sub.sites || [] })),
+    ]);
+  }
+
+  function accessSites(tree) {
+    return [...new Set(accessGroupsOf(tree).flatMap((group) => group.sites))];
+  }
+
+  function accessChips(sites, counts) {
+    return `<ul class="lib-acc-chips">${sites
+      .map((site) => {
+        const n = counts.get(site) || 0;
+        return n > 1
+          ? `<li class="is-shared">${esc(site)} <span>${n} groups</span></li>`
+          : `<li>${esc(site)}</li>`;
+      })
+      .join("")}</ul>`;
+  }
+
+  function accessStackFigure(stack) {
+    const parts = (stack.parts || [])
+      .map(
+        (part, i) => `
+          ${i ? `<span class="lib-acc-op" aria-hidden="true">+</span>` : ""}
+          <div class="lib-acc-part">
+            <p class="lib-acc-kicker">${esc(part.layer)}</p>
+            <p class="lib-acc-value">${esc(part.value)}</p>
+            <p class="lib-acc-ask">${esc(part.ask)}</p>
+          </div>
+        `
+      )
+      .join("");
+    const result = stack.result || {};
+    return `
+      <figure class="lib-acc-fig">
+        <h3>${esc(stack.title)}</h3>
+        <div class="lib-acc-stack">
+          ${parts}
+          <span class="lib-acc-op" aria-hidden="true">=</span>
+          <div class="lib-acc-part is-result">
+            <p class="lib-acc-kicker">${esc(result.layer)}</p>
+            <p class="lib-acc-value">${esc(result.value)}</p>
+            <p class="lib-acc-ask">${esc(result.ask)}</p>
+          </div>
+        </div>
+        <figcaption class="lib-help">${esc(stack.caption || "")}</figcaption>
+      </figure>
+    `;
+  }
+
+  function accessTreeFigure(tree, counts) {
+    const groups = (tree.groups || [])
+      .map(
+        (group) => `
+          <li class="lib-acc-box">
+            <p class="lib-acc-kicker">Group</p>
+            <p class="lib-acc-name">${esc(group.name)}</p>
+            ${accessChips(group.sites || [], counts)}
+            ${(group.subs || [])
+              .map(
+                (sub) => `
+                  <div class="lib-acc-box is-sub">
+                    <p class="lib-acc-kicker">Sub group</p>
+                    <p class="lib-acc-name">${esc(sub.name)}</p>
+                    ${accessChips(sub.sites || [], counts)}
+                  </div>
+                `
+              )
+              .join("")}
+          </li>
+        `
+      )
+      .join("");
+    return `
+      <figure class="lib-acc-fig">
+        <h3>${esc(tree.title)}</h3>
+        <div class="lib-acc-box is-company">
+          <p class="lib-acc-kicker">Company</p>
+          <p class="lib-acc-name">${esc(tree.company)}</p>
+          <ul class="lib-acc-groups">${groups}</ul>
+        </div>
+        <ul class="lib-acc-chips lib-acc-key" aria-label="Key">
+          <li class="is-shared">${esc(tree.keyShared || "")}</li>
+          <li>${esc(tree.keyOne || "")}</li>
+        </ul>
+        <figcaption class="lib-help">${esc(tree.caption || "")}</figcaption>
+      </figure>
+    `;
+  }
+
+  function accessPeopleFigure(people, tree) {
+    const groups = accessGroupsOf(tree);
+    const sites = accessSites(tree);
+    const cards = (people.people || [])
+      .map((person) => {
+        const mine = person.all ? groups : groups.filter((group) => (person.groups || []).includes(group.name));
+        const rows = sites
+          .map((site) => {
+            const from = mine.filter((group) => group.sites.includes(site)).map((group) => group.name);
+            if (person.all) {
+              return `<li class="is-in"><span>${esc(site)}</span><span>${esc(people.allReason || "")}</span></li>`;
+            }
+            return from.length
+              ? `<li class="is-in"><span>${esc(site)}</span><span>From ${esc(from.join(" and "))}</span></li>`
+              : `<li class="is-out"><span>${esc(site)}</span><span>${esc(people.outReason || "")}</span></li>`;
+          })
+          .join("");
+        const seen = person.all ? sites.length : sites.filter((site) => mine.some((group) => group.sites.includes(site))).length;
+        return `
+          <article class="lib-acc-person">
+            <div>
+              <p class="lib-acc-name">${esc(person.name)}</p>
+              <p class="lib-help">${esc(person.role)}. ${esc(person.scope)}</p>
+            </div>
+            <p class="lib-acc-count">Sees ${seen} of ${sites.length} sites</p>
+            <ul class="lib-acc-sees">${rows}</ul>
+          </article>
+        `;
+      })
+      .join("");
+    return `
+      <figure class="lib-acc-fig">
+        <h3>${esc(people.title)}</h3>
+        <div class="lib-acc-people">${cards}</div>
+        <figcaption class="lib-help">${esc(people.caption || "")}</figcaption>
+      </figure>
+    `;
+  }
+
+  function accessVisual(visual) {
+    if (!visual) return "";
+    const tree = visual.tree || { groups: [] };
+    const counts = new Map();
+    accessGroupsOf(tree).forEach((group) => group.sites.forEach((site) => counts.set(site, (counts.get(site) || 0) + 1)));
+    return [
+      visual.stack ? accessStackFigure(visual.stack) : "",
+      visual.tree ? accessTreeFigure(tree, counts) : "",
+      visual.people ? accessPeopleFigure(visual.people, tree) : "",
+    ].join("");
+  }
+
   function accessPage() {
     const layers = accessLayers();
     const layer = layers.find((item) => item.id === accessLayer) || layers[0];
@@ -1448,6 +1593,7 @@
         `
         : "";
     const grid = items ? `<div class="lib-grid lib-access-grid">${items}</div>` : "";
+    const titled = (title, body) => (body && title ? `<div class="lib-acc-part-block"><h3>${esc(title)}</h3>${body}</div>` : body);
     return `
       <section class="lib-lead">
         <h1>Access</h1>
@@ -1469,8 +1615,9 @@
             <h2>${esc(layer.name)}</h2>
             <p class="lib-help">${esc(layer.summary || "")}</p>
           </div>
-          ${table}
-          ${grid}
+          ${accessVisual(layer.visual)}
+          ${titled(layer.tableTitle, table)}
+          ${titled(layer.itemsTitle, grid)}
         </div>
       </div>
     `;

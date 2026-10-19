@@ -7926,6 +7926,100 @@
             "id": "groups",
             "name": "Groups and scope",
             "summary": "How the TMA Organisation, Group and Sub Group map onto Astral. A map to test with the team, not a decision.",
+            "visual": {
+              "stack": {
+                "title": "Three layers make what a person sees",
+                "parts": [
+                  {
+                    "layer": "Product entitlement",
+                    "value": "Full Astral",
+                    "ask": "What Network Rail bought"
+                  },
+                  {
+                    "layer": "User role",
+                    "value": "Viewer",
+                    "ask": "What Tom can do"
+                  },
+                  {
+                    "layer": "Access scope",
+                    "value": "Depots and All half-hourly",
+                    "ask": "Which data Tom sees"
+                  }
+                ],
+                "result": {
+                  "layer": "What Tom sees",
+                  "value": "Full Astral, read only, on 4 sites",
+                  "ask": "Change one layer and only that part changes"
+                },
+                "caption": "In TMA, a group also granted features. Here a group only decides the data. Feature rights still need a decision with Anthony."
+              },
+              "tree": {
+                "title": "Company, group and sub group",
+                "company": "Network Rail",
+                "groups": [
+                  {
+                    "name": "London North Western",
+                    "sites": [
+                      "Crewe depot",
+                      "Warrington depot",
+                      "Euston",
+                      "Stafford"
+                    ],
+                    "subs": [
+                      {
+                        "name": "Depots",
+                        "sites": [
+                          "Crewe depot",
+                          "Warrington depot"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "name": "Eastern",
+                    "sites": [
+                      "York Traction",
+                      "Leeds"
+                    ]
+                  },
+                  {
+                    "name": "All half-hourly",
+                    "sites": [
+                      "Crewe depot",
+                      "Euston",
+                      "York Traction"
+                    ]
+                  }
+                ],
+                "keyShared": "Site in more than one group",
+                "keyOne": "Site in one group",
+                "caption": "A group is a label on the MPAN, not a folder, so one site can sit in many groups. In TMA, 12,803 of 13,658 MPANs sit in more than one, up to 11. The Portfolio tree still shows each site once, under its home group. Which group is home still needs a rule."
+              },
+              "people": {
+                "title": "Two people, one company",
+                "people": [
+                  {
+                    "name": "Priya Shah",
+                    "role": "Admin",
+                    "scope": "Whole company",
+                    "all": true
+                  },
+                  {
+                    "name": "Tom Reid",
+                    "role": "Viewer",
+                    "scope": "Depots and All half-hourly",
+                    "groups": [
+                      "Depots",
+                      "All half-hourly"
+                    ]
+                  }
+                ],
+                "allReason": "Admin sees every site",
+                "outReason": "Not in their groups",
+                "caption": "A person sees every site in any of their groups. The person record says which group gives them each site, so two people can see why their lists differ."
+              }
+            },
+            "tableTitle": "TMA and Astral",
             "columns": [
               "TMA",
               "Astral",
@@ -7976,17 +8070,8 @@
                 "Who they work with, not what they see."
               ]
             ],
+            "itemsTitle": "Notes",
             "items": [
-              {
-                "id": "many-groups",
-                "name": "One MPAN, many groups",
-                "body": "In TMA, 12,803 of 13,658 MPANs sit in more than one group, up to 11. A group is a label on the MPAN, not a folder. The tree shows each site once, under its home group. The site lists the other groups it is in. Which group is home still needs a rule."
-              },
-              {
-                "id": "scope-from-groups",
-                "name": "How a person gets scope",
-                "body": "A person sits in groups and sub groups. They see every site in any of those groups. One site on its own is the exception, not the default. Admin sees the whole company."
-              },
               {
                 "id": "feature-rights",
                 "name": "Feature rights",
@@ -7996,11 +8081,6 @@
                 "id": "consultants",
                 "name": "Consultants",
                 "body": "A sub group can scope a consultant to part of a customer. In Astral that is the third-party link, with who they can see and when it ends. SCW-11 and SCW-12 sit here."
-              },
-              {
-                "id": "why-they-see",
-                "name": "Why they see it",
-                "body": "The person shows which groups give them each site. Two people in one company can then see why their lists differ."
               },
               {
                 "id": "groups-open",

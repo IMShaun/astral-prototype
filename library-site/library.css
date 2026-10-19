@@ -305,6 +305,218 @@ html:has(.lib-root),
   grid-template-columns: 1fr;
 }
 
+/* Access visuals: three layers, company and groups, two people. */
+.lib-acc-fig,
+.lib-acc-part-block {
+  display: grid;
+  gap: 12px;
+  margin: 8px 0 0;
+}
+
+.lib-acc-fig h3,
+.lib-acc-part-block h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+
+.lib-acc-fig p {
+  margin: 0;
+}
+
+.lib-acc-kicker {
+  color: var(--color-text-secondary, #737373);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.lib-acc-name {
+  font-weight: 500;
+}
+
+.lib-acc-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1.2fr);
+  align-items: stretch;
+  gap: 8px;
+}
+
+.lib-acc-part {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding: 16px;
+  border: 1px solid var(--color-border-default, #dfdfdf);
+  border-radius: 16px;
+  background: var(--color-background-surface, #fff);
+}
+
+.lib-acc-value {
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+
+.lib-acc-ask {
+  color: var(--color-text-secondary, #737373);
+  font-size: 0.875rem;
+}
+
+.lib-acc-part.is-result {
+  border-color: var(--color-nav, #00020b);
+  background: var(--color-nav, #00020b);
+  color: var(--color-on-nav, #fff);
+}
+
+.lib-acc-part.is-result .lib-acc-kicker,
+.lib-acc-part.is-result .lib-acc-ask {
+  color: color-mix(in srgb, var(--color-on-nav, #fff) 72%, transparent);
+}
+
+.lib-acc-op {
+  align-self: center;
+  color: var(--color-text-secondary, #737373);
+  font-size: 1.5rem;
+}
+
+.lib-acc-box {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  padding: 16px;
+  border: 1px solid var(--color-border-default, #dfdfdf);
+  border-radius: 16px;
+  background: var(--color-background-surface, #fff);
+}
+
+.lib-acc-box.is-company {
+  background: var(--color-background-canvas, #efefef);
+}
+
+.lib-acc-box.is-sub {
+  margin-top: 4px;
+  border-style: dashed;
+}
+
+.lib-acc-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 12px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lib-acc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lib-acc-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-default, #dfdfdf);
+  border-radius: 999px;
+  background: var(--color-background-surface, #fff);
+  font-size: 0.875rem;
+}
+
+.lib-acc-chips li.is-shared {
+  border-color: var(--color-brand-primary, #028178);
+  background: var(--color-status-info-subtle, #ddf3f1);
+}
+
+.lib-acc-chips li span {
+  color: var(--color-brand-primary, #028178);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.lib-acc-key li {
+  font-size: 0.75rem;
+}
+
+.lib-acc-people {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 12px;
+}
+
+.lib-acc-person {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 16px;
+  border: 1px solid var(--color-border-default, #dfdfdf);
+  border-radius: 16px;
+  background: var(--color-background-surface, #fff);
+}
+
+.lib-acc-count {
+  font-weight: 500;
+}
+
+.lib-acc-sees {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lib-acc-sees li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0 8px 22px;
+  border-top: 1px solid var(--color-border-subtle, #efefef);
+  font-size: 0.875rem;
+  position: relative;
+}
+
+.lib-acc-sees li::before {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  font-weight: 500;
+}
+
+.lib-acc-sees li.is-in::before {
+  content: "✓";
+  color: var(--color-brand-primary, #028178);
+}
+
+.lib-acc-sees li.is-out {
+  color: var(--color-text-secondary, #737373);
+}
+
+.lib-acc-sees li.is-out::before {
+  content: "–";
+}
+
+.lib-acc-sees li span:last-child {
+  color: var(--color-text-secondary, #737373);
+  text-align: right;
+}
+
+@media (max-width: 1100px) {
+  .lib-acc-stack {
+    grid-template-columns: 1fr;
+  }
+
+  .lib-acc-op {
+    justify-self: center;
+    font-size: 1.25rem;
+  }
+}
+
 .lib-token-table th {
   color: #737373;
   font-weight: 500;
