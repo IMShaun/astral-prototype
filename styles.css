@@ -10816,6 +10816,11 @@ button.astral-value-pill.astral-tip-host {
   top: 0;
 }
 
+/* A table that fits the area it scrolls in scrolls with its rows (protoSyncTableHeads). */
+#astral-fs .astral-table.is-short thead th {
+  position: static;
+}
+
 #astral-downloads .astral-table-wrap,
 #astral-downloads .astral-table-wrap.is-tips {
   min-width: 0;

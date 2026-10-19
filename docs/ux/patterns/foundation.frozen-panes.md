@@ -43,6 +43,7 @@ A table with one row per time step and one column per meter, channel or series, 
 ### Do
 
 - Keep the column headers and the Time column in view while the table scrolls.
+- Keep the headers of a table in a pane on screen only when the table is taller than the area it scrolls in. A shorter table, such as a meter's Channels or a site's 3 meter points, scrolls its headers with its rows. `protoSyncTableHeads` adds `is-short` to it. A hidden table keeps its class until it shows.
 - Let the table scroll sideways when the columns do not fit, and show the paging.
 - Keep the key and the paging as siblings of the scroll box in one parent, so the paging finds its table.
 - Put the box in a container with `minmax(0, 1fr)` or `min-width: 0`, so a wide table cannot stretch the card.
@@ -64,6 +65,7 @@ The scroll box is a focusable region with an `aria-label`, so keyboard users can
 ## Evidence
 
 - User correction on 16 October 2026: the meter view's readings table needed sticky headers and sideways scrolling, and the user asked for it on every table like it (commit `40211d2`).
+- User correction on 19 October 2026: "No sticky header on short lists please" on a meter's Channels table. Measured after: Channels (6 rows, 355px) and a site's meter points (3 rows, 194px) scroll their headers, and the 48-row readings table (2,205px) keeps them.
 
 ## Related patterns / decisions
 

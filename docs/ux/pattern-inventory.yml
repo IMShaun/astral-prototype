@@ -338,11 +338,11 @@ patterns:
     used_in: [Export]
     entry_points:
       - Export pop-up, Source data, Continue
-    structure: Step 1 holds the choice with Continue for the long option. Step 2 has a Back icon before the title, the fields, the summary and the final action. Export source data opens on a review of name and value rows with Change for each stage and a file preview, and Customise export walks 2 named stages before returning to the review
+    structure: Step 1 holds the choice with Continue for the long option. Step 2 has a Back icon before the title, the fields, the summary and the final action. Export source data opens on a review of name and value rows with Change for each stage and a file preview. Change opens one named stage, and Continue or Back returns to the review
     components: [astral-modal, astral-modal-lead, astral-detail-lead, is-step-next, is-step-back, astral-export-review, astral-export-preview]
     states: [step-1, step-2, review, stage, error]
     permissions: anyone who can act
-    content_terms: [Continue, Back, Export source data, Customise export, Change, Data and dates, Values and file, Step 1 of 2]
+    content_terms: [Continue, Back, Export source data, Change, Data and dates, Values and file]
     variants: []
     exceptions:
       - Choices that need only 1 or 2 extra fields keep them on step 1
@@ -362,6 +362,7 @@ patterns:
     evidence:
       - User request on 2026-10-06 to move Source data to a second step with Back (commit 740f5dd).
       - User decision on 2026-10-19 for a review with Customise stages inside the pop-up, named Data and dates, and Values and file.
+      - User correction on 2026-10-19 to remove Customise export. Change is the only way into a stage.
     maturity: emerging
     health: needs-evidence
     last_reviewed: "2026-10-19"

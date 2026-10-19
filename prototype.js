@@ -10139,6 +10139,8 @@ function protoSelect(config) {
   ]
     .filter(Boolean)
     .join(" ");
+  // A hint shows only when every option has one, so the options stay the same shape.
+  const notes = allOptions.filter((item) => !item.heading && !item.html).every((item) => item.note);
   const optionHtml = (item) => {
       if (item.heading) {
         return `<p class="astral-select-heading" role="presentation">${escapeHtml(item.heading)}</p>`;
@@ -10146,7 +10148,7 @@ function protoSelect(config) {
       const on = multi ? values.includes(String(item.value)) : item.value === value;
       const inner =
         item.html ||
-        (item.note
+        (item.note && notes
           ? `<span class="astral-select-option-copy"><span>${escapeHtml(
               item.label
             )}</span><span class="astral-muted">${escapeHtml(item.note)}</span></span>`
@@ -21565,7 +21567,7 @@ const PROTO_EXPORT_SOURCE_DATA = [
   { id: "reads", name: "Display readings" },
 ];
 
-// Customise export walks these in order, then returns to the review.
+// The review groups its rows under these. Change opens one, then returns to the review.
 const PROTO_EXPORT_STAGES = [
   { id: "data", name: "Data and dates" },
   { id: "file", name: "Values and file" },
@@ -21621,9 +21623,9 @@ function protoExportModalState() {
   const only = choices.length === 1 && what === "source";
   const step = what === "source" && (raw.step === 2 || only) ? 2 : 1;
   const dir = raw.dir === "next" || raw.dir === "back" ? raw.dir : "";
-  // Source data opens on a review of every choice. Customise export walks its stages, and Change opens one, then returns.
+  // Source data opens on a review of every choice. Change opens one stage, then returns.
   const stage = PROTO_EXPORT_STAGES.some((item) => item.id === raw.stage) ? raw.stage : "";
-  return { file, what, prefs, step, only, dir, limit, stage, change: raw.change === true, edit: what === "source", errors };
+  return { file, what, prefs, step, only, dir, limit, stage, edit: what === "source", errors };
 }
 
 function protoExportSourceFormat(id) {
@@ -22194,18 +22196,9 @@ function protoExportModal() {
           ${sourcePick ? "" : protoExportFieldsHtml(state)}
         `;
   const motion = state.dir ? ` is-step-${state.dir}` : "";
-  const stageAt = sourceStep ? PROTO_EXPORT_STAGES.findIndex((item) => item.id === state.stage) : -1;
-  const stage = PROTO_EXPORT_STAGES[stageAt];
-  // A stage opened from Change goes back to the review. Otherwise back is the stage before.
-  const stageBack = stage && (state.change || stageAt === 0 ? "review" : PROTO_EXPORT_STAGES[stageAt - 1].id);
+  const stage = sourceStep ? PROTO_EXPORT_STAGES.find((item) => item.id === state.stage) : null;
   const head = stage
-    ? protoModalHead(
-        "astral-export-pick-title",
-        stage.name,
-        escapeHtml(`Step ${stageAt + 1} of ${PROTO_EXPORT_STAGES.length}`),
-        "export",
-        `data-proto-export-stage="${stageBack}" data-proto-export-back`
-      )
+    ? protoModalHead("astral-export-pick-title", stage.name, "", "export", 'data-proto-export-stage="review" data-proto-export-back')
     : sourceStep
       ? protoModalHead("astral-export-pick-title", "Export source data", "", "export", state.only ? "" : 'data-proto-export-step="back"')
       : protoModalHead("astral-export-pick-title", "Export", "", "export");
@@ -22213,9 +22206,7 @@ function protoExportModal() {
     ? protoBtn("Continue", 'data-proto-export-step="next"')
     : stage
       ? protoBtn("Continue", "data-proto-export-next")
-      : `${protoBtn("Export", 'data-proto-export="go"')}${
-          sourceStep ? protoGhost("Customise export", 'data-proto-export-stage="data"') : ""
-        }`;
+      : protoBtn("Export", 'data-proto-export="go"');
   // The review lists every choice, so the sentence shows only while a stage changes them.
   const sum = sourcePick || (sourceStep && !stage) ? "" : `<p class="astral-export-sum" aria-live="polite">${escapeHtml(protoExportSummary(state))}</p>`;
   return `
@@ -22247,7 +22238,7 @@ function protoExportModal() {
 function protoExportStep(step) {
   const raw = store.prototypeExportModal;
   if (!raw || !protoExportModalState()) return;
-  setProto({ prototypeExportModal: { ...raw, step, stage: "", change: false, dir: step === 2 ? "next" : "back", errors: {} } });
+  setProto({ prototypeExportModal: { ...raw, step, stage: "", dir: step === 2 ? "next" : "back", errors: {} } });
   store.prototypeExportModal = { ...store.prototypeExportModal, dir: "" };
   if (step === 2) protoRestoreFocus(protoExportReviewFocus());
   else protoRestoreFocus(PROTO_EXPORT_PICK_FOCUS);
@@ -22261,12 +22252,12 @@ function protoExportReviewFocus(from = "") {
 }
 
 // Opens a Source data stage, or the review when stage is "review". Back to the review focuses the Change that left it.
-function protoExportStage(stage, { dir = "next", change = false, errors = {} } = {}) {
+function protoExportStage(stage, { dir = "next", errors = {} } = {}) {
   const raw = store.prototypeExportModal;
   const state = protoExportModalState();
   if (!raw || !state) return;
   const to = PROTO_EXPORT_STAGES.some((item) => item.id === stage) ? stage : "";
-  setProto({ prototypeExportModal: { ...raw, step: 2, stage: to, change: to ? change : false, dir, errors } });
+  setProto({ prototypeExportModal: { ...raw, step: 2, stage: to, dir, errors } });
   store.prototypeExportModal = { ...store.prototypeExportModal, dir: "" };
   if (Object.keys(errors).length) protoExportDateFocus(errors);
   else if (to) protoRestoreFocus("#astral-fs #astral-export-pick [data-proto-export-back]");
@@ -22278,7 +22269,7 @@ function protoExportDateFocus(errors) {
   else protoFocusDayCalInput(`#astral-fs input[name="proto-export-${errors.from ? "from" : "to"}"]`);
 }
 
-// Continue checks the dates before leaving Data and dates. From Change, it goes straight back to the review.
+// Continue checks the dates before leaving Data and dates, then returns to the review.
 function protoExportNext() {
   const state = protoExportModalState();
   if (!state?.stage) return;
@@ -22288,9 +22279,7 @@ function protoExportNext() {
     protoExportDateFocus(errors);
     return;
   }
-  const at = PROTO_EXPORT_STAGES.findIndex((item) => item.id === state.stage);
-  const next = state.change ? "" : PROTO_EXPORT_STAGES[at + 1]?.id || "";
-  protoExportStage(next || "review", { change: state.change });
+  protoExportStage("review", { dir: "back" });
 }
 
 // True while an arrow key moves a radio pick, so a pick that opens the next step waits for a click, Enter or Space.
@@ -22343,7 +22332,7 @@ async function protoExportGo() {
     const errors = protoExportDateErrors();
     if (Object.keys(errors).length) {
       // The dates live on Data and dates, so Export opens it with the error. Continue then returns to the review.
-      protoExportStage("data", { change: true, errors });
+      protoExportStage("data", { errors });
       return;
     }
   }
@@ -31892,17 +31881,29 @@ function protoSyncTableHeads() {
       wrap && width && getComputedStyle(wrap).maxHeight === "none" && !wrap.classList.contains("astral-breakdown-scroll")
         ? width <= wrap.clientWidth + 1
         : null;
-    return { head, wrap, fit, h: hs.length ? Math.round(Math.min(...hs)) : 0 };
+    // Only a table taller than the area it scrolls in keeps its head on screen. A shorter one shows head and rows together anyway.
+    // A hidden table, such as one on another tab, keeps what it had until it shows.
+    const tall = table.getBoundingClientRect().height;
+    const short = tall ? protoTableScrollHeight(fit ? wrap : table) >= tall : null;
+    return { table, head, wrap, fit, short, h: hs.length ? Math.round(Math.min(...hs)) : 0 };
   });
   plan.forEach((item) => {
     if (!item) return;
     if (item.fit != null) item.wrap.classList.toggle("is-fit", item.fit);
+    if (item.short != null) item.table.classList.toggle("is-short", item.short);
     const next = item.h ? `${item.h}px` : "";
     if (item.head.style.getPropertyValue("--astral-head-h") !== next) {
       if (next) item.head.style.setProperty("--astral-head-h", next);
       else item.head.style.removeProperty("--astral-head-h");
     }
   });
+}
+
+function protoTableScrollHeight(from) {
+  for (let el = from.parentElement; el && el !== document.body; el = el.parentElement) {
+    if (/auto|scroll/.test(getComputedStyle(el).overflowY) && el.clientHeight) return el.clientHeight;
+  }
+  return window.innerHeight;
 }
 
 function protoSyncTableHeadsSoon() {
@@ -43163,7 +43164,6 @@ function onPrototype(event) {
   if (exportStageBtn) {
     protoExportStage(exportStageBtn.dataset.protoExportStage, {
       dir: exportStageBtn.hasAttribute("data-proto-export-back") ? "back" : "next",
-      change: exportStageBtn.hasAttribute("data-proto-export-change"),
     });
     return;
   }

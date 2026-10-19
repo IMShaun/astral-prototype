@@ -30,6 +30,8 @@ Vertical first. Reports wrap instead of scrolling sideways. The reports sheet sc
 - Do: size a scrolling option list so the last row in view is cut through the middle. Every select option list, side lists such as Standard presets and Your presets included, shows five options and half of the sixth. `.astral-select-options` sets this with `--astral-option-row` (2.5rem, or 3.875rem for options with a note) and `--astral-option-frame` for a list with its own padding and border.
 - Don't: end the view on a whole row. A list that stops cleanly between rows looks complete, and people miss the options below it.
 - Why: a cut-off row shows there is more to scroll to, even where the platform hides the scroll bar.
+- Do: show a hint under the options only when every option in the list has one (`protoSelect`). Interval shows Weekly with no "Monday to Sunday", while Totals for and Electricity units keep a hint on every option.
+- Don't: give one option a hint the others lack. The list stops being one shape, and the odd row reads as a warning. User correction on 19 October 2026: "remove subtext in options if it is the only one".
 
 ## Accessibility
 
