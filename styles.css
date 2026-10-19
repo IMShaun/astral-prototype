@@ -10797,6 +10797,25 @@ button.astral-value-pill.astral-tip-host {
   overflow: visible;
 }
 
+#astral-fs .astral-table-wrap.is-fit {
+  overflow: visible;
+}
+
+/* Open folds clip without becoming scroll boxes, so a long table's header can stick to the pane. */
+:where(.is-open) > .astral-fold-clip:not(.is-folding),
+:where(.is-open > .astral-fold-clip:not(.is-folding)) > .astral-accordion-body {
+  overflow: clip;
+}
+
+/* Pin headers to the pane's top edge, over its focus-ring padding, so rows never show above them. */
+.astral-pane-body .astral-table thead th {
+  top: -6px;
+}
+
+.astral-pane-body .astral-breakdown-scroll thead th {
+  top: 0;
+}
+
 #astral-downloads .astral-table-wrap,
 #astral-downloads .astral-table-wrap.is-tips {
   min-width: 0;
@@ -10983,8 +11002,13 @@ button.astral-value-pill.astral-tip-host {
   background: var(--color-yellow-500);
 }
 
-/* Column headers: Body S in Infra Grey C on white, sentence case, over an Infra Grey B rule. */
+/* Column headers: Body S in Infra Grey C on white, sentence case, over an Infra Grey B rule.
+   They stay on top while a long table scrolls. */
 .astral-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #fff;
   color: var(--color-text-secondary);
   font-size: 0.875rem;
   line-height: 20px;

@@ -28341,6 +28341,7 @@ function protoPickMeterTab(id) {
   });
   protoSlideHost(root.querySelector(".astral-pane-head > .astral-tabs"), "button.is-on", "tabs", false);
   protoBindBreakdownNav();
+  protoSyncTableHeads();
 }
 
 // Under the graph on a site: the meter points, each opening its own meter view.
@@ -31527,10 +31528,18 @@ function protoSyncTableHeads() {
     if (!head) return null;
     const rows = [...table.querySelectorAll(":scope > tbody > tr")].slice(0, 8);
     const hs = rows.map((row) => row.getBoundingClientRect().height).filter((h) => h > 0);
-    return { head, h: hs.length ? Math.round(Math.min(...hs)) : 0 };
+    const wrap = table.parentElement?.classList.contains("astral-table-wrap") ? table.parentElement : null;
+    const width = table.getBoundingClientRect().width;
+    // A wrap that scrolls sideways traps a sticky head. When the table fits, the head sticks to the page instead.
+    const fit =
+      wrap && width && getComputedStyle(wrap).maxHeight === "none" && !wrap.classList.contains("astral-breakdown-scroll")
+        ? width <= wrap.clientWidth + 1
+        : null;
+    return { head, wrap, fit, h: hs.length ? Math.round(Math.min(...hs)) : 0 };
   });
   plan.forEach((item) => {
     if (!item) return;
+    if (item.fit != null) item.wrap.classList.toggle("is-fit", item.fit);
     const next = item.h ? `${item.h}px` : "";
     if (item.head.style.getPropertyValue("--astral-head-h") !== next) {
       if (next) item.head.style.setProperty("--astral-head-h", next);
