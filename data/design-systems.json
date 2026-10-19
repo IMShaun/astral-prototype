@@ -7923,6 +7923,93 @@
             ]
           },
           {
+            "id": "groups",
+            "name": "Groups and scope",
+            "summary": "How the TMA Organisation, Group and Sub Group map onto Astral. A map to test with the team, not a decision.",
+            "columns": [
+              "TMA",
+              "Astral",
+              "Layer",
+              "Still open"
+            ],
+            "rows": [
+              [
+                "Organisation",
+                "Company",
+                "Company type",
+                "Nothing. Organisation stays the name of the Settings page."
+              ],
+              [
+                "Master group",
+                "Admin, or All on the tree",
+                "User role or Access scope",
+                "Is a master group a role, or a group that holds every site?"
+              ],
+              [
+                "Group",
+                "Group",
+                "Access scope",
+                "Who makes groups: the customer Admin or IMSERV admin."
+              ],
+              [
+                "Sub Group",
+                "Sub group inside a group",
+                "Access scope",
+                "How deep it goes. TMA uses it to scope consultants."
+              ],
+              [
+                "Feature rights on a group",
+                "Product entitlement and User role",
+                "Not scope",
+                "Does any customer need a group to switch an area off?"
+              ],
+              [
+                "Billing-marker group",
+                "Not in Astral",
+                "None",
+                "Ops moves the marker to the billing system or Salesforce."
+              ],
+              [
+                "No match",
+                "Team",
+                "Not scope",
+                "Who they work with, not what they see."
+              ]
+            ],
+            "items": [
+              {
+                "id": "many-groups",
+                "name": "One MPAN, many groups",
+                "body": "In TMA, 12,803 of 13,658 MPANs sit in more than one group, up to 11. A group is a label on the MPAN, not a folder. The tree shows each site once, under its home group. The site lists the other groups it is in. Which group is home still needs a rule."
+              },
+              {
+                "id": "scope-from-groups",
+                "name": "How a person gets scope",
+                "body": "A person sits in groups and sub groups. They see every site in any of those groups. One site on its own is the exception, not the default. Admin sees the whole company."
+              },
+              {
+                "id": "feature-rights",
+                "name": "Feature rights",
+                "body": "TMA lets a group grant features. Astral keeps that apart. Product entitlement is what the company bought. User role is what the person can do. A group only decides which data they see. Ask Anthony before a group can switch an area off."
+              },
+              {
+                "id": "consultants",
+                "name": "Consultants",
+                "body": "A sub group can scope a consultant to part of a customer. In Astral that is the third-party link, with who they can see and when it ends. SCW-11 and SCW-12 sit here."
+              },
+              {
+                "id": "why-they-see",
+                "name": "Why they see it",
+                "body": "The person shows which groups give them each site. Two people in one company can then see why their lists differ."
+              },
+              {
+                "id": "groups-open",
+                "name": "Still open",
+                "body": "Gordon: is this V1, and is one MPAN in many groups confirmed? Anthony: who manages groups, and can a group carry feature rights? Max and Emily: where Team ends and Group begins. Today, permission user groups stay in admin."
+              }
+            ]
+          },
+          {
             "id": "company",
             "name": "Company type",
             "summary": "Who the company is. Third party is how they relate to a customer.",
@@ -8122,6 +8209,11 @@
                 "id": "no-same-shell",
                 "name": "Documents only",
                 "body": "Do not assume every login gets Portfolio. Documents only may skip the energy walk."
+              },
+              {
+                "id": "no-site-twice",
+                "name": "Groups on the tree",
+                "body": "Do not show a site twice when it sits in more than one group."
               }
             ]
           }
