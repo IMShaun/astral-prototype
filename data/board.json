@@ -306,14 +306,6 @@
           "added": "2026-10-16"
         },
         {
-          "id": "tma-gap-h1",
-          "title": "TMA gap H1: Data Download options at TMA parity",
-          "note": "Units, actuals only, flags, consolidation by MPAN, grouping, interval, cumulative or TOU, search across 845 MPANs, run as a background job. Astral builds this in the prototype. Spec from Jac's option list (Anna, Jac).",
-          "project": "Astral",
-          "kind": "ux",
-          "added": "2026-10-16"
-        },
-        {
           "id": "tma-gap-h3",
           "title": "TMA gap H3: Organisation, Group and Sub Group access",
           "note": "Group-level feature rights; one MPAN in many groups. Astral builds this in the prototype. Gordon settles the version conflict as V1.",
@@ -865,6 +857,15 @@
           "id": "tma-gap-c2",
           "title": "TMA gap C2: Display readings with a monthly export total",
           "note": "Done in 6f84c9c and 6e0ee68. Customers view and export display readings, with a monthly export total per export MPAN. Anna and the data team still add D10 ingestion to V1.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-10-16",
+          "doneOn": "2026-10-16"
+        },
+        {
+          "id": "tma-gap-h1",
+          "title": "TMA gap H1: Data Download options at TMA parity",
+          "note": "Done. Export source data and the Data extract report share the same options: pick groups, sites or MPANs by search; interval from half-hourly to monthly; each interval, running total, or peak and off-peak; electricity in kWh, kW or kVA; each meter point, site, group or one total; quality flags on or off. Actual only and the background job were already in. Each MPAN is Each meter point. A running total stays in kWh.",
           "project": "Astral",
           "kind": "ux",
           "added": "2026-10-16",
