@@ -37,6 +37,7 @@ Any form, pop-up or disclosure that holds fields, radio groups or read-only valu
 - When a form has many settings that most people keep, show them first as a review of name and value rows, and put the fields on stages (see [Modal steps](foundation.modal-steps.md)). Export > Source data does this.
 - Keep the choices that change what the file holds or how it reads on the review, never behind a fold. Interval, Values, Totals for, Electricity units, Time zone and Data quality each have a row.
 - Group optional extra columns under a legend that says what they add, such as "Extra columns" for quality flags and source IDs. Do not call it "More options".
+- Show a set of checkbox cards that explain themselves, such as Include quality flags and Include source IDs, with the name only. Put them side by side on the same 2 columns as the field pairs above (`.astral-export-extras`), so they line up and sit 16px apart, like the pairs.
 - When a choice group sits among plain labels, give it a plain label too (`protoRangeFieldsHtml` `label`). Export's date cards are labelled Dates, not "How do you want to set the dates?".
 - Measure the rendered gaps in the browser after the change.
 
@@ -50,6 +51,7 @@ Any form, pop-up or disclosure that holds fields, radio groups or read-only valu
 - Let a choice card name wrap onto a second line. Common range wrapped by a few pixels at 36rem, and the 1fr rows made all 3 cards 82px instead of 58px.
 - Hide a choice that changes what the file holds behind a closed fold that does not say what it holds. Interval, Values and Show data as sat in More options, so people exported half-hourly values for each meter point without seeing they could change it.
 - Centre the box on the whole label and hint block. With a hint, the box falls between the heading and the hint and belongs to neither.
+- Stack full-width checkbox cards with a hint under each, 16px apart, below a legend 4px above them. Extra columns was 194px tall, and each card looked further from the next than from its heading.
 
 ## Accessibility
 
@@ -60,7 +62,8 @@ Stacked labels keep the label and the control together when the text is enlarged
 - Export pop-up, Source data: the review rows and the Data and dates, and Values and file stages (19 October 2026)
 - Date range choice cards in Reports and Export, name only (commit `44e3e9a`)
 - Follow site or Set for this meter only choice cards in Site settings and a meter's own settings, with a short hint
-- Checkbox rows with a hint: "Include source IDs" in Export, the Reports consent row and multi-select options with a note
+- Checkbox rows with a hint: the Reports consent row and multi-select options with a note
+- Checkbox cards with the name only: Include quality flags and Include source IDs in Export (side by side under Extra columns) and Include quality flags in the Reports editor (19 October 2026)
 
 ## Known limitations
 
@@ -76,6 +79,7 @@ Stacked labels keep the label and the control together when the text is enlarged
 - User correction on 6 October 2026: "Checkboxes and radio buttons in these circumstances need to be centre aligned with the text on the right (heading)" on "Include source IDs". The box centre sat 2px above the centre of the label line.
 - UX patterns and UX writing review on 19 October 2026, approved by the user: "make it obvious to the user that they have important filters and options to choose" without showing everything at once. The Data extract report already showed Interval and Values openly, while Export hid them in More options.
 - User feedback on 19 October 2026: "the user has to scroll and open accordions to actually see the important stuff". The sections became a review with Customise stages.
+- User correction on 19 October 2026: "Spacing between cards is weird and remove the sub text" on Extra columns. Measured after: 2 cards at 283 by 50px, side by side, lined up with the Electricity units and Format columns, each box centred on its label.
 
 ## Related patterns / decisions
 

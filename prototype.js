@@ -22121,10 +22121,7 @@ function protoExportStageHtml(state) {
           data-proto-export-ids
         >
           ${protoCheck(prefs.ids)}
-          <span class="astral-report-consent-copy">
-            <span>Include source IDs</span>
-            <span class="astral-muted">Adds the meter point ID and the cumulative data stream, where there is one.</span>
-          </span>
+          <span class="astral-report-consent-copy"><span>Include source IDs</span></span>
         </button>`
       : "",
   ].join("");
@@ -38860,10 +38857,7 @@ function protoDataFlagsCheck(attr, on) {
   return `
     <button type="button" role="checkbox" class="astral-report-consent" aria-checked="${on ? "true" : "false"}" ${attr}>
       ${protoCheck(on)}
-      <span class="astral-report-consent-copy">
-        <span>Include quality flags</span>
-        <span class="astral-muted">Marks each value as actual, estimated or missing.</span>
-      </span>
+      <span class="astral-report-consent-copy"><span>Include quality flags</span></span>
     </button>
   `;
 }

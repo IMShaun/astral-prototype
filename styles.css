@@ -12319,6 +12319,12 @@ tr.is-off .astral-person-mark {
   font-weight: 500;
 }
 
+/* Export Extra columns: the checkbox cards share the 2 columns of the dropdown pairs above. */
+.astral-export-extras {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
 /* Export pop-up: the fixed dates and format, date errors and the summary above the buttons. */
 .astral-export-facts {
   display: grid;
@@ -13820,7 +13826,8 @@ tr.is-off .astral-person-mark {
   .astral-report-types.is-three,
   .astral-template-sources,
   .astral-report-pair,
-  .astral-report-pair.is-three {
+  .astral-report-pair.is-three,
+  .astral-export-extras {
     grid-template-columns: minmax(0, 1fr);
   }
 
