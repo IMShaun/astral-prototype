@@ -376,11 +376,11 @@ patterns:
     used_in: [Export]
     entry_points:
       - Export pop-up, Source data step
-    structure: Labels stacked above controls. Label to control 4 to 8px, disclosure head to first section 8px, section to section 16px. Checkboxes and radios centre on the first label line, not on the label and hint. Self-explanatory choice cards show the name only, on one line, all the same size. A form with many kept settings shows them as review rows first, with the fields on stages. Optional extra columns sit under a legend that says what they add
-    components: [astral-field, astral-report-split, astral-export-extras, astral-export-review, astral-check, astral-radio, astral-report-consent, astral-report-types, astral-report-type]
-    states: [default, expanded]
+    structure: Labels stacked above controls. Label to control 4 to 8px, disclosure head to first section 8px, section to section 16px. Checkboxes and radios centre on the first label line, not on the label and hint. Self-explanatory choice cards show the name only, on one line, all the same size. A form with many kept settings shows them as review rows first, with the fields on stages. Optional extra columns sit under a legend that says what they add. A pick-one-or-more set, such as Meter quantities, uses the same 2-column checkbox cards with its error under the whole set
+    components: [astral-field, astral-report-split, astral-export-extras, astral-export-review, astral-export-error, astral-check, astral-radio, astral-report-consent, astral-report-types, astral-report-type]
+    states: [default, expanded, error]
     permissions: anyone who can act
-    content_terms: []
+    content_terms: [Meter quantities, Active import, Active export, Reactive import, Reactive export, Include meter IDs, Include site details]
     variants: []
     exceptions:
       - A read-only summary with only label and value rows can use a two-column dl
@@ -392,12 +392,15 @@ patterns:
       - styles.css astral-report-split
       - styles.css astral-export-review-list
       - prototype.js protoRangeFieldsHtml
+      - prototype.js protoDataMqField
+      - prototype.js protoDataCheck
       - styles.css astral-export-pick
     evidence:
       - User corrections on 2026-10-06 on Dates alignment and More options spacing (commit 5c057b4).
       - User corrections on 2026-10-06 on the Date range cards, hints removed and pop-up widened so names fit on one line (commit 44e3e9a).
       - UX patterns and writing review on 2026-10-19. Source data split into What to export, Dates and File, and More options lists its settings when closed.
       - User feedback on 2026-10-19 that people had to scroll and open accordions. Source data became review rows with Customise stages.
+      - TMA gap H1 on 2026-10-20 added Meter quantities, Include meter IDs and Include site details, approved as planned by the user.
     maturity: emerging
     health: needs-evidence
     last_reviewed: "2026-10-19"

@@ -11963,6 +11963,8 @@ function protoReportNormalize(raw) {
     attach: raw.attach !== false,
     // Totals for replaced By site. A report saved with bySite false is one total for each utility.
     ...protoDataOpts({ ...raw, totals: raw.totals || (raw.bySite === false ? "all" : "meter") }),
+    // A report saved before meter quantities keeps the import or export its Channel picked.
+    mq: Array.isArray(raw.mq) ? protoDataOpts({ mq: raw.mq }).mq : protoDataMqFromChannel(raw.channel),
     bySite: (raw.totals || (raw.bySite === false ? "all" : "meter")) !== "all",
     tenants: type === "billing" ? protoReportNormalizeTenants(raw, known) : [],
     vat: protoReportNumber(raw.vat, 20, 0, 100),
@@ -12588,7 +12590,9 @@ function protoReportFileLine(def) {
   if (protoReportAsksBySite(def)) {
     bits.push(...protoDataWords(protoReportDataOpts(def), protoReportUtilityIds(def.utility).includes("electricity")));
   }
-  if (def.channel !== "all") bits.push(`${protoReportOptionName(PROTO_REPORT_CHANNEL, def.channel).toLowerCase()} only`);
+  if (def.channel !== "all" && !protoReportAsksMq(def)) {
+    bits.push(`${protoReportOptionName(PROTO_REPORT_CHANNEL, def.channel).toLowerCase()} only`);
+  }
   if (protoReportHasQuality(def) && def.quality !== "all") bits.push(`${def.quality} readings only`);
   if (def.time === "uk") bits.push("UK time");
   return bits.join(", ");
@@ -12997,6 +13001,7 @@ function protoReportDraftIssueBase(draft) {
     protoReportEmails(draft.emails).length;
   if (protoReportSends(draft.type)) {
     if (!protoReportPicksAny(draft)) return "Pick at least one group, site or MPAN.";
+    if (protoReportAsksMq(draft) && !protoReportDataOpts(draft).mq.length) return PROTO_DATA_MQ_ERROR;
     if (!draft.delivery?.length) return "Pick how to send it.";
     if (draft.delivery.includes("email") && !people) return "Add at least one person or email.";
     const server = (draft.delivery || []).filter((way) => way === "sftp" || way === "ftp");
@@ -13725,8 +13730,20 @@ function protoReportBySiteField(draft) {
 }
 
 // Reports saved before Totals for had four choices only carry bySite.
+// Meter quantities replace Channel where they are asked. Elsewhere Channel picks the meter points, so every quantity they record is in.
 function protoReportDataOpts(def) {
-  return protoDataOpts({ ...def, totals: def.totals || (def.bySite === false ? "all" : "meter") });
+  const asks = protoReportAsksMq(def);
+  return protoDataOpts({
+    ...def,
+    totals: def.totals || (def.bySite === false ? "all" : "meter"),
+    mq: !asks ? ["ai", "ae"] : Array.isArray(def.mq) ? def.mq : protoDataMqFromChannel(def.channel),
+  });
+}
+
+// Interval data with electricity in it. A Channel that IMSERV fixed still applies, so then it does not ask.
+function protoReportAsksMq(def) {
+  if (!def || !protoReportAsksBySite(def) || !protoReportUtilityIds(def.utility).includes("electricity")) return false;
+  return protoTemplateBuiltIn(def.type)?.settings.channel?.mode !== "fixed";
 }
 
 function protoReportOptionSelect(id, label, list, value) {
@@ -14066,6 +14083,13 @@ function protoReportServerKey(draft) {
 }
 
 // What the data covers. A change here asks for consent again.
+// Meter quantities that match the old Channel keep its key, so a saved report does not ask again for nothing.
+function protoReportChannelKey(draft) {
+  if (!protoReportAsksMq(draft)) return draft.channel;
+  const mq = protoReportDataOpts(draft).mq.join("+");
+  return mq === protoDataMqFromChannel(draft.channel).join("+") ? draft.channel : mq;
+}
+
 function protoReportDataKey(draft) {
   const sites = [
     ...(draft.sites || []).map(String),
@@ -14076,7 +14100,7 @@ function protoReportDataKey(draft) {
     .join(",");
   const bits =
     draft.type === "extract"
-      ? [sites, draft.content, protoReportUtilityIds(draft.utility).join(","), draft.channel, protoReportAsksBySite(draft) ? { meter: "sites", all: "totals" }[protoReportDataOpts(draft).totals] || protoReportDataOpts(draft).totals : "sites"]
+      ? [sites, draft.content, protoReportUtilityIds(draft.utility).join(","), protoReportChannelKey(draft), protoReportAsksBySite(draft) ? { meter: "sites", all: "totals" }[protoReportDataOpts(draft).totals] || protoReportDataOpts(draft).totals : "sites"]
       : draft.type === "billing"
         ? [[...new Set(protoReportTenantsOf(draft).map((tenant) => String(tenant.site || "")))].sort().join(",")]
         : [sites];
@@ -15231,8 +15255,9 @@ function protoReportGroups(draft, opts = {}) {
             </div>
             <div class="astral-report-pair">
               ${rule?.settings.utility?.mode === "fixed" ? "" : protoReportUtilitySelect(draft)}
-              ${pick("channel", "Channel", PROTO_REPORT_CHANNEL, draft.channel)}
+              ${protoReportAsksMq(draft) ? "" : pick("channel", "Channel", PROTO_REPORT_CHANNEL, draft.channel)}
             </div>
+            ${protoReportAsksMq(draft) ? protoDataMqField("data-proto-report-mq", protoReportDataOpts(draft).mq) : ""}
             ${
               shape
                 ? `<div class="astral-report-pair">
@@ -15877,8 +15902,8 @@ function protoReportMeters(def, site) {
     if (only && !only.has(meter.id)) return false;
     if (!protoReportUtilityIds(def.utility).includes(protoMeterKind(meter))) return false;
     const out = meter.direction === "Export";
-    if (def.channel === "import" && out) return false;
-    if (def.channel === "export" && !out) return false;
+    if (!protoReportAsksMq(def) && def.channel === "import" && out) return false;
+    if (!protoReportAsksMq(def) && def.channel === "export" && !out) return false;
     return true;
   });
 }
@@ -16017,11 +16042,13 @@ function protoReportRows(def) {
     each((site, meter) => list.push(meter));
     const { series, buckets } = protoDataBuild(list, days, opts, quality, def.time);
     const tou = opts.values === "tou";
+    // Active and reactive sit side by side, so name the quantity once a reactive one is in.
+    const named = protoDataMqReactive(opts) && series.some((one) => one.quantity);
     const when = protoDataWhenHeads(opts.interval, zone).map((head) => head.charAt(0).toLowerCase() + head.slice(1));
     let kept = 0;
     if (opts.totals === "all") {
       // One row per utility per interval, added up across every picked site.
-      rows.push(["utility", ...when, ...(tou ? ["band"] : []), "total", "unit", "meters", ...(opts.flags ? ["quality"] : [])]);
+      rows.push(["utility", ...(named ? ["quantity"] : []), ...when, ...(tou ? ["band"] : []), "total", "unit", "meters", ...(opts.flags ? ["quality"] : [])]);
       series.forEach((one) =>
         buckets.forEach((bucket) => {
           const cell = one.cells.get(bucket.key);
@@ -16029,6 +16056,7 @@ function protoReportRows(def) {
           kept += 1;
           rows.push([
             one.utility,
+            ...(named ? [one.quantity] : []),
             ...protoDataWhenCells(opts.interval, bucket),
             ...(tou ? [bucket.band] : []),
             cell.out,
@@ -16040,10 +16068,11 @@ function protoReportRows(def) {
       );
     } else {
       // One column for each meter point, site or group. A row for each interval. Values outside the picked quality stay blank.
+      const what = (one) => (named && one.quantity ? ` · ${one.quantity.toLowerCase()}` : "");
       const head = (one) =>
         opts.totals === "meter"
-          ? `${one.site} · ${one.meter.name} (${one.unit})`
-          : `${opts.totals === "site" ? one.site : one.group} · ${one.utility} (${one.unit})`;
+          ? `${one.site} · ${one.meter.name}${what(one)} (${one.unit})`
+          : `${opts.totals === "site" ? one.site : one.group} · ${one.utility}${what(one)} (${one.unit})`;
       rows.push([
         ...when,
         ...(tou ? ["band"] : []),
@@ -21598,6 +21627,7 @@ function protoExportPrefs() {
     quality: raw.quality === "actual" ? "actual" : "all",
     time: raw.time === "uk" ? "uk" : "utc",
     ids: raw.ids === true,
+    details: raw.details === true,
     ...protoDataOpts(raw),
     // Source data dates work like the Reports date range. Exact dates start as the graph's dates.
     rangeMode: PROTO_REPORT_RANGE_MODES.some((item) => item.id === raw.rangeMode) ? raw.rangeMode : "dates",
@@ -21804,7 +21834,8 @@ function protoExportSummary(state) {
     if (hh) extras.push(...protoDataWords(prefs, protoDataHasElectricity(protoExportSourceMeters(file))));
     if (prefs.quality === "actual") extras.push("actual readings only");
     if (prefs.time === "uk" && hh) extras.push("in UK time");
-    if (prefs.ids && (!hh || prefs.totals === "meter")) extras.push("with source IDs");
+    if (prefs.ids && (!hh || prefs.totals === "meter")) extras.push("with meter IDs");
+    if (prefs.details && (!hh || prefs.totals === "meter" || prefs.totals === "site")) extras.push("with site details");
     if (extras.length) text += `, ${extras.join(", ")}`;
   } else {
     text += ` as ${what === "image" ? "PNG" : PROTO_EXPORT_SUM_FORMAT.csv}`;
@@ -21953,7 +21984,15 @@ function protoExportPreviewRows(state) {
     dates.from && dates.to && protoDayStamp(dates.from) <= protoDayStamp(dates.to) && protoDayStamp(dates.to) <= today
   );
   const opts = protoDataOpts(prefs);
-  const spec = { data: prefs.data, quality: prefs.quality, time: prefs.time, ids: prefs.ids, ...opts, meters: meters.map((m) => m.id) };
+  const spec = {
+    data: prefs.data,
+    quality: prefs.quality,
+    time: prefs.time,
+    ids: prefs.ids,
+    details: prefs.details,
+    ...opts,
+    meters: meters.map((m) => m.id),
+  };
   let from = ok ? dates.from : protoAddDays(protoToday(), -1);
   let to = ok ? dates.to : from;
   if (ok && prefs.data !== "reads") {
@@ -21966,8 +22005,10 @@ function protoExportPreviewRows(state) {
   }
   const key = JSON.stringify([file, spec, protoIso(from), protoIso(to), ok]);
   if (protoExportPreviewMemo.key !== key) {
+    // The preview reads only the first meter points, so the whole file decides whether it has a Quantity column.
+    const quantity = protoDataMqReactive(opts) && protoDataHasElectricity(meters);
     const build = (list) =>
-      protoSourceRows(file, { ...spec, meters: list.map((m) => m.id), from: protoIso(from), to: protoIso(to) });
+      protoSourceRows(file, { ...spec, quantity, meters: list.map((m) => m.id), from: protoIso(from), to: protoIso(to) });
     const first = protoExportPreviewMeters(meters, prefs.data === "reads" ? "meter" : opts.totals);
     let rows = build(first);
     // The first meter points may not fill the preview, for example with Actual only, so then it reads them all.
@@ -22043,12 +22084,14 @@ function protoExportReviewRows(state) {
   const datesOk = dates.from && dates.to && protoDayStamp(dates.from) <= protoDayStamp(dates.to);
   const extras = [];
   if (!reads && opts.flags) extras.push("quality flags");
-  if (prefs.ids && (reads || opts.totals === "meter")) extras.push("source IDs");
-  const extra = extras.join(" and ");
+  if (prefs.ids && (reads || opts.totals === "meter")) extras.push("meter IDs");
+  if (prefs.details && (reads || opts.totals === "meter" || opts.totals === "site")) extras.push("site details");
+  const extra = protoListWords(extras);
   return {
     data: [
       ["Readings", protoExportName(PROTO_EXPORT_SOURCE_DATA, prefs.data)],
       ["Meter points", protoExportMetersText(state)],
+      ...(!reads && electricity ? [["Meter quantities", opts.mq.length ? protoDataMqWords(opts.mq) : "None"]] : []),
       ["Dates", datesOk ? protoRangeWords(dates.from, dates.to) : "Not set"],
       ...(reads ? [] : [["Interval", protoExportName(PROTO_DATA_INTERVAL, opts.interval)]]),
     ],
@@ -22098,9 +22141,11 @@ function protoExportStageHtml(state) {
   const reads = prefs.data === "reads";
   const opts = protoDataOpts(prefs);
   if (state.stage === "data") {
+    const electricity = protoDataHasElectricity(protoExportSourceMeters(state.file));
     return `
       ${protoExportRadioSet("data", "Readings", PROTO_EXPORT_SOURCE_DATA, prefs.data)}
       ${protoExportMetersField(state)}
+      ${reads || !electricity ? "" : protoDataMqField("data-proto-export-mq", opts.mq, state.errors.mq, "astral-export-mq-error")}
       ${protoExportDatesHtml(state)}
       ${
         reads
@@ -22111,21 +22156,12 @@ function protoExportStageHtml(state) {
   }
   const electricity = protoDataHasElectricity(protoExportSourceMeters(state.file));
   const ids = reads || opts.totals === "meter";
+  const details = reads || opts.totals === "meter" || opts.totals === "site";
   const format = protoReportOptionSelect("export-format", "Format", PROTO_EXPORT_SOURCE_FORMATS, prefs.format);
   const extras = [
     reads ? "" : protoDataFlagsCheck("data-proto-export-flags", opts.flags),
-    ids
-      ? `<button
-          type="button"
-          role="checkbox"
-          class="astral-report-consent"
-          aria-checked="${prefs.ids ? "true" : "false"}"
-          data-proto-export-ids
-        >
-          ${protoCheck(prefs.ids)}
-          <span class="astral-report-consent-copy"><span>Include source IDs</span></span>
-        </button>`
-      : "",
+    ids ? protoDataCheck("Include meter IDs", prefs.ids, "data-proto-export-ids") : "",
+    details ? protoDataCheck("Include site details", prefs.details, "data-proto-export-details") : "",
   ].join("");
   return `
     ${
@@ -22265,15 +22301,28 @@ function protoExportStage(stage, { dir = "next", errors = {} } = {}) {
 }
 
 function protoExportDateFocus(errors) {
+  if (errors.mq) {
+    protoRestoreFocus("#astral-fs [data-proto-export-mq]");
+    return;
+  }
   if (errors.count) protoRestoreFocus('#astral-fs input[name="proto-export-range-count"]');
   else protoFocusDayCalInput(`#astral-fs input[name="proto-export-${errors.from ? "from" : "to"}"]`);
 }
 
-// Continue checks the dates before leaving Data and dates, then returns to the review.
+// Data and dates errors, in the order of its fields. Meter quantities only counts when the field is on show.
+function protoExportDataErrors(state) {
+  const errors = {};
+  const opts = protoDataOpts(state.prefs);
+  const asks = state.prefs.data !== "reads" && protoDataHasElectricity(protoExportSourceMeters(state.file));
+  if (asks && !opts.mq.length) errors.mq = PROTO_DATA_MQ_ERROR;
+  return { ...errors, ...protoExportDateErrors(state.prefs) };
+}
+
+// Continue checks Data and dates before leaving it, then returns to the review.
 function protoExportNext() {
   const state = protoExportModalState();
   if (!state?.stage) return;
-  const errors = state.stage === "data" ? protoExportDateErrors() : {};
+  const errors = state.stage === "data" ? protoExportDataErrors(state) : {};
   if (Object.keys(errors).length) {
     setProto({ prototypeExportModal: { ...store.prototypeExportModal, errors } });
     protoExportDateFocus(errors);
@@ -22329,9 +22378,9 @@ async function protoExportGo() {
     return;
   }
   if (what === "source" && state.edit) {
-    const errors = protoExportDateErrors();
+    const errors = protoExportDataErrors(state);
     if (Object.keys(errors).length) {
-      // The dates live on Data and dates, so Export opens it with the error. Continue then returns to the review.
+      // The dates and quantities live on Data and dates, so Export opens it with the error. Continue then returns to the review.
       protoExportStage("data", { errors });
       return;
     }
@@ -22366,6 +22415,7 @@ async function protoExportGo() {
         quality: prefs.quality,
         time: prefs.time,
         ids: prefs.ids,
+        details: prefs.details,
         ...protoDataOpts(prefs),
         meters: protoExportSourceMeters(file).map((meter) => meter.id),
       },
@@ -28853,6 +28903,7 @@ function protoExportSpecFrom(raw) {
     quality: raw.quality === "actual" ? "actual" : "all",
     time: raw.time === "uk" ? "uk" : "utc",
     ids: raw.ids === true,
+    details: raw.details === true,
     ...protoDataOpts(raw),
     meters: (Array.isArray(raw.meters) ? raw.meters : []).map(String).slice(0, 1000),
   };
@@ -38760,6 +38811,70 @@ const PROTO_DATA_TOTALS = [
 
 const PROTO_DATA_RUNNING_UNIT = "A running total adds up energy, so it is in kWh.";
 
+// TMA's meter quantities. An import MPAN records active import, an export MPAN active export, and both record reactive.
+const PROTO_DATA_MQ = [
+  { id: "ai", name: "Active import" },
+  { id: "ae", name: "Active export" },
+  { id: "ri", name: "Reactive import" },
+  { id: "re", name: "Reactive export" },
+];
+
+// Reports saved before meter quantities had Channel, which picked import, export or both.
+function protoDataMqFromChannel(channel) {
+  return channel === "import" ? ["ai"] : channel === "export" ? ["ae"] : ["ai", "ae"];
+}
+
+function protoDataMqReactive(opts) {
+  return opts.mq.includes("ri") || opts.mq.includes("re");
+}
+
+function protoDataMqWords(mq) {
+  const names = PROTO_DATA_MQ.filter((item) => mq.includes(item.id)).map((item) => item.name.toLowerCase());
+  const text = protoListWords(names);
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+// The picked quantities a meter point records, in channel order. Gas and water record one, so the pick does not apply.
+function protoDataQuantities(meter, opts) {
+  if (protoMeterKind(meter) !== "electricity") return [{ id: "", name: "", read: "kwh", unit: protoDataUnitName(meter, opts) }];
+  const flow = meter.direction === "Export" ? "out" : "in";
+  return PROTO_HH_CHANNELS.filter((channel) => channel.mqid[flow] && opts.mq.includes(channel.mqid[flow].toLowerCase())).map(
+    (channel) => {
+      const id = channel.mqid[flow].toLowerCase();
+      return {
+        id,
+        name: PROTO_DATA_MQ.find((item) => item.id === id).name,
+        read: channel.read,
+        unit: channel.read === "kwh" ? protoDataUnitName(meter, opts) : "kVArh",
+      };
+    }
+  );
+}
+
+// The serials of the meters fitted between two ISO dates. A swap part way through shows both.
+function protoDataSerials(installs, from, to) {
+  return installs
+    .filter((item) => protoIso(item.from) <= to && (!item.to || protoIso(item.to) >= from))
+    .sort((a, b) => a.from - b.from)
+    .map((item) => item.serial)
+    .join(" then ");
+}
+
+// The first and last day a bucket covers, as ISO dates.
+function protoDataBucketDays(bucket, interval) {
+  const from = String(bucket.sort).slice(0, 10);
+  if (interval !== "week" && interval !== "month") return { from, to: from };
+  const start = protoFromIso(from);
+  const end = interval === "week" ? protoAddDays(start, 6) : new Date(start.getFullYear(), start.getMonth() + 1, 0);
+  return { from, to: protoIso(end) };
+}
+
+// Street, town and postcode from the site's profile, which starts with the address IMSERV holds.
+function protoDataSiteCells(meter) {
+  const attrs = protoMeterProfile(meter?.id)?.attrs || {};
+  return [attrs.street, attrs.town, attrs.postcode].map((part) => String(part || "").trim());
+}
+
 // Plain lists, not the consts above, because app.js can read a saved export before this file has finished loading.
 // Every option starts as the file the export made before these options existed.
 function protoDataOpts(raw) {
@@ -38772,6 +38887,8 @@ function protoDataOpts(raw) {
     units: values === "running" ? "kwh" : pick(["kwh", "kw", "kva"], r.units),
     totals: pick(["meter", "site", "group", "all"], r.totals),
     flags: r.flags !== false,
+    // Empty stays empty, so Continue can ask for one.
+    mq: Array.isArray(r.mq) ? ["ai", "ae", "ri", "re"].filter((id) => r.mq.includes(id)) : ["ai", "ae"],
   };
 }
 
@@ -38833,6 +38950,7 @@ function protoDataWords(opts, electricity = true) {
   if (opts.totals === "site" || opts.totals === "group") words.push(`totalled for each ${opts.totals}`);
   if (opts.totals === "all") words.push("as one total for each utility");
   if (!opts.flags) words.push("without quality flags");
+  if (electricity && opts.mq.join() !== "ai,ae" && opts.mq.length) words.push(protoDataMqWords(opts.mq).toLowerCase());
   return words;
 }
 
@@ -38855,13 +38973,31 @@ function protoDataUnitsSelect(id, opts) {
 }
 
 function protoDataFlagsCheck(attr, on) {
+  return protoDataCheck("Include quality flags", on, attr);
+}
+
+function protoDataCheck(label, on, attr) {
   return `
     <button type="button" role="checkbox" class="astral-report-consent" aria-checked="${on ? "true" : "false"}" ${attr}>
       ${protoCheck(on)}
-      <span class="astral-report-consent-copy"><span>Include quality flags</span></span>
+      <span class="astral-report-consent-copy"><span>${escapeHtml(label)}</span></span>
     </button>
   `;
 }
+
+// A box for each meter quantity, in channel order. The error sits under them all.
+function protoDataMqField(attr, mq, error = "", errorId = "") {
+  const invalid = error ? ` aria-invalid="true" aria-describedby="${errorId}"` : "";
+  return `
+    <fieldset class="astral-report-split astral-export-extras">
+      <legend>Meter quantities</legend>
+      ${PROTO_DATA_MQ.map((item) => protoDataCheck(item.name, mq.includes(item.id), `${attr}="${item.id}"${invalid}`)).join("")}
+      ${error ? `<p class="astral-export-error" id="${errorId}" role="alert">${escapeHtml(error)}</p>` : ""}
+    </fieldset>
+  `;
+}
+
+const PROTO_DATA_MQ_ERROR = "Pick at least one meter quantity.";
 
 // Adds each meter point's half-hours into series and intervals. A sum takes its worst quality, so one estimated half-hour marks the day.
 // A value outside the quality picked is left out whole, rather than added up from part of its readings.
@@ -38879,7 +39015,7 @@ function protoDataBuild(meters, days, opts, quality, time) {
     const utility = protoDataUtility(meter);
     const site = meter.site || "";
     const group = groupOf.get(meter.id) || site;
-    const key =
+    const place =
       opts.totals === "meter"
         ? `m|${meter.id}`
         : opts.totals === "site"
@@ -38887,13 +39023,21 @@ function protoDataBuild(meters, days, opts, quality, time) {
           : opts.totals === "group"
             ? `g|${group}|${utility}`
             : `a|${utility}`;
-    if (!series.has(key)) {
-      series.set(key, { key, meter, site, group, utility, unit: protoDataUnitName(meter, opts), cells: new Map(), meters: new Set() });
-    }
-    const one = series.get(key);
-    one.meters.add(meter.id);
+    // Each quantity is its own series, so active and reactive never add together.
+    const quantities = protoDataQuantities(meter, opts);
+    if (!quantities.length) return;
+    const ones = quantities.map((q) => {
+      const key = q.id ? `${place}|${q.id}` : place;
+      if (!series.has(key)) {
+        series.set(key, { key, meter, site, group, utility, quantity: q.name, unit: q.unit, cells: new Map(), meters: new Set() });
+      }
+      const one = series.get(key);
+      one.meters.add(meter.id);
+      return { one, q };
+    });
     const elec = protoMeterKind(meter) === "electricity";
-    const model = elec && opts.units === "kva" ? protoPowerModel([meter]) : null;
+    const model =
+      elec && (opts.units === "kva" || quantities.some((q) => q.read !== "kwh")) ? protoPowerModel([meter]) : null;
     days.forEach((day) => {
       const iso = protoIso(day);
       protoSeries(meter, "day", day).forEach((point, i) => {
@@ -38904,17 +39048,21 @@ function protoDataBuild(meters, days, opts, quality, time) {
           opts.values === "tou" ? (protoHourIsPeak(meter, protoParseClock(point.label) ?? 0, day) ? "Peak" : "Off-peak") : "";
         const bkey = `${at.sort}|${band === "Off-peak" ? 1 : 0}`;
         if (!buckets.has(bkey)) buckets.set(bkey, { key: bkey, ...at, band });
-        const cell = one.cells.get(bkey) || { sum: 0, kvah: 0, has: false, slots: new Set(), quality: "actual", meters: new Set() };
-        cell.meters.add(meter.id);
-        if (rank[reading] > rank[cell.quality]) cell.quality = reading;
-        if (reading !== "missing") {
-          const kwh = Number(point.value) || 0;
-          cell.sum += kwh;
-          cell.has = true;
-          cell.slots.add(`${iso}|${i}`);
-          if (model) cell.kvah += protoPowerSlot(model, kwh, `${iso}|${i}`).kvah;
-        }
-        one.cells.set(bkey, cell);
+        const kwh = Number(point.value) || 0;
+        // The same half-hour as the meter's Channels tab, so the file and the tab agree.
+        const slot = model && reading !== "missing" ? protoPowerSlot(model, kwh, `${iso}|${i}`) : null;
+        ones.forEach(({ one, q }) => {
+          const cell = one.cells.get(bkey) || { sum: 0, kvah: 0, has: false, slots: new Set(), quality: "actual", meters: new Set() };
+          cell.meters.add(meter.id);
+          if (rank[reading] > rank[cell.quality]) cell.quality = reading;
+          if (reading !== "missing") {
+            cell.sum += q.read === "kwh" ? kwh : slot[q.read];
+            cell.has = true;
+            cell.slots.add(`${iso}|${i}`);
+            if (slot && q.read === "kwh") cell.kvah += slot.kvah;
+          }
+          one.cells.set(bkey, cell);
+        });
       });
     });
   });
@@ -38966,8 +39114,10 @@ function protoSourceRows(fileId, spec) {
   const opts = protoDataOpts(spec);
   const { series, buckets } = protoDataBuild(meters, days, opts, spec.quality, spec.time);
   const tou = opts.values === "tou";
-  // Source IDs belong to one meter point, so a total has none.
+  // Meter IDs belong to one meter point, so a total has none. Site details need a site, so a group or a total has none.
   const ids = spec.ids && opts.totals === "meter";
+  const details = spec.details && (opts.totals === "meter" || opts.totals === "site");
+  const quantity = spec.quantity ?? (protoDataMqReactive(opts) && protoDataHasElectricity(meters));
   const lead =
     opts.totals === "meter"
       ? ["Meter point", "Site"]
@@ -38976,47 +39126,75 @@ function protoSourceRows(fileId, spec) {
         : opts.totals === "group"
           ? ["Group", "Utility"]
           : ["Utility"];
-  const headers = [...lead, ...protoDataWhenHeads(opts.interval), ...(tou ? ["Band"] : []), "Value", "Unit"];
+  const headers = [
+    ...lead,
+    ...(details ? PROTO_DATA_SITE_HEADS : []),
+    ...protoDataWhenHeads(opts.interval),
+    ...(tou ? ["Band"] : []),
+    ...(quantity ? ["Quantity"] : []),
+    "Value",
+    "Unit",
+  ];
   if (opts.flags) headers.push("Quality");
-  if (ids) headers.push("Source ID", "Stream");
+  if (ids) headers.push(...PROTO_DATA_ID_HEADS);
   const rows = [];
   series.forEach((one) => {
     const { meter } = one;
     const source = meter.mpan || meter.mprn || meter.serial || "";
     // Gas and water read from a register that counts up, so they have a cumulative stream.
     const stream = source && protoMeterKind(meter) !== "electricity" ? `${source}-CUM` : "";
-    const name =
-      opts.totals === "meter"
+    const installs = ids ? protoMeterInstalls(meter) : [];
+    const name = [
+      ...(opts.totals === "meter"
         ? [meter.name || "", one.site]
         : opts.totals === "site"
           ? [one.site, one.utility]
           : opts.totals === "group"
             ? [one.group, one.utility]
-            : [one.utility];
+            : [one.utility]),
+      ...(details ? protoDataSiteCells(meter) : []),
+    ];
     buckets.forEach((bucket) => {
       const cell = one.cells.get(bucket.key);
       if (!cell || !cell.ok) return;
-      const row = [...name, ...protoDataWhenCells(opts.interval, bucket), ...(tou ? [bucket.band] : []), cell.out, one.unit];
+      const row = [
+        ...name,
+        ...protoDataWhenCells(opts.interval, bucket),
+        ...(tou ? [bucket.band] : []),
+        ...(quantity ? [one.quantity] : []),
+        cell.out,
+        one.unit,
+      ];
       if (opts.flags) row.push(protoDataQualityName(cell.quality));
-      rows.push(ids ? [...row, source, stream] : row);
+      if (ids) {
+        const span = protoDataBucketDays(bucket, opts.interval);
+        row.push(source, protoDataSerials(installs, span.from, span.to), stream);
+      }
+      rows.push(row);
     });
   });
   if (!rows.length) rows.push([spec.quality === "actual" ? "No actual readings in these dates." : "No readings in these dates."]);
   return [headers, ...rows];
 }
 
+const PROTO_DATA_ID_HEADS = ["Source ID", "Meter serial", "Stream"];
+const PROTO_DATA_SITE_HEADS = ["Address", "Town", "Postcode"];
+
 // A row per meter point per read. Since last read gives the monthly total, such as the export for a Feed-in Tariff claim.
 function protoRegisterRows(meters, from, to, spec) {
-  const headers = ["Meter point", "Site", "Date", "Register", "Read", "Since last read", "Unit", "Quality"];
-  if (spec.ids) headers.push("Source ID", "Stream");
+  const headers = ["Meter point", "Site", ...(spec.details ? PROTO_DATA_SITE_HEADS : []), "Date", "Register", "Read", "Since last read", "Unit", "Quality"];
+  if (spec.ids) headers.push(...PROTO_DATA_ID_HEADS);
   const rows = [];
   meters.forEach((meter) => {
     const source = meter.mpan || meter.mprn || meter.serial || "";
+    const installs = spec.ids ? protoMeterInstalls(meter) : [];
+    const place = spec.details ? protoDataSiteCells(meter) : [];
     protoRegisterReads(meter, from, to).forEach((read) => {
       if (!protoReportQualityOk(spec.quality, read.quality)) return;
       const row = [
         meter.name || "",
         meter.site || "",
+        ...place,
         protoFormatUkDate(read.day),
         protoRegisterName(meter),
         read.value,
@@ -39024,7 +39202,11 @@ function protoRegisterRows(meters, from, to, spec) {
         protoMeterUseUnit(meter),
         read.quality === "estimated" ? "Estimated" : "Actual",
       ];
-      rows.push(spec.ids ? [...row, source, source ? `${source}-CUM` : ""] : row);
+      if (spec.ids) {
+        const day = protoIso(read.day);
+        row.push(source, protoDataSerials(installs, day, day), source ? `${source}-CUM` : "");
+      }
+      rows.push(row);
     });
   });
   if (!rows.length) {
@@ -41368,6 +41550,14 @@ function onPrototype(event) {
     protoRestoreFocus("#astral-fs [data-proto-report-flags]");
     return;
   }
+  const reportMq = event.target.closest("[data-proto-report-mq]");
+  if (reportMq) {
+    const id = reportMq.dataset.protoReportMq;
+    const draft = protoReportDraft();
+    if (draft) protoReportPatchDraft({ mq: protoReportToggleIn(protoReportDataOpts(draft).mq, id) });
+    protoRestoreFocus(`#astral-fs [data-proto-report-mq="${id}"]`);
+    return;
+  }
   if (event.target.closest("[data-proto-report-rate-check]")) {
     protoReportSubmit(true);
     return;
@@ -43149,6 +43339,24 @@ function onPrototype(event) {
   if (exportIds) {
     protoSetExportPrefs({ ids: !protoExportPrefs().ids });
     protoRestoreFocus("#astral-fs [data-proto-export-ids]");
+    return;
+  }
+  if (event.target.closest("[data-proto-export-details]")) {
+    protoSetExportPrefs({ details: !protoExportPrefs().details });
+    protoRestoreFocus("#astral-fs [data-proto-export-details]");
+    return;
+  }
+  const exportMq = event.target.closest("[data-proto-export-mq]");
+  if (exportMq) {
+    const id = exportMq.dataset.protoExportMq;
+    const mq = protoReportToggleIn(protoDataOpts(protoExportPrefs()).mq, id);
+    protoSetExportPrefs({ mq });
+    // A tick clears the error. Unticking the last one waits for Continue to say so.
+    if (mq.length && store.prototypeExportModal?.errors?.mq) {
+      const { mq: gone, ...rest } = store.prototypeExportModal.errors;
+      setProto({ prototypeExportModal: { ...store.prototypeExportModal, errors: rest } });
+    }
+    protoRestoreFocus(`#astral-fs [data-proto-export-mq="${id}"]`);
     return;
   }
   if (event.target.closest("[data-proto-export-flags]")) {

@@ -865,11 +865,11 @@
         {
           "id": "tma-gap-h1",
           "title": "TMA gap H1: Data Download options at TMA parity",
-          "note": "Done. Export source data and the Data extract report share the same options: pick groups, sites or MPANs by search; interval from half-hourly to monthly; each interval, running total, or peak and off-peak; electricity in kWh, kW or kVA; each meter point, site, group or one total; quality flags on or off. Actual only and the background job were already in. Each MPAN is Each meter point. A running total stays in kWh.",
+          "note": "Done. Export source data and the Data extract report share the same options: pick groups, sites or MPANs by search; interval from half-hourly to monthly; each interval, running total, or peak and off-peak; electricity in kWh, kW or kVA; each meter point, site, group or one total; quality flags on or off; meter quantities (active and reactive, import and export), with reactive in kVArh. Export also adds meter IDs (Source ID, Meter serial and Stream, with a meter swap shown as both serials) and site details (address, town and postcode). These stay out of the report, which has a column per meter point. Export opens on a review of its settings with a preview of the file. Actual only and the background job were already in. Each MPAN is Each meter point. A running total stays in kWh. Checking against Anna and Jac's golden extracts happens outside the prototype.",
           "project": "Astral",
           "kind": "ux",
           "added": "2026-10-16",
-          "doneOn": "2026-10-16"
+          "doneOn": "2026-10-20"
         },
         {
           "id": "pg-manage-mpans",

@@ -37,7 +37,7 @@ Export > Source data opens on a review, not on the fields. A repeat export is Co
 - Group the settings that people adjust together. Dates and Interval share a stage. Format sits with Values, because it limits no other setting.
 - Keep the summary sentence on the stages, so each change is confirmed as it is made.
 - Back on the review goes to step 1.
-- Check the dates on Continue from Data and dates, and on Export. A date error on Export opens Data and dates with the error, and Continue then returns to the review.
+- Check the dates on Continue from Data and dates, and on Export. A date error on Export opens Data and dates with the error, and Continue then returns to the review. Meter quantities is checked the same way, and its error comes first, because it sits above the dates.
 - Focus moves to Back when a stage opens, and to the Change button that left the review when it returns.
 - Slide the body and the title in the direction of travel. Use about 16px and `--motion-slide` with `--ease-slide`, forwards from the right and back from the left. Play it once per step change. Use `is-step-next` or `is-step-back` on `.astral-modal`, and clear the direction in the store straight after the render.
 - Turn the slide off for `prefers-reduced-motion`.

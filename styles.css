@@ -12330,6 +12330,10 @@ tr.is-off .astral-person-mark {
   align-items: start;
 }
 
+.astral-export-extras > .astral-export-error {
+  grid-column: 1 / -1;
+}
+
 /* Export pop-up: the fixed dates and format, date errors and the summary above the buttons. */
 .astral-export-facts {
   display: grid;

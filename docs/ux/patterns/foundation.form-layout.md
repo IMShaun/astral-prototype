@@ -36,8 +36,9 @@ Any form, pop-up or disclosure that holds fields, radio groups or read-only valu
 - Give a disclosure body (`{modifier}-body` from `protoAccordion`) its own grid and gap. It has no spacing of its own, so sections inside it touch.
 - When a form has many settings that most people keep, show them first as a review of name and value rows, and put the fields on stages (see [Modal steps](foundation.modal-steps.md)). Export > Source data does this.
 - Keep the choices that change what the file holds or how it reads on the review, never behind a fold. Interval, Values, Totals for, Electricity units, Time zone and Data quality each have a row.
-- Group optional extra columns under a legend that says what they add, such as "Extra columns" for quality flags and source IDs. Do not call it "More options".
-- Show a set of checkbox cards that explain themselves, such as Include quality flags and Include source IDs, with the name only. Put them side by side on the same 2 columns as the field pairs above (`.astral-export-extras`), so they line up and sit 16px apart, like the pairs.
+- Group optional extra columns under a legend that says what they add, such as "Extra columns" for quality flags, meter IDs and site details. Do not call it "More options".
+- Show a set of checkbox cards that explain themselves, such as Include quality flags, Include meter IDs and Include site details, with the name only. Put them side by side on the same 2 columns as the field pairs above (`.astral-export-extras`), so they line up and sit 16px apart, like the pairs.
+- Use the same 2-column checkbox cards for a set where people pick one or more, such as Meter quantities (Active import, Active export, Reactive import, Reactive export). Tick the usual picks by default. If none is ticked, show the error under the whole set, across both columns, and move focus to the first box.
 - When a choice group sits among plain labels, give it a plain label too (`protoRangeFieldsHtml` `label`). Export's date cards are labelled Dates, not "How do you want to set the dates?".
 - Measure the rendered gaps in the browser after the change.
 
@@ -63,7 +64,8 @@ Stacked labels keep the label and the control together when the text is enlarged
 - Date range choice cards in Reports and Export, name only (commit `44e3e9a`)
 - Follow site or Set for this meter only choice cards in Site settings and a meter's own settings, with a short hint
 - Checkbox rows with a hint: the Reports consent row and multi-select options with a note
-- Checkbox cards with the name only: Include quality flags and Include source IDs in Export (side by side under Extra columns) and Include quality flags in the Reports editor (19 October 2026)
+- Checkbox cards with the name only: Include quality flags, Include meter IDs and Include site details in Export (side by side under Extra columns) and Include quality flags in the Reports editor (19 October 2026)
+- Meter quantities checkbox cards in Export, Data and dates stage, and in the Data extract report editor in place of Channel (20 October 2026)
 
 ## Known limitations
 
