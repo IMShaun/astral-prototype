@@ -6913,6 +6913,30 @@ button.astral-state {
   margin: 0;
 }
 
+/* Readings: Show as, Layout and Channel sit to the right of the title, and wrap under it on a narrow pane. */
+.astral-meter-view-card-head.has-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-16, 16px);
+}
+
+.astral-readings-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8, 8px);
+}
+
+.astral-readings-extreme {
+  display: grid;
+  gap: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.astral-readings-extreme .astral-muted {
+  font-size: 0.875rem;
+}
 .astral-meter-view-card-head p {
   margin: 4px 0 0;
   color: var(--color-text-secondary);

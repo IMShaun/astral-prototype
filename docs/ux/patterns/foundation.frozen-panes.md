@@ -60,7 +60,7 @@ The scroll box is a focusable region with an `aria-label`, so keyboard users can
 ## Product surfaces using it
 
 - Portfolio graph tabs on a group, site or comparison: Breakdown and Meter point breakdown (`protoBreakdownPanel` in `prototype.js`).
-- Meter view: Daily, Half-hourly or Monthly readings (`protoMeterReadingsCard` in `prototype.js`).
+- Meter view: Daily, Half-hourly or Monthly readings (`protoMeterReadingsCard` in `prototype.js`). With Layout set to Half-hours across, it is a row for each day and 48 half-hour columns, and the paging bar shows.
 
 ## Evidence
 

@@ -768,6 +768,9 @@ function protoPageFilterReset() {
     prototypeWeatherMeasure: "temperature",
     prototypeWeatherMeasureBack: "",
     prototypePowerMeasure: "pf",
+    prototypeReadingsUnit: "kwh",
+    prototypeReadingsLayout: "channels",
+    prototypeReadingsChannel: 1,
     prototypeChartFlows: null,
     prototypeChartPairOff: {},
     prototypeChartSliceOff: [],
@@ -10860,6 +10863,17 @@ function protoPickSelect(id, value) {
     const measure = PROTO_POWER_MEASURES.some((item) => item.id === value) ? String(value) : "pf";
     setProto({ prototypeSelectOpen: "", prototypePowerMeasure: measure, prototypeChartPoint: null });
     protoRestoreFocus(`#astral-fs [data-proto-select="power-measure"] .astral-select-btn`);
+    return;
+  }
+  if (id === "readings-unit" || id === "readings-layout" || id === "readings-channel") {
+    const patch =
+      id === "readings-unit"
+        ? { prototypeReadingsUnit: PROTO_DATA_UNITS.some((item) => item.id === value) ? String(value) : "kwh" }
+        : id === "readings-layout"
+          ? { prototypeReadingsLayout: value === "halves" ? "halves" : "channels" }
+          : { prototypeReadingsChannel: Number(value) || 1 };
+    setProto({ prototypeSelectOpen: "", ...patch });
+    protoRestoreFocus(`#astral-fs [data-proto-select="${id}"] .astral-select-btn`);
     return;
   }
   if (id === "chart-profile") {
@@ -22258,7 +22272,7 @@ const PROTO_EXPORT_STAGES = [
   { id: "file", name: "Values and file" },
 ];
 
-// A meter view exports its own supply, so Source data is the only choice.
+// A meter view exports its own supply. On the Readings tab it can also export the table as it shows.
 function protoExportIsMeter(fileId) {
   return String(fileId || "").startsWith("meter:");
 }
@@ -22269,7 +22283,10 @@ function protoExportIsTable(fileId) {
 
 function protoExportChoices(fileId) {
   if (protoExportIsTable(fileId)) return PROTO_EXPORT_TABLE_WHAT;
-  if (protoExportIsMeter(fileId)) return PROTO_EXPORT_WHAT.filter((item) => item.id === "source");
+  if (protoExportIsMeter(fileId)) {
+    const source = PROTO_EXPORT_WHAT.filter((item) => item.id === "source");
+    return protoMeterTableReady() ? [...PROTO_EXPORT_TABLE_WHAT, ...source] : source;
+  }
   return PROTO_EXPORT_WHAT.filter((item) => item.id !== "image" || protoPaneIsGraph());
 }
 
@@ -22468,10 +22485,26 @@ const PROTO_EXPORT_SUM_FORMAT = {
   xlsx: "XLSX",
 };
 
+// For example "Exports the readings table for 29 Aug to 4 Sep 2026 as CSV with commas, channel 1 with half-hours across, active energy in kW."
+function protoMeterTableSummary(file) {
+  const spec = protoMeterTableSpec(file);
+  const meter = protoMeter(String(file).slice(6));
+  const channel = meter ? protoMeterChannels(protoMeterSupply(meter)).find((item) => item.no === spec.channel) : null;
+  const extras = [];
+  if (spec.layout === "halves") extras.push(`channel ${spec.channel} with half-hours across`);
+  if (spec.unit !== "kwh" && (spec.layout !== "halves" || channel?.read === "kwh")) {
+    extras.push(`active energy in ${spec.unit === "kva" ? "kVA" : "kW"}`);
+  }
+  const span = protoDateSpan();
+  const text = `Exports the readings table for ${protoRangeWords(span.from, span.to)} as ${PROTO_EXPORT_SUM_FORMAT.csv}`;
+  return `${extras.length ? `${text}, ${extras.join(", ")}` : text}.`;
+}
+
 // One sentence, for example "Exports 3 meter points for 29 Sep to 6 Oct 2026 as CSV with commas, actual readings only."
 // A sentence avoids clashing separators, because format names such as "CSV, comma" hold a comma. Defaults stay out.
 function protoExportSummary(state) {
   const { file, what, prefs } = state;
+  if (protoExportIsMeter(file) && what === "chart") return protoMeterTableSummary(file);
   let text = "Exports ";
   if (file === "users") text += protoExportPlural(protoUserPeople().length, "person", "people");
   else if (file === "usage") text += protoExportPlural(protoUsagePack().rows.length, "row", "rows");
@@ -23051,7 +23084,11 @@ async function protoExportGo() {
     }
   }
   const back = protoExportBackSelector(file);
-  if (what === "chart") {
+  if (what === "chart" && protoExportIsMeter(file)) {
+    const spec = protoMeterTableSpec(file);
+    const view = spec.layout === "halves" ? `channel ${spec.channel} half-hours` : "readings";
+    protoQueueExport("csv", file, { name: `${protoExportPlaceName(file)} ${view} ${spec.from} to ${spec.to}`, spec });
+  } else if (what === "chart") {
     protoQueueExport("csv", file);
   } else if (what === "image") {
     // Too large to graph has nothing on screen to capture, so the image is drawn from the data instead.
@@ -29029,7 +29066,7 @@ function protoMeterChannelRows(meter) {
       label: row.label,
       day: protoIso(dayOf(i)),
       quality: missing ? "missing" : row.quality,
-      values: missing || !row.slots ? {} : { kwh: row.kwh, lag: row.lag, lead: row.lead },
+      values: missing || !row.slots ? {} : { kwh: row.kwh, lag: row.lag, lead: row.lead, kvah: row.kvah, hours: row.slots / 2 },
     };
   });
 }
@@ -29109,44 +29146,247 @@ function protoMeterInstallCard(supply, install, rowsBy) {
 
 const PROTO_METER_STEP_WORDS = { interval: "Half-hourly", day: "Daily", month: "Monthly" };
 
-function protoMeterReadingsCard(supply, rowsBy) {
+// Show as and Layout on a meter's Readings tab. Show as changes the active energy channels, as Export source data does. Reactive stays in kVArh.
+const PROTO_READINGS_LAYOUTS = [
+  { id: "channels", name: "Channels across", note: "A row for each time and a column for each channel" },
+  { id: "halves", name: "Half-hours across", note: "A row for each day and a column for each half-hour" },
+];
+
+// Half-hours across draws a row for each day, so it stops where the date range turns monthly.
+const PROTO_READINGS_HALVES_DAYS = 62;
+
+function protoReadingsUnit(supply) {
+  if (protoMeterKind(supply[0]) !== "electricity") return "kwh";
+  const id = String(store.prototypeReadingsUnit || "");
+  return PROTO_DATA_UNITS.some((item) => item.id === id) ? id : "kwh";
+}
+
+function protoReadingsLayout() {
+  return store.prototypeReadingsLayout === "halves" ? "halves" : "channels";
+}
+
+function protoReadingsChannel(channels) {
+  const no = Number(store.prototypeReadingsChannel);
+  return channels.find((channel) => channel.no === no) || channels[0];
+}
+
+// kW and kVA are averages over the hours read, so a half-hour's kWh doubles and a day's divides by 24.
+function protoReadingsValue(channel, values, unit) {
+  if (!values) return null;
+  if (channel.read !== "kwh" || unit === "kwh") return values[channel.read] ?? null;
+  const hours = values.hours || 0;
+  if (!hours) return null;
+  const sum = unit === "kva" ? values.kvah : values.kwh;
+  return sum == null ? null : sum / hours;
+}
+
+function protoReadingsUnitName(channel, unit) {
+  if (channel.read !== "kwh" || unit === "kwh") return channel.unit;
+  return unit === "kva" ? "kVA" : "kW";
+}
+
+function protoReadingsMeasures(channel, unit) {
+  if (channel.read !== "kwh" || unit === "kwh") return channel.measures;
+  return unit === "kva" ? "Apparent power" : "Active power";
+}
+
+function protoReadingsHeadNote(channel, unit, electricity) {
+  const name = protoReadingsUnitName(channel, unit);
+  return (electricity ? [channel.flow === "out" ? "Out" : "In", protoReadingsMeasures(channel, unit), name] : [name]).join(", ");
+}
+
+function protoReadingsCell(quality, value) {
+  if (quality === "pending" && value == null) return `<span class="astral-muted">Not in yet</span>`;
+  if (quality === "missing" || value == null) return `<span class="astral-muted">No reading</span>`;
+  return protoBreakdownReading(protoRoundReading(value, 1), quality);
+}
+
+function protoReadingsUnitWords(unit) {
+  if (unit === "kw") return "Active energy channels show average demand in kW. Reactive channels stay in kVArh.";
+  if (unit === "kva")
+    return "Active energy channels show average apparent power in kVA, from active and reactive energy. Reactive channels stay in kVArh.";
+  return "";
+}
+
+// Each day's 48 half-hours on one MPAN. A day's half-hours are shaped and sized the way its Daily row is, so they add up to it.
+function protoMeterDayHalves(meter) {
+  const span = protoDateSpan();
+  const elec = protoMeterKind(meter) === "electricity";
+  const model = elec ? protoPowerModel([meter]) : null;
+  const read = (v, key) => {
+    if (!elec) return { value: v, hours: 0.5 };
+    const slot = protoPowerSlot(model, v, key);
+    return { kwh: slot.kwh, lag: slot.lag, lead: slot.lead, kvah: slot.kvah, hours: 0.5 };
+  };
+  if (span.kind === "interval") {
+    const iso = protoIso(span.from);
+    const points = protoSiteSeries(meter);
+    return [
+      {
+        date: span.from,
+        label: protoFormatDay(span.from),
+        quality: points.some((p) => p.quality === "estimated") ? "estimated" : "actual",
+        cells: points.map((p, k) => ({
+          quality: p.value == null && p.quality !== "pending" ? "missing" : p.quality,
+          values: p.value == null ? null : read(p.value, `${iso}|${k}`),
+        })),
+      },
+    ];
+  }
+  const daysOf = (from, to) =>
+    protoWithSpan({ from, to, kind: "day" }, () => protoSiteSeries(meter)).map((point, i) => {
+      const date = protoAddDays(from, i);
+      const iso = protoIso(date);
+      const shape = point.value == null ? null : protoCalendarDayShape([meter], date, point.value);
+      const raw = shape ? protoSeries(meter, "day", date) : null;
+      return {
+        date,
+        label: point.label,
+        quality: point.value == null && point.quality !== "pending" ? "missing" : point.quality,
+        cells: Array.from({ length: 48 }, (_, k) => {
+          const v = shape ? shape[k] : null;
+          const quality =
+            v != null ? point.quality : point.quality === "pending" || raw?.[k]?.quality === "pending" ? "pending" : "missing";
+          return { quality, values: v == null ? null : read(v, `${iso}|${k}`) };
+        }),
+      };
+    });
+  if (span.kind === "day") return daysOf(span.from, span.to);
+  const days = [];
+  for (let i = 0; ; i += 1) {
+    const start = new Date(span.from.getFullYear(), span.from.getMonth() + i, 1);
+    if (start > span.to) break;
+    const monthEnd = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+    days.push(...daysOf(start, monthEnd > span.to ? span.to : monthEnd));
+  }
+  return days;
+}
+
+function protoReadingsAt(day, k) {
+  return `At ${protoClock(Math.floor(k / 2), k % 2 ? 30 : 0)} ${protoChartZone()} on ${protoMeterDay(day.date)}`;
+}
+
+// The highest and lowest half-hour of one reading across the dates, with when it was.
+function protoReadingsExtremes(days, pick) {
+  let total = 0;
+  let count = 0;
+  let top = null;
+  let bottom = null;
+  days.forEach((day) =>
+    day.cells.forEach((cell, k) => {
+      const v = cell.values ? pick(cell.values) : null;
+      if (v == null) return;
+      total += v;
+      count += 1;
+      if (!top || v > top.v) top = { v, day, k };
+      if (!bottom || v < bottom.v) bottom = { v, day, k };
+    })
+  );
+  return { total, count, top, bottom };
+}
+
+function protoReadingsAmount(value, unit) {
+  return `${Number(value.toFixed(1)).toLocaleString("en-GB", { maximumFractionDigits: 1 })} ${unit}`;
+}
+
+// The figures a half-hourly profile is read for. Demand and load factor come from the incoming MPAN, as on the Demand graph.
+function protoMeterReadingsSummary(supply, halvesBy) {
   const electricity = protoMeterKind(supply[0]) === "electricity";
   const channels = protoMeterChannels(supply).filter((channel) => channel.used);
-  const rows = rowsBy[supply[0].id] || [];
-  const step = PROTO_METER_STEP_WORDS[protoDateSpan().kind] || "Daily";
-  const estimated = channels.some((channel) => (rowsBy[channel.meterId] || []).some((row) => row.quality === "estimated"));
-  const heads = channels
-    .map((channel) =>
-      protoBreakdownMeterHead(
-        `Channel ${channel.no}`,
-        (electricity ? [channel.flow === "out" ? "Out" : "In", channel.measures, channel.unit] : [channel.unit]).join(", ")
-      )
-    )
-    .join("");
-  const body = rows
-    .map((row, i) => {
-      const cells = channels
-        .map((channel) => {
-          const own = rowsBy[channel.meterId]?.[i] || row;
-          const value = own.values?.[channel.read];
-          return `<td>${
-            own.quality === "pending" && value == null
-              ? `<span class="astral-muted">Not in yet</span>`
-              : own.quality === "missing" || value == null
-              ? `<span class="astral-muted">No reading</span>`
-              : protoBreakdownReading(protoRoundReading(value, 1), own.quality)
-          }</td>`;
-        })
-        .join("");
-      return `<tr><th scope="row">${escapeHtml(row.label)}</th>${cells}</tr>`;
+  const span = protoDateSpan();
+  const incoming = electricity ? supply.find((meter) => meter.direction !== "Export") : null;
+  let figures = [];
+  if (incoming) {
+    const days = halvesBy[incoming.id] || [];
+    const kw = protoReadingsExtremes(days, (values) => values.kwh * 2);
+    const kva = protoReadingsExtremes(days, (values) => values.kvah * 2);
+    if (kw.top && kva.top) {
+      const average = kw.total / kw.count;
+      figures = [
+        { name: "Maximum demand", value: protoReadingsAmount(kva.top.v, "kVA"), note: protoReadingsAt(kva.top.day, kva.top.k) },
+        { name: "Highest demand", value: protoReadingsAmount(kw.top.v, "kW"), note: protoReadingsAt(kw.top.day, kw.top.k) },
+        { name: "Average demand", value: protoReadingsAmount(average, "kW"), note: "Total used divided by the hours with readings" },
+        {
+          name: "Load factor",
+          value: kw.top.v ? `${Math.round((average / kw.top.v) * 100)}%` : "None",
+          note: "Average demand divided by highest demand",
+        },
+      ];
+    }
+  }
+  const half = (item, unit) =>
+    item
+      ? `<span class="astral-readings-extreme"><span>${escapeHtml(protoReadingsAmount(item.v, unit))}</span><span class="astral-muted">${escapeHtml(
+          protoReadingsAt(item.day, item.k).replace(/^At /, "")
+        )}</span></span>`
+      : `<span class="astral-muted">None</span>`;
+  const body = channels
+    .map((channel) => {
+      const own = protoReadingsExtremes(halvesBy[channel.meterId] || [], (values) => values[channel.read] ?? null);
+      const measures = electricity ? `${channel.flow === "out" ? "Out" : "In"}, ${channel.measures}` : channel.measures;
+      return `<tr><th scope="row">${escapeHtml(`Channel ${channel.no}`)}</th><td>${escapeHtml(measures)}</td><td>${
+        own.count ? escapeHtml(protoReadingsAmount(own.total, channel.unit)) : `<span class="astral-muted">None</span>`
+      }</td><td>${half(own.top, channel.unit)}</td><td>${half(own.bottom, channel.unit)}</td></tr>`;
     })
     .join("");
+  const heads = ["Channel", "Measures", "Total", "Highest half-hour", "Lowest half-hour"];
   return `
-    <section class="astral-meter-view-card" aria-labelledby="astral-meter-readings">
+    <section class="astral-meter-view-card" aria-labelledby="astral-meter-summary">
       <div class="astral-meter-view-card-head">
-        <h4 class="astral-meter-list-title" id="astral-meter-readings">${escapeHtml(`${step} readings`)}</h4>
-        <p>${escapeHtml(`${protoChartWhen()} ${protoChartZone()}. One column for each channel in use.`)}</p>
+        <h4 class="astral-meter-list-title" id="astral-meter-summary">Summary</h4>
+        <p>${escapeHtml(`${protoRangeWords(span.from, span.to)}, ${protoChartZone()}. From each half-hour read.`)}</p>
       </div>
+      ${figures.length ? protoWeatherFigureGroup("", figures) : ""}
+      <div class="astral-table-wrap">
+        <table class="astral-table astral-meter-channels astral-readings-summary">
+          <thead><tr>${heads.map((head) => `<th scope="col">${escapeHtml(head)}</th>`).join("")}</tr></thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+function protoReadingsTools(supply, channels, unit, layout) {
+  const electricity = protoMeterKind(supply[0]) === "electricity";
+  const unitName = PROTO_DATA_UNITS.find((item) => item.id === unit)?.name || "kWh";
+  const layoutName = PROTO_READINGS_LAYOUTS.find((item) => item.id === layout)?.name || PROTO_READINGS_LAYOUTS[0].name;
+  const channel = protoReadingsChannel(channels);
+  const tools = [
+    electricity
+      ? protoSelect({
+          id: "readings-unit",
+          label: `Show as, ${unitName}`,
+          text: `Show as ${unitName}`,
+          value: unit,
+          options: PROTO_DATA_UNITS.map((item) => ({ value: item.id, label: item.name, note: item.note })),
+        })
+      : "",
+    protoSelect({
+      id: "readings-layout",
+      label: `Layout, ${layoutName}`,
+      value: layout,
+      options: PROTO_READINGS_LAYOUTS.map((item) => ({ value: item.id, label: item.name, note: item.note })),
+    }),
+    layout === "halves" && channels.length > 1
+      ? protoSelect({
+          id: "readings-channel",
+          label: `Channel, ${channel.no}`,
+          text: `Channel ${channel.no}`,
+          value: String(channel.no),
+          options: channels.map((item) => ({
+            value: String(item.no),
+            label: `Channel ${item.no}`,
+            note: protoReadingsHeadNote(item, unit, electricity),
+          })),
+        })
+      : "",
+  ].filter(Boolean);
+  return `<div class="astral-readings-tools">${tools.join("")}</div>`;
+}
+
+function protoReadingsTableBlock(label, estimated, table) {
+  return `
       <div class="astral-meter-readings-body">
         <div class="astral-breakdown-top">
           ${protoBreakdownKey(new Set(), estimated)}
@@ -29156,15 +29396,219 @@ function protoMeterReadingsCard(supply, rowsBy) {
             ${protoIconBtn("next", "Next columns", 'data-proto-breakdown-page="next"')}
           </div>
         </div>
-        <div class="astral-table-wrap astral-breakdown-scroll" tabindex="0" role="region" aria-label="${escapeHtml(`${step} readings by channel`)}">
+        <div class="astral-table-wrap astral-breakdown-scroll" tabindex="0" role="region" aria-label="${escapeHtml(label)}">
+          ${table}
+        </div>
+      </div>
+  `;
+}
+
+// The table as it shows on the Readings tab, for the card and for its export.
+function protoMeterReadingsGrid(supply, rowsBy, halvesBy) {
+  const electricity = protoMeterKind(supply[0]) === "electricity";
+  const channels = protoMeterChannels(supply).filter((channel) => channel.used);
+  const span = protoDateSpan();
+  const unit = protoReadingsUnit(supply);
+  const layout = protoReadingsLayout();
+  if (layout === "halves") {
+    const channel = protoReadingsChannel(channels);
+    const days = span.kind === "month" ? [] : halvesBy[channel.meterId] || [];
+    return {
+      layout,
+      unit,
+      channel,
+      tooLong: span.kind === "month",
+      heads: Array.from({ length: 48 }, (_, k) => protoClock(Math.floor(k / 2), k % 2 ? 30 : 0)),
+      rows: days.map((day) => ({
+        label: day.label,
+        day: protoIso(day.date),
+        cells: day.cells.map((cell) => ({ quality: cell.quality, value: protoReadingsValue(channel, cell.values, unit) })),
+      })),
+      estimated: days.some((day) => day.cells.some((cell) => cell.values && cell.quality === "estimated")),
+      unitName: protoReadingsUnitName(channel, unit),
+      note: protoReadingsHeadNote(channel, unit, electricity),
+    };
+  }
+  const rows = rowsBy[supply[0].id] || [];
+  return {
+    layout,
+    unit,
+    channels,
+    heads: channels.map((channel) => ({ ref: `Channel ${channel.no}`, note: protoReadingsHeadNote(channel, unit, electricity) })),
+    rows: rows.map((row, i) => ({
+      label: row.label,
+      day: row.day,
+      cells: channels.map((channel) => {
+        const own = rowsBy[channel.meterId]?.[i] || row;
+        return { quality: own.quality, value: protoReadingsValue(channel, own.values, unit) };
+      }),
+    })),
+    estimated: channels.some((channel) => (rowsBy[channel.meterId] || []).some((row) => row.quality === "estimated")),
+  };
+}
+
+function protoMeterReadingsCard(supply, rowsBy, halvesBy) {
+  const channels = protoMeterChannels(supply).filter((channel) => channel.used);
+  const step = PROTO_METER_STEP_WORDS[protoDateSpan().kind] || "Daily";
+  const grid = protoMeterReadingsGrid(supply, rowsBy, halvesBy);
+  const when = `${protoChartWhen()} ${protoChartZone()}.`;
+  const unitWords = protoReadingsUnitWords(grid.unit);
+  const tools = protoReadingsTools(supply, channels, grid.unit, grid.layout);
+  const head = (title, note) => `
+      <div class="astral-meter-view-card-head has-tools">
+        <div>
+          <h4 class="astral-meter-list-title" id="astral-meter-readings">${escapeHtml(title)}</h4>
+          <p>${escapeHtml(note)}</p>
+        </div>
+        ${tools}
+      </div>
+  `;
+  if (grid.layout === "halves") {
+    const title = "Half-hourly readings by day";
+    const oneChannel = { kw: "Average demand for each half-hour.", kva: "Average apparent power for each half-hour, from active and reactive energy." };
+    const note = [when, `Channel ${grid.channel.no}, ${grid.note}. One row for each day.`, grid.channel.read === "kwh" ? oneChannel[grid.unit] : ""]
+      .filter(Boolean)
+      .join(" ");
+    if (grid.tooLong) {
+      return `
+        <section class="astral-meter-view-card" aria-labelledby="astral-meter-readings">
+          ${head(title, note)}
+          <p class="astral-banner">${escapeHtml(
+            `Half-hours across shows up to ${PROTO_READINGS_HALVES_DAYS} days. Choose a shorter date range to see each day's half-hours.`
+          )}</p>
+        </section>
+      `;
+    }
+    const heads = grid.heads.map((time) => protoBreakdownMeterHead(time, "")).join("");
+    const body = grid.rows
+      .map(
+        (row) =>
+          `<tr><th scope="row">${escapeHtml(row.label)}</th>${row.cells
+            .map((cell) => `<td>${protoReadingsCell(cell.quality, cell.value)}</td>`)
+            .join("")}</tr>`
+      )
+      .join("");
+    const table = `
+          <table class="astral-table astral-breakdown-cols is-meters astral-meter-readings is-halves" style="min-width:${6 + 48 * 6.5}rem">
+            <thead><tr>${protoBreakdownMeterHead("Day", "", { time: true })}${heads}</tr></thead>
+            <tbody>${body}</tbody>
+          </table>
+    `;
+    return `
+      <section class="astral-meter-view-card" aria-labelledby="astral-meter-readings">
+        ${head(title, note)}
+        ${protoReadingsTableBlock(`Half-hourly readings by day, channel ${grid.channel.no}`, grid.estimated, table)}
+      </section>
+    `;
+  }
+  const heads = grid.heads.map((item) => protoBreakdownMeterHead(item.ref, item.note)).join("");
+  const body = grid.rows
+    .map(
+      (row) =>
+        `<tr><th scope="row">${escapeHtml(row.label)}</th>${row.cells
+          .map((cell) => `<td>${protoReadingsCell(cell.quality, cell.value)}</td>`)
+          .join("")}</tr>`
+    )
+    .join("");
+  const table = `
           <table class="astral-table astral-breakdown-cols is-meters astral-meter-readings" style="min-width:${6 + channels.length * 13}rem">
             <thead><tr>${protoBreakdownMeterHead("Time", "", { time: true })}${heads}</tr></thead>
             <tbody>${body}</tbody>
           </table>
-        </div>
-      </div>
+  `;
+  return `
+    <section class="astral-meter-view-card" aria-labelledby="astral-meter-readings">
+      ${head(`${step} readings`, [when, "One column for each channel in use.", unitWords].filter(Boolean).join(" "))}
+      ${protoReadingsTableBlock(`${step} readings by channel`, grid.estimated, table)}
     </section>
   `;
+}
+
+// Table data from the Readings tab is the table as it shows, with the same Show as, Layout, Channel and dates.
+function protoMeterTableReady() {
+  return protoMeterTabId() === "readings" && !(protoReadingsLayout() === "halves" && protoDateSpan().kind === "month");
+}
+
+function protoWithReadingsView(view, build) {
+  const was = {
+    prototypeReadingsUnit: store.prototypeReadingsUnit,
+    prototypeReadingsLayout: store.prototypeReadingsLayout,
+    prototypeReadingsChannel: store.prototypeReadingsChannel,
+  };
+  Object.assign(store, {
+    prototypeReadingsUnit: view.unit,
+    prototypeReadingsLayout: view.layout,
+    prototypeReadingsChannel: view.channel,
+  });
+  try {
+    return build();
+  } finally {
+    Object.assign(store, was);
+  }
+}
+
+function protoMeterTableGrid(supply) {
+  const rowsBy = Object.fromEntries(supply.map((item) => [item.id, protoMeterChannelRows(item)]));
+  const halves = protoReadingsLayout() === "halves" && protoDateSpan().kind !== "month";
+  const halvesBy = halves ? Object.fromEntries(supply.map((item) => [item.id, protoMeterDayHalves(item)])) : {};
+  return protoMeterReadingsGrid(supply, rowsBy, halvesBy);
+}
+
+// The view to rebuild when the file is taken from Downloads.
+function protoMeterTableSpec(fileId) {
+  const meter = protoMeter(String(fileId).slice(6));
+  const supply = meter ? protoMeterSupply(meter) : [];
+  const channels = protoMeterChannels(supply).filter((channel) => channel.used);
+  const span = protoDateSpan();
+  return {
+    what: "table",
+    from: protoIso(span.from),
+    to: protoIso(span.to),
+    kind: span.kind,
+    unit: supply.length ? protoReadingsUnit(supply) : "kwh",
+    layout: protoReadingsLayout(),
+    channel: channels.length ? protoReadingsChannel(channels).no : 1,
+  };
+}
+
+// Times are UTC, as on the tab. A cell with no reading is left empty, so the columns still add up.
+function protoMeterTableRows(meterId, spec) {
+  const meter = protoMeter(meterId);
+  const from = protoFromIso(spec.from);
+  const to = protoFromIso(spec.to);
+  if (!meter || !from || !to) return [];
+  return protoWithReadingsView(spec, () =>
+    protoWithSpan({ from, to, kind: spec.kind }, () => {
+      const grid = protoMeterTableGrid(protoMeterSupply(meter));
+      const num = (cell) => (cell.value == null || cell.quality === "missing" ? "" : protoRoundReading(cell.value, 1));
+      if (grid.layout === "halves") {
+        const [channel, ...rest] = grid.note.split(", ").reverse();
+        const measures = rest.reverse().join(", ");
+        return [
+          ["date", "channel", "unit", ...grid.heads],
+          ...grid.rows.map((row) => [
+            row.day,
+            [`Channel ${grid.channel.no}`, measures].filter(Boolean).join(", "),
+            channel,
+            ...row.cells.map(num),
+          ]),
+        ];
+      }
+      const lead = spec.kind === "interval" ? ["date", "time"] : [spec.kind === "month" ? "month" : "date"];
+      const when = (row) =>
+        spec.kind === "interval" ? [row.day, row.label] : [spec.kind === "month" ? row.day.slice(0, 7) : row.day];
+      return [
+        [...lead, ...grid.heads.map((head) => `${head.ref}, ${head.note}`)],
+        ...grid.rows.map((row) => [...when(row), ...row.cells.map(num)]),
+      ];
+    })
+  );
+}
+
+function protoMeterTableCsv(item) {
+  const rows = protoMeterTableRows(String(item.fileId).slice(6), item.spec);
+  const q = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+  protoFileDownload(`\uFEFF${rows.map((row) => row.map(q).join(",")).join("\n")}`, `${item.name}.csv`, "text/csv");
 }
 
 // Display readings are the number on the meter's display, its running total, read on the 1st of each month. A replaced meter starts again from 0.
@@ -29407,7 +29851,10 @@ function protoMeterViewPage(meter) {
   const tabs = protoMeterTabList(lead);
   const panels = {
     channels: () => installs.map((install) => protoMeterInstallCard(supply, install, rowsBy)).join(""),
-    readings: () => protoMeterReadingsCard(supply, rowsBy),
+    readings: () => {
+      const halvesBy = Object.fromEntries(supply.map((item) => [item.id, protoMeterDayHalves(item)]));
+      return `${protoMeterReadingsSummary(supply, halvesBy)}${protoMeterReadingsCard(supply, rowsBy, halvesBy)}`;
+    },
     display: () => protoMeterRegisterCard(supply),
     billed: () => protoComplexCard(lead),
   };
@@ -29653,6 +30100,19 @@ function protoExportKinds() {
 function protoExportSpecFrom(raw) {
   if (!raw || typeof raw !== "object") return null;
   if (raw.what === "image") return { what: "image" };
+  if (raw.what === "table") {
+    const day = (value) => (/^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) ? String(value) : "");
+    if (!day(raw.from) || !day(raw.to)) return null;
+    return {
+      what: "table",
+      from: day(raw.from),
+      to: day(raw.to),
+      kind: ["interval", "day", "month"].includes(raw.kind) ? raw.kind : "day",
+      unit: ["kwh", "kw", "kva"].includes(raw.unit) ? raw.unit : "kwh",
+      layout: raw.layout === "halves" ? "halves" : "channels",
+      channel: Number(raw.channel) || 1,
+    };
+  }
   if (raw.what !== "source") return null;
   const iso = (value) => (/^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) ? String(value) : "");
   const from = iso(raw.from);
@@ -30345,6 +30805,7 @@ function protoFlushDownloadTake() {
   if (!item || !protoDownloadReady(item)) return;
   protoDownloadTakeId = "";
   if (item.spec?.what === "source") protoSourceData(item);
+  else if (item.spec?.what === "table") protoMeterTableCsv(item);
   else if (item.kind === "png") protoChartImageSave(item);
   else if (item.kind === "pdf") protoPdf(item.fileId);
   else if (item.kind === "xlsx") protoXlsx(item.fileId);

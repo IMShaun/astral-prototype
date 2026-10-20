@@ -370,10 +370,11 @@
         {
           "id": "tma-gap-m1",
           "title": "TMA gap M1: Profile table per channel",
-          "note": "48 periods per channel in kW, kWh or kVA, transposable, with total, max, min, max demand kVA and load factor. Astral builds this in the prototype. Owner: Shaun.",
+          "note": "Done in the prototype. A meter's Readings tab opens on a Summary: Maximum demand in kVA, Highest demand and Average demand in kW, Load factor, and each channel's total with its highest and lowest half-hour and when. Show as picks kWh, kW or kVA for active energy; reactive stays kVArh. Layout is Channels across, or Half-hours across with a day on each row, 48 half-hours and a Channel pick, up to 62 days. Export has Table data, which downloads the table as it shows. Pattern: foundation.frozen-panes.",
           "project": "Astral",
           "kind": "ux",
-          "added": "2026-10-16"
+          "added": "2026-10-16",
+          "doneOn": "2026-10-20"
         },
         {
           "id": "tma-gap-m2",
