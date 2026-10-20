@@ -300,10 +300,11 @@
         {
           "id": "tma-gap-c6",
           "title": "TMA gap C6: TMA FTP feeds for 55 customers",
-          "note": "Owned outside the Astral team (Anna). Track it; nothing to build yet. Confirm the scope, owner and date of Doug's project, or bring TMA feeds into AST-E-01.",
+          "note": "Done in the prototype. Reports push files to the customer's SFTP server, and every live report that makes a file also lands it in Downloads, where the customer pulls it when they want. An automatic pull from IMSERV's server, with no person involved, is server work for Doug's migration project. Anna confirms its scope, owner and date.",
           "project": "Astral",
           "kind": "admin",
-          "added": "2026-10-16"
+          "added": "2026-10-16",
+          "doneOn": "2026-10-20"
         },
         {
           "id": "tma-gap-h3",
