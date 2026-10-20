@@ -4006,8 +4006,8 @@ body.is-proto-fs .stage {
   background: var(--color-brand-primary);
   color: var(--color-text-inverse);
   font: inherit;
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-semibold);
   overflow: hidden;
 }
 
@@ -11511,8 +11511,8 @@ button.astral-value-pill.astral-tip-host {
   place-items: center;
   background: var(--color-background-subtle);
   color: #000;
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-semibold);
 }
 
 .astral-person-copy {
@@ -11598,7 +11598,7 @@ tr.is-off .astral-person-mark {
 .astral-usage-who .astral-person-mark {
   width: 28px;
   height: 28px;
-  font-size: 0.7rem;
+  font-size: var(--font-size-12);
 }
 
 .astral-person-copy strong {
