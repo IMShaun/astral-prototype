@@ -467,6 +467,36 @@ patterns:
     health: healthy
     last_reviewed: "2026-10-08"
     decision_refs: []
+  - id: foundation.load-once
+    name: Load once
+    level: foundation
+    user_goal: Move between sub-tabs without waiting again for data that has already loaded
+    objects: [tabs, pane]
+    actions: [switch, compare]
+    used_in: [Portfolio, Settings, Service, Usage, Inbox]
+    entry_points:
+      - Site, group and meter tabs on Portfolio
+      - Settings sections, service tabs and usage tabs
+    structure: A sub-tab shows the skeleton on its first visit. Going back to it on the same site, group or meter shows it straight away
+    components: [astral-tabs, astral-pane]
+    states: [first-visit, already-opened]
+    permissions: all
+    content_terms: []
+    variants: []
+    exceptions:
+      - Opening a page or starting the app still runs the screen skeleton
+      - Another site, group or meter loads in again
+    accessibility: No Loading status is announced when nothing loads. Focus stays on the tab
+    implementation_refs:
+      - prototype.js protoSkelWatch
+      - prototype.js protoSkelKeys
+    evidence:
+      - User correction on 2026-10-20, no skeleton between sub-tabs when the data has already loaded (commit da654e7).
+      - User decision on 2026-10-20, skip it only when going back to a tab already opened.
+    maturity: emerging
+    health: healthy
+    last_reviewed: "2026-10-20"
+    decision_refs: []
   - id: foundation.responsive-viewport
     name: Responsive viewport
     level: foundation
