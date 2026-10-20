@@ -10952,6 +10952,7 @@ button.astral-value-pill.astral-tip-host {
 }
 
 .astral-table tbody th {
+  font-weight: var(--font-weight-medium);
   white-space: nowrap;
 }
 
