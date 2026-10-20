@@ -18,6 +18,17 @@
       } catch (err) {
         /* No session storage. Stay on the prototype. */
       }
+      // ?page=process shows the Process page on its own, so it can be shared without the desk.
+      try {
+        if (new URLSearchParams(location.search).get("page") === "process") {
+          window.WORK_DESK_SHARE = false;
+          window.WORK_DESK_PROCESS = true;
+          document.body.classList.add("is-share", "is-process-share");
+          document.title = "Process · Astral";
+        }
+      } catch (err) {
+        /* No query. Stay on the prototype. */
+      }
     </script>
     <div class="shell desk-shell">
       <aside id="desk-rail" class="side astral-rail desk-rail" aria-label="Work Desk">
@@ -68,6 +79,10 @@
           <button type="button" class="side-link astral-rail-link" data-section="skills" data-icon="servicing">
             <span class="desk-rail-label">Skills</span>
             <span id="nav-skills-count" class="nav-count"></span>
+          </button>
+          <button type="button" class="side-link astral-rail-link" data-section="process" data-icon="flow">
+            <span class="desk-rail-label">Process</span>
+            <span id="nav-process-count" class="nav-count"></span>
           </button>
           <button type="button" class="side-link astral-rail-link" data-section="prototype" data-icon="expand">
             <span class="desk-rail-label">Prototype</span>
@@ -487,6 +502,22 @@
             <p id="skills-lead" class="astral-muted astral-home-lead desk-lead"></p>
             <p id="skills-count" class="sr-only"></p>
             <div id="skills-list" class="desk-list-host"></div>
+          </section>
+
+          <section id="panel-process" class="panel" data-panel="process" hidden>
+            <header class="page-head astral-page-head astral-page-tools">
+              <div><h2 id="process-heading">Process</h2></div>
+              <div class="astral-page-actions">
+                <button type="button" id="process-link" class="astral-ghost" data-process-link>Copy link</button>
+              </div>
+            </header>
+            <p class="astral-muted astral-home-lead desk-lead">
+              How we write user stories with Copilot, check them in the Library, and move them into Azure DevOps.
+            </p>
+            <div class="astral-page-top">
+              <div id="process-tabs" class="astral-page-tabs"></div>
+            </div>
+            <div id="process-page"></div>
           </section>
 
           <section id="panel-resources" class="panel" data-panel="resources" hidden>

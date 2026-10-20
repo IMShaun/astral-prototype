@@ -21,6 +21,7 @@ const SECTIONS = [
   "language",
   "patterns",
   "skills",
+  "process",
   "prototype",
   "branding",
   "workflow",
@@ -98,6 +99,10 @@ const els = {
   navLanguageCount: document.getElementById("nav-language-count"),
   navPatternsCount: document.getElementById("nav-patterns-count"),
   navSkillsCount: document.getElementById("nav-skills-count"),
+  navProcessCount: document.getElementById("nav-process-count"),
+  processTabs: document.getElementById("process-tabs"),
+  processPage: document.getElementById("process-page"),
+  processPanel: document.getElementById("panel-process"),
   navPrototypeCount: document.getElementById("nav-prototype-count"),
   prototypeRoot: document.getElementById("prototype-root"),
   astralFs: document.getElementById("astral-fs"),
@@ -1460,6 +1465,7 @@ const DESK_SECTION_ICONS = {
   language: "comment",
   patterns: "report",
   skills: "servicing",
+  process: "flow",
   prototype: "expand",
   branding: "tag",
   workflow: "hours",
@@ -1471,6 +1477,7 @@ const DESK_ICON_MARKS = {
   layers: `<path d="M12 4 3.5 8.5 12 13l8.5-4.5L12 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><path d="M3.5 12.5 12 17l8.5-4.5M3.5 16.5 12 21l8.5-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`,
   signpost: `<path d="M12 21V3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M12 5.5h6l2 2-2 2h-6M12 12H6l-2 2 2 2h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />`,
   compass: `<circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="2" /><path d="m15.5 8.5-2 5-5 2 2-5 5-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />`,
+  flow: `<circle cx="6" cy="6" r="2.25" fill="none" stroke="currentColor" stroke-width="2" /><circle cx="18" cy="12" r="2.25" fill="none" stroke="currentColor" stroke-width="2" /><circle cx="6" cy="18" r="2.25" fill="none" stroke="currentColor" stroke-width="2" /><path d="M8.1 7.1 15.9 10.9M15.9 13.1 8.1 16.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />`,
 };
 
 function deskIconMark(name) {
@@ -5281,6 +5288,355 @@ function renderSkills() {
   setNavCount(els.navSkillsCount, items.length);
 }
 
+// Process: how we write and change user stories. ?page=process shows it alone, to share.
+const PROCESS_SHARE_BASE = "https://imserv-astral-prototype.pages.imserv.ghe.com/";
+
+const PROCESS_UPDATE_PROMPT = `Please make sure my copy of the Astral prototype is up to date and has the
+astral-user-stories skill. I am not technical, so explain each step in plain
+words and ask me before anything risky.
+
+- The latest version is at https://imserv.ghe.com/imserv/astral-prototype.git
+  on the main branch. It must include commit 2d7161d or later.
+- Never delete or overwrite my work. If I have unsaved changes, put them
+  safely aside with git stash and tell me.
+- If signing in fails, stop and tell me what to do. Do not try other addresses.
+- If my copy has changes that are not on the latest version, stop and ask me.
+- When done, check these files exist and tell me in one line:
+  .cursor/skills/astral-user-stories/SKILL.md
+  .cursor/skills/astral-user-stories/references/library-stories.md
+  .github/skills/astral-user-stories/SKILL.md
+- Then start the prototype on my computer and open the Library in the
+  browser panel at http://127.0.0.1:5190/library-site/ on the Features page.`;
+
+const PROCESS_WRITE_PROMPT = `Use the astral-user-stories skill. Follow
+.cursor/skills/astral-user-stories/references/library-stories.md in full.
+
+Write Library user stories, with a Play demo for every acceptance criterion, for:
+Area: {for example Portfolio, Demand tab}
+Notes: {paste your meeting notes or description, or write "none"}
+
+I am not technical. Before you start, show me the stories that already exist
+for this area so we do not write the same one twice. When you finish, give me
+a short plain list of each story and how many checks it has, anything you could
+not show in a demo, and any questions. Do not save anything to Azure yet.`;
+
+const PROCESS_SEND_PROMPT = `The stories look right. Save only the story file, the new demo pictures and
+the demo tool. Ask me before you send anything. Send them to a new branch
+called stories/{area}, never straight to main, and give me the link to send
+to Shaun.`;
+
+const PROCESS_AZURE_PROMPT = `Use the astral-user-stories skill and my Azure DevOps MCP to copy the new
+Library stories for {area} into Azure DevOps, under the Feature {Feature name
+or number}.
+
+- If the Azure DevOps tools are not working, stop and tell me how to turn them on.
+- Look for stories that already exist first and do not create the same one twice.
+- Never change a Ready story or one assigned to Charanjit.
+- Create every story as New with no story points.
+- Add each story's Library link.
+- Before you save anything, show me a plain list of each story you will
+  create, with its title and checks, and wait for me to say yes.
+- After saving, give me each Azure number and title.`;
+
+const PROCESS_CHANGE_PROMPT = `Use the astral-user-stories skill. I need to change an existing story.
+
+Story: {the story name, the Library link, or the Azure number}
+What changed: {paste the feedback or meeting notes, or describe it}
+Where to change it: {Library, Azure, or both}
+
+I am not technical. First, read the story as it is now in the Library and in
+Azure, including its comments. Then show me, in plain words, exactly what you
+will change and what you will leave alone. Do not change anything until I say
+yes.
+
+- Never change a Ready story or one assigned to Charanjit. If it is one of
+  those, stop and tell me to ask Shaun.
+- Do not change the status or story points.
+- Keep the history. Put the reason for the change in the Azure Comments.
+- If the prototype and the feedback disagree, ask me which is right.
+- If the Library changed, redo the Play demos for the checks you changed,
+  then save and send the change to Shaun as in Write new stories, step 3.`;
+
+const PROCESS_STEPS = [
+  {
+    id: "overview",
+    name: "How it works",
+    summary:
+      "Copilot writes the user stories for you. You choose what to write about, check what it gives you, and approve anything before it goes into Azure DevOps. You do not need to know how to code.",
+    blocks: [
+      { h: "Two jobs" },
+      {
+        table: {
+          columns: ["Job", "When to use it", "What happens"],
+          rows: [
+            [
+              "Write new stories",
+              "A screen or area of the prototype has no stories yet",
+              "Copilot writes the stories in the Library. You check them. Shaun publishes them. Copilot copies them into Azure DevOps once you approve them.",
+            ],
+            [
+              "Change stories",
+              "After refinement, when the prototype changes, or when someone gives feedback",
+              "Copilot shows you the change first. It updates the Library, Azure DevOps or both once you say yes.",
+            ],
+          ],
+        },
+      },
+      { h: "Who does what" },
+      {
+        table: {
+          columns: ["Who", "What they do"],
+          rows: [
+            ["You", "Choose the area, add meeting notes, check the stories, and approve anything before it goes into Azure DevOps."],
+            ["Copilot", "Reads the prototype, writes the stories, makes the Play demos, and fills in Azure DevOps."],
+            ["Shaun", "Publishes the Library, moves stories to Refinement and Ready, and agrees story points."],
+          ],
+        },
+      },
+      { h: "Three rules that keep everyone safe" },
+      {
+        ol: [
+          "Copilot always asks before it saves anything to Azure DevOps. Read what it shows you. If you are not sure, say no and ask Shaun.",
+          "Never let Copilot change a story marked Ready, or a story assigned to Charanjit.",
+          "New stories always go into Azure DevOps as New, with no story points. Shaun does the rest.",
+        ],
+      },
+      { h: "Words you will see" },
+      {
+        table: {
+          columns: ["Word", "What it means"],
+          rows: [
+            ["Prototype", "The clickable mock-up of Astral. It shows how each screen should work."],
+            ["Library", "The Astral Library website. Its Features page holds every user story."],
+            ["User story", "One thing a person wants to do, such as read the peak demand for a site. Developers build from it."],
+            ["Acceptance criteria", "The checks that prove a story works. Each one reads Given (where you are), When (what you do), and Then (what you see)."],
+            ["Play demo", "A short slideshow on each check, showing someone doing it in the prototype."],
+            ["Repository", "The folder that holds the prototype and the Library. Everyone has their own copy, and a copy can go out of date."],
+            ["Skill", "A set of instructions Copilot reads so it writes stories our way. Ours is called astral-user-stories."],
+            ["Azure DevOps", "Where the developers pick up work. Stories end up here."],
+            ["MCP", "The connection you installed from the Microsoft Store that lets Copilot read and write Azure DevOps for you."],
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: "start",
+    name: "Before you start",
+    summary: "Do this once, and again whenever Shaun says there is a new version.",
+    blocks: [
+      {
+        ol: [
+          "Open Copilot on your copy of the Astral prototype folder.",
+          "Select Copy prompt below, paste it into Copilot, and press Enter.",
+          "Answer any questions Copilot asks. If it asks you to sign in, use your IMSERV account.",
+        ],
+      },
+      { prompt: PROCESS_UPDATE_PROMPT },
+      { h: "What you should see" },
+      { p: "Copilot says your copy is up to date and the skill is there. The Library opens in a panel on the right." },
+      { p: "If Copilot does not seem to know the skill afterwards, close Copilot and open it again on the same folder." },
+    ],
+  },
+  {
+    id: "new",
+    name: "Write new stories",
+    summary: "Four steps from an area of the prototype to stories in Azure DevOps.",
+    blocks: [
+      { h: "Step 1. Ask Copilot to write the stories" },
+      { p: "Copy the prompt, fill in the two parts in curly brackets, then paste it into Copilot." },
+      { prompt: PROCESS_WRITE_PROMPT },
+      { p: "This often takes 30 minutes or more. Copilot clicks around the prototype and takes screenshots on its own. Leave it running." },
+      { h: "Step 2. Check the stories in the Library" },
+      { p: "In the Library panel, open Features, then your area, then each new story. For each one, check the following." },
+      {
+        ul: [
+          "The opening sentence, which starts \"As a user, I want to\", makes sense.",
+          "Each check describes something you can see on the screen.",
+          "Select Play demo on a few checks. The last picture shows what the check says.",
+          "Select Open in prototype. It opens on the right screen.",
+        ],
+      },
+      { p: "If something is wrong, tell Copilot in your own words, such as \"In the Read the peak demand story, the third check names the wrong button\". It will fix it." },
+      { h: "Step 3. Send the stories to Shaun" },
+      { p: "When you are happy with the stories, paste this into Copilot with your area filled in." },
+      { prompt: PROCESS_SEND_PROMPT },
+      { p: "Send Shaun the link Copilot gives you. Once he publishes the stories, anyone can open them from the Library, and Azure DevOps links to them." },
+      { h: "Step 4. Copy the stories into Azure DevOps" },
+      { p: "Wait until Shaun says the stories are published. Fill in your area and the Azure DevOps Feature, then paste this into Copilot." },
+      { prompt: PROCESS_AZURE_PROMPT },
+      { p: "Copilot shows you a list of the stories it plans to create. Read it, then type yes, or say what to change. Afterwards it gives you the Azure DevOps numbers. Open one or two in Azure DevOps to check they look right." },
+    ],
+  },
+  {
+    id: "change",
+    name: "Change stories",
+    summary: "Use this after refinement, when the prototype changes, or when someone gives feedback on a story that already exists.",
+    blocks: [
+      {
+        ol: [
+          "Copy the prompt and fill in the three parts in curly brackets.",
+          "Paste it into Copilot.",
+          "Copilot reads the story and shows you a before and after.",
+          "Check it matches what was agreed, then type yes.",
+        ],
+      },
+      { prompt: PROCESS_CHANGE_PROMPT },
+      { h: "Bigger changes" },
+      { p: "If the feedback means one story should become two, Copilot suggests the split and explains why. Say yes only if it matches what was agreed in the meeting." },
+    ],
+  },
+  {
+    id: "help",
+    name: "If something goes wrong",
+    summary: "Nothing is saved until you say yes, so you can always stop and ask.",
+    blocks: [
+      {
+        table: {
+          columns: ["What happens", "What to do"],
+          rows: [
+            ["Copilot asks a question you do not understand", "Reply \"Please explain that in plain words\"."],
+            ["Copilot says it cannot sign in", "Follow its sign-in link. If it still fails, send Shaun a screenshot."],
+            ["The Library panel is blank", "Ask Copilot \"Please start the prototype again and reopen the Library\"."],
+            ["The Azure DevOps tools are not working", "Check the MCP app from the Microsoft Store is running and signed in, then close and reopen Copilot."],
+            ["A Play demo shows the wrong thing", "Tell Copilot which story and check, and what is wrong."],
+            ["You are not sure whether to say yes", "Say no, and ask Shaun."],
+          ],
+        },
+      },
+    ],
+  },
+];
+
+function processShare() {
+  return Boolean(window.WORK_DESK_PROCESS);
+}
+
+function processStepId() {
+  const id = store?.processStep;
+  return PROCESS_STEPS.some((item) => item.id === id) ? id : PROCESS_STEPS[0].id;
+}
+
+function processLink() {
+  const local = /^(127\.0\.0\.1|localhost)$/.test(location.hostname) || location.protocol === "file:";
+  const base = local ? PROCESS_SHARE_BASE : `${location.origin}${location.pathname}`;
+  const step = processStepId();
+  return `${base}?page=process${step === PROCESS_STEPS[0].id ? "" : `&step=${encodeURIComponent(step)}`}`;
+}
+
+function processBlock(block, key) {
+  if (block.p) return `<p class="process-text">${escapeHtml(block.p)}</p>`;
+  if (block.ol || block.ul) {
+    const tag = block.ol ? "ol" : "ul";
+    return `<${tag} class="process-list">${(block.ol || block.ul)
+      .map((item) => `<li>${escapeHtml(item)}</li>`)
+      .join("")}</${tag}>`;
+  }
+  if (block.prompt) {
+    return `
+      <div class="process-prompt">
+        <div class="process-prompt-head">
+          <p class="field-label">Paste this into Copilot</p>
+          ${protoGhost("Copy prompt", `data-process-copy="${escapeHtml(key)}"`)}
+        </div>
+        <pre class="code"><code>${escapeHtml(block.prompt)}</code></pre>
+      </div>
+    `;
+  }
+  if (block.table) {
+    return deskTable(
+      block.table.columns,
+      block.table.rows.map(
+        ([head, ...cells]) =>
+          `<tr><th scope="row">${escapeHtml(head)}</th>${cells
+            .map((cell) => `<td>${escapeHtml(cell)}</td>`)
+            .join("")}</tr>`
+      )
+    );
+  }
+  return "";
+}
+
+function renderProcess() {
+  if (!els.processPage) return;
+  const current = processStepId();
+  const step = PROCESS_STEPS.find((item) => item.id === current);
+  if (els.processTabs) {
+    els.processTabs.innerHTML = protoTabs(
+      PROCESS_STEPS.map((item) => ({ id: item.id, name: item.name })),
+      current,
+      "data-process-step",
+      "Process steps"
+    );
+  }
+  const groups = [{ h: "", blocks: [] }];
+  step.blocks.forEach((block, index) => {
+    if (block.h) groups.push({ h: block.h, blocks: [] });
+    else groups[groups.length - 1].blocks.push(processBlock(block, `${step.id}-${index}`));
+  });
+  const [lead, ...rest] = groups;
+  els.processPage.innerHTML = `
+    <div class="process-cards">
+      <section class="astral-card desk-block process-article">
+        <div class="desk-block-head">
+          <h3>${escapeHtml(step.name)}</h3>
+          <p class="astral-muted">${escapeHtml(step.summary)}</p>
+        </div>
+        ${lead.blocks.join("")}
+      </section>
+      ${rest
+        .map(
+          (group) => `
+            <section class="astral-card desk-block process-article">
+              <div class="desk-block-head"><h3>${escapeHtml(group.h)}</h3></div>
+              ${group.blocks.join("")}
+            </section>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+  setNavCount(els.navProcessCount, PROCESS_STEPS.length);
+}
+
+async function processCopy(button, text, idle, done) {
+  try {
+    await navigator.clipboard.writeText(text);
+    button.textContent = done;
+    button.classList.add("is-copied");
+    window.setTimeout(() => {
+      button.textContent = idle;
+      button.classList.remove("is-copied");
+    }, 1600);
+  } catch {
+    setSave("warn", "Could not copy. Select the text and copy it instead.");
+  }
+}
+
+function onProcessClick(event) {
+  const tab = event.target.closest("[data-process-step]");
+  if (tab) {
+    store.processStep = tab.dataset.processStep;
+    render();
+    persistChrome();
+    if (processShare()) {
+      const url = new URL(location.href);
+      url.searchParams.set("step", processStepId());
+      history.replaceState({}, "", url.pathname + url.search + url.hash);
+    }
+    return;
+  }
+  const copy = event.target.closest("[data-process-copy]");
+  if (copy) {
+    const [stepId, index] = copy.dataset.processCopy.split(/-(?=\d+$)/);
+    const block = PROCESS_STEPS.find((item) => item.id === stepId)?.blocks[Number(index)];
+    if (block?.prompt) processCopy(copy, block.prompt, "Copy prompt", "Prompt copied");
+    return;
+  }
+  const link = event.target.closest("[data-process-link]");
+  if (link) processCopy(link, processLink(), "Copy link", "Link copied");
+}
+
 function render() {
   applyDeskTheme();
   const current = board();
@@ -5398,6 +5754,7 @@ function render() {
   renderLanguage();
   renderPatterns();
   renderSkills();
+  renderProcess();
   renderResources();
   renderRoadmap();
   renderPrototype();
@@ -5420,6 +5777,7 @@ const CHROME_FIELDS = [
   "activeSection",
   "accessFold",
   "skillFold",
+  "processStep",
   "libraryFold",
   "activeKind",
   "activeLibraryTab",
@@ -5674,7 +6032,7 @@ const CHROME_FIELDS = [
 ];
 
 function persistChrome() {
-  if (!store) return;
+  if (!store || processShare()) return;
   const chrome = {};
   CHROME_FIELDS.forEach((key) => {
     chrome[key] = store[key];
@@ -5691,6 +6049,7 @@ function fullDesk() {
 }
 
 function sectionAllowed(section) {
+  if (processShare()) return section === "process";
   if (sharePrototype()) return SHARE_SECTIONS.includes(section);
   if (fullDesk()) return SECTIONS.includes(section);
   return SECTIONS.includes(section) && !TEAM_HIDDEN_SECTIONS.includes(section);
@@ -5699,6 +6058,16 @@ function sectionAllowed(section) {
 function clampSection() {
   if (!store) return;
   if (!fullDesk()) store.activeTeam = "imserv";
+  if (processShare()) {
+    store.activeSection = "process";
+    store.prototypeFullscreen = false;
+    try {
+      store.processStep = new URLSearchParams(location.search).get("step") || "";
+    } catch (err) {
+      store.processStep = "";
+    }
+    return;
+  }
   if (sharePrototype()) {
     store.activeSection = "prototype";
     store.prototypeFullscreen = true;
@@ -6814,7 +7183,7 @@ function onTeamChange() {
 }
 
 async function probeWrite() {
-  if (sharePrototype()) {
+  if (sharePrototype() || processShare()) {
     canWrite = false;
     setSave("ok", "Share is read only");
     return;
@@ -6971,6 +7340,7 @@ if (els.researchDocuments) els.researchDocuments.addEventListener("click", onRes
 if (els.analyticsKeis) els.analyticsKeis.addEventListener("click", onAnalyticsClick);
 if (els.patternsList) els.patternsList.addEventListener("click", onPatternNav);
 if (els.skillsList) els.skillsList.addEventListener("click", onSkillNav);
+if (els.processPanel) els.processPanel.addEventListener("click", onProcessClick);
 if (els.resourcesList) els.resourcesList.addEventListener("click", onResourceNav);
 if (els.roadmapList) els.roadmapList.addEventListener("click", onRoadmapNav);
 if (els.prototypeRoot) {

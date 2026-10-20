@@ -17809,3 +17809,66 @@ body.is-share .desk-bar {
     width: 248px;
   }
 }
+
+/* Process: how we write and change user stories. ?page=process shows it alone to share. */
+body.is-share.is-process-share .panel[data-panel="process"] {
+  display: grid !important;
+}
+
+body.is-process-share .stage-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+.process-article {
+  display: grid;
+  gap: 12px;
+}
+
+.process-cards {
+  display: grid;
+  gap: 16px;
+}
+
+.process-article .desk-table th,
+.process-article .desk-table td {
+  vertical-align: top;
+}
+
+.process-text,
+.process-list {
+  margin: 0;
+  max-width: 48rem;
+}
+
+.process-list {
+  display: grid;
+  gap: 6px;
+  padding-left: 1.25rem;
+}
+
+.process-prompt {
+  display: grid;
+  gap: 8px;
+}
+
+.process-prompt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.process-prompt-head .field-label {
+  margin: 0;
+}
+
+.process-prompt .code {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.process-article .desk-table th[scope="row"] {
+  white-space: nowrap;
+}
