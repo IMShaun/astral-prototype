@@ -333,10 +333,11 @@
         {
           "id": "tma-gap-h7",
           "title": "TMA gap H7: Users with no email and third-party authorisation",
-          "note": "Owned outside the Astral team (Anna, Tricia). Track it; nothing to build yet. No-email rule in the transition plan; notes into the authority gate.",
+          "note": "Design done. Sign-in stays as it is in the prototype, by email address. The no-email rule in the transition plan and the authority notes stay with Anna and Tricia.",
           "project": "Astral",
           "kind": "admin",
-          "added": "2026-10-16"
+          "added": "2026-10-16",
+          "doneOn": "2026-10-20"
         },
         {
           "id": "tma-gap-h8",
