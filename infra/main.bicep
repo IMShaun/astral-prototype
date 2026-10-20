@@ -22,7 +22,8 @@ param sku string = 'B1'
 @description('OIDC issuer for GitHub Actions on imserv.ghe.com.')
 param githubIssuer string = 'https://token.actions.imserv.ghe.com'
 
-param githubRepo string = 'imserv/astral-prototype'
+@description('Owner and repo exactly as they appear in the GitHub token subject. imserv.ghe.com adds their IDs: owner@id/repo@id.')
+param githubRepo string = 'imserv@4031237/astral-prototype@10734012' 
 
 @description('Application (client) ID of the Entra app registration that signs people in to prod.')
 @minLength(36)
