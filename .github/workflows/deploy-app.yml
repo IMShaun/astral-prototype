@@ -1,0 +1,56 @@
+# Package the checked-out commit and deploy it to one Azure web app.
+# Called by deploy-prod.yml and deploy-sandbox.yml. Uses only the az CLI, because some
+# Marketplace actions call api.github.com and fail on imserv.ghe.com.
+#
+# Repository variables:   AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP
+# Environment variables:  AZURE_APP_NAME, AZURE_CLIENT_ID (the environment's deploy identity)
+name: Deploy app
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+      url: https://${{ vars.AZURE_APP_NAME }}.azurewebsites.net
+    env:
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      AZURE_APP_NAME: ${{ vars.AZURE_APP_NAME }}
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Leave out what server.py never serves and .railwayignore never ships.
+      - name: Package
+        run: |
+          zip -qr "$RUNNER_TEMP/app.zip" . \
+            -x '.git/*' '.github/*' '.cursor/*' 'archive/*' 'inbox/*' 'infra/*' 'share-dist/*' \
+               'node_modules/*' '.venv/*' '.env' '.env.*' '.staticrypt.json' '*.log' '*.DS_Store'
+          ls -la "$RUNNER_TEMP/app.zip"
+
+      - name: Sign in to Azure
+        run: |
+          token=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" | jq -r .value)
+          az login --service-principal --username "$AZURE_CLIENT_ID" --tenant "$AZURE_TENANT_ID" \
+            --federated-token "$token" --output none
+          az account set --subscription "$AZURE_SUBSCRIPTION_ID"
+
+      # --clean removes files an earlier deploy left behind.
+      - name: Deploy
+        run: |
+          az webapp deploy --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_APP_NAME" \
+            --src-path "$RUNNER_TEMP/app.zip" --type zip --clean true --restart true
+          echo "Deployed $GITHUB_REF_NAME (${GITHUB_SHA::7}) to https://$AZURE_APP_NAME.azurewebsites.net" >>"$GITHUB_STEP_SUMMARY"
