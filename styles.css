@@ -9725,8 +9725,8 @@ button.astral-value-pill.astral-tip-host {
 }
 
 .astral-ref-label {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-semibold);
   fill: var(--color-red-700, #b42318);
   paint-order: stroke;
   stroke: #fff;
@@ -9857,7 +9857,7 @@ button.astral-value-pill.astral-tip-host {
 
 .astral-chart .astral-weekend-day {
   fill: var(--color-text-primary);
-  font-size: 10px;
+  font-size: var(--font-size-12);
   font-weight: var(--font-weight-medium);
 }
 
@@ -9885,7 +9885,7 @@ button.astral-value-pill.astral-tip-host {
 
 .astral-chart .astral-pending-label {
   fill: var(--color-text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-12);
   font-weight: var(--font-weight-medium);
 }
 

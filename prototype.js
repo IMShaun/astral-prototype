@@ -4628,7 +4628,7 @@ function protoWeekendLayer(count, pad, w, h, spanOf) {
     return b - a;
   })();
   const labels =
-    colW >= 22
+    colW >= 26
       ? days
           .map((day, i) => {
             if (!out.flags[i]) return "";
