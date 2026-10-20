@@ -11238,8 +11238,8 @@ button.astral-value-pill.astral-tip-host {
   width: auto;
 }
 
-.astral-people .astral-people-col-team {
-  width: 8.5rem;
+.astral-people .astral-people-col-email {
+  width: auto;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

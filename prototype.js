@@ -37497,6 +37497,7 @@ function protoUsersMatchPerson(person, q, picked) {
 function protoUsersSorted(people) {
   return protoSortedRows("users", people, (person, key) => {
     if (key === "name") return person.name;
+    if (key === "email") return person.email || "";
     if (key === "team") return protoTeamsForPerson(person.id).join(", ");
     if (key === "role") return protoUserRoleName(person.role);
     if (key === "expiry") {
@@ -37510,14 +37511,13 @@ function protoUsersSorted(people) {
 function protoUsersTable(people, pool, showTeam, scope) {
   const canManage = protoCanManagePeople();
   const menu = store.prototypeUserMenu || "";
-  const cols = showTeam ? 5 : 4;
+  const cols = 5;
   const rows =
     people
       .map((person) => {
         // A person can sit in several team tables, so menus are keyed per table.
         const menuKey = `${scope}|${person.id}`;
         const open = menu === menuKey;
-        const teamNames = protoTeamsForPerson(person.id);
         const state = protoPersonState(person);
         const dots = protoShowsImserv();
         const tags = [
@@ -37537,25 +37537,13 @@ function protoUsersTable(people, pool, showTeam, scope) {
                 ${protoPersonFace(
                   protoUserInitials(person),
                   person.name,
-                  person.you
-                    ? protoProfileJobTitle() || "Contact still waits"
-                    : person.name === person.email
-                      ? ""
-                      : person.email,
+                  person.you ? protoProfileJobTitle() || "Contact still waits" : "",
                   tags,
                   dots ? protoPresenceDot(state) : ""
                 )}
               ${canManage ? "</button>" : "</span>"}
             </th>
-            ${
-              showTeam
-                ? `<td class="astral-people-col-team">${
-                    teamNames.length
-                      ? escapeHtml(teamNames.join(", "))
-                      : `<span class="astral-muted">None</span>`
-                  }</td>`
-                : ""
-            }
+            <td class="astral-people-col-email">${escapeHtml(person.email || "")}</td>
             <td class="astral-people-col-role">
               ${
                 protoCanEditPersonRole(person)
@@ -37615,7 +37603,7 @@ function protoUsersTable(people, pool, showTeam, scope) {
           <thead>
             <tr>
               ${protoSortHead("users", "name", "Name", "astral-people-col-name")}
-              ${showTeam ? protoSortHead("users", "team", "Team", "astral-people-col-team") : ""}
+              ${protoSortHead("users", "email", "Email", "astral-people-col-email")}
               ${protoSortHead("users", "role", "Role", "astral-people-col-role")}
               ${protoSortHead("users", "expiry", "Expiry", "astral-people-col-expiry")}
               <th scope="col" class="astral-people-col-more"><span class="sr-only">More</span></th>
