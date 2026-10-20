@@ -10310,14 +10310,14 @@ button.astral-value-pill.astral-tip-host {
 
 .astral-tip-note {
   color: var(--color-text-secondary);
-  font-size: 0.85rem;
+  font-size: var(--font-size-14);
 }
 
 .astral-tip-zones {
   display: grid;
   gap: 4px;
   margin: 4px 0 0;
-  font-size: 0.85rem;
+  font-size: var(--font-size-14);
 }
 
 .astral-tip-zones[hidden] {
@@ -11687,12 +11687,12 @@ tbody tr:has(.astral-people-more [aria-expanded="true"]) {
 }
 
 .astral-company-meter-state > .astral-muted {
-  font-size: 0.85rem;
+  font-size: var(--font-size-14);
 }
 
 .astral-people-count {
   color: var(--color-text-secondary);
-  font-size: 0.85rem;
+  font-size: var(--font-size-14);
 }
 
 .astral-people-folds > .astral-people-count {
@@ -14823,7 +14823,7 @@ tbody tr:has(.astral-people-more [aria-expanded="true"]) {
 
 .astral-picker-hex span {
   color: #737373;
-  font-size: 0.85rem;
+  font-size: var(--font-size-14);
 }
 
 .astral-picker-hex input {
