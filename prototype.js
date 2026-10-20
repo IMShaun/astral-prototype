@@ -21628,6 +21628,7 @@ function protoExportPrefs() {
     time: raw.time === "uk" ? "uk" : "utc",
     ids: raw.ids === true,
     details: raw.details === true,
+    complete: raw.complete === true,
     ...protoDataOpts(raw),
     // Source data dates work like the Reports date range. Exact dates start as the graph's dates.
     rangeMode: PROTO_REPORT_RANGE_MODES.some((item) => item.id === raw.rangeMode) ? raw.rangeMode : "dates",
@@ -21834,8 +21835,11 @@ function protoExportSummary(state) {
     if (hh) extras.push(...protoDataWords(prefs, protoDataHasElectricity(protoExportSourceMeters(file))));
     if (prefs.quality === "actual") extras.push("actual readings only");
     if (prefs.time === "uk" && hh) extras.push("in UK time");
-    if (prefs.ids && (!hh || prefs.totals === "meter")) extras.push("with meter IDs");
-    if (prefs.details && (!hh || prefs.totals === "meter" || prefs.totals === "site")) extras.push("with site details");
+    const withs = [];
+    if (prefs.complete && hh && prefs.totals === "meter") withs.push("completeness");
+    if (prefs.ids && (!hh || prefs.totals === "meter")) withs.push("meter IDs");
+    if (prefs.details && (!hh || prefs.totals === "meter" || prefs.totals === "site")) withs.push("site details");
+    if (withs.length) extras.push(`with ${protoListWords(withs)}`);
     if (extras.length) text += `, ${extras.join(", ")}`;
   } else {
     text += ` as ${what === "image" ? "PNG" : PROTO_EXPORT_SUM_FORMAT.csv}`;
@@ -21990,6 +21994,7 @@ function protoExportPreviewRows(state) {
     time: prefs.time,
     ids: prefs.ids,
     details: prefs.details,
+    complete: prefs.complete,
     ...opts,
     meters: meters.map((m) => m.id),
   };
@@ -22084,6 +22089,7 @@ function protoExportReviewRows(state) {
   const datesOk = dates.from && dates.to && protoDayStamp(dates.from) <= protoDayStamp(dates.to);
   const extras = [];
   if (!reads && opts.flags) extras.push("quality flags");
+  if (prefs.complete && !reads && opts.totals === "meter") extras.push("completeness");
   if (prefs.ids && (reads || opts.totals === "meter")) extras.push("meter IDs");
   if (prefs.details && (reads || opts.totals === "meter" || opts.totals === "site")) extras.push("site details");
   const extra = protoListWords(extras);
@@ -22160,6 +22166,9 @@ function protoExportStageHtml(state) {
   const format = protoReportOptionSelect("export-format", "Format", PROTO_EXPORT_SOURCE_FORMATS, prefs.format);
   const extras = [
     reads ? "" : protoDataFlagsCheck("data-proto-export-flags", opts.flags),
+    !reads && opts.totals === "meter"
+      ? protoDataCheck("Include completeness", prefs.complete, "data-proto-export-complete")
+      : "",
     ids ? protoDataCheck("Include meter IDs", prefs.ids, "data-proto-export-ids") : "",
     details ? protoDataCheck("Include site details", prefs.details, "data-proto-export-details") : "",
   ].join("");
@@ -22416,6 +22425,7 @@ async function protoExportGo() {
         time: prefs.time,
         ids: prefs.ids,
         details: prefs.details,
+        complete: prefs.complete,
         ...protoDataOpts(prefs),
         meters: protoExportSourceMeters(file).map((meter) => meter.id),
       },
@@ -28904,6 +28914,7 @@ function protoExportSpecFrom(raw) {
     time: raw.time === "uk" ? "uk" : "utc",
     ids: raw.ids === true,
     details: raw.details === true,
+    complete: raw.complete === true,
     ...protoDataOpts(raw),
     meters: (Array.isArray(raw.meters) ? raw.meters : []).map(String).slice(0, 1000),
   };
@@ -39052,9 +39063,21 @@ function protoDataBuild(meters, days, opts, quality, time) {
         // The same half-hour as the meter's Channels tab, so the file and the tab agree.
         const slot = model && reading !== "missing" ? protoPowerSlot(model, kwh, `${iso}|${i}`) : null;
         ones.forEach(({ one, q }) => {
-          const cell = one.cells.get(bkey) || { sum: 0, kvah: 0, has: false, slots: new Set(), quality: "actual", meters: new Set() };
+          const cell = one.cells.get(bkey) || {
+            sum: 0,
+            kvah: 0,
+            has: false,
+            slots: new Set(),
+            quality: "actual",
+            meters: new Set(),
+            estimated: new Set(),
+            missing: new Set(),
+          };
           cell.meters.add(meter.id);
           if (rank[reading] > rank[cell.quality]) cell.quality = reading;
+          // Completeness counts the half-hours behind the value, as TMA's Estimated and Missing periods do.
+          if (reading === "estimated") cell.estimated.add(`${meter.id}|${iso}|${i}`);
+          if (reading === "missing") cell.missing.add(`${meter.id}|${iso}|${i}`);
           if (reading !== "missing") {
             cell.sum += q.read === "kwh" ? kwh : slot[q.read];
             cell.has = true;
@@ -39117,6 +39140,8 @@ function protoSourceRows(fileId, spec) {
   // Meter IDs belong to one meter point, so a total has none. Site details need a site, so a group or a total has none.
   const ids = spec.ids && opts.totals === "meter";
   const details = spec.details && (opts.totals === "meter" || opts.totals === "site");
+  // Completeness is for each meter point, like TMA's Consumption and Generation reports.
+  const complete = spec.complete && opts.totals === "meter";
   const quantity = spec.quantity ?? (protoDataMqReactive(opts) && protoDataHasElectricity(meters));
   const lead =
     opts.totals === "meter"
@@ -39136,6 +39161,7 @@ function protoSourceRows(fileId, spec) {
     "Unit",
   ];
   if (opts.flags) headers.push("Quality");
+  if (complete) headers.push(...PROTO_DATA_COMPLETE_HEADS);
   if (ids) headers.push(...PROTO_DATA_ID_HEADS);
   const rows = [];
   series.forEach((one) => {
@@ -39156,7 +39182,8 @@ function protoSourceRows(fileId, spec) {
     ];
     buckets.forEach((bucket) => {
       const cell = one.cells.get(bucket.key);
-      if (!cell || !cell.ok) return;
+      // With completeness, a value outside the quality picked keeps its row, blank, so the counts still say why.
+      if (!cell || (!cell.ok && !complete)) return;
       const row = [
         ...name,
         ...protoDataWhenCells(opts.interval, bucket),
@@ -39166,6 +39193,7 @@ function protoSourceRows(fileId, spec) {
         one.unit,
       ];
       if (opts.flags) row.push(protoDataQualityName(cell.quality));
+      if (complete) row.push(cell.missing.size ? "Incomplete" : "Complete", cell.estimated.size, cell.missing.size);
       if (ids) {
         const span = protoDataBucketDays(bucket, opts.interval);
         row.push(source, protoDataSerials(installs, span.from, span.to), stream);
@@ -39178,6 +39206,7 @@ function protoSourceRows(fileId, spec) {
 }
 
 const PROTO_DATA_ID_HEADS = ["Source ID", "Meter serial", "Stream"];
+const PROTO_DATA_COMPLETE_HEADS = ["Completeness", "Estimated half-hours", "Missing half-hours"];
 const PROTO_DATA_SITE_HEADS = ["Address", "Town", "Postcode"];
 
 // A row per meter point per read. Since last read gives the monthly total, such as the export for a Feed-in Tariff claim.
@@ -43344,6 +43373,11 @@ function onPrototype(event) {
   if (event.target.closest("[data-proto-export-details]")) {
     protoSetExportPrefs({ details: !protoExportPrefs().details });
     protoRestoreFocus("#astral-fs [data-proto-export-details]");
+    return;
+  }
+  if (event.target.closest("[data-proto-export-complete]")) {
+    protoSetExportPrefs({ complete: !protoExportPrefs().complete });
+    protoRestoreFocus("#astral-fs [data-proto-export-complete]");
     return;
   }
   const exportMq = event.target.closest("[data-proto-export-mq]");

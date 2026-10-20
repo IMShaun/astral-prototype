@@ -316,7 +316,7 @@
         {
           "id": "tma-gap-h4",
           "title": "TMA gap H4: Generation and consumption reports",
-          "note": "The main reasons customers log in. Astral builds this in the prototype. Anna adds both as V1 report rows.",
+          "note": "The main reasons customers log in. Export > Source data covers both: Active import is consumption, Active export is generation, and Include completeness adds Completeness, Estimated half-hours and Missing half-hours for each meter point. Monthly or Running total gives the totals, and Peak and off-peak stands in for Day and Night. Anna adds both as V1 report rows.",
           "project": "Astral",
           "kind": "ux",
           "added": "2026-10-16"
