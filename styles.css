@@ -15258,6 +15258,13 @@ button.astral-state:focus-visible,
     margin-inline-end: 0;
   }
 
+  /* A pane card scrolls inside itself, so it needs the stage height, not its content height. */
+  .astral-stage-body:has(> .astral-pane:only-child) {
+    flex: 1 0 auto;
+    height: 0;
+    min-height: 420px;
+  }
+
   .astral-split {
     overflow: visible;
     flex: none;
