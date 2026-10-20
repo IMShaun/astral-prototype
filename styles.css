@@ -9845,14 +9845,9 @@ button.astral-value-pill.astral-tip-host {
   margin-right: 6px;
 }
 
-/* Highlight weekends: dotted shading, a bar on top and Sat or Sun under the axis, so colour is never the only cue. */
+/* Highlight weekends: dotted shading, so colour is never the only cue. */
 .astral-weekend-band {
   fill: url(#astral-weekend-dots);
-}
-
-.astral-weekend-top {
-  fill: var(--color-text-secondary);
-  opacity: 0.55;
 }
 
 .astral-weekend-mark {
@@ -9860,7 +9855,6 @@ button.astral-value-pill.astral-tip-host {
   flex: none;
   width: 18px;
   height: 12px;
-  border-top: 3px solid var(--color-text-secondary);
   border-radius: 2px;
   background: radial-gradient(circle, #c4c4cc 1.1px, transparent 1.4px) 0 0 / 5px 5px, #f3f3f6;
 }

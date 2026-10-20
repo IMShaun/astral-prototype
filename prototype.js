@@ -4597,7 +4597,7 @@ function protoWeekendSwitch() {
   );
 }
 
-// Shading with a dotted pattern and a bar along the top, so it never relies on colour.
+// Shading with a dotted pattern, so it never relies on colour.
 function protoWeekendLayer(count, pad, w, h, spanOf) {
   const out = { back: "", axis: "", flags: [] };
   if (!count || !protoWeekendOn()) return out;
@@ -4620,7 +4620,7 @@ function protoWeekendLayer(count, pad, w, h, spanOf) {
       const width = Math.max(0, x1 - x0).toFixed(1);
       return `<rect class="astral-weekend-band" data-m="wk|${n}" x="${x0.toFixed(1)}" y="${pad.t}" width="${width}" height="${(
         bottom - pad.t
-      ).toFixed(1)}" /><rect class="astral-weekend-top" data-m="wkt|${n}" x="${x0.toFixed(1)}" y="${pad.t - 5}" width="${width}" height="3" rx="1.5" />`;
+      ).toFixed(1)}" />`;
     })
     .join("");
   out.back = `<g class="astral-weekend" aria-hidden="true"><defs><pattern id="astral-weekend-dots" width="7" height="7" patternUnits="userSpaceOnUse"><rect width="7" height="7" fill="#f3f3f6" /><circle cx="3.5" cy="3.5" r="1.1" fill="#c4c4cc" /></pattern></defs>${bands}</g>`;
