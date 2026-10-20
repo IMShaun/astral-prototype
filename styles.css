@@ -1708,22 +1708,22 @@ button.chip {
 }
 
 .ds-preview .ds-count.is-filter .astral-count {
-  width: 18px;
-  height: 18px;
-  font-size: 0.7rem;
+  width: 20px;
+  height: 20px;
+  font-size: var(--font-size-12);
 }
 
 .ds-preview .ds-count.is-compare .astral-count {
   width: 22px;
   height: 22px;
   padding: 0;
-  font-size: 0.8rem;
+  font-size: var(--font-size-12);
 }
 
 .ds-preview .astral-filter .astral-count {
   position: absolute;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
 }
 
 .ds-icon-row {
@@ -4102,10 +4102,10 @@ button.astral-avatar {
   position: absolute;
   top: -4px;
   right: -4px;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   padding: 0;
-  font-size: 0.7rem;
+  font-size: var(--font-size-12);
   pointer-events: none;
 }
 
@@ -5106,10 +5106,10 @@ button.astral-catch {
   position: absolute;
   top: -4px;
   right: -4px;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   padding: 0;
-  font-size: 0.7rem;
+  font-size: var(--font-size-12);
   pointer-events: none;
 }
 
@@ -5798,7 +5798,7 @@ button.astral-catch {
   width: 22px;
   height: 22px;
   padding: 0;
-  font-size: 0.8rem;
+  font-size: var(--font-size-12);
 }
 
 .astral-compare-clear {
