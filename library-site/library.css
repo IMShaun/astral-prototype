@@ -305,6 +305,32 @@ html:has(.lib-root),
   grid-template-columns: 1fr;
 }
 
+.lib-process p,
+.lib-process-list {
+  margin: 0;
+  max-width: 48rem;
+}
+
+.lib-process-list {
+  display: grid;
+  gap: 6px;
+  padding-left: 1.25rem;
+}
+
+.lib-pane.lib-process > h3 {
+  margin-top: 16px;
+  font-size: 1.125rem;
+}
+
+.lib-process-prompt {
+  display: grid;
+  gap: 8px;
+}
+
+.lib-process-prompt .lib-code {
+  white-space: pre-wrap;
+}
+
 /* Access visuals: three layers, company and groups, two people. */
 .lib-acc-fig,
 .lib-acc-part-block {

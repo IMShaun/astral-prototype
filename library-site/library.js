@@ -28,6 +28,7 @@
   let featureId = "";
   let featureSectionId = "";
   let featureStoryId = "";
+  let processStep = "overview";
 
   (data.tokens || []).forEach((token) => {
     if (token.cssVar && token.value) {
@@ -1555,6 +1556,280 @@
     ].join("");
   }
 
+  // Process is a plain guide for people who are not technical. Each prompt has its own Copy prompt button.
+  const PROCESS_UPDATE_PROMPT = `Please make sure my copy of the Astral prototype is up to date and has the
+astral-user-stories skill. I am not technical, so explain each step in plain
+words and ask me before anything risky.
+
+- The latest version is at https://imserv.ghe.com/imserv/astral-prototype.git
+  on the main branch. It must include commit 2d7161d or later.
+- Never delete or overwrite my work. If I have unsaved changes, put them
+  safely aside with git stash and tell me.
+- If signing in fails, stop and tell me what to do. Do not try other addresses.
+- If my copy has changes that are not on the latest version, stop and ask me.
+- When done, check these files exist and tell me in one line:
+  .cursor/skills/astral-user-stories/SKILL.md
+  .cursor/skills/astral-user-stories/references/library-stories.md
+  .github/skills/astral-user-stories/SKILL.md
+- Then start the prototype on my computer and open the Library in the
+  browser panel at http://127.0.0.1:5190/library-site/ on the Features page.`;
+
+  const PROCESS_WRITE_PROMPT = `Use the astral-user-stories skill. Follow
+.cursor/skills/astral-user-stories/references/library-stories.md in full.
+
+Write Library user stories, with a Play demo for every acceptance criterion, for:
+Area: {for example Portfolio, Demand tab}
+Notes: {paste your meeting notes or description, or write "none"}
+
+I am not technical. Before you start, show me the stories that already exist
+for this area so we do not write the same one twice. When you finish, give me
+a short plain list of each story and how many checks it has, anything you could
+not show in a demo, and any questions. Do not save anything to Azure yet.`;
+
+  const PROCESS_SEND_PROMPT = `The stories look right. Save only the story file, the new demo pictures and
+the demo tool. Ask me before you send anything. Send them to a new branch
+called stories/{area}, never straight to main, and give me the link to send
+to Shaun.`;
+
+  const PROCESS_AZURE_PROMPT = `Use the astral-user-stories skill and my Azure DevOps MCP to copy the new
+Library stories for {area} into Azure DevOps, under the Feature {Feature name
+or number}.
+
+- If the Azure DevOps tools are not working, stop and tell me how to turn them on.
+- Look for stories that already exist first and do not create the same one twice.
+- Never change a Ready story or one assigned to Charanjit.
+- Create every story as New with no story points.
+- Add each story's Library link.
+- Before you save anything, show me a plain list of each story you will
+  create, with its title and checks, and wait for me to say yes.
+- After saving, give me each Azure number and title.`;
+
+  const PROCESS_CHANGE_PROMPT = `Use the astral-user-stories skill. I need to change an existing story.
+
+Story: {the story name, the Library link, or the Azure number}
+What changed: {paste the feedback or meeting notes, or describe it}
+Where to change it: {Library, Azure, or both}
+
+I am not technical. First, read the story as it is now in the Library and in
+Azure, including its comments. Then show me, in plain words, exactly what you
+will change and what you will leave alone. Do not change anything until I say
+yes.
+
+- Never change a Ready story or one assigned to Charanjit. If it is one of
+  those, stop and tell me to ask Shaun.
+- Do not change the status or story points.
+- Keep the history. Put the reason for the change in the Azure Comments.
+- If the prototype and the feedback disagree, ask me which is right.
+- If the Library changed, redo the Play demos for the checks you changed,
+  then save and send the change to Shaun as in Write new stories, step 3.`;
+
+  const PROCESS_STEPS = [
+    {
+      id: "overview",
+      name: "How it works",
+      summary:
+        "Copilot writes the user stories for you. You choose what to write about, check what it gives you, and approve anything before it goes into Azure DevOps. You do not need to know how to code.",
+      blocks: [
+        { h: "Two jobs" },
+        {
+          table: {
+            columns: ["Job", "When to use it", "What happens"],
+            rows: [
+              [
+                "Write new stories",
+                "A screen or area of the prototype has no stories yet",
+                "Copilot writes the stories in the Library. You check them. Shaun publishes them. Copilot copies them into Azure DevOps once you approve them.",
+              ],
+              [
+                "Change stories",
+                "After refinement, when the prototype changes, or when someone gives feedback",
+                "Copilot shows you the change first. It updates the Library, Azure DevOps or both once you say yes.",
+              ],
+            ],
+          },
+        },
+        { h: "Who does what" },
+        {
+          table: {
+            columns: ["Who", "What they do"],
+            rows: [
+              ["You", "Choose the area, add meeting notes, check the stories, and approve anything before it goes into Azure DevOps."],
+              ["Copilot", "Reads the prototype, writes the stories, makes the Play demos, and fills in Azure DevOps."],
+              ["Shaun", "Publishes the Library, moves stories to Refinement and Ready, and agrees story points."],
+            ],
+          },
+        },
+        { h: "Three rules that keep everyone safe" },
+        {
+          ol: [
+            "Copilot always asks before it saves anything to Azure DevOps. Read what it shows you. If you are not sure, say no and ask Shaun.",
+            "Never let Copilot change a story marked Ready, or a story assigned to Charanjit.",
+            "New stories always go into Azure DevOps as New, with no story points. Shaun does the rest.",
+          ],
+        },
+        { h: "Words you will see" },
+        {
+          table: {
+            columns: ["Word", "What it means"],
+            rows: [
+              ["Prototype", "The clickable mock-up of Astral. It shows how each screen should work."],
+              ["Library", "This website. Its Features page holds every user story."],
+              ["User story", "One thing a person wants to do, such as read the peak demand for a site. Developers build from it."],
+              ["Acceptance criteria", "The checks that prove a story works. Each one reads Given (where you are), When (what you do), and Then (what you see)."],
+              ["Play demo", "A short slideshow on each check, showing someone doing it in the prototype."],
+              ["Repository", "The folder that holds the prototype and the Library. Everyone has their own copy, and a copy can go out of date."],
+              ["Skill", "A set of instructions Copilot reads so it writes stories our way. Ours is called astral-user-stories."],
+              ["Azure DevOps", "Where the developers pick up work. Stories end up here."],
+              ["MCP", "The connection you installed from the Microsoft Store that lets Copilot read and write Azure DevOps for you."],
+            ],
+          },
+        },
+      ],
+    },
+    {
+      id: "start",
+      name: "Before you start",
+      summary: "Do this once, and again whenever Shaun says there is a new version.",
+      blocks: [
+        {
+          ol: [
+            "Open Copilot on your copy of the Astral prototype folder.",
+            "Select Copy prompt below, paste it into Copilot, and press Enter.",
+            "Answer any questions Copilot asks. If it asks you to sign in, use your IMSERV account.",
+          ],
+        },
+        { prompt: PROCESS_UPDATE_PROMPT },
+        { h: "What you should see" },
+        { p: "Copilot says your copy is up to date and the skill is there. The Library opens in a panel on the right." },
+        { p: "If Copilot does not seem to know the skill afterwards, close Copilot and open it again on the same folder." },
+      ],
+    },
+    {
+      id: "new",
+      name: "Write new stories",
+      summary: "Four steps from an area of the prototype to stories in Azure DevOps.",
+      blocks: [
+        { h: "Step 1. Ask Copilot to write the stories" },
+        { p: "Copy the prompt, fill in the two parts in curly brackets, then paste it into Copilot." },
+        { prompt: PROCESS_WRITE_PROMPT },
+        { p: "This often takes 30 minutes or more. Copilot clicks around the prototype and takes screenshots on its own. Leave it running." },
+        { h: "Step 2. Check the stories in the Library" },
+        { p: "In the Library panel, open Features, then your area, then each new story. For each one, check the following." },
+        {
+          ul: [
+            "The opening sentence, which starts \"As a user, I want to\", makes sense.",
+            "Each check describes something you can see on the screen.",
+            "Select Play demo on a few checks. The last picture shows what the check says.",
+            "Select Open in prototype. It opens on the right screen.",
+          ],
+        },
+        { p: "If something is wrong, tell Copilot in your own words, such as \"In the Read the peak demand story, the third check names the wrong button\". It will fix it." },
+        { h: "Step 3. Send the stories to Shaun" },
+        { p: "When you are happy with the stories, paste this into Copilot with your area filled in." },
+        { prompt: PROCESS_SEND_PROMPT },
+        { p: "Send Shaun the link Copilot gives you. Once he publishes the stories, anyone can open them from the Library, and Azure DevOps links to them." },
+        { h: "Step 4. Copy the stories into Azure DevOps" },
+        { p: "Wait until Shaun says the stories are published. Fill in your area and the Azure DevOps Feature, then paste this into Copilot." },
+        { prompt: PROCESS_AZURE_PROMPT },
+        { p: "Copilot shows you a list of the stories it plans to create. Read it, then type yes, or say what to change. Afterwards it gives you the Azure DevOps numbers. Open one or two in Azure DevOps to check they look right." },
+      ],
+    },
+    {
+      id: "change",
+      name: "Change stories",
+      summary: "Use this after refinement, when the prototype changes, or when someone gives feedback on a story that already exists.",
+      blocks: [
+        {
+          ol: [
+            "Copy the prompt and fill in the three parts in curly brackets.",
+            "Paste it into Copilot.",
+            "Copilot reads the story and shows you a before and after.",
+            "Check it matches what was agreed, then type yes.",
+          ],
+        },
+        { prompt: PROCESS_CHANGE_PROMPT },
+        { h: "Bigger changes" },
+        { p: "If the feedback means one story should become two, Copilot suggests the split and explains why. Say yes only if it matches what was agreed in the meeting." },
+      ],
+    },
+    {
+      id: "help",
+      name: "If something goes wrong",
+      summary: "Nothing is saved until you say yes, so you can always stop and ask.",
+      blocks: [
+        {
+          table: {
+            columns: ["What happens", "What to do"],
+            rows: [
+              ["Copilot asks a question you do not understand", "Reply \"Please explain that in plain words\"."],
+              ["Copilot says it cannot sign in", "Follow its sign-in link. If it still fails, send Shaun a screenshot."],
+              ["The Library panel is blank", "Ask Copilot \"Please start the prototype again and reopen the Library\"."],
+              ["The Azure DevOps tools are not working", "Check the MCP app from the Microsoft Store is running and signed in, then close and reopen Copilot."],
+              ["A Play demo shows the wrong thing", "Tell Copilot which story and check, and what is wrong."],
+              ["You are not sure whether to say yes", "Say no, and ask Shaun."],
+            ],
+          },
+        },
+      ],
+    },
+  ];
+
+  function processBlock(block, key) {
+    if (block.h) return `<h3>${esc(block.h)}</h3>`;
+    if (block.p) return `<p>${esc(block.p)}</p>`;
+    if (block.ol || block.ul) {
+      const tag = block.ol ? "ol" : "ul";
+      return `<${tag} class="lib-process-list">${(block.ol || block.ul).map((item) => `<li>${esc(item)}</li>`).join("")}</${tag}>`;
+    }
+    if (block.prompt) {
+      return `
+        <div class="lib-process-prompt">
+          <div class="lib-code-head">
+            <p class="lib-help">Paste this into Copilot</p>
+            <button type="button" class="lib-ghost" data-lib-copy-prompt="${esc(key)}"><span data-lib-copy-label>Copy prompt</span></button>
+          </div>
+          <pre class="lib-code"><code>${esc(block.prompt)}</code></pre>
+        </div>
+      `;
+    }
+    if (block.table) {
+      return `
+        <table class="lib-token-table lib-access-table">
+          <thead><tr>${block.table.columns.map((col) => `<th>${esc(col)}</th>`).join("")}</tr></thead>
+          <tbody>${block.table.rows.map((row) => `<tr>${row.map((cell) => `<td>${esc(cell)}</td>`).join("")}</tr>`).join("")}</tbody>
+        </table>
+      `;
+    }
+    return "";
+  }
+
+  function processPage() {
+    const step = PROCESS_STEPS.find((item) => item.id === processStep) || PROCESS_STEPS[0];
+    return `
+      <section class="lib-lead">
+        <h1>Process</h1>
+        <p>How we write user stories with Copilot, check them in the Library, and move them into Azure DevOps.</p>
+      </section>
+      <div class="lib-split">
+        <nav class="lib-list" aria-label="Process">
+          ${PROCESS_STEPS.map(
+            (item) =>
+              `<button type="button" data-process-step="${esc(item.id)}" class="${item.id === step.id ? "is-on" : ""}"${
+                item.id === step.id ? ' aria-current="page"' : ""
+              }>${esc(item.name)}</button>`
+          ).join("")}
+        </nav>
+        <div class="lib-pane lib-process">
+          <div>
+            <h2>${esc(step.name)}</h2>
+            <p class="lib-help">${esc(step.summary)}</p>
+          </div>
+          ${step.blocks.map((block, index) => processBlock(block, `${step.id}-${index}`)).join("")}
+        </div>
+      </div>
+    `;
+  }
+
   function accessPage() {
     const layers = accessLayers();
     const layer = layers.find((item) => item.id === accessLayer) || layers[0];
@@ -1631,6 +1906,7 @@
     if (page === "tokens") main.innerHTML = tokensPage();
     else if (page === "components") main.innerHTML = componentPage();
     else if (page === "features") main.innerHTML = featuresPage();
+    else if (page === "process") main.innerHTML = processPage();
     else if (page === "access") main.innerHTML = accessPage();
     else if (page === "files") main.innerHTML = filesPage();
     else main.innerHTML = startPage();
@@ -1665,6 +1941,12 @@
       }
       return;
     }
+    if (raw === "process" || raw.startsWith("process/")) {
+      page = "process";
+      const id = raw.split("/")[1] || "overview";
+      processStep = PROCESS_STEPS.some((item) => item.id === id) ? id : "overview";
+      return;
+    }
     if (raw === "access" || raw.startsWith("access/")) {
       page = "access";
       accessLayer = raw.split("/")[1] || accessLayer;
@@ -1692,6 +1974,7 @@
       const where = ["features", featureId, featureSectionId, featureStoryId].filter(Boolean);
       location.hash = where.join("/");
     }
+    else if (page === "process") location.hash = `process/${processStep}`;
     else if (page === "access") location.hash = `access/${accessLayer}`;
     else if (page === "files") location.hash = "files";
     else location.hash = "start";
@@ -2042,6 +2325,13 @@
       render();
       return;
     }
+    const processBtn = event.target.closest("[data-process-step]");
+    if (processBtn) {
+      processStep = processBtn.dataset.processStep;
+      writeHash();
+      render();
+      return;
+    }
     const layerBtn = event.target.closest("[data-access-layer]");
     if (layerBtn) {
       accessLayer = layerBtn.dataset.accessLayer;
@@ -2102,6 +2392,14 @@
     const copyLinkBtn = event.target.closest("[data-lib-copy-link]");
     if (copyLinkBtn) {
       copyLink(copyLinkBtn);
+      return;
+    }
+    const copyPromptBtn = event.target.closest("[data-lib-copy-prompt]");
+    if (copyPromptBtn) {
+      const [stepId, index] = copyPromptBtn.dataset.libCopyPrompt.split(/-(?=\d+$)/);
+      const step = PROCESS_STEPS.find((item) => item.id === stepId);
+      const block = step && step.blocks[Number(index)];
+      if (block && block.prompt) copyWithFeedback(copyPromptBtn, block.prompt, "Copy prompt", "Prompt copied");
       return;
     }
     const copyStoryBtn = event.target.closest("[data-lib-copy-story]");
