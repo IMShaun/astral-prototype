@@ -69,14 +69,14 @@
   const T = (head, rows, widths) => ({ t: "table", head, rows, widths });
   const rate = (r) => `<span class="rate ${r.toLowerCase()}">${r}</span>`;
   // Prototype status, kept by Shaun. Clive's register content is unchanged; these columns are added.
-  const STATUS = { done: "Done", partly: "Partly done", working: "Working on", todo: "To do", out: "Outside team", unbuilt: "Not built", remove: "To remove", kept: "Kept for now" };
-  const st = (s) => `<span class="st ${s === "remove" ? "todo" : s === "unbuilt" || s === "kept" ? "out" : s}">${STATUS[s]}</span>`;
+  const STATUS = { done: "Done", partly: "Partly done", working: "Working on", todo: "To do", out: "Outside team",   unbuilt: "Not built", kept: "Kept" };
+    const st = (s) => `<span class="st ${s === "unbuilt" || s === "kept" ? "out" : s}">${STATUS[s]}</span>`;
   const pri = (n) => (n ? `<span class="pri">${n}</span>` : "");
   const OURS = {
     C1: ["done"], C2: ["done"], C3: ["out"], C4: ["out"], C5: ["done"], C6: ["out"],
-    H1: ["done"], H3: ["working", 5], H4: ["done"], H6: ["partly", 2], H7: ["out"], H8: ["out"], H9: ["out"],
-    M1: ["todo", 3], M2: ["todo", 4], M3: ["out"], M4: ["out"], M5: ["out"], M6: ["out"], M7: ["out"], M8: ["out"], M9: ["out"], M10: ["out"], M11: ["out"], M12: ["out"],
-    L1: ["done"], L2: ["todo", 7], L3: ["todo", 8], L4: ["done"],
+    H1: ["done"], H3: ["working", 4], H4: ["done"], H6: ["partly", 1], H7: ["out"], H8: ["out"], H9: ["out"],
+    M1: ["todo", 2], M2: ["todo", 3], M3: ["out"], M4: ["out"], M5: ["out"], M6: ["out"], M7: ["out"], M8: ["out"], M9: ["out"], M10: ["out"], M11: ["out"], M12: ["out"],
+    L1: ["done"], L2: ["todo", 5], L3: ["todo", 6], L4: ["done"],
   };
   const ours = (id) => [st(OURS[id][0]), pri(OURS[id][1])];
 
@@ -106,15 +106,14 @@
       <span>${pri(1)}Order of work</span>
     </div>` },
     T(["Next", "Work", "Status", "Why"], [
-      [pri(1), "Remove the Peak and off-peak option from Export and the Data extract report", st("todo"), "The drop list says not to rebuild the TOU download option"],
-      [pri(2), "H6: show related import and export MPANs and the MPAN type in site attributes", st("partly"), "The meter view already pairs import and export; site attributes do not"],
-      [pri(3), "M1: profile table per channel, with the summary block", st("todo"), "The next gap with Shaun as owner"],
-      [pri(4), "M2: Compare Data in three modes, with summary statistics", st("todo"), "Shaun confirms modes 2 and 3 first"],
-      [pri(5), "H3: finish group access", st("working"), "The access map is in the Library; waits on Gordon for V1 and many-to-many"],
-      [pri(6), "Check the DC/DA report type in Reports", st("todo"), "No DC/DA report was shown in TMA; remove it unless one exists"],
-      [pri(7), "L2: notices panel", st("todo"), "Low; a banner on the help framework"],
-      [pri(8), "L3: Features and Help pages", st("todo"), "Low; no help screens in the prototype yet"],
+      [pri(1), "H6: show related import and export MPANs and the MPAN type in site attributes", st("partly"), "The meter view already pairs import and export; site attributes do not"],
+      [pri(2), "M1: profile table per channel, with the summary block", st("todo"), "The next gap with Shaun as owner"],
+      [pri(3), "M2: Compare Data in three modes, with summary statistics", st("todo"), "Shaun confirms modes 2 and 3 first"],
+      [pri(4), "H3: finish group access", st("working"), "The access map is in the Library; waits on Gordon for V1 and many-to-many"],
+      [pri(5), "L2: notices panel", st("todo"), "Low; a banner on the help framework"],
+      [pri(6), "L3: Features and Help pages", st("todo"), "Low; no help screens in the prototype yet"],
     ], ["9mm", "", "18mm", ""]),
+    P("The prototype only adds. Anything it already shows stays, including the Peak and off-peak values option that the drop list would not rebuild."),
 
     H("Bottom line"),
     P("V1 as scoped replaces TMA's screens but not its data, feeds or complex-site handling, so on today's evidence it does not replace TMA."),
@@ -216,7 +215,7 @@
     T(["Feature", "Evidence", "Action", "Status", "Next"], [
       ["Bill Checker", "Jac: never used, never had a question about it; turned on only on request", "Drop. Scottish Water validate bills from exported data, which H1 covers", st("unbuilt"), ""],
       ["Water and gas commodities", "Jac: \"wishful thinking\", irrelevant", "Confirm before dropping: the TMA workbook holds gas MPRNs, which contradicts Jac", st("kept"), ""],
-      ["TOU data download option", "Jac: not many use it; the estate is mostly half-hourly", "Drop the option; keep TOU registers inside D10 export (C2)", st("remove"), pri(1)],
+      ["TOU data download option", "Jac: not many use it; the estate is mostly half-hourly", "Drop the option; keep TOU registers inside D10 export (C2)", st("kept"), ""],
       ["Billing-marker groups (for example, \"A. DC/DA Customer Invoicing via CDAM\")", "Used to tell the billing team what not to bill; Lorraine: business process, not portal", "Ops moves the marker to the billing system or Salesforce before switch-off", st("unbuilt"), ""],
       ["Manual upload screens (PRN/MTD, flow, site setup, appoint/assign, tariff)", "Most loading is automated; manual is the workaround", "Replace with the automated feed (C3); keep one admin exception route (M9)", st("unbuilt"), ""],
       ["MDR Scheduler", "The dialler's desktop tool, shown alongside the portal", "Out of Astral scope; stays with data collection", st("unbuilt"), ""],
