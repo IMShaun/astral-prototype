@@ -47,9 +47,9 @@ readiness rules below apply to Library stories too.
 
 - Read the live story, criteria, comments, estimates, attachments and links.
   Preserve concurrent edits and never reload an unsaved Azure draft.
-- Protect agreed Ready work, including cards assigned to Charanjit. Do not
+- Protect agreed Ready work, including cards assigned to any developer. Do not
   further split, reassign, repoint or demote it without explicit authorization
-  from Shaun. When a story update is authorized, clarify its existing boundary
+  from the business analyst. When a story update is authorized, clarify its existing boundary
   without silently resetting accepted decisions.
 - For cleanup limited to New and unassigned FE stories, require both conditions
   in the live item immediately before writing. Do not include Ready/assigned
@@ -330,7 +330,7 @@ Do not turn missing product decisions into acceptance requirements.
   support estimates/parallel work before every upstream implementation finishes.
   Keep execution prerequisites visible without automatically demoting an
   explicitly accepted Ready card.
-- Shaun manages New, Refinement and Ready. Mark only explicitly reviewed and
+- The business analyst manages New, Refinement and Ready. Mark only explicitly reviewed and
   authorized work Ready/assigned; do not apply that status to every new split.
   The developer owns Resolved and other delivery completion changes.
 

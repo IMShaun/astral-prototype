@@ -5296,7 +5296,7 @@ astral-user-stories skill. I am not technical, so explain each step in plain
 words and ask me before anything risky.
 
 - The latest version is at https://imserv.ghe.com/imserv/astral-prototype.git
-  on the main branch. It must include commit 2d7161d or later.
+  on the main branch.
 - Never delete or overwrite my work. If I have unsaved changes, put them
   safely aside with git stash and tell me.
 - If signing in fails, stop and tell me what to do. Do not try other addresses.
@@ -5304,7 +5304,10 @@ words and ask me before anything risky.
 - When done, check these files exist and tell me in one line:
   .cursor/skills/astral-user-stories/SKILL.md
   .cursor/skills/astral-user-stories/references/library-stories.md
-  .github/skills/astral-user-stories/SKILL.md
+  scripts/publish/publish.ps1
+- If no site password is saved on this computer yet, read
+  scripts/publish/README.md and open save-password.ps1 in its own window so
+  I can type the password there. Never ask me to type it into this chat.
 - Then start the prototype on my computer and open the Library in the
   browser panel at http://127.0.0.1:5190/library-site/ on the Features page.`;
 
@@ -5320,10 +5323,25 @@ for this area so we do not write the same one twice. When you finish, give me
 a short plain list of each story and how many checks it has, anything you could
 not show in a demo, and any questions. Do not save anything to Azure yet.`;
 
-const PROCESS_SEND_PROMPT = `The stories look right. Save only the story file, the new demo pictures and
-the demo tool. Ask me before you send anything. Send them to a new branch
-called stories/{area}, never straight to main, and give me the link to send
-to Shaun.`;
+const PROCESS_REVIEW_PROMPT = `Get me ready to go through the new stories for {area} with Shaun. Do not
+change anything.
+
+Give me a short plain list of each story, with its title, its Library link and
+how many checks it has. Then list anything you could not show in a demo, and
+any questions about the design or how a screen should work.`;
+
+const PROCESS_PUBLISH_PROMPT = `The stories for {area} are agreed. Please publish them to the Library.
+
+- Save only the story file, the new demo pictures and the demo tool, in one
+  commit on main.
+- Bring in the latest main from
+  https://imserv.ghe.com/imserv/astral-prototype.git first. If anything
+  clashes with my work, stop and explain it in plain words.
+- Follow scripts/publish/README.md. If no site password is saved, open
+  save-password.ps1 in its own window for me. Never ask me to type the
+  password into this chat.
+- Tell me in plain words what will be published, and wait for me to say yes.
+- When it finishes, give me the Library link to the new stories.`;
 
 const PROCESS_AZURE_PROMPT = `Use the astral-user-stories skill and my Azure DevOps MCP to copy the new
 Library stories for {area} into Azure DevOps, under the Feature {Feature name
@@ -5331,7 +5349,7 @@ or number}.
 
 - If the Azure DevOps tools are not working, stop and tell me how to turn them on.
 - Look for stories that already exist first and do not create the same one twice.
-- Never change a Ready story or one assigned to Charanjit.
+- Never change a Ready story or one assigned to a developer.
 - Create every story as New with no story points.
 - Add each story's Library link.
 - Before you save anything, show me a plain list of each story you will
@@ -5349,13 +5367,13 @@ Azure, including its comments. Then show me, in plain words, exactly what you
 will change and what you will leave alone. Do not change anything until I say
 yes.
 
-- Never change a Ready story or one assigned to Charanjit. If it is one of
-  those, stop and tell me to ask Shaun.
+- Never change a Ready story or one assigned to a developer. If it is one of
+  those, stop and tell me.
 - Do not change the status or story points.
 - Keep the history. Put the reason for the change in the Azure Comments.
 - If the prototype and the feedback disagree, ask me which is right.
 - If the Library changed, redo the Play demos for the checks you changed,
-  then save and send the change to Shaun as in Write new stories, step 3.`;
+  then publish the change as in Write new stories, step 4.`;
 
 const PROCESS_STEPS = [
   {
@@ -5372,12 +5390,12 @@ const PROCESS_STEPS = [
             [
               "Write new stories",
               "A screen or area of the prototype has no stories yet",
-              "Copilot writes the stories in the Library. You check them. Shaun publishes them. Copilot copies them into Azure DevOps once you approve them.",
+              "Copilot writes the stories in the Library. You check them and go through them with Shaun. You publish them, then Copilot copies them into Azure DevOps once you approve them.",
             ],
             [
               "Change stories",
               "After refinement, when the prototype changes, or when someone gives feedback",
-              "Copilot shows you the change first. It updates the Library, Azure DevOps or both once you say yes.",
+              "Copilot shows you the change first. It updates the Library, Azure DevOps or both once you say yes. You publish any Library change.",
             ],
           ],
         },
@@ -5387,18 +5405,18 @@ const PROCESS_STEPS = [
         table: {
           columns: ["Who", "What they do"],
           rows: [
-            ["You", "Choose the area, add meeting notes, check the stories, and approve anything before it goes into Azure DevOps."],
-            ["Copilot", "Reads the prototype, writes the stories, makes the Play demos, and fills in Azure DevOps."],
-            ["Shaun", "Publishes the Library, moves stories to Refinement and Ready, and agrees story points."],
+            ["You, the business analyst", "Choose the area, add meeting notes, check the stories, publish the Library, approve anything before it goes into Azure DevOps, and move stories through Refinement and Ready."],
+            ["Copilot", "Reads the prototype, writes the stories, makes the Play demos, publishes the Library, and fills in Azure DevOps."],
+            ["Shaun", "Goes through new stories with you, so you agree on the designs, how each screen should work, and any changes needed before refinement."],
           ],
         },
       },
       { h: "Three rules that keep everyone safe" },
       {
         ol: [
-          "Copilot always asks before it saves anything to Azure DevOps. Read what it shows you. If you are not sure, say no and ask Shaun.",
-          "Never let Copilot change a story marked Ready, or a story assigned to Charanjit.",
-          "New stories always go into Azure DevOps as New, with no story points. Shaun does the rest.",
+          "Copilot always asks before it publishes or saves anything to Azure DevOps. Read what it shows you. If you are not sure, say no.",
+          "Never let Copilot change a story marked Ready, or a story assigned to a developer.",
+          "New stories always go into Azure DevOps as New, with no story points. You move them on through Refinement and Ready.",
         ],
       },
       { h: "Words you will see" },
@@ -5413,6 +5431,8 @@ const PROCESS_STEPS = [
             ["Play demo", "A short slideshow on each check, showing someone doing it in the prototype."],
             ["Repository", "The folder that holds the prototype and the Library. Everyone has their own copy, and a copy can go out of date."],
             ["Skill", "A set of instructions Copilot reads so it writes stories our way. Ours is called astral-user-stories."],
+            ["Publish", "Put your changes on the live Library website, so everyone can see them."],
+            ["Site password", "The password that opens the live prototype and Library. It is saved on your computer, never typed into the chat."],
             ["Azure DevOps", "Where the developers pick up work. Stories end up here."],
             ["MCP", "The connection you installed from the Microsoft Store that lets Copilot read and write Azure DevOps for you."],
           ],
@@ -5423,13 +5443,17 @@ const PROCESS_STEPS = [
   {
     id: "start",
     name: "Before you start",
-    summary: "Do this once, and again whenever Shaun says there is a new version.",
+    summary: "Do this before each new piece of work, so your copy is up to date.",
     blocks: [
+      { h: "The first time only" },
+      { p: "Ask Shaun for two things: write access to the Astral repository on imserv.ghe.com, and the site password. You only need to ask once." },
+      { h: "Every time" },
       {
         ol: [
           "Open Copilot on your copy of the Astral prototype folder.",
           "Select Copy prompt below, paste it into Copilot, and press Enter.",
           "Answer any questions Copilot asks. If it asks you to sign in, use your IMSERV account.",
+          "If a separate window asks for the site password, type it there and press Enter. Nothing appears as you type.",
         ],
       },
       { prompt: PROCESS_UPDATE_PROMPT },
@@ -5441,7 +5465,7 @@ const PROCESS_STEPS = [
   {
     id: "new",
     name: "Write new stories",
-    summary: "Four steps from an area of the prototype to stories in Azure DevOps.",
+    summary: "Five steps from an area of the prototype to stories in Azure DevOps.",
     blocks: [
       { h: "Step 1. Ask Copilot to write the stories" },
       { p: "Copy the prompt, fill in the two parts in curly brackets, then paste it into Copilot." },
@@ -5458,12 +5482,24 @@ const PROCESS_STEPS = [
         ],
       },
       { p: "If something is wrong, tell Copilot in your own words, such as \"In the Read the peak demand story, the third check names the wrong button\". It will fix it." },
-      { h: "Step 3. Send the stories to Shaun" },
-      { p: "When you are happy with the stories, paste this into Copilot with your area filled in." },
-      { prompt: PROCESS_SEND_PROMPT },
-      { p: "Send Shaun the link Copilot gives you. Once he publishes the stories, anyone can open them from the Library, and Azure DevOps links to them." },
-      { h: "Step 4. Copy the stories into Azure DevOps" },
-      { p: "Wait until Shaun says the stories are published. Fill in your area and the Azure DevOps Feature, then paste this into Copilot." },
+      { h: "Step 3. Go through the stories with Shaun" },
+      { p: "Book 30 minutes with Shaun. Before the call, paste this into Copilot with your area filled in, so you have a list to work from." },
+      { prompt: PROCESS_REVIEW_PROMPT },
+      {
+        ul: [
+          "Share your screen with the Library open.",
+          "Go through each story together, and play a few demos.",
+          "Agree that the designs and the checks match how each screen should work.",
+          "Note any changes, and anything to raise in refinement.",
+        ],
+      },
+      { p: "After the call, tell Copilot about each agreed change, as in step 2." },
+      { h: "Step 4. Publish the stories" },
+      { p: "Once you and Shaun agree, paste this into Copilot with your area filled in." },
+      { prompt: PROCESS_PUBLISH_PROMPT },
+      { p: "Publishing takes a few minutes. When it finishes, anyone can open the stories from the Library, and Azure DevOps can link to them." },
+      { h: "Step 5. Copy the stories into Azure DevOps" },
+      { p: "Once Copilot says the Library is published, fill in your area and the Azure DevOps Feature, then paste this into Copilot." },
       { prompt: PROCESS_AZURE_PROMPT },
       { p: "Copilot shows you a list of the stories it plans to create. Read it, then type yes, or say what to change. Afterwards it gives you the Azure DevOps numbers. Open one or two in Azure DevOps to check they look right." },
     ],
@@ -5484,6 +5520,7 @@ const PROCESS_STEPS = [
       { prompt: PROCESS_CHANGE_PROMPT },
       { h: "Bigger changes" },
       { p: "If the feedback means one story should become two, Copilot suggests the split and explains why. Say yes only if it matches what was agreed in the meeting." },
+      { p: "If a change affects the design or how a screen works, go through it with Shaun first, as in Write new stories, step 3." },
     ],
   },
   {
@@ -5496,11 +5533,13 @@ const PROCESS_STEPS = [
           columns: ["What happens", "What to do"],
           rows: [
             ["Copilot asks a question you do not understand", "Reply \"Please explain that in plain words\"."],
-            ["Copilot says it cannot sign in", "Follow its sign-in link. If it still fails, send Shaun a screenshot."],
+            ["Copilot says it cannot sign in", "Follow its sign-in link. If it still fails, check you can open the Astral repository on imserv.ghe.com."],
             ["The Library panel is blank", "Ask Copilot \"Please start the prototype again and reopen the Library\"."],
+            ["Publishing says someone has published since you last updated", "Reply \"Please bring in the latest version and publish again\"."],
+            ["Publishing says the password is wrong", "Ask Copilot to open the password window again, then type the password carefully."],
             ["The Azure DevOps tools are not working", "Check the MCP app from the Microsoft Store is running and signed in, then close and reopen Copilot."],
             ["A Play demo shows the wrong thing", "Tell Copilot which story and check, and what is wrong."],
-            ["You are not sure whether to say yes", "Say no, and ask Shaun."],
+            ["You are not sure whether to say yes", "Say no, and ask Copilot to explain it in plain words."],
           ],
         },
       },
