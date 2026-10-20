@@ -309,10 +309,19 @@
         {
           "id": "tma-gap-h3",
           "title": "TMA gap H3: Organisation, Group and Sub Group access",
-          "note": "Group-level feature rights; one MPAN in many groups. Astral builds this in the prototype. Gordon settles the version conflict as V1.",
+          "note": "Done in the prototype. What they can see sits on the person and on Invite users: an admin or manager picks groups or sites. A group includes sites added to it later; a site gives just that site. A site sits in one group. No sub groups and no feature rights: roles stay as they are. IMSERV super admin picks the company on Invite users, or adds one at the top of the list. Gordon settles the version conflict as V1.",
           "project": "Astral",
           "kind": "ux",
-          "added": "2026-10-16"
+          "added": "2026-10-16",
+          "doneOn": "2026-10-20"
+        },
+        {
+          "id": "tma-gap-h3-overlap",
+          "title": "Investigate: a site in more than one group",
+          "note": "TMA lets one MPAN sit in many groups (12,803 of 13,658 sit in more than one, up to 11). Astral keeps a site in one group for now. Find out who needs overlap and why, for example a consultant's view across customers, before allowing it.",
+          "project": "Astral",
+          "kind": "ux",
+          "added": "2026-10-20"
         },
         {
           "id": "tma-gap-h4",
@@ -4439,6 +4448,7 @@
   "prototypeUserForm": false,
   "prototypeTeamDraftPeople": [],
   "prototypePersonSites": {},
+  "prototypePersonGroups": {},
   "prototypeRenewForm": false,
   "prototypeRenewPerson": "",
   "prototypeRenewFrom": "",

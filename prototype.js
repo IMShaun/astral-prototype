@@ -2032,11 +2032,34 @@ function protoPersonSitesStore() {
   return raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
 }
 
+function protoPersonGroupsStore() {
+  const raw = store.prototypePersonGroups;
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+}
+
+// What a person can see: whole groups and single sites. A group follows sites added to it or taken off it.
+// A site sits in one group only. Someone not set yet sees All sites.
+function protoPersonAccess(personId) {
+  const groups = protoPersonGroupsStore()[personId];
+  const sites = protoPersonSitesStore()[personId];
+  if (!Array.isArray(groups) && !Array.isArray(sites)) return { groups: ["all"], sites: [] };
+  return {
+    groups: Array.isArray(groups) ? groups.map(String) : [],
+    sites: Array.isArray(sites) ? sites.map(String) : [],
+  };
+}
+
+function protoAccessSiteNames(access) {
+  const names = new Set();
+  (access.groups || []).forEach((id) => (protoReportGroupById(id)?.sites || []).forEach((site) => names.add(site.name)));
+  const picked = access.sites || [];
+  return protoEstateSites()
+    .filter((site) => names.has(site.name) || picked.includes(site.name) || picked.includes(site.baseName))
+    .map((site) => site.name);
+}
+
 function protoPersonSiteNames(personId) {
-  const all = protoEstateSites();
-  const list = protoPersonSitesStore()[personId];
-  if (!Array.isArray(list)) return all.map((site) => site.name);
-  return all.filter((site) => list.includes(site.name) || list.includes(site.baseName)).map((site) => site.name);
+  return protoAccessSiteNames(protoPersonAccess(personId));
 }
 
 function protoSiteGranted(site) {
@@ -10236,7 +10259,7 @@ function protoCloseModal(kind) {
     return;
   }
   if (kind === "invite") {
-    setProto({ prototypeUserForm: false, prototypeUserDrafts: [""] });
+    setProto({ prototypeUserForm: false, prototypeUserDrafts: [""], ...protoInviteClear() });
     return;
   }
   if (kind === "renew") {
@@ -10930,6 +10953,34 @@ function protoPickSelect(id, value) {
     });
     return;
   }
+  if (id === "user-invite-company") {
+    if (!protoSeesCompanies()) return;
+    const isNew = value === PROTO_INVITE_NEW_COMPANY;
+    setProto({
+      prototypeSelectOpen: "",
+      prototypeUserForm: true,
+      prototypeUserInviteCompany: isNew || protoTeamCompanyNames().includes(value) ? value : "",
+      prototypeUserInviteCompanyError: false,
+      prototypeUserInviteAccess: null,
+      prototypeInviteSitesQuery: "",
+      prototypeAccessScopeOpen: "",
+    });
+    protoRestoreFocus(
+      isNew
+        ? "#astral-fs input[name='proto-invite-company-name']"
+        : '#astral-fs [data-proto-select="user-invite-company"] .astral-select-btn'
+    );
+    return;
+  }
+  if (id === "user-invite-company-type") {
+    setProto({
+      prototypeSelectOpen: "",
+      prototypeUserForm: true,
+      prototypeUserInviteCompanyType: protoCompanyTypeId(value),
+    });
+    protoRestoreFocus('#astral-fs [data-proto-select="user-invite-company-type"] .astral-select-btn');
+    return;
+  }
   if (id === "team-company") {
     if (!protoCanPickTeamCompany()) return;
     setProto({
@@ -11205,18 +11256,24 @@ function protoPickSelect(id, value) {
     );
     return;
   }
-  if (id.startsWith("user-sites:")) {
+  if (id.startsWith("user-sites:") || id === "user-invite-access") {
     if (!protoCanManagePeople()) return;
-    const personId = id.slice("user-sites:".length);
-    if (!protoUserPeople().some((person) => person.id === personId)) return;
-    const all = protoEstateSites().map((site) => site.name);
-    const cur = protoPersonSiteNames(personId);
-    const next = cur.includes(value) ? cur.filter((item) => item !== value) : [...cur, value];
-    const ordered = all.filter((name) => next.includes(name));
-    setProto({
-      prototypeSelectOpen: id,
-      prototypePersonSites: { ...protoPersonSitesStore(), [personId]: ordered },
-    });
+    const invite = id === "user-invite-access";
+    const personId = invite ? "" : id.slice("user-sites:".length);
+    if (!invite && !protoUserPeople().some((person) => person.id === personId)) return;
+    const cur = invite ? protoInviteAccess() : protoPersonAccess(personId);
+    const [kind, ...rest] = String(value).split(":");
+    const key = kind === "group" ? "groups" : "sites";
+    const next = { ...cur, [key]: protoReportToggleIn(cur[key], rest.join(":")) };
+    setProto(
+      invite
+        ? { prototypeSelectOpen: id, prototypeUserForm: true, prototypeUserInviteAccess: next }
+        : {
+            prototypeSelectOpen: id,
+            prototypePersonGroups: { ...protoPersonGroupsStore(), [personId]: next.groups },
+            prototypePersonSites: { ...protoPersonSitesStore(), [personId]: next.sites },
+          }
+    );
     protoRestoreFocus(
       `#astral-fs [data-proto-select-option="${CSS.escape(id)}"][data-proto-select-value="${CSS.escape(
         value
@@ -13563,15 +13620,28 @@ function protoReportAlertScopeField(draft) {
 
 // What the report covers, as chips. A group chip opens to list its sites today.
 function protoReportScopeChips(draft) {
-  const open = String(store.prototypeReportScopeOpen || "");
-  const groups = (draft.groups || []).map(protoReportGroupById).filter(Boolean);
-  const sites = (draft.sites || []).map(protoReportSiteById).filter(Boolean);
-  const mpans = (draft.meters || []).map(protoReportMpanById).filter(Boolean);
+  return protoScopeChips({
+    groups: (draft.groups || []).map(protoReportGroupById).filter(Boolean),
+    sites: (draft.sites || []).map(protoReportSiteById).filter(Boolean),
+    siteKey: (site) => protoSiteId(site),
+    mpans: (draft.meters || []).map(protoReportMpanById).filter(Boolean),
+    mpanWords: (hit) => protoReportMeterWords(hit, draft),
+    open: String(store.prototypeReportScopeOpen || ""),
+    label: "Picked for this report",
+    panelId: "astral-report-scope-sites",
+    openAttr: (id) => `data-proto-report-scope-open="${escapeHtml(id)}"`,
+    removeAttr: (key) => `data-proto-report-scope-remove="${escapeHtml(key)}"`,
+    follows: (group) => `The report follows ${group.name}. Sites added to the group or taken off it change what it sends.`,
+  });
+}
+
+// Groups, sites and MPANs picked in a dropdown, as chips below it. A group chip opens to list its sites today.
+function protoScopeChips({ groups, sites, siteKey, mpans = [], mpanWords, open, label, panelId, openAttr, removeAttr, follows }) {
   if (!groups.length && !sites.length && !mpans.length) return "";
   const chip = (key, name, body) => `
     <li class="astral-report-scope-chip">
       ${body}
-      ${protoIconBtn("close", `Remove ${name}`, `data-proto-report-scope-remove="${escapeHtml(key)}"`, {
+      ${protoIconBtn("close", `Remove ${name}`, removeAttr(key), {
         className: "is-plain",
         tipLabel: "Remove",
       })}
@@ -13579,7 +13649,7 @@ function protoReportScopeChips(draft) {
   `;
   const shown = groups.find((group) => group.id === open);
   return `
-    <ul class="astral-report-scope" aria-label="Picked for this report">
+    <ul class="astral-report-scope" aria-label="${escapeHtml(label)}">
       ${groups
         .map((group) => {
           const n = group.sites.length;
@@ -13590,20 +13660,20 @@ function protoReportScopeChips(draft) {
               type="button"
               class="astral-report-scope-open"
               aria-expanded="${group.id === open ? "true" : "false"}"
-              ${group.id === open ? 'aria-controls="astral-report-scope-sites"' : ""}
-              data-proto-report-scope-open="${escapeHtml(group.id)}"
+              ${group.id === open ? `aria-controls="${escapeHtml(panelId)}"` : ""}
+              ${openAttr(group.id)}
             ><span>${escapeHtml(`${group.name} (${n} ${n === 1 ? "site" : "sites"})`)}</span>${protoChevronMark()}</button>`
           );
         })
         .join("")}
       ${sites
         .map((site) =>
-          chip(`site:${protoSiteId(site)}`, site.name, `<span class="astral-report-scope-name">${escapeHtml(site.name)}</span>`)
+          chip(`site:${siteKey(site)}`, site.name, `<span class="astral-report-scope-name">${escapeHtml(site.name)}</span>`)
         )
         .join("")}
       ${mpans
         .map((hit) => {
-          const words = protoReportMeterWords(hit, draft);
+          const words = mpanWords(hit);
           const title = words.startsWith("MPAN") ? ` title="${escapeHtml(`${hit.site.name} · ${hit.meter.name}`)}"` : "";
           return chip(
             `meter:${hit.meter.id}`,
@@ -13615,9 +13685,9 @@ function protoReportScopeChips(draft) {
     </ul>
     ${
       shown
-        ? `<div class="astral-report-scope-sites" id="astral-report-scope-sites">
-            <p class="astral-muted">The report follows ${escapeHtml(shown.name)}. Sites added to the group or taken off it change what it sends.</p>
-            <ul>${shown.sites.map((site) => `<li>${escapeHtml(site.name)}</li>`).join("")}</ul>
+        ? `<div class="astral-report-scope-sites" id="${escapeHtml(panelId)}">
+            <p class="astral-muted">${escapeHtml(follows(shown))}</p>
+            ${shown.sites.length ? `<ul>${shown.sites.map((site) => `<li>${escapeHtml(site.name)}</li>`).join("")}</ul>` : ""}
           </div>`
         : ""
     }
@@ -34979,6 +35049,7 @@ function protoClosePersonPatch() {
     prototypeUserDelete: "",
     prototypePersonTeamQuery: "",
     prototypePersonSitesQuery: "",
+    prototypeAccessScopeOpen: "",
     prototypeContractFileError: false,
     ...protoRenewClear(),
   };
@@ -36070,6 +36141,18 @@ function protoPeopleFromTeams(teams) {
   return protoUserPeople().filter((person) => ids.has(person.id));
 }
 
+const PROTO_LOOSE_FOLD = "|loose";
+
+// People in a company who are not in any of its teams, shown as a fold beside the teams.
+function protoLooseTeam(bucket) {
+  return {
+    id: `${bucket.id}${PROTO_LOOSE_FOLD}`,
+    name: "Not in a team",
+    company: bucket.name,
+    people: bucket.loose.map((person) => person.id),
+  };
+}
+
 function protoTeamBuckets(query) {
   const q = String(query == null ? store.prototypeTeamQuery || "" : query)
     .trim()
@@ -36090,11 +36173,17 @@ function protoTeamBuckets(query) {
       ...imserv,
       ...protoTeamCompanyChoices().map((choice) => {
         const teams = protoVisibleTeams().filter((item) => item.company === choice.value);
+        const inTeams = protoPeopleFromTeams(teams);
+        const ids = new Set(inTeams.map((person) => person.id));
+        const loose = protoUserPeople().filter(
+          (person) => person.company === choice.value && !ids.has(person.id)
+        );
         return {
           id: `c:${choice.value}`,
           name: choice.label,
           teams,
-          people: protoPeopleFromTeams(teams),
+          loose,
+          people: [...inTeams, ...loose],
         };
       }),
     ].filter((item) => !q || item.name.toLowerCase().includes(q));
@@ -36163,6 +36252,19 @@ function protoUsersFold() {
   const bucket = buckets.find((item) => item.id === raw);
   if (bucket) return { kind: "bucket", id: bucket.id, bucket };
   const team = protoVisibleTeams().find((item) => item.id === raw);
+  if (!team && raw.endsWith(PROTO_LOOSE_FOLD)) {
+    const parent = raw.slice(0, -PROTO_LOOSE_FOLD.length);
+    const bucket = buckets.find((item) => item.id === parent);
+    if (bucket?.loose?.length) {
+      return {
+        kind: "team",
+        id: raw,
+        team: protoLooseTeam(bucket),
+        parent,
+        bucket,
+      };
+    }
+  }
   if (team) {
     const parent = protoTeamBucketIdForTeam(team);
     return {
@@ -36347,15 +36449,207 @@ function protoCompanyAddModal() {
   `;
 }
 
+const PROTO_INVITE_NEW_COMPANY = "__new";
+
+function protoInviteClear() {
+  return {
+    prototypeUserInviteCompany: "",
+    prototypeUserInviteCompanyName: "",
+    prototypeUserInviteCompanyType: "customer",
+    prototypeUserInviteCompanyError: false,
+    prototypeUserInviteAccess: null,
+    prototypeInviteSitesQuery: "",
+    prototypeAccessScopeOpen: "",
+  };
+}
+
+// Super admin picks the company, or adds one. Everyone else invites into their own company.
+function protoInvitePickedCompany() {
+  if (!protoSeesCompanies()) return protoInviteCompany();
+  const raw = String(store.prototypeUserInviteCompany || "");
+  if (raw === PROTO_INVITE_NEW_COMPANY) return raw;
+  return protoTeamCompanyNames().includes(raw) ? raw : protoInviteCompany();
+}
+
+function protoInviteAccess() {
+  const raw = store.prototypeUserInviteAccess;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { groups: ["all"], sites: [] };
+  return {
+    groups: Array.isArray(raw.groups) ? raw.groups.map(String) : [],
+    sites: Array.isArray(raw.sites) ? raw.sites.map(String) : [],
+  };
+}
+
+// A company added on Astral has no sites yet. All sites is all it can offer, and it fills as sites are added.
+function protoAccessIsEmpty(company) {
+  return company === PROTO_INVITE_NEW_COMPANY || protoAddedCompanies().some((item) => item.name === company);
+}
+
+function protoAccessGroups(company) {
+  if (protoAccessIsEmpty(company)) return [{ id: "all", name: "All sites", sites: [] }];
+  return protoReportGroupList();
+}
+
+function protoAccessSites(company) {
+  return protoAccessIsEmpty(company) ? [] : protoEstateSites();
+}
+
+function protoAccessWords(access, groups) {
+  const picked = access.groups.map((id) => groups.find((group) => group.id === id)).filter(Boolean);
+  const picks = picked.length + access.sites.length;
+  if (!picks) return "";
+  const siteWords = (n) => `${n} ${n === 1 ? "site" : "sites"}`;
+  if (picks === 1 && picked.length) {
+    const n = picked[0].sites.length;
+    return n ? `${picked[0].name} (${siteWords(n)})` : picked[0].name;
+  }
+  if (picks === 1) return access.sites[0];
+  const names = new Set(access.sites);
+  picked.forEach((group) => group.sites.forEach((site) => names.add(site.name)));
+  return siteWords(names.size);
+}
+
+// What they can see, on the invite and on the person. The same Groups and Sites list as a report.
+function protoAccessField({ id, access, company, queryName, query }) {
+  const groups = protoAccessGroups(company);
+  const sites = protoAccessSites(company);
+  const words = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const select = protoSelect({
+    id,
+    label: "What they can see",
+    multi: true,
+    wide: true,
+    values: [...access.groups.map((item) => `group:${item}`), ...access.sites.map((item) => `site:${item}`)],
+    text: protoAccessWords(access, groups),
+    placeholder: "None",
+    empty: "Nothing matches.",
+    search: sites.length
+      ? { name: queryName, value: query, placeholder: "Search groups or sites", label: "Search groups or sites" }
+      : null,
+    options: [
+      { heading: "Groups" },
+      ...groups.map((group) => ({
+        value: `group:${group.id}`,
+        label: group.name,
+        count: group.sites.length,
+        countLabel: words(group.sites.length, "site", "sites"),
+      })),
+      ...(sites.length
+        ? [
+            { heading: "Sites" },
+            ...sites.map((site) => {
+              const n = (site.meters || []).length;
+              return {
+                value: `site:${site.name}`,
+                label: site.name,
+                count: n,
+                countLabel: words(n, "meter", "meters"),
+                search: protoGroupForSite(site)?.name || "",
+              };
+            }),
+          ]
+        : []),
+    ],
+  });
+  const open = String(store.prototypeAccessScopeOpen || "");
+  const chips = protoScopeChips({
+    groups: access.groups.map((gid) => groups.find((group) => group.id === gid)).filter(Boolean),
+    sites: access.sites
+      .map((name) => sites.find((site) => site.name === name || site.baseName === name))
+      .filter(Boolean),
+    siteKey: (site) => site.name,
+    open: open.startsWith(`${id}|`) ? open.slice(id.length + 1) : "",
+    label: "What they can see",
+    panelId: `astral-access-sites-${String(id).replace(/[^a-z0-9_-]+/gi, "-")}`,
+    openAttr: (gid) => `data-proto-access-open="${escapeHtml(`${id}|${gid}`)}"`,
+    removeAttr: (key) => `data-proto-access-remove="${escapeHtml(key)}" data-proto-access-for="${escapeHtml(id)}"`,
+    follows: (group) =>
+      group.id === "all"
+        ? "They see every site, including sites added later."
+        : `They see every site in ${group.name}, including sites added to it later.`,
+  });
+  const note = sites.length
+    ? "A group includes sites added to it later."
+    : "This company has no sites yet. On All sites, they see each site once it is added.";
+  return `${select}${chips}<p class="astral-muted">${escapeHtml(note)}</p>`;
+}
+
+function protoAccessReadout(access, company) {
+  const groups = protoAccessGroups(company);
+  const names = [
+    ...access.groups.map((gid) => groups.find((group) => group.id === gid)?.name).filter(Boolean),
+    ...access.sites,
+  ];
+  return names.join(", ") || "None";
+}
+
 function protoUserInviteModal() {
   if (!protoState().userForm) return "";
   const drafts = protoUserDrafts();
   const role = protoState().userRole;
-  const canInvite = drafts.some(protoEmailOk);
+  const company = protoInvitePickedCompany();
+  const isNew = company === PROTO_INVITE_NEW_COMPANY;
+  const newName = String(store.prototypeUserInviteCompanyName || "");
+  const newType = protoCompanyTypeId(store.prototypeUserInviteCompanyType);
+  const canInvite = drafts.some(protoEmailOk) && (!isNew || Boolean(newName.trim()));
+  const companyField = protoSeesCompanies()
+    ? `
+      <div class="astral-team-field">
+        <p>Company</p>
+        ${protoSelect({
+          id: "user-invite-company",
+          label: "Company",
+          wide: true,
+          value: company,
+          options: [
+            {
+              value: PROTO_INVITE_NEW_COMPANY,
+              label: "Add a company",
+              html: `<span class="astral-select-manage">${protoIconMark("add")}<span>Add a company</span></span>`,
+              face: `<span>New company</span>`,
+            },
+            ...protoTeamCompanyChoices(),
+          ],
+        })}
+      </div>
+      ${
+        isNew
+          ? `
+            <label>
+              Company name
+              <input
+                type="text"
+                name="proto-invite-company-name"
+                value="${escapeHtml(newName)}"
+                maxlength="80"
+                required
+                autocomplete="organization"
+              />
+            </label>
+            ${
+              store.prototypeUserInviteCompanyError
+                ? `<p class="astral-muted" role="status">That name is already on the list.</p>`
+                : ""
+            }
+            <div class="astral-team-field">
+              <p>Type</p>
+              ${protoSelect({
+                id: "user-invite-company-type",
+                label: "Type",
+                wide: true,
+                value: newType,
+                options: PROTO_COMPANY_TYPES.map((item) => ({ value: item.id, label: item.name })),
+              })}
+            </div>
+          `
+          : ""
+      }
+    `
+    : "";
   return `
     <div class="astral-modal-back" data-proto-modal="invite">
       <div
-        class="astral-modal"
+        class="astral-modal has-menus"
         role="dialog"
         aria-modal="true"
         aria-labelledby="astral-invite-title"
@@ -36364,7 +36658,9 @@ function protoUserInviteModal() {
         ${protoModalHead(
           "astral-invite-title",
           "Invite users",
-          "Email and a role. Viewer can look. Super admin is only for IMSERV admin.",
+          protoSeesCompanies()
+            ? "Email, company, role and what they can see. Super admin is only for IMSERV admin."
+            : "Email, role and what they can see. Viewer can look.",
           "invite"
         )}
         <form data-proto-user-form>
@@ -36396,6 +36692,7 @@ function protoUserInviteModal() {
                 .join("")}
             </div>
             ${protoTextBtn("Add another", "data-proto-user=\"another\"")}
+            ${companyField}
             <div class="astral-invite-role">
               <div>
                 <p>Role</p>
@@ -36409,6 +36706,16 @@ function protoUserInviteModal() {
                 options: protoCanAdminCompany()
                   ? protoUserRoleChoices()
                   : protoUserRoleChoices().filter((item) => item.value !== "admin"),
+              })}
+            </div>
+            <div class="astral-team-field">
+              <p>What they can see</p>
+              ${protoAccessField({
+                id: "user-invite-access",
+                access: protoInviteAccess(),
+                company,
+                queryName: "proto-invite-sites-query",
+                query: String(store.prototypeInviteSitesQuery || ""),
               })}
             </div>
           </div>
@@ -36444,8 +36751,6 @@ function protoPersonDetail(person) {
   const fromLine = from ? protoFormatFullDay(from) : "Not set";
   const toLine = to ? protoFormatFullDay(to) : "Not set";
   const contractName = String(person.contractName || "").trim();
-  const sites = protoEstateSites();
-  const siteNames = protoPersonSiteNames(person.id);
   const canManage = protoCanManagePeople();
   const state = protoPersonState(person);
   const dots = protoShowsImserv();
@@ -36596,38 +36901,17 @@ function protoPersonDetail(person) {
           </div>
         </div>
         <div class="astral-field is-wide">
-          <span>Sites they can see</span>
+          <span>What they can see</span>
           ${
             canManage
-              ? protoSelect({
+              ? protoAccessField({
                   id: `user-sites:${person.id}`,
-                  label: "Sites they can see",
-                  multi: true,
-                  wide: true,
-                  values: siteNames,
-                  placeholder: "None",
-                  allLabel: "All sites",
-                  countLabel: "sites",
-                  empty: sites.length ? "No sites match." : "No sites in this estate.",
-                  search: sites.length
-                    ? {
-                        name: "proto-person-sites-query",
-                        value: String(store.prototypePersonSitesQuery || ""),
-                        placeholder: "Search sites",
-                        label: "Search sites",
-                      }
-                    : null,
-                  options: sites.map((site) => ({
-                    value: site.name,
-                    label: site.name,
-                    search: `${site.name} ${protoGroupForSite(site)?.name || ""}`,
-                  })),
+                  access: protoPersonAccess(person.id),
+                  company: person.company,
+                  queryName: "proto-person-sites-query",
+                  query: String(store.prototypePersonSitesQuery || ""),
                 })
-              : `<p class="astral-fact">${escapeHtml(
-                  siteNames.length === sites.length && sites.length
-                    ? "All sites"
-                    : siteNames.join(", ") || "None"
-                )}</p>`
+              : `<p class="astral-fact">${escapeHtml(protoAccessReadout(protoPersonAccess(person.id), person.company))}</p>`
           }
         </div>
       </div>
@@ -36921,7 +37205,7 @@ function protoUsersList(q, picked) {
       if (item.imserv) {
         inner = protoUsersTable(filterPeople(item.people), item.people, false, `b-${item.id}`);
       } else if (seesCompanies) {
-        const teams = item.teams;
+        const teams = item.loose?.length ? [...item.teams, protoLooseTeam(item)] : item.teams;
         inner = teams.length
           ? teams
               .map((team) => {
@@ -41965,6 +42249,9 @@ function onPrototype(event) {
       protoRestoreFocus("#astral-fs input[name='proto-person-sites-query']");
       protoScrollSelectInPane(id, "start");
     }
+    if (!open && id === "user-invite-access") {
+      protoRestoreFocus("#astral-fs input[name='proto-invite-sites-query']");
+    }
     if (!open && String(id).startsWith("site-add-field:")) {
       protoRestoreFocus("#astral-fs .astral-float-menu input[name='proto-report-site-query']");
     }
@@ -42412,6 +42699,37 @@ function onPrototype(event) {
     setProto({ prototypeReportNotice: null });
     return;
   }
+  const accessOpenBtn = event.target.closest("[data-proto-access-open]");
+  if (accessOpenBtn) {
+    const key = accessOpenBtn.dataset.protoAccessOpen;
+    setProto({ prototypeAccessScopeOpen: store.prototypeAccessScopeOpen === key ? "" : key });
+    protoRestoreFocus(`#astral-fs [data-proto-access-open="${CSS.escape(key)}"]`);
+    return;
+  }
+  const accessRemoveBtn = event.target.closest("[data-proto-access-remove]");
+  if (accessRemoveBtn) {
+    if (!protoCanManagePeople()) return;
+    const id = accessRemoveBtn.dataset.protoAccessFor || "";
+    const [kind, ...rest] = accessRemoveBtn.dataset.protoAccessRemove.split(":");
+    const raw = rest.join(":");
+    const key = kind === "group" ? "groups" : "sites";
+    const invite = id === "user-invite-access";
+    const personId = id.startsWith("user-sites:") ? id.slice("user-sites:".length) : "";
+    if (!invite && !personId) return;
+    const cur = invite ? protoInviteAccess() : protoPersonAccess(personId);
+    const next = { ...cur, [key]: cur[key].filter((item) => item !== raw) };
+    if (kind === "group" && store.prototypeAccessScopeOpen === `${id}|${raw}`) store.prototypeAccessScopeOpen = "";
+    setProto(
+      invite
+        ? { prototypeUserForm: true, prototypeUserInviteAccess: next }
+        : {
+            prototypePersonGroups: { ...protoPersonGroupsStore(), [personId]: next.groups },
+            prototypePersonSites: { ...protoPersonSitesStore(), [personId]: next.sites },
+          }
+    );
+    protoRestoreFocus(`#astral-fs [data-proto-select-toggle="${CSS.escape(id)}"]`);
+    return;
+  }
   const scopeOpenBtn = event.target.closest("[data-proto-report-scope-open]");
   if (scopeOpenBtn) {
     const id = scopeOpenBtn.dataset.protoReportScopeOpen;
@@ -42565,6 +42883,7 @@ function onPrototype(event) {
         prototypeCompanyForm: false,
         prototypeUserDrafts: protoUserDrafts(),
         prototypeUserMenu: "",
+        ...protoInviteClear(),
         ...protoRenewClear(),
       });
       protoRestoreFocus("#astral-fs [data-proto-user-draft]");
@@ -42581,7 +42900,7 @@ function onPrototype(event) {
       return;
     }
     if (act === "cancel") {
-      setProto({ prototypeUserForm: false, prototypeUserDrafts: [""] });
+      setProto({ prototypeUserForm: false, prototypeUserDrafts: [""], ...protoInviteClear() });
       return;
     }
   }
@@ -44952,14 +45271,28 @@ function onPrototypeInput(event) {
     if (active) protoRestoreFocus("#astral-fs input[name='proto-zone-query']", start);
     return;
   }
-  const personSitesSearch = event.target.closest("input[name='proto-person-sites-query']");
+  const personSitesSearch = event.target.closest("input[name='proto-person-sites-query'], input[name='proto-invite-sites-query']");
   if (personSitesSearch) {
-    store.prototypePersonSitesQuery = personSitesSearch.value.slice(0, 120);
+    const name = personSitesSearch.name;
+    const text = personSitesSearch.value.slice(0, 120);
+    if (name === "proto-invite-sites-query") store.prototypeInviteSitesQuery = text;
+    else store.prototypePersonSitesQuery = text;
     persistChrome();
     const active = document.activeElement === personSitesSearch;
     const start = personSitesSearch.selectionStart;
     render();
-    if (active) protoRestoreFocus("#astral-fs input[name='proto-person-sites-query']", start);
+    if (active) protoRestoreFocus(`#astral-fs input[name='${name}']`, start);
+    return;
+  }
+  const inviteCompanyName = event.target.closest("input[name='proto-invite-company-name']");
+  if (inviteCompanyName) {
+    store.prototypeUserInviteCompanyName = inviteCompanyName.value.slice(0, 80);
+    store.prototypeUserInviteCompanyError = false;
+    persistChrome();
+    const active = document.activeElement === inviteCompanyName;
+    const start = inviteCompanyName.selectionStart;
+    render();
+    if (active) protoRestoreFocus("#astral-fs input[name='proto-invite-company-name']", start);
     return;
   }
   const compareSearch = event.target.closest("input[name='proto-compare-query']");
@@ -45441,6 +45774,27 @@ function onPrototypeSubmit(event) {
   if (userForm) {
     event.preventDefault();
     if (!protoCanManagePeople()) return;
+    const picked = protoInvitePickedCompany();
+    let company = picked;
+    let companyPatch = {};
+    if (picked === PROTO_INVITE_NEW_COMPANY) {
+      const name = String(store.prototypeUserInviteCompanyName || "").trim();
+      if (!name) return;
+      if (protoTeamCompanyNames().some((item) => item.toLowerCase() === name.toLowerCase())) {
+        setProto({ prototypeUserForm: true, prototypeUserInviteCompanyError: true });
+        protoRestoreFocus("#astral-fs input[name='proto-invite-company-name']");
+        return;
+      }
+      company = name;
+      companyPatch = {
+        prototypeAddedCompanies: [
+          ...protoAddedCompanies(),
+          { name, type: protoCompanyTypeId(store.prototypeUserInviteCompanyType) },
+        ],
+        ...protoCompanyLogAdd(name, "company", "Added the company"),
+      };
+    }
+    const access = protoInviteAccess();
     const taken = new Set(protoUserPeople().map((person) => person.email).filter(Boolean));
     const added = [];
     [...userForm.querySelectorAll("[data-proto-user-draft]")].forEach((field) => {
@@ -45451,17 +45805,27 @@ function onPrototypeSubmit(event) {
         id: `inv-${Date.now()}-${added.length}`,
         email,
         role: protoUserRoleId(store.prototypeUserInviteRole),
-        company: protoInviteCompany(),
+        company,
         expiresOn: PROTO_TEMP_TO,
         expiresFrom: PROTO_TEMP_FROM,
       });
     });
     if (!added.length) return;
+    const groups = { ...protoPersonGroupsStore() };
+    const sites = { ...protoPersonSitesStore() };
+    added.forEach((item) => {
+      groups[item.id] = access.groups;
+      sites[item.id] = access.sites;
+    });
     setProto({
+      ...companyPatch,
       prototypeInvitedUsers: [...added, ...protoInvitedUsers()],
+      prototypePersonGroups: groups,
+      prototypePersonSites: sites,
       prototypeUserForm: false,
       prototypeUserDrafts: [""],
       prototypeUserMenu: "",
+      ...protoInviteClear(),
     });
     return;
   }
@@ -45661,7 +46025,7 @@ function onPrototypeKey(event) {
     document.querySelector("#astral-fs .astral-search-add [data-proto-select-option]")?.click();
     return;
   }
-  if (event.key === "Enter" && event.target.closest("input[name='proto-team-people-query'], input[name='proto-report-people-query'], input[name='proto-report-site-query'], input[name='proto-person-team-query'], input[name='proto-person-sites-query']")) {
+  if (event.key === "Enter" && event.target.closest("input[name='proto-team-people-query'], input[name='proto-report-people-query'], input[name='proto-report-site-query'], input[name='proto-person-team-query'], input[name='proto-person-sites-query'], input[name='proto-invite-sites-query']")) {
     event.preventDefault();
     return;
   }
@@ -45868,7 +46232,7 @@ function onPrototypeKey(event) {
       return;
     }
     if (store.prototypeUserForm) {
-      setProto({ prototypeUserForm: false, prototypeUserDrafts: [""] });
+      setProto({ prototypeUserForm: false, prototypeUserDrafts: [""], ...protoInviteClear() });
       return;
     }
     if (store.prototypeRenewForm) {

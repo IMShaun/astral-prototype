@@ -1339,6 +1339,12 @@ function normalize(data) {
       !Array.isArray(data.prototypePersonSites)
         ? data.prototypePersonSites
         : {};
+    data.prototypePersonGroups =
+      data.prototypePersonGroups &&
+      typeof data.prototypePersonGroups === "object" &&
+      !Array.isArray(data.prototypePersonGroups)
+        ? data.prototypePersonGroups
+        : {};
     data.prototypeRenewForm = Boolean(data.prototypeRenewForm);
     data.prototypeRenewPerson = data.prototypeRenewPerson || "";
     data.prototypeRenewFrom = data.prototypeRenewFrom || "";
@@ -5999,6 +6005,10 @@ const CHROME_FIELDS = [
   "prototypeUserQuery",
   "prototypeUserDrafts",
   "prototypeUserInviteRole",
+  "prototypeUserInviteCompany",
+  "prototypeUserInviteCompanyName",
+  "prototypeUserInviteCompanyType",
+  "prototypeUserInviteAccess",
   "prototypeMeRole",
   "prototypeUserGroup",
   "prototypeAccess",
@@ -6036,6 +6046,7 @@ const CHROME_FIELDS = [
   "prototypeTeamDraftDepartment",
   "prototypeTeamDraftPeople",
   "prototypePersonSites",
+  "prototypePersonGroups",
   "prototypeRenewForm",
   "prototypeRenewPerson",
   "prototypeRenewFrom",
@@ -6446,6 +6457,12 @@ function applyChrome() {
     typeof store.prototypePersonSites === "object" &&
     !Array.isArray(store.prototypePersonSites)
       ? store.prototypePersonSites
+      : {};
+  store.prototypePersonGroups =
+    store.prototypePersonGroups &&
+    typeof store.prototypePersonGroups === "object" &&
+    !Array.isArray(store.prototypePersonGroups)
+      ? store.prototypePersonGroups
       : {};
   store.prototypeUserQuery = store.prototypeUserQuery || "";
   store.prototypeCompanyQuery = String(store.prototypeCompanyQuery || "").slice(0, 120);
