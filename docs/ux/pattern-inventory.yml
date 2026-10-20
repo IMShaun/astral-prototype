@@ -562,3 +562,37 @@ patterns:
     health: healthy
     last_reviewed: "2026-10-20"
     decision_refs: []
+  - id: foundation.data-freshness
+    name: Data freshness
+    level: foundation
+    user_goal: Know how current the data is, and tell a gap that will fill from a gap that needs a query
+    objects: [graph, figure, file]
+    actions: [scan, compare, download]
+    used_in: [Portfolio, Meter view, Compare, Reports, Downloads]
+    entry_points:
+      - Site, group and meter graphs, including Power factor and Demand
+      - Summary figures, Breakdown and the meter Channels card
+      - Reports, data downloads and the reads register
+    structure: The graph heading says Data to and a time, then a behind count button when some meter points are older. A hatched Not in yet band runs from that time to the end of the period. Tips say Not in yet, or Readings are in up to a time for a part day or month
+    components: [astral-chart-fresh, astral-fresh-behind, astral-fresh-tip, astral-pending-band, astral-pending-edge, astral-pending-label]
+    states: [in, not-in-yet, missing, part-period]
+    permissions: all
+    content_terms: [Data to, meter point behind, meter points behind, Not in yet, Readings are in up to, not in yet]
+    variants: [bar, line, calendar, figure, file-quality]
+    exceptions:
+      - Weather has no heading line
+      - A meter point marked stale shows missing after its last reading, not Not in yet
+      - Files end at the data-to time and carry no header row, so imports still work
+    accessibility: The heading line and band label are text. The behind count is a button with its own name. Spoken point text says Not in yet.
+    implementation_refs:
+      - prototype.js protoMeterDataTo
+      - prototype.js protoPendingPoint
+      - prototype.js protoPartialPoint
+      - prototype.js protoDataFreshLine
+      - styles.css .astral-pending-band
+    evidence:
+      - TMA gap H9 on 2026-10-20, data last updated, approved as planned by the user.
+    maturity: emerging
+    health: healthy
+    last_reviewed: "2026-10-20"
+    decision_refs: []

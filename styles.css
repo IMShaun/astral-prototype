@@ -8831,6 +8831,37 @@ button.astral-value-pill.astral-tip-host {
   white-space: nowrap;
 }
 
+/* Data to: how far the readings go when the range reaches today. Meters behind it are named on hover. */
+.astral-chart-fresh {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.astral-chart-fresh .astral-fresh-behind {
+  min-height: 0;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-weight: 600;
+}
+
+.astral-fresh-behind .astral-fresh-tip {
+  top: calc(100% + 8px);
+  bottom: auto;
+  left: 0;
+  transform: none;
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.astral-fresh-tip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-weight: 500;
+}
+
 .astral-chart-key {
   position: relative;
   z-index: 2;
@@ -9804,6 +9835,24 @@ button.astral-value-pill.astral-tip-host {
   border-top: 3px solid var(--color-text-secondary);
   border-radius: 2px;
   background: radial-gradient(circle, #c4c4cc 1.1px, transparent 1.4px) 0 0 / 5px 5px, #f3f3f6;
+}
+
+/* Not in yet: hatched after the newest reading, so on-their-way readings never read as a gap or as zero use. */
+.astral-pending-band {
+  fill: url(#astral-pending-hatch);
+}
+
+.astral-pending-edge {
+  stroke: var(--color-text-secondary);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.7;
+}
+
+.astral-chart .astral-pending-label {
+  fill: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
 }
 
 .astral-chart-switch {

@@ -2285,22 +2285,36 @@ function protoCombineSeries(meters, build) {
   return series[0].map((point, i) => {
     let total = 0;
     let missing = 0;
+    let pending = 0;
+    let dataTo = null;
+    let partialTo = null;
     let estimated = 0;
     series.forEach((row) => {
       const cell = row[i];
+      if (cell?.quality === "pending") {
+        pending += 1;
+        if (cell.dataTo != null) dataTo = Math.max(dataTo ?? 0, cell.dataTo);
+        return;
+      }
       if (!cell || cell.value == null) {
         missing += 1;
         return;
       }
       total += cell.value;
+      if (cell.partialTo != null) partialTo = Math.max(partialTo ?? 0, cell.partialTo);
       if (cell.quality === "estimated") estimated += 1;
     });
     const unit = point.unit || "kWh";
+    const none = missing + pending === series.length;
+    // Not in yet when nothing in view has come in and a meter is still sending. A half-hour with some meters in shows what has arrived.
+    if (none && pending) return { label: point.label, value: null, quality: "pending", unit, dataTo };
     return {
       label: point.label,
-      value: missing === series.length ? null : protoRoundReading(total, 1),
-      quality: missing === series.length ? "missing" : estimated ? "estimated" : "actual",
+      value: none ? null : protoRoundReading(total, 1),
+      quality: none ? "missing" : estimated ? "estimated" : "actual",
       unit,
+      ...(pending && !none ? { behind: pending } : {}),
+      ...(partialTo != null && !none ? { partialTo } : {}),
     };
   });
 }
@@ -2318,15 +2332,22 @@ function protoMetersSeries(meters, channel) {
   const outgoing = protoCombineSeries(flow.outgoing, protoSiteSeries);
   return incoming.map((point, i) => {
     const other = outgoing[i] || { value: null, quality: "missing" };
-    const missing = point.quality === "missing" || other.quality === "missing" || other.value == null;
+    if (point.quality === "pending" && other.value == null && other.quality !== "missing") {
+      return { ...point, last: null, lastQuality: "pending", nowLabel: "In", lastLabel: "Out" };
+    }
+    const missing = point.quality === "missing" || other.quality === "missing";
+    const pending = point.quality === "pending" || other.quality === "pending";
     return {
       ...point,
       last: other.value,
-      lastQuality: other.value == null ? "missing" : other.quality,
+      lastQuality: other.value == null ? other.quality || "missing" : other.quality,
       nowLabel: "In",
       lastLabel: "Out",
+      ...(other.behind ? { behind: (point.behind || 0) + other.behind } : {}),
       note: missing
         ? "Missing data. Not zero use."
+        : pending
+        ? protoPendingNote(point.dataTo ?? other.dataTo)
         : point.quality === "estimated" || other.quality === "estimated"
         ? "Estimated reading."
         : "Actual reading.",
@@ -3671,6 +3692,75 @@ function protoToday() {
   return new Date(2026, 8, 4);
 }
 
+// The clock time the prototype treats as now. Readings land a few minutes after each half-hour ends.
+function protoNow() {
+  return new Date(2026, 8, 4, 15, 12);
+}
+
+function protoHalfHourFloor(date) {
+  const at = new Date(date.getTime());
+  at.setMinutes(at.getMinutes() < 30 ? 0 : 30, 0, 0);
+  return at;
+}
+
+// A meter's readings are in up to its last reading, rounded down to the half-hour.
+// A meter cut off on readingsTo is not sending, which shows as missing data, so it has no time here.
+function protoMeterDataTo(meter) {
+  if (!meter || meter.readingsTo) return null;
+  const hours = protoMeterSilentHours(meter);
+  return protoHalfHourFloor(new Date(protoNow().getTime() - hours * 3600000));
+}
+
+// Points that start at or after the meter's data-to time are not in yet. That is not missing data.
+function protoPendingAt(meter, start) {
+  const to = protoMeterDataTo(meter);
+  return Boolean(to && start.getTime() >= to.getTime());
+}
+
+// A meter that is not sending has missing data after its last reading. Any other meter's readings are on their way.
+function protoPendingPoint(meter, label, unit) {
+  if (meter?.status === "stale") return { label, value: null, quality: "missing", unit };
+  const to = protoMeterDataTo(meter);
+  return { label, value: null, quality: "pending", unit, dataTo: to ? to.getTime() : null };
+}
+
+// A day or month that the data-to time falls inside holds only what has come in, so its bar is not a whole period.
+function protoPartialPoint(meter, point, start, end) {
+  const to = protoMeterDataTo(meter);
+  if (!to || point.value == null || to <= start || to >= end) return point;
+  const share = (to.getTime() - start.getTime()) / (end.getTime() - start.getTime());
+  const places = protoMeterPlaces(meter);
+  return { ...point, value: Number((point.value * share).toFixed(places)), partialTo: to.getTime() };
+}
+
+// The latest time any sending meter in view is in up to, and the meters more than a half-hour behind it.
+function protoViewDataTo(meters) {
+  const rows = (meters || [])
+    .filter(Boolean)
+    .map((meter) => ({ meter, at: protoMeterDataTo(meter) }))
+    .filter((row) => row.at);
+  if (!rows.length) return null;
+  const latest = Math.max(...rows.map((row) => row.at.getTime()));
+  const behind = rows.filter((row) => latest - row.at.getTime() > 1800000).map((row) => row.meter);
+  return { at: new Date(latest), behind };
+}
+
+function protoDataToWords(stamp) {
+  const at = stamp instanceof Date ? stamp : new Date(stamp);
+  const clock = protoClock(at.getHours(), at.getMinutes());
+  if (protoIso(at) === protoIso(protoToday())) return `${clock} today`;
+  return `${at.getDate()} ${PROTO_MONTHS[at.getMonth()]}, ${clock}`;
+}
+
+function protoPendingNote(stamp) {
+  return stamp == null ? "" : `Readings are in up to ${protoDataToWords(stamp)}.`;
+}
+
+// The date range reaches today, so the newest readings may still be on their way.
+function protoSpanReachesNow(span = protoDateSpan()) {
+  return protoIso(span.to) >= protoIso(protoToday());
+}
+
 function protoAddDays(date, days) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
 }
@@ -4531,6 +4621,30 @@ function protoWeekendKey() {
   return `<div class="astral-ref-key" role="list" aria-label="Highlights"><span class="astral-ref-key-item" role="listitem"><span class="astral-weekend-mark" aria-hidden="true"></span><span>Weekend</span></span></div>`;
 }
 
+// Hatched from the first point that is not in yet to the end of the range, with a label on top.
+// Readings still on their way are not missing data, so this never looks like a gap.
+function protoPendingLayer(rows, pad, w, h, startOf) {
+  const list = rows || [];
+  let first = list.length;
+  while (first > 0 && list[first - 1]?.quality === "pending") first -= 1;
+  if (first >= list.length) return "";
+  const x0 = Math.max(pad.l, startOf(first));
+  const x1 = w - pad.r;
+  if (x1 - x0 < 2) return "";
+  const bottom = h - pad.b;
+  const width = (x1 - x0).toFixed(1);
+  const note = protoPendingNote(list[first]?.dataTo);
+  const label =
+    x1 - x0 >= 64
+      ? `<text class="astral-pending-label" x="${(x0 + 6).toFixed(1)}" y="${(pad.t + 14).toFixed(1)}">Not in yet</text>`
+      : "";
+  return `<g class="astral-pending"><title>${escapeHtml(`Not in yet. ${note}`.trim())}</title><defs><pattern id="astral-pending-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#fafafa" /><line x1="0" y1="0" x2="0" y2="6" stroke="#d4d4d8" stroke-width="2" /></pattern></defs><rect class="astral-pending-band" x="${x0.toFixed(
+    1
+  )}" y="${pad.t}" width="${width}" height="${(bottom - pad.t).toFixed(1)}" /><line class="astral-pending-edge" x1="${x0.toFixed(
+    1
+  )}" y1="${pad.t}" x2="${x0.toFixed(1)}" y2="${bottom}" />${label}</g>`;
+}
+
 function protoRefRowsAt(refs, i, track) {
   return (refs || [])
     .filter((ref) => !track || !ref.track || ref.track === track)
@@ -4878,18 +4992,27 @@ function protoDailySpanSeries(meter, span) {
   for (let stamp = span.from.getTime(); stamp <= span.to.getTime(); stamp += 86400000) {
     const date = new Date(stamp);
     const i = points.length;
+    if (protoPendingAt(meter, date)) {
+      points.push(protoPendingPoint(meter, protoFormatDay(date), unit));
+      continue;
+    }
     const quality = protoSpanQuality(meter, i, count);
     const spike = protoMeterSpikeDay(meter, date) ? 1.85 : 1;
     const wave = (0.86 + Math.sin((i + protoDaySeed(date) + protoMeterSeed(meter)) / 2.4) * 0.12 + (i % 6) * 0.01) * spike;
     points.push(
       quality === "missing"
         ? { label: protoFormatDay(date), value: null, quality, unit }
-        : {
-            label: protoFormatDay(date),
-            value: Number((dayKwh * wave).toFixed(places)),
-            quality,
-            unit,
-          }
+        : protoPartialPoint(
+            meter,
+            {
+              label: protoFormatDay(date),
+              value: Number((dayKwh * wave).toFixed(places)),
+              quality,
+              unit,
+            },
+            date,
+            protoAddDays(date, 1)
+          )
     );
   }
   return points;
@@ -4911,6 +5034,9 @@ function protoMonthSpanSeries(meter, span) {
   const unit = protoMeterUseUnit(meter);
   const places = protoMeterKind(meter) === "water" ? 1 : 0;
   return months.map((item, i) => {
+    if (protoPendingAt(meter, new Date(item.year, item.month, 1))) {
+      return protoPendingPoint(meter, `${PROTO_MONTHS[item.month]} ${String(item.year).slice(2)}`, unit);
+    }
     const quality = protoSpanQuality(meter, i, months.length);
     const wave = 0.86 + Math.sin((i + item.month + item.year + protoMeterSeed(meter)) / 2.4) * 0.12;
     if (quality === "missing") {
@@ -4921,12 +5047,17 @@ function protoMonthSpanSeries(meter, span) {
         unit,
       };
     }
-    return {
-      label: `${PROTO_MONTHS[item.month]} ${String(item.year).slice(2)}`,
-      value: Number((dayKwh * 30 * wave).toFixed(places)),
-      quality,
-      unit,
-    };
+    return protoPartialPoint(
+      meter,
+      {
+        label: `${PROTO_MONTHS[item.month]} ${String(item.year).slice(2)}`,
+        value: Number((dayKwh * 30 * wave).toFixed(places)),
+        quality,
+        unit,
+      },
+      new Date(item.year, item.month, 1),
+      new Date(item.year, item.month + 1, 1)
+    );
   });
 }
 
@@ -6057,9 +6188,13 @@ function protoSeries(meter, range, at) {
     weights.push(protoQuality(meter, hour, "day") === "missing" ? 0 : protoShape(hour, hours) * wobble);
   }
   const live = weights.reduce((sum, item) => sum + item, 0) || 1;
+  const dated = at instanceof Date && !Number.isNaN(at.getTime());
   return weights.map((weight, i) => {
     const hour = i / 2;
     const minute = i % 2 ? 30 : 0;
+    if (dated && protoPendingAt(meter, new Date(at.getFullYear(), at.getMonth(), at.getDate(), Math.floor(hour), minute))) {
+      return protoPendingPoint(meter, protoClock(Math.floor(hour), minute), unit);
+    }
     const quality = protoQuality(meter, hour, "day");
     if (quality === "missing") {
       return { label: protoClock(Math.floor(hour), minute), value: null, quality, unit };
@@ -6200,7 +6335,9 @@ function protoBarFlowView(points, paired) {
       lastLabel: "",
       nowLabel: "",
       note:
-        p.lastQuality === "missing" || p.last == null
+        p.lastQuality === "pending" && p.last == null
+          ? protoPendingNote(p.dataTo)
+          : p.lastQuality === "missing" || p.last == null
           ? "Missing data. Not zero use."
           : p.lastQuality === "estimated"
           ? "Estimated reading."
@@ -6742,7 +6879,17 @@ function protoHitAttrs(point) {
   const last = point.last == null ? "" : protoFormatAmount(point.last, places);
   const stacks = protoPackStacks(point.stacks || []);
   const lastStacks = protoPackStacks(point.lastStacks, true);
-  const note = point.tipNote || (point.quality === "missing" ? protoTipQuality("missing") : "");
+  const note =
+    point.tipNote ||
+    (point.quality === "pending" || (point.lastQuality === "pending" && point.value == null)
+      ? protoPendingNote(point.dataTo)
+      : point.quality === "missing"
+        ? protoTipQuality("missing")
+        : point.behind
+          ? `${point.behind} ${point.behind === 1 ? "meter point is" : "meter points are"} not in yet.`
+          : point.partialTo
+            ? protoPendingNote(point.partialTo)
+            : "");
   const compare = point.last != null || Boolean(point.nowLabel || point.lastLabel);
   const nowLabel = point.nowLabel || "This year";
   const lastLabel = point.lastLabel || "Last year";
@@ -6933,7 +7080,7 @@ function protoChartPointLine(point) {
     ? `${protoChartAt(point.time)}. ${protoFormatReading(point.value, unit)}${protoReadingQualityWords(
         point.quality
       )}.`
-    : `${protoChartAt(point.time)}. No reading.`;
+    : `${protoChartAt(point.time)}. ${point.quality === "pending" ? "Not in yet" : "No reading"}.`;
 }
 
 function protoChartPointSeriesMark(label, color) {
@@ -6949,7 +7096,8 @@ function protoChartPointSeriesMark(label, color) {
 }
 
 function protoChartPointReading(label, value, unit, color, quality, cls = "", drill = "") {
-  const amount = escapeHtml(protoFormatReading(value, unit));
+  const waiting = quality === "pending" && (value == null || value === "");
+  const amount = escapeHtml(waiting ? "Not in yet" : protoFormatReading(value, unit));
   const series = protoChartPointSeriesMark(label, color);
   const plain = escapeHtml(protoFormatAmount(value, protoUnitPlaces(unit)));
   const shown = quality === "estimated" && value != null ? amount.replace(plain, protoEstAmount(plain)) : amount;
@@ -8438,6 +8586,48 @@ function protoChartBoundsWords(set) {
   return `${lead} for ${[group.label, set.utility].filter(Boolean).join(" \u00b7 ")}`;
 }
 
+// The meters behind the graph in view: a compare, a group or a site.
+function protoChartViewMeters() {
+  if (protoCompareOn()) return protoCompareViewMeters(protoCompareBundle().meters || []);
+  if (store.prototypeScope === "group") return protoGroupViewMeters(protoGroup(store.prototypeGroup));
+  return protoSiteViewMeters(protoSiteByMeter(store.activePrototypeMeter));
+}
+
+// When the range reaches today, say how far the readings go. Meters more than a half-hour behind are named on hover.
+function protoDataFreshLine(meters = protoChartViewMeters()) {
+  if (!protoSpanReachesNow()) return "";
+  const view = protoViewDataTo(meters);
+  if (!view) return "";
+  const n = view.behind.length;
+  const lead = `Data to ${protoDataToWords(view.at)}`;
+  if (!n) return `<p class="astral-chart-when astral-chart-fresh">${escapeHtml(lead)}</p>`;
+  const words = `${n} ${n === 1 ? "meter point" : "meter points"} behind`;
+  const rows = view.behind
+    .map(
+      (meter) =>
+        `<span class="astral-fresh-tip-row"><span>${escapeHtml(protoMeterRef(meter))}</span><span class="astral-muted">Last reading ${escapeHtml(
+          meter.lastReading || "none"
+        )}</span></span>`
+    )
+    .join("");
+  const spoken = view.behind.map((meter) => `${protoMeterRef(meter)}, last reading ${meter.lastReading || "none"}`).join(". ");
+  const canOpen = !protoCompareOn() && store.prototypeScope !== "group";
+  const attrs = canOpen ? ` data-proto-behind aria-label="${escapeHtml(`${words}. ${spoken}. Open meter points`)}"` : "";
+  const body = `${escapeHtml(words)}<span class="astral-icon-tip astral-fresh-tip" role="tooltip">${rows}</span>`;
+  const behind = canOpen
+    ? `<button type="button" class="astral-text astral-tip-host astral-fresh-behind"${attrs}>${body}</button>`
+    : `<span class="astral-tip-host astral-fresh-behind" tabindex="0" aria-label="${escapeHtml(`${words}. ${spoken}`)}">${body}</span>`;
+  return `<p class="astral-chart-when astral-chart-fresh">${escapeHtml(lead)} <span aria-hidden="true">\u00b7</span> ${behind}</p>`;
+}
+
+// Opens the list of meter points under the graph, where each one shows its last reading.
+function protoShowBehind() {
+  const head = document.querySelector('#astral-fs [data-proto-breakdown="list"]');
+  if (!head) return;
+  if (head.getAttribute("aria-expanded") !== "true") protoToggleBreakdown(head);
+  requestAnimationFrame(() => head.scrollIntoView({ block: "start", behavior: "smooth" }));
+}
+
 function protoChartWrap(svg, label, dual, empty, extras = {}) {
   const pan = protoChartCanPan(label);
   const heading = extras.heading || null;
@@ -8453,6 +8643,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
         <div class="astral-chart-heading">
           <p class="astral-chart-title">${escapeHtml(heading.title)}</p>
           ${heading.when ? `<p class="astral-chart-when">${escapeHtml(heading.when)}</p>` : ""}
+          ${heading.fresh ? protoDataFreshLine(extras.freshMeters) : ""}
         </div>
         ${heading.tools ? `<div class="astral-chart-nav">${heading.tools}</div>` : ""}
       </div>`
@@ -8463,6 +8654,7 @@ function protoChartWrap(svg, label, dual, empty, extras = {}) {
             ? `<div class="astral-chart-heading">
           <p class="astral-chart-title">${escapeHtml(label)}</p>
           <p class="astral-chart-when">${escapeHtml(protoChartWhen())} ${escapeHtml(protoChartZone())}</p>
+          ${protoDataFreshLine(extras.freshMeters)}
           ${
             extras.datePair || extras.refs?.some((ref) => ref.kind === "dates")
               ? `<p class="astral-chart-when">Compared with ${escapeHtml(protoSpanWords(protoDateCompareSpan()))}</p>`
@@ -8778,7 +8970,7 @@ function protoAreaChart(points, label) {
       const x = pad.l + i * col;
       const cy = p.value == null ? h - pad.b : scale.y(p.value);
       const on = Boolean(picked && picked.chart === label && picked.time === p.label);
-      const mark = queried.has(p.label);
+      const mark = !(p.value == null && p.quality === "pending") && queried.has(p.label);
       return `
         <g class="astral-hit-group${on ? " is-picked" : ""}${mark ? " is-query" : ""}">
           <rect
@@ -9339,10 +9531,13 @@ function protoBarChart(points, label, options = {}) {
           const x1 = x + gap * (paired ? 0.12 : 0.18);
           const x2 = x + gap * 0.5;
           const on = Boolean(picked && picked.chart === label && picked.time === p.label);
-          const mark = queried.has(p.label);
-          const flag = alerted.has(p.label);
+          // Nothing can be flagged on a reading that is not in yet.
+          const waiting = p.value == null && p.quality === "pending";
+          const mark = !waiting && queried.has(p.label);
+          const flag = !waiting && alerted.has(p.label);
           const bar = (value, quality, cls, bx) => {
             const side = bx === x1 ? "in" : "out";
+            if (value == null && quality === "pending") return "";
             if (value == null) {
               return `<rect class="astral-gap" data-m="${i}|${side}|gap" x="${bx.toFixed(1)}" y="${(h - pad.b - 8).toFixed(
                 1
@@ -9461,7 +9656,7 @@ function protoBarChart(points, label, options = {}) {
             role="img"
             aria-label="${escapeHtml(
               p.spoken ||
-              `${p.label}, ${p.value == null ? "no reading" : protoFormatReading(p.value, p.unit || "kWh")}${
+              `${p.label}, ${p.value == null ? (p.quality === "pending" ? "not in yet" : "no reading") : protoFormatReading(p.value, p.unit || "kWh")}${
                 p.quality === "estimated" && p.value != null ? ", estimated" : ""
               }${
                 paired && p.lastQuality === "estimated" && p.last != null
@@ -9495,6 +9690,7 @@ function protoBarChart(points, label, options = {}) {
       ${protoEstDefs()}
       ${layer.back}
       ${weekend.back}
+      ${protoPendingLayer(rows, pad, w, h, (i) => pad.l + i * gap)}
       ${protoChartAxes(rows, scale, w, h, pad, scale.xBar)}
       ${weekend.axis}
       ${layer.strip}
@@ -9511,6 +9707,7 @@ function protoBarChart(points, label, options = {}) {
     bars: true,
     datePair,
     weekends: Boolean(weekend.back),
+    freshMeters: options.freshMeters,
   });
 }
 
@@ -9659,11 +9856,13 @@ function protoLineChartBuild(tracks, label, options) {
           const cy = scale.y(p.value);
           const on = protoLinePointOn(picked, track, p, label);
           const tallest = protoLineTallestTrack(list, i) === track;
+          const waiting = p.value == null && p.quality === "pending";
           const flag =
-            protoLinePointAlert(track, p.label) ||
-            (tallest && protoLineLooseAt(list, p.label, "alert"));
+            !waiting &&
+            (protoLinePointAlert(track, p.label) || (tallest && protoLineLooseAt(list, p.label, "alert")));
           const mark =
             !flag &&
+            !waiting &&
             (protoLinePointQuery(track, p.label) ||
               (tallest && protoLineLooseAt(list, p.label, "query")));
           const hit = {
@@ -9721,6 +9920,19 @@ function protoLineChartBuild(tracks, label, options) {
       ${protoEstDefs()}
       ${layer.back}
       ${weekend.back}
+      ${protoPendingLayer(
+        points.map((_, i) => ({
+          quality:
+            list.some((track) => track.points[i]?.quality === "pending") && list.every((track) => track.points[i]?.value == null)
+              ? "pending"
+              : "",
+          dataTo: Math.max(0, ...list.map((track) => track.points[i]?.dataTo || 0)) || null,
+        })),
+        pad,
+        w,
+        h,
+        (i) => Math.max(pad.l, scale.x(i) - step / 2)
+      )}
       ${protoChartAxes(points, scale, w, h, pad, scale.x)}
       ${weekend.axis}
       ${layer.strip}
@@ -9739,6 +9951,7 @@ function protoLineChartBuild(tracks, label, options) {
     datePair: options.datePair,
     heading: options.heading,
     still: options.still,
+    freshMeters: options.freshMeters,
   });
 }
 
@@ -9791,7 +10004,10 @@ function protoTracksMissing(tracks) {
   const n = list[0]?.points?.length || 0;
   let missing = 0;
   for (let i = 0; i < n; i += 1) {
-    if (list.some((track) => !track.points[i] || track.points[i].value == null)) missing += 1;
+    const cells = list.map((track) => track.points[i]);
+    // Readings not in yet are on their way, not missing.
+    if (cells.some((cell) => cell?.quality === "pending") && cells.every((cell) => cell?.value == null)) continue;
+    if (cells.some((cell) => !cell || (cell.value == null && cell.quality !== "pending"))) missing += 1;
   }
   return missing;
 }
@@ -10347,15 +10563,19 @@ function protoTracksToStackPoints(tracks) {
       .filter((slice) => slice.value > 0);
     const present = cells.filter(({ cell }) => cell.value != null);
     const missing = !present.length;
+    const waiting = missing && cells.some(({ cell }) => cell.quality === "pending");
+    const behind = present.length ? cells.filter(({ cell }) => cell.quality === "pending").length : 0;
     const estimated = present.some(({ cell }) => cell.quality === "estimated");
     const sum = protoStacksSum(stacks);
     const shared = stacks.some((slice) => slice.share != null);
     return {
       label,
       value: missing ? null : protoRoundReading(sum, 1),
-      quality: missing ? "missing" : estimated ? "estimated" : "actual",
+      quality: waiting ? "pending" : missing ? "missing" : estimated ? "estimated" : "actual",
       unit,
       stacks,
+      ...(waiting ? { dataTo: Math.max(0, ...cells.map(({ cell }) => cell.dataTo || 0)) || null } : {}),
+      ...(behind ? { behind } : {}),
       note: protoStacksNote(protoSortStacksDesc(stacks), unit),
       ...(shared && sum ? { share: stacks.reduce((n, slice) => n + slice.value * (slice.share ?? 1), 0) / sum } : {}),
     };
@@ -16018,6 +16238,8 @@ function protoReportRows(def) {
       let register = Math.round((Number(meter.base) || 8) * 24 * 400);
       days.forEach((day) => {
         const points = protoSeries(meter, "day", day);
+        // The day's read is taken once the day is in, so a day still coming in has no read yet.
+        if (points.some((point) => point.quality === "pending")) return;
         register += points.reduce((n, point) => n + (Number(point.value) || 0), 0);
         const estimated = points.some((point) => point.quality === "estimated" || point.value == null);
         if (!protoReportQualityOk(quality, estimated ? "estimated" : "actual")) return;
@@ -16096,6 +16318,7 @@ function protoReportRows(def) {
   each((site, meter) => {
     days.forEach((day) => {
       protoSeries(meter, "day", day).forEach((point) => {
+        if (point.quality === "pending") return;
         if (missing && point.value != null && point.quality !== "missing") return;
         const reading =
           point.value == null || point.quality === "missing" ? "missing" : point.quality === "estimated" ? "estimated" : "actual";
@@ -23012,6 +23235,18 @@ function protoPowerModel(list) {
   };
 }
 
+// Adds the meters' kWh at one point. When nothing is in and a meter is still sending, the point is pending, not missing.
+function protoPowerSumAt(series, i) {
+  const have = series.map((s) => s[i]).filter((p) => p && p.value != null);
+  const waiting = !have.length && series.some((s) => s[i]?.quality === "pending");
+  const dataTo = waiting ? Math.max(0, ...series.map((s) => s[i]?.dataTo || 0)) || null : null;
+  return {
+    kwh: have.length ? have.reduce((n, p) => n + p.value, 0) : null,
+    quality: have.some((p) => p.quality === "estimated") ? "estimated" : have.length ? "actual" : waiting ? "pending" : "missing",
+    dataTo,
+  };
+}
+
 // One half-hour on the meter: kWh, then lagging or leading kVArh, never both.
 function protoPowerSlot(model, kwh, key) {
   const light = model.typical ? Math.max(0, Math.min(1, 1 - kwh / model.typical)) : 0;
@@ -23073,26 +23308,20 @@ function protoPowerRows(meters, options = {}) {
   const series = list.map((meter) => protoSiteSeries(meter));
   const labels = series[0].map((p) => p.label);
   const names = protoSpanPointNames(span, labels, false);
-  const sumAt = (i) => {
-    const have = series.map((s) => s[i]).filter((p) => p && p.value != null);
-    return {
-      kwh: have.length ? have.reduce((n, p) => n + p.value, 0) : null,
-      quality: have.some((p) => p.quality === "estimated") ? "estimated" : have.length ? "actual" : "missing",
-    };
-  };
+  const sumAt = (i) => protoPowerSumAt(series, i);
   if (span.kind === "interval") {
     const day = protoIso(span.from);
     return labels.map((label, i) => {
-      const { kwh, quality } = sumAt(i);
+      const { kwh, quality, dataTo } = sumAt(i);
       const slot = kwh == null ? null : protoPowerSlot(model, kwh, `${day}|${i}`);
       if (slot) slot.peakAt = `${label} ${zone}`;
-      return protoPowerSum(label, `${label} ${zone}`, [slot], quality);
+      return { ...protoPowerSum(label, `${label} ${zone}`, [slot], quality), dataTo };
     });
   }
   if (span.kind === "day") {
     return labels.map((label, i) => {
-      const { kwh, quality } = sumAt(i);
-      if (kwh == null) return protoPowerSum(label, names[i], [], "missing");
+      const { kwh, quality, dataTo } = sumAt(i);
+      if (kwh == null) return { ...protoPowerSum(label, names[i], [], quality), dataTo };
       const date = protoAddDays(span.from, i);
       const day = protoIso(date);
       const slots = protoCalendarDayShape(shape, date, kwh).map((v, k) => {
@@ -23110,8 +23339,10 @@ function protoPowerRows(meters, options = {}) {
     const end = monthEnd > span.to ? span.to : monthEnd;
     const days = start > end ? [] : protoWithSpan({ from: start, to: end, kind: "day" }, () => protoPowerRows(list, options));
     const have = days.filter((row) => row.slots);
-    const quality = have.some((row) => row.quality === "estimated") ? "estimated" : have.length ? "actual" : "missing";
-    return protoPowerSum(label, label, have, quality);
+    const waiting = !have.length && days.length > 0 && days.every((row) => row.quality === "pending");
+    const quality = have.some((row) => row.quality === "estimated") ? "estimated" : have.length ? "actual" : waiting ? "pending" : "missing";
+    const dataTo = waiting ? Math.max(0, ...days.map((row) => row.dataTo || 0)) || null : null;
+    return { ...protoPowerSum(label, label, have, quality), dataTo };
   });
 }
 
@@ -23119,10 +23350,11 @@ function protoPowerAmount(value, unit) {
   return `${Math.round(value).toLocaleString("en-GB")} ${unit}`;
 }
 
-function protoPowerChart(rows, measure) {
+function protoPowerChart(rows, measure, meters) {
   const reactive = measure === "reactive";
   const title = PROTO_POWER_MEASURES.find((item) => item.id === measure)?.name || "Power factor";
-  const heading = { title, when: `${protoChartWhen()} ${protoChartZone()}`, tools: protoPowerMeasureSelect(measure) };
+  const heading = { title, when: `${protoChartWhen()} ${protoChartZone()}`, tools: protoPowerMeasureSelect(measure), fresh: true };
+  const freshMeters = protoPowerMeters(meters);
   const line = protoChartIsLine();
   const limit = (key, values, names, label, keyName, places, keyTip = "") => ({
     key,
@@ -23147,20 +23379,22 @@ function protoPowerChart(rows, measure) {
         label: row.label,
         value: row.slots ? Number(row.kvah.toFixed(1)) : null,
         quality: row.quality,
+        dataTo: row.dataTo,
         unit: "kVAh",
         tipNote: row.slots
           ? `Active energy ${Number(row.kwh.toFixed(1)).toLocaleString("en-GB", { maximumFractionDigits: 1 })} kWh.${row.pf == null ? "" : ` Power factor ${row.pf.toFixed(2)}.`}`
           : "",
       }));
       return line
-        ? protoLineChart([{ id: "kvah", ref: title, color: protoIncomingInk(), dash: "", points }], title, { heading, still: true })
-        : protoBarChart(points, title, { heading, still: true });
+        ? protoLineChart([{ id: "kvah", ref: title, color: protoIncomingInk(), dash: "", points }], title, { heading, freshMeters, still: true })
+        : protoBarChart(points, title, { heading, freshMeters, still: true });
     }
     if (!reactive) {
       const points = rows.map((row) => ({
         label: row.label,
         value: row.pf == null ? null : Number(row.pf.toFixed(2)),
         quality: row.quality,
+        dataTo: row.dataTo,
         unit: "PF",
         tipNote: row.pf == null && row.slots ? PROTO_PF_LOW_NOTE : row.leading ? PROTO_PF_LEAD_NOTE : "",
       }));
@@ -23176,8 +23410,8 @@ function protoPowerChart(rows, measure) {
         ),
       ];
       return line
-        ? protoLineChart([{ id: "pf", ref: title, color: protoIncomingInk(), dash: "", points }], title, { refs, heading, still: true })
-        : protoBarChart(points, title, { refs, heading, still: true });
+        ? protoLineChart([{ id: "pf", ref: title, color: protoIncomingInk(), dash: "", points }], title, { refs, heading, freshMeters, still: true })
+        : protoBarChart(points, title, { refs, heading, freshMeters, still: true });
     }
     const amount = (value) => Number(value.toFixed(1));
     const allowance = rows.map((row) => (row.slots ? amount(row.kwh * PROTO_PF_ALLOWANCE) : null));
@@ -23203,13 +23437,14 @@ function protoPowerChart(rows, measure) {
           label: row.label,
           value: row.slots ? amount(row[key]) : null,
           quality: row.quality,
+          dataTo: row.dataTo,
           unit: "kVArh",
         })),
       });
       return protoLineChart(
         [track("lag", "Lagging", protoIncomingInk(), "lag"), track("lead", "Leading", protoOutgoingInk(), "lead")],
         title,
-        { refs, heading, still: true, dual: true, keyNames }
+        { refs, heading, freshMeters, still: true, dual: true, keyNames }
       );
     }
     const points = rows.map((row) => ({
@@ -23217,15 +23452,16 @@ function protoPowerChart(rows, measure) {
       value: row.slots ? amount(row.lag) : null,
       last: row.slots ? amount(row.lead) : null,
       quality: row.quality,
+      dataTo: row.dataTo,
       lastQuality: row.quality,
       nowLabel: "Lagging",
       lastLabel: "Leading",
       unit: "kVArh",
       spoken: row.slots
         ? `${row.name}. Lagging ${protoPowerAmount(row.lag, "kVArh")}. Leading ${protoPowerAmount(row.lead, "kVArh")}.`
-        : `${row.name}. No reading.`,
+        : `${row.name}. ${row.quality === "pending" ? "Not in yet" : "No reading"}.`,
     }));
-    return protoBarChart(points, title, { refs, heading, still: true, dual: true, keyNames });
+    return protoBarChart(points, title, { refs, heading, freshMeters, still: true, dual: true, keyNames });
   };
   return protoWithStore(
     {
@@ -23337,7 +23573,7 @@ function protoPowerPane(meters) {
     inner: `<div class="astral-pane-summary">${protoWeatherFigureGroup("", figures)}</div>`,
   });
   return `
-    ${protoPowerChart(rows, measure)}
+    ${protoPowerChart(rows, measure, meters)}
     ${summary}
   `;
 }
@@ -23356,25 +23592,19 @@ function protoDemandRows(meters) {
   const series = list.map((meter) => protoSiteSeries(meter));
   const labels = series[0].map((p) => p.label);
   const names = protoSpanPointNames(span, labels, false);
-  const sumAt = (i) => {
-    const have = series.map((s) => s[i]).filter((p) => p && p.value != null);
-    return {
-      kwh: have.length ? have.reduce((n, p) => n + p.value, 0) : null,
-      quality: have.some((p) => p.quality === "estimated") ? "estimated" : have.length ? "actual" : "missing",
-    };
-  };
+  const sumAt = (i) => protoPowerSumAt(series, i);
   if (span.kind === "interval") {
     return labels.map((label, i) => {
-      const { kwh, quality } = sumAt(i);
+      const { kwh, quality, dataTo } = sumAt(i);
       const kw = kwh == null ? null : kwh * 2;
       const at = `${label} ${zone}`;
-      return { label, kw, kwh, hours: kwh == null ? 0 : 0.5, quality, peakAt: at, low: kw, lowAt: at };
+      return { label, kw, kwh, hours: kwh == null ? 0 : 0.5, quality, dataTo, peakAt: at, low: kw, lowAt: at };
     });
   }
   if (span.kind === "day") {
     return labels.map((label, i) => {
-      const { kwh, quality } = sumAt(i);
-      const empty = { label, kw: null, kwh: null, hours: 0, quality: "missing", peakAt: "", low: null, lowAt: "" };
+      const { kwh, quality, dataTo } = sumAt(i);
+      const empty = { label, kw: null, kwh: null, hours: 0, quality: kwh == null ? quality : "missing", dataTo, peakAt: "", low: null, lowAt: "" };
       if (kwh == null) return empty;
       const slots = protoCalendarDayShape(shape, protoAddDays(span.from, i), kwh);
       let peak = -1;
@@ -23403,7 +23633,9 @@ function protoDemandRows(meters) {
     const end = monthEnd > span.to ? span.to : monthEnd;
     const days = start > end ? [] : protoWithSpan({ from: start, to: end, kind: "day" }, () => protoDemandRows(list));
     const have = days.filter((row) => row.kw != null);
-    if (!have.length) return { label, kw: null, kwh: null, hours: 0, quality: "missing", peakAt: "", low: null, lowAt: "" };
+    const waiting = days.length > 0 && days.every((row) => row.quality === "pending");
+    const dataTo = waiting ? Math.max(0, ...days.map((row) => row.dataTo || 0)) || null : null;
+    if (!have.length) return { label, kw: null, kwh: null, hours: 0, quality: waiting ? "pending" : "missing", dataTo, peakAt: "", low: null, lowAt: "" };
     const top = have.reduce((best, row) => (row.kw > best.kw ? row : best));
     const bottom = have.reduce((best, row) => (row.low < best.low ? row : best));
     return {
@@ -23424,6 +23656,7 @@ function protoDemandPoints(rows) {
     label: row.label,
     value: row.kw == null ? null : Number(row.kw.toFixed(1)),
     quality: row.quality,
+    dataTo: row.dataTo,
     unit: "kW",
   }));
 }
@@ -23435,6 +23668,7 @@ function protoDemandChart(rows, meters) {
   const remake = () => ({ points: protoDemandPoints(protoDemandRows(meters)) });
   const same = (list) => list;
   const capacity = protoCapacityRefs(meters, points);
+  const freshMeters = protoPowerMeters(meters);
   if (protoChartIsLine()) {
     const lineRefs = (again) => [{ id: "demand", track: "demand", color: protoIncomingInk(), points: again.points || [] }];
     const pair = protoDateCompareSpan() ? protoDateCompareLines(points, remake, meters, false, false, label, same) : null;
@@ -23444,12 +23678,14 @@ function protoDemandChart(rows, meters) {
         datePair: pair.flow,
         keyNames: pair.keyNames,
         zoneMeters: meters,
+        freshMeters,
         refs: [...protoProfileRefs(remake, lineRefs), ...capacity],
         weekends: true,
       });
     }
     return protoLineChart([{ id: "demand", ref: label, color: protoIncomingInk(), dash: "", points }], label, {
       zoneMeters: meters,
+      freshMeters,
       refs: [...protoDateCompareRefs(remake, lineRefs), ...protoProfileRefs(remake, lineRefs), ...capacity],
       weekends: true,
     });
@@ -23462,6 +23698,7 @@ function protoDemandChart(rows, meters) {
       return protoBarChart(pair.points, label, {
         datePair: "in",
         zoneMeters: meters,
+        freshMeters,
         refs: [...profileRefs, ...capacity],
         keyNames: pair.keyNames,
         weekends: true,
@@ -23470,6 +23707,7 @@ function protoDemandChart(rows, meters) {
   }
   return protoBarChart(points, label, {
     zoneMeters: meters,
+    freshMeters,
     refs: [...protoDateCompareRefs(remake, barRefs), ...profileRefs, ...capacity],
     weekends: true,
   });
@@ -28367,17 +28605,17 @@ function protoMeterChannelRows(meter) {
     return protoSiteSeries(meter).map((point, i) => ({
       label: point.label,
       day: protoIso(dayOf(i)),
-      quality: point.value == null ? "missing" : point.quality,
+      quality: point.value == null && point.quality !== "pending" ? "missing" : point.quality,
       values: { value: point.value },
     }));
   }
   return protoPowerRows([meter], { anyDirection: true }).map((row, i) => {
-    const missing = !row.slots || row.quality === "missing";
+    const missing = row.quality !== "pending" && (!row.slots || row.quality === "missing");
     return {
       label: row.label,
       day: protoIso(dayOf(i)),
       quality: missing ? "missing" : row.quality,
-      values: missing ? {} : { kwh: row.kwh, lag: row.lag, lead: row.lead },
+      values: missing || !row.slots ? {} : { kwh: row.kwh, lag: row.lag, lead: row.lead },
     };
   });
 }
@@ -28388,7 +28626,9 @@ function protoMeterInstallHas(install, day) {
 
 function protoMeterChannelTotal(channel, install, rowsBy) {
   if (!channel.used) return `<span class="astral-muted">None</span>`;
-  const own = (rowsBy[channel.meterId] || []).filter((row) => protoMeterInstallHas(install, row.day));
+  const own = (rowsBy[channel.meterId] || []).filter(
+    (row) => protoMeterInstallHas(install, row.day) && row.quality !== "pending"
+  );
   const read = own.filter((row) => row.quality !== "missing");
   if (!read.length) return `<span class="astral-muted">None</span>`;
   const total = read.reduce((n, row) => n + (row.values[channel.read] || 0), 0);
@@ -28476,7 +28716,9 @@ function protoMeterReadingsCard(supply, rowsBy) {
           const own = rowsBy[channel.meterId]?.[i] || row;
           const value = own.values?.[channel.read];
           return `<td>${
-            own.quality === "missing" || value == null
+            own.quality === "pending" && value == null
+              ? `<span class="astral-muted">Not in yet</span>`
+              : own.quality === "missing" || value == null
               ? `<span class="astral-muted">No reading</span>`
               : protoBreakdownReading(protoRoundReading(value, 1), own.quality)
           }</td>`;
@@ -31833,6 +32075,7 @@ function protoPortfolioDetail() {
 }
 
 function protoQualityWord(quality, value) {
+  if (quality === "pending" && value == null) return "Not in yet";
   if (quality === "missing" || value == null) return "Missing data";
   if (quality === "estimated") return "Estimated";
   return "Actual";
@@ -32462,10 +32705,11 @@ function protoSummaryWhen(label) {
 // Total, highest, lowest and average for one flow. Missing readings are left out, never counted as zero.
 function protoSummaryFigures(points, key, flow, unit) {
   const grain = protoSummaryGrain();
-  const all = points || [];
+  const qualityKey = key === "last" ? "lastQuality" : "quality";
+  // Points not in yet are not counted as gaps.
+  const all = (points || []).filter((point) => !(point && point[key] == null && point[qualityKey] === "pending"));
   const have = all.filter((point) => point && point[key] != null);
   if (!have.length) return null;
-  const qualityKey = key === "last" ? "lastQuality" : "quality";
   const total = have.reduce((sum, point) => sum + Number(point[key]), 0);
   const high = have.reduce((best, point) => (Number(point[key]) > Number(best[key]) ? point : best));
   const low = have.reduce((best, point) => (Number(point[key]) < Number(best[key]) ? point : best));
@@ -38535,6 +38779,7 @@ function protoCsvDownload(lines, name) {
 }
 
 function protoCsvQuality(quality, value) {
+  if (quality === "pending" && value == null) return "not in yet";
   if (quality === "missing" || value == null) return "missing data";
   if (quality === "estimated") return "estimated";
   return "actual";
@@ -39170,6 +39415,8 @@ function protoDataBuild(meters, days, opts, quality, time) {
     days.forEach((day) => {
       const iso = protoIso(day);
       protoSeries(meter, "day", day).forEach((point, i) => {
+        // Readings not in yet are left out, so the file stops where the data does.
+        if (point.quality === "pending") return;
         const reading =
           point.value == null || point.quality === "missing" ? "missing" : point.quality === "estimated" ? "estimated" : "actual";
         const at = protoDataBucket(protoReportClock(day, point.label, time), opts.interval, iso, point.label);
@@ -41043,6 +41290,11 @@ function onPrototype(event) {
   const breakdownBtn = event.target.closest("[data-proto-breakdown]");
   if (breakdownBtn) {
     protoToggleBreakdown(breakdownBtn);
+    return;
+  }
+  const behindBtn = event.target.closest("[data-proto-behind]");
+  if (behindBtn) {
+    protoShowBehind();
     return;
   }
   const analyseBtn = event.target.closest("[data-proto-analyse]");

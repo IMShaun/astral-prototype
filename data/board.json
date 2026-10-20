@@ -349,10 +349,11 @@
         {
           "id": "tma-gap-h9",
           "title": "TMA gap H9: Three data cuts a day",
-          "note": "Owned outside the Astral team (data team). Track it; nothing to build yet. Confirm refresh frequency or tell customers.",
+          "note": "Done in the prototype. Each graph heading says Data to and a time, with a count of meter points behind that opens their last readings. Time after that is hatched as Not in yet, not missing. Today and this month show part bars. Figures, alerts, reports and files stop at that time. The data team still confirms the refresh frequency. Pattern: foundation.data-freshness.",
           "project": "Astral",
-          "kind": "admin",
-          "added": "2026-10-16"
+          "kind": "ux",
+          "added": "2026-10-16",
+          "doneOn": "2026-10-20"
         },
         {
           "id": "tma-gap-m1",

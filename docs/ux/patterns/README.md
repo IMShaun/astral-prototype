@@ -20,3 +20,4 @@ One Markdown file per pattern. Templates live in `.cursor/skills/ux-patterns/ref
 - [Responsive viewport](foundation.responsive-viewport.md)
 - [Load once](foundation.load-once.md)
 - [Related MPANs](foundation.related-mpans.md)
+- [Data freshness](foundation.data-freshness.md)
