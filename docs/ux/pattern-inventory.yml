@@ -596,3 +596,36 @@ patterns:
     health: healthy
     last_reviewed: "2026-10-20"
     decision_refs: []
+  - id: foundation.row-actions
+    name: Row actions
+    level: foundation
+    user_goal: Change or remove one row in a table without opening it, and without a column of buttons on every row
+    objects: [table row, meter point]
+    actions: [edit, delete, end]
+    used_in: [Admin companies, Settings users, Settings presets]
+    entry_points:
+      - Admin, Companies, a company, Meters
+      - Settings, Users
+      - Settings, Presets
+    structure: A More button at the end of the row opens a menu of the row's actions. With a pointer, the button shows when the user points at or tabs into the row, and the row takes the hover colour
+    components: [astral-people-more, astral-people-menu, astral-icon-btn, astral-company-meter-state]
+    states: [idle, hover, focus, menu-open, ends-on, ended]
+    permissions: admin
+    content_terms: [More for, Edit, Delete, Edit meter point, End date, Ends, Ended, Delete meter point]
+    variants: [edit-delete, user-actions, preset-actions]
+    exceptions:
+      - Touch screens always show the More button
+      - An ended meter point stays on the list with its history. Delete takes it off for good
+    accessibility: The More button is named with the row's name and shows on focus. Escape closes the menu and modals and returns focus to the More button.
+    implementation_refs:
+      - prototype.js protoCompanyMeterMore
+      - prototype.js protoCompanyMeterEditModal
+      - prototype.js protoCompanyMeterDeleteModal
+      - prototype.js protoCompanyMeterClick
+      - styles.css tbody tr:has(.astral-people-more)
+    evidence:
+      - TMA gap H8 on 2026-10-20, end or remove a meter point, asked for by the user as a row hover with Edit and Delete.
+    maturity: emerging
+    health: healthy
+    last_reviewed: "2026-10-20"
+    decision_refs: []

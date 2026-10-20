@@ -11613,6 +11613,49 @@ tr.is-off .astral-person-mark {
   background: var(--color-background-hover);
 }
 
+/* A row's More menu shows when the row is pointed at or tabbed into, and while its menu is open.
+   Touch screens have no hover, so the button stays in view there. */
+tbody tr:has(.astral-people-more):hover,
+tbody tr:has(.astral-people-more):focus-within,
+tbody tr:has(.astral-people-more [aria-expanded="true"]) {
+  background: var(--color-background-hover);
+}
+
+@media (hover: hover) {
+  tbody tr .astral-people-more > .astral-tip-host > .astral-icon-btn {
+    opacity: 0;
+    transition: opacity var(--motion-control) ease;
+  }
+
+  tbody tr:hover .astral-people-more > .astral-tip-host > .astral-icon-btn,
+  tbody tr:focus-within .astral-people-more > .astral-tip-host > .astral-icon-btn,
+  .astral-people-more > .astral-tip-host > .astral-icon-btn[aria-expanded="true"] {
+    opacity: 1;
+  }
+}
+
+/* Company meter points: the More column and the end date under a state. */
+#astral-fs .astral-service .astral-table td:has(> .astral-people-more) {
+  width: 2.75rem;
+  text-align: right;
+}
+
+#astral-fs .astral-service .astral-table td:has(.astral-people-menu:not([hidden])) {
+  position: relative;
+  z-index: 3;
+  overflow: visible;
+}
+
+.astral-company-meter-state {
+  display: inline-grid;
+  justify-items: start;
+  gap: 4px;
+}
+
+.astral-company-meter-state > .astral-muted {
+  font-size: 0.85rem;
+}
+
 .astral-people-count {
   color: var(--color-text-secondary);
   font-size: 0.85rem;

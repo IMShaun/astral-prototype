@@ -342,10 +342,11 @@
         {
           "id": "tma-gap-h8",
           "title": "TMA gap H8: Stale portfolios after D0151",
-          "note": "Owned outside the Astral team (Lisa, Tricia). Track it; nothing to build yet. Cleanse against current appointments before migration.",
+          "note": "Done in the prototype. On a company's Meters tab, each row has a More menu with Edit and Delete. Edit changes the site or sets an end date: the row shows Ends and the date, then Ended, and stays on the list with its history. Delete takes a row added in error off the list. Each change goes in the company Log. The cleanse against current appointments before migration stays with Lisa and Tricia. Pattern: foundation.row-actions.",
           "project": "Astral",
-          "kind": "admin",
-          "added": "2026-10-16"
+          "kind": "ux",
+          "added": "2026-10-16",
+          "doneOn": "2026-10-20"
         },
         {
           "id": "tma-gap-h9",

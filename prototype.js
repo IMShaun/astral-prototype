@@ -3829,6 +3829,7 @@ function protoUkDateStoreKey(field) {
   if (field?.name === "proto-renew-to") return "prototypeRenewTo";
   if (field?.name === "proto-export-from") return "prototypeExportFrom";
   if (field?.name === "proto-export-to") return "prototypeExportTo";
+  if (field?.name === "proto-meter-end") return "prototypeCompanyMeterEditEnd";
   const reportDate = protoReportDateOf(field?.name);
   if (reportDate) return PROTO_REPORT_DATES[reportDate].key;
   return "";
@@ -10064,6 +10065,7 @@ function protoOpenMenuKeys() {
   if (store.prototypePointTagOpen) keys.push("astral-point-tag-menu");
   if (store.prototypeUserMenu) keys.push(`people:${store.prototypeUserMenu}`);
   if (store.prototypePresetMenu) keys.push(`presets:${store.prototypePresetMenu}`);
+  if (store.prototypeCompanyMeterMenu) keys.push(`company-meter:${store.prototypeCompanyMeterMenu}`);
   if (store.prototypeReportCalOpen) keys.push("report-cal");
   return keys;
 }
@@ -10269,6 +10271,18 @@ function protoCloseModal(kind) {
   if (kind === "company-meters") {
     setProto(protoMeterAddClear());
     protoRestoreFocus("#astral-fs [data-proto-company-meters='add']");
+    return;
+  }
+  if (kind === "company-meter-edit") {
+    const id = String(store.prototypeCompanyMeterEdit || "");
+    setProto({ ...protoCompanyMeterEditClear(), prototypeSelectOpen: "" });
+    if (id) protoRestoreFocus(protoCompanyMeterMenuFocus(id));
+    return;
+  }
+  if (kind === "company-meter-delete") {
+    const id = String(store.prototypeCompanyMeterDelete || "");
+    setProto({ prototypeCompanyMeterDelete: "" });
+    if (id) protoRestoreFocus(protoCompanyMeterMenuFocus(id));
     return;
   }
   if (kind === "company") {
@@ -10923,6 +10937,12 @@ function protoPickSelect(id, value) {
       prototypeTeamForm: true,
       prototypeTeamDraftCompany: protoTeamCompanyId(value),
     });
+    return;
+  }
+  if (id === "company-meter-edit-site") {
+    if (!protoCompanyRecordName()) return;
+    setProto({ prototypeSelectOpen: "", prototypeCompanyMeterEditSite: value });
+    protoRestoreFocus(`#astral-fs [data-proto-select="company-meter-edit-site"] .astral-select-btn`);
     return;
   }
   if (id === "company-meter-site") {
@@ -19963,6 +19983,9 @@ function protoCompanyRecordClear() {
     ...protoCompanyFindClear(),
     prototypeCompanyNote: "",
     ...protoMeterAddClear(),
+    ...protoCompanyMeterEditClear(),
+    prototypeCompanyMeterMenu: "",
+    prototypeCompanyMeterDelete: "",
   };
 }
 
@@ -19986,6 +20009,39 @@ function protoCompanyAddedMeters(name) {
   return Array.isArray(list) ? list : [];
 }
 
+function protoCompanyMeterStoreMap(key) {
+  const raw = store[key];
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? { ...raw } : {};
+}
+
+// Site and end date changes from the row's Edit, keyed by meter id.
+function protoCompanyMeterEdits(name) {
+  const edits = protoCompanyMeterStoreMap("prototypeCompanyMeterEdits")[name];
+  return edits && typeof edits === "object" && !Array.isArray(edits) ? edits : {};
+}
+
+// Listed meter points deleted from the row's Delete. Added ones leave the added list instead.
+function protoCompanyMeterRemoved(name) {
+  const list = protoCompanyMeterStoreMap("prototypeCompanyMeterRemoved")[name];
+  return Array.isArray(list) ? list : [];
+}
+
+function protoCompanyMeterTotal(name) {
+  const listed = protoServiceCompanies().find((row) => row.name === name)?.meters || 0;
+  return Math.max(0, listed + protoCompanyAddedMeters(name).length - protoCompanyMeterRemoved(name).length);
+}
+
+// An end date on or before today means the meter point has left the company's supply.
+function protoCompanyMeterEnded(meter) {
+  const end = protoFromIso(meter?.endsOn);
+  return Boolean(end && end <= protoToday());
+}
+
+function protoCompanyMeterDay(iso) {
+  const date = protoFromIso(iso);
+  return date ? date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "";
+}
+
 function protoUtilityName(kind) {
   if (kind === "gas") return "Gas";
   if (kind === "water") return "Water";
@@ -20007,7 +20063,20 @@ function protoCompanyMeterRows(name) {
     live: false,
     added: true,
   }));
-  return [...added, ...own, ...protoCompanyFleetMeters(name, own)];
+  const removed = new Set(protoCompanyMeterRemoved(name));
+  const edits = protoCompanyMeterEdits(name);
+  return [...added, ...own, ...protoCompanyFleetMeters(name, own)]
+    .filter((meter) => !removed.has(meter.id))
+    .map((meter) => {
+      const edit = edits[meter.id];
+      return edit ? { ...meter, site: edit.site || meter.site, endsOn: edit.endsOn || "" } : meter;
+    });
+}
+
+// Every site a company's meter points sit on, for the Edit site list.
+function protoCompanyMeterSites(name) {
+  const names = [...protoCompanySiteNames(name), ...protoCompanyMeterRows(name).map((meter) => meter.site)];
+  return [...new Set(names.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
 const protoCompanyFleetCache = new Map();
@@ -20197,13 +20266,47 @@ function protoCompanyMeterTableRows(rows) {
         protoUtilityName(meter.kind),
         protoCompanyMeterDirection(meter, live),
         protoCompanyMeterRelated(meter, live),
-        meter.added ? protoServicePill("Waiting for data") : protoStatePill(protoServiceStateWord(meter.status)),
+        protoCompanyMeterState(meter),
         meter.added ? `<span class="astral-muted">None yet</span>` : escapeHtml(meter.last || ""),
+        protoCompanyMeterMore(meter),
       ],
       {},
-      `${open ? `class="is-link" ${open}` : ""}${pair ? ` data-proto-pair="${escapeHtml(pair)}"` : ""}`
+      `class="astral-company-meter-row${open ? ` is-link" ${open}` : '"'}${pair ? ` data-proto-pair="${escapeHtml(pair)}"` : ""}`
     );
   });
+}
+
+// A meter point with an end date to come keeps its state, with the date under it.
+function protoCompanyMeterState(meter) {
+  if (protoCompanyMeterEnded(meter)) return protoServicePill("Ended");
+  const pill = meter.added ? protoServicePill("Waiting for data") : protoStatePill(protoServiceStateWord(meter.status));
+  const day = protoCompanyMeterDay(meter.endsOn);
+  return day
+    ? `<span class="astral-company-meter-state">${pill}<span class="astral-muted">Ends ${escapeHtml(day)}</span></span>`
+    : pill;
+}
+
+function protoCompanyMeterMore(meter) {
+  const id = String(meter.id);
+  const open = store.prototypeCompanyMeterMenu === id;
+  const menuId = `astral-company-meter-menu-${id.replace(/[^a-z0-9]+/gi, "-")}`;
+  const attrs = `data-proto-company-meter-id="${escapeHtml(id)}"`;
+  return `<div class="astral-people-more" data-proto-company-meter-more>
+      ${protoIconBtn(
+        "more",
+        `More for ${meter.point}`,
+        `data-proto-company-meter-menu="${escapeHtml(id)}" aria-haspopup="menu" aria-controls="${menuId}" aria-expanded="${
+          open ? "true" : "false"
+        }"`,
+        { className: "is-plain", tipLabel: "More" }
+      )}
+      <div class="astral-people-menu${open ? protoMenuEnterClass(`company-meter:${id}`) : ""}" id="${menuId}" role="menu"${
+        open ? "" : " hidden"
+      }>
+        <button type="button" role="menuitem" data-proto-company-meter-act="edit" ${attrs}>Edit</button>
+        <button type="button" role="menuitem" data-proto-company-meter-act="delete" ${attrs}>Delete</button>
+      </div>
+    </div>`;
 }
 
 // A meter point just added has no data, so its direction and pair are not recorded yet. Other companies' meter points import only.
@@ -20249,6 +20352,7 @@ const PROTO_COMPANY_METER_FILTERS = [
       { id: "not-sending", name: "Not sending" },
       { id: "missing-data", name: "Missing data" },
       { id: "waiting", name: "Waiting for data" },
+      { id: "ended", name: "Ended" },
     ],
   },
 ];
@@ -20290,6 +20394,7 @@ function protoCompanyFilterName(id) {
 }
 
 function protoCompanyMeterStateId(meter) {
+  if (protoCompanyMeterEnded(meter)) return "ended";
   if (meter.added) return "waiting";
   if (meter.status === "gaps") return "missing-data";
   if (meter.status === "stale") return "not-sending";
@@ -20394,9 +20499,7 @@ function protoCompanyRecord(name) {
   const queries = protoCompanyQueryRows(name, ticketQuery.trim().toLowerCase(), tab === "queries" ? picked : []);
   const queryTotal = protoInboxTickets().filter((ticket) => ticket.company === name).length;
   const meters = protoCompanyMeterRows(name);
-  const added = protoCompanyAddedMeters(name).length;
-  const listed = protoServiceCompanies().find((row) => row.name === name)?.meters || 0;
-  const total = listed + added;
+  const total = protoCompanyMeterTotal(name);
   const logQuery = String(store.prototypeCompanyLogQuery || "");
   const logTotal = tab === "log" ? protoCompanyLogEvents(name).length : 0;
   const tabs = PROTO_COMPANY_RECORD_TABS.map((item) => {
@@ -20457,7 +20560,7 @@ function protoCompanyRecord(name) {
       ? `
         ${note ? `<p class="astral-banner" role="status">${escapeHtml(note)}</p>` : ""}
         ${protoTable(
-          ["Meter point", "Site", "Utility", "Direction", "Related MPAN", "State", "Last actual"],
+          ["Meter point", "Site", "Utility", "Direction", "Related MPAN", "State", "Last actual", { label: "More", sort: false, hidden: true }],
           protoCompanyMeterTableRows(meters.filter((meter) => protoCompanyMeterMatches(meter, q, picked))),
           {
             id: "company-meters",
@@ -20497,6 +20600,8 @@ function protoCompanyRecord(name) {
       )}
     </section>
     ${protoMeterAddModal(name)}
+    ${protoCompanyMeterEditModal(name)}
+    ${protoCompanyMeterDeleteModal(name)}
   `;
 }
 
@@ -20670,6 +20775,247 @@ function protoMeterAddSubmit(form) {
   protoRestoreFocus("#astral-fs [data-proto-company-meters='add']");
 }
 
+function protoCompanyMeterEditClear() {
+  return {
+    prototypeCompanyMeterEdit: "",
+    prototypeCompanyMeterEditSite: "",
+    prototypeCompanyMeterEditEnd: "",
+    prototypeCompanyMeterEditError: null,
+  };
+}
+
+function protoCompanyMeterFind(name, id) {
+  return name && id ? protoCompanyMeterRows(name).find((meter) => meter.id === id) || null : null;
+}
+
+function protoCompanyMeterMenuFocus(id) {
+  return `#astral-fs [data-proto-company-meter-menu="${CSS.escape(String(id || ""))}"]`;
+}
+
+// Edit changes the site, or sets the last day the meter point is with the company. An admin date, so it is typed.
+function protoCompanyMeterEditModal(name) {
+  const meter = protoCompanyMeterFind(name, String(store.prototypeCompanyMeterEdit || ""));
+  if (!meter) return "";
+  const sites = protoCompanyMeterSites(name);
+  const site = String(store.prototypeCompanyMeterEditSite || meter.site);
+  const endText = protoMaskUkDate(store.prototypeCompanyMeterEditEnd);
+  const error = store.prototypeCompanyMeterEditError || {};
+  const endDescribed = ["astral-meter-end-hint", error.end ? "astral-meter-end-error" : ""].filter(Boolean).join(" ");
+  return `
+    <div class="astral-modal-back" data-proto-modal="company-meter-edit">
+      <div
+        class="astral-modal is-narrow has-menus"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="astral-meter-edit-title"
+      >
+        ${protoModalHead(
+          "astral-meter-edit-title",
+          `Edit meter point ${meter.point}`,
+          `Change its site, or enter the day it leaves ${escapeHtml(name)}.`,
+          "company-meter-edit"
+        )}
+        <form data-proto-company-meter-edit-form>
+          <div class="astral-modal-body">
+            <div class="astral-team-field">
+              <p id="astral-meter-edit-site-label">Site</p>
+              ${protoSelect({
+                id: "company-meter-edit-site",
+                label: "Site",
+                labelledby: "astral-meter-edit-site-label",
+                wide: true,
+                value: site,
+                placeholder: "Pick a site",
+                empty: "No sites match.",
+                search:
+                  sites.length > 8
+                    ? {
+                        name: "proto-report-site-query",
+                        value:
+                          protoSelectOpen() === "company-meter-edit-site" ? String(store.prototypeReportSiteQuery || "") : "",
+                        placeholder: "Search sites",
+                        label: "Search sites",
+                      }
+                    : null,
+                options: sites.map((item) => ({ value: item, label: item })),
+              })}
+            </div>
+            <label class="astral-field">
+              <span>End date</span>
+              <input
+                class="astral-date-input"
+                type="text"
+                name="proto-meter-end"
+                value="${escapeHtml(endText)}"
+                inputmode="numeric"
+                autocomplete="off"
+                spellcheck="false"
+                maxlength="10"
+                placeholder="dd/mm/yyyy"
+                aria-describedby="${endDescribed}"
+                ${error.end ? 'aria-invalid="true"' : ""}
+              />
+            </label>
+            <p class="astral-muted" id="astral-meter-end-hint">The last day it is with this company. Leave it blank if it is staying.</p>
+            ${error.end ? `<p class="astral-export-error" id="astral-meter-end-error" role="alert">${escapeHtml(error.end)}</p>` : ""}
+          </div>
+          <div class="astral-modal-foot">
+            <div class="astral-actions">
+              ${protoBtn("Save changes", "", { type: "submit" })}
+              ${protoGhost("Cancel", 'data-proto-modal-close="company-meter-edit"')}
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
+function protoCompanyMeterEditSubmit(form) {
+  const name = protoCompanyRecordName();
+  const meter = protoCompanyMeterFind(name, String(store.prototypeCompanyMeterEdit || ""));
+  if (!meter) return;
+  const site = String(store.prototypeCompanyMeterEditSite || meter.site);
+  const endText = protoMaskUkDate(form.querySelector("[name='proto-meter-end']")?.value ?? store.prototypeCompanyMeterEditEnd);
+  const end = endText ? protoFromUkDate(endText) : null;
+  if (endText && !end) {
+    setProto({
+      prototypeCompanyMeterEditEnd: endText,
+      prototypeCompanyMeterEditError: { end: "Enter the end date as dd/mm/yyyy." },
+    });
+    protoRestoreFocus("#astral-fs input[name='proto-meter-end']");
+    return;
+  }
+  const endsOn = end ? protoIso(end) : "";
+  const texts = [];
+  if (site !== meter.site) texts.push(`Moved meter point ${meter.point} to ${site}`);
+  if (endsOn !== (meter.endsOn || "")) {
+    texts.push(
+      endsOn
+        ? `Set meter point ${meter.point} to end on ${protoCompanyMeterDay(endsOn)}`
+        : `Took the end date off meter point ${meter.point}`
+    );
+  }
+  if (!texts.length) {
+    setProto({ ...protoCompanyMeterEditClear(), prototypeSelectOpen: "" });
+    protoRestoreFocus(protoCompanyMeterMenuFocus(meter.id));
+    return;
+  }
+  const at = new Date().toISOString();
+  const by = protoCompanyLogBy();
+  const ended = protoCompanyMeterEnded({ endsOn });
+  setProto({
+    prototypeCompanyMeterEdits: {
+      ...protoCompanyMeterStoreMap("prototypeCompanyMeterEdits"),
+      [name]: { ...protoCompanyMeterEdits(name), [meter.id]: { site, endsOn } },
+    },
+    prototypeCompanyLog: [
+      ...protoCompanyLogList(),
+      ...texts.map((text) => ({ company: name, kind: "meters", text, ref: "", at, by })),
+    ].slice(-500),
+    prototypeCompanyNote: ended
+      ? `Meter point ${meter.point} has ended. It stays on the list, so its history is kept.`
+      : `Saved changes to meter point ${meter.point}.`,
+    ...protoCompanyMeterEditClear(),
+    prototypeSelectOpen: "",
+  });
+  protoRestoreFocus(protoCompanyMeterMenuFocus(meter.id));
+}
+
+function protoCompanyMeterDeleteModal(name) {
+  const meter = protoCompanyMeterFind(name, String(store.prototypeCompanyMeterDelete || ""));
+  if (!meter) return "";
+  return `
+    <div class="astral-modal-back" data-proto-modal="company-meter-delete">
+      <div class="astral-modal" id="astral-company-meter-delete" role="dialog" aria-modal="true" aria-labelledby="astral-company-meter-delete-title">
+        ${protoModalHead(
+          "astral-company-meter-delete-title",
+          `Delete meter point ${meter.point}?`,
+          `It comes off the list for ${escapeHtml(
+            name
+          )}, and its history goes with it. If the supply has moved to another company, use Edit and enter an end date instead.`,
+          "company-meter-delete"
+        )}
+        <div class="astral-modal-foot">
+          <div class="astral-actions">
+            ${protoBtn("Delete meter point", 'data-proto-company-meter-delete-go="1"')}
+            ${protoGhost("Cancel", 'data-proto-modal-close="company-meter-delete"')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function protoCompanyMeterDeleteGo() {
+  const name = protoCompanyRecordName();
+  const meter = protoCompanyMeterFind(name, String(store.prototypeCompanyMeterDelete || ""));
+  if (!meter) {
+    setProto({ prototypeCompanyMeterDelete: "" });
+    return;
+  }
+  const edits = { ...protoCompanyMeterEdits(name) };
+  delete edits[meter.id];
+  const gone = meter.added
+    ? {
+        prototypeCompanyMeters: {
+          ...protoCompanyMeterMap(),
+          [name]: protoCompanyAddedMeters(name).filter((item) => `added:${item.point}` !== meter.id),
+        },
+      }
+    : {
+        prototypeCompanyMeterRemoved: {
+          ...protoCompanyMeterStoreMap("prototypeCompanyMeterRemoved"),
+          [name]: [...protoCompanyMeterRemoved(name), meter.id],
+        },
+      };
+  setProto({
+    ...gone,
+    prototypeCompanyMeterEdits: { ...protoCompanyMeterStoreMap("prototypeCompanyMeterEdits"), [name]: edits },
+    ...protoCompanyLogAdd(name, "meters", `Deleted meter point ${meter.point} from ${meter.site}`),
+    prototypeCompanyMeterDelete: "",
+    prototypeCompanyMeterMenu: "",
+    prototypeCompanyNote: `Deleted meter point ${meter.point}.`,
+  });
+  protoRestoreFocus("#astral-fs input[name='proto-company-meter-query']");
+}
+
+// The row's More menu sits inside a row that opens the meter point, so its clicks stop here.
+function protoCompanyMeterClick(event) {
+  if (event.target.closest("[data-proto-company-meter-delete-go]")) {
+    protoCompanyMeterDeleteGo();
+    return true;
+  }
+  const act = event.target.closest("[data-proto-company-meter-act]");
+  if (!act && !event.target.closest("[data-proto-company-meter-more]")) return false;
+  const name = protoCompanyRecordName();
+  if (!name) return true;
+  const toggle = event.target.closest("[data-proto-company-meter-menu]");
+  if (toggle) {
+    const id = toggle.dataset.protoCompanyMeterMenu;
+    setProto({ prototypeCompanyMeterMenu: store.prototypeCompanyMeterMenu === id ? "" : id });
+    return true;
+  }
+  const meter = act && protoCompanyMeterFind(name, act.dataset.protoCompanyMeterId);
+  if (!meter) return true;
+  if (act.dataset.protoCompanyMeterAct === "edit") {
+    const end = protoFromIso(meter.endsOn);
+    setProto({
+      ...protoCompanyMeterEditClear(),
+      prototypeCompanyMeterEdit: meter.id,
+      prototypeCompanyMeterEditSite: meter.site,
+      prototypeCompanyMeterEditEnd: end ? protoFormatUkDate(end) : "",
+      prototypeCompanyMeterMenu: "",
+      prototypeCompanyNote: "",
+    });
+    protoRestoreFocus("#astral-fs [data-proto-select='company-meter-edit-site'] .astral-select-btn");
+    return true;
+  }
+  setProto({ prototypeCompanyMeterDelete: meter.id, prototypeCompanyMeterMenu: "", prototypeCompanyNote: "" });
+  protoRestoreFocus("#astral-fs #astral-company-meter-delete .astral-modal-foot .astral-btn");
+  return true;
+}
+
 function protoCompanies() {
   const record = protoCompanyRecordName();
   if (record) {
@@ -20682,12 +21028,10 @@ function protoCompanies() {
   const companies = protoTeamCompanyNames().filter(
     (name) => !q || name.toLowerCase().includes(q)
   );
-  const listed = protoServiceCompanies();
   const tickets = protoInboxTickets();
   const rows = companies.map((name) => {
     const n = protoUserPeople().filter((person) => person.company === name).length;
-    const meters =
-      (listed.find((row) => row.name === name)?.meters || 0) + protoCompanyAddedMeters(name).length;
+    const meters = protoCompanyMeterTotal(name);
     const open = tickets.filter((ticket) => ticket.company === name && !ticket.resolved).length;
     return protoServiceRow(
       [
@@ -41195,6 +41539,7 @@ function onPrototype(event) {
     );
     return;
   }
+  if (protoCompanyMeterClick(event)) return;
   const searchClear = event.target.closest("[data-proto-search-clear]");
   if (searchClear) {
     const name = searchClear.dataset.protoSearchClear;
@@ -41594,7 +41939,9 @@ function onPrototype(event) {
     const id = selectToggle.dataset.protoSelectToggle;
     const open = protoSelectOpen() === id;
     if (id === "chart-zone-for") store.prototypeZoneQuery = "";
-    if (String(id).startsWith("site-add-field:") || id === "company-meter-site") store.prototypeReportSiteQuery = "";
+    if (String(id).startsWith("site-add-field:") || id === "company-meter-site" || id === "company-meter-edit-site") {
+      store.prototypeReportSiteQuery = "";
+    }
     setProto({
       prototypeSelectOpen: open ? "" : id,
       prototypeDateOpen: false,
@@ -41621,9 +41968,9 @@ function onPrototype(event) {
     if (!open && String(id).startsWith("site-add-field:")) {
       protoRestoreFocus("#astral-fs .astral-float-menu input[name='proto-report-site-query']");
     }
-    if (!open && id === "company-meter-site") {
+    if (!open && (id === "company-meter-site" || id === "company-meter-edit-site")) {
       protoRestoreFocus(
-        "#astral-fs .astral-float-menu input[name='proto-report-site-query'], #astral-fs [data-proto-select='company-meter-site'] input[name='proto-report-site-query']"
+        `#astral-fs .astral-float-menu input[name='proto-report-site-query'], #astral-fs [data-proto-select='${id}'] input[name='proto-report-site-query']`
       );
     }
     return;
@@ -44203,6 +44550,9 @@ function protoOutsideClosePatch(target) {
   if (store.prototypePresetMenu && !inside(".astral-people-more, .astral-people-menu")) {
     patch.prototypePresetMenu = "";
   }
+  if (store.prototypeCompanyMeterMenu && !inside(".astral-people-more, .astral-people-menu")) {
+    patch.prototypeCompanyMeterMenu = "";
+  }
   if (store.prototypeAccountOpen && !inside(".astral-account, .astral-account-menu")) {
     patch.prototypeAccountOpen = false;
   }
@@ -45150,6 +45500,12 @@ function onPrototypeSubmit(event) {
     protoMeterAddSubmit(meterAddForm);
     return;
   }
+  const meterEditForm = event.target.closest("[data-proto-company-meter-edit-form]");
+  if (meterEditForm) {
+    event.preventDefault();
+    protoCompanyMeterEditSubmit(meterEditForm);
+    return;
+  }
   const companyForm = event.target.closest("[data-proto-company-form]");
   if (companyForm) {
     event.preventDefault();
@@ -45420,6 +45776,12 @@ function onPrototypeKey(event) {
       protoRestoreFocus(`#astral-fs [data-proto-presets-menu="${CSS.escape(key)}"]`);
       return;
     }
+    if (store.prototypeCompanyMeterMenu) {
+      const key = store.prototypeCompanyMeterMenu;
+      setProto({ prototypeCompanyMeterMenu: "" });
+      protoRestoreFocus(protoCompanyMeterMenuFocus(key));
+      return;
+    }
     if (store.prototypePointTagOpen) {
       setProto(protoPointTagClear());
       return;
@@ -45495,6 +45857,14 @@ function onPrototypeKey(event) {
     }
     if (store.prototypeMeterAddForm) {
       protoCloseModal("company-meters");
+      return;
+    }
+    if (store.prototypeCompanyMeterEdit) {
+      protoCloseModal("company-meter-edit");
+      return;
+    }
+    if (store.prototypeCompanyMeterDelete) {
+      protoCloseModal("company-meter-delete");
       return;
     }
     if (store.prototypeUserForm) {

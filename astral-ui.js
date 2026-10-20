@@ -301,6 +301,8 @@ const PROTO_SERVICE_PILLS = {
   open: ["stale", "hours"],
   unread: ["missing", "notice"],
   resolved: ["sending", "tick"],
+  // A meter point past its end date.
+  ended: ["info", "calendar"],
 };
 
 function protoServicePill(word) {
