@@ -8192,7 +8192,7 @@ button.astral-value-pill.astral-tip-host {
 }
 
 .astral-select-option-copy .astral-muted {
-  font-size: 0.8125rem;
+  font-size: var(--font-size-14);
 }
 
 /* A checkbox centres on the label line, not on the label and hint together. */
@@ -9963,7 +9963,7 @@ button.astral-value-pill.astral-tip-host {
 
 .astral-date-compare-modal .astral-date-compare-dates {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--font-size-14);
 }
 
 .astral-modal.astral-date-compare-modal {
@@ -9985,7 +9985,7 @@ button.astral-value-pill.astral-tip-host {
 }
 
 .astral-date-foot .astral-muted {
-  font-size: 0.8125rem;
+  font-size: var(--font-size-14);
   white-space: normal;
   max-width: 16rem;
 }
@@ -10829,7 +10829,7 @@ button.astral-value-pill.astral-tip-host {
   flex-wrap: wrap;
   gap: var(--space-8, 8px) var(--space-16, 16px);
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--font-size-14);
 }
 
 .astral-breakdown-key-item,
@@ -12579,7 +12579,7 @@ tbody tr:has(.astral-people-more [aria-expanded="true"]) {
 .astral-export-preview-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.8125rem;
+  font-size: var(--font-size-14);
   font-variant-numeric: tabular-nums;
 }
 
@@ -14548,7 +14548,7 @@ tbody tr:has(.astral-people-more [aria-expanded="true"]) {
 .astral-profile-preview.is-invite {
   width: 40px;
   height: 40px;
-  font-size: 0.8125rem;
+  font-size: var(--font-size-14);
 }
 
 .astral-invite-facts {
@@ -14568,7 +14568,7 @@ tbody tr:has(.astral-people-more [aria-expanded="true"]) {
 
 .astral-invite-fact span {
   color: var(--color-text-secondary);
-  font-size: 0.8125rem;
+  font-size: var(--font-size-14);
   font-weight: 600;
 }
 
@@ -15589,7 +15589,7 @@ button.astral-state:focus-visible,
 }
 
 .astral-find-open .astral-muted {
-  font-size: 0.8125rem;
+  font-size: var(--font-size-14);
 }
 
 .astral-find-item > .astral-tag,
@@ -15600,7 +15600,7 @@ button.astral-state:focus-visible,
 .astral-find-more {
   margin: var(--space-4) 0 0;
   padding: 0 var(--space-8);
-  font-size: 0.8125rem;
+  font-size: var(--font-size-14);
 }
 
 .astral-find-empty {
