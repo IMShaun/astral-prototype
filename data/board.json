@@ -324,10 +324,11 @@
         {
           "id": "tma-gap-h6",
           "title": "TMA gap H6: Related import and export MPAN pairs",
-          "note": "Partly shown: the meter view pairs import and export. Add the related MPAN and MPAN type to site attributes. Astral builds this in the prototype.",
+          "note": "Done. Each meter point shows its MPAN type, In or Out. An import and export pair links both ways: the meter view, the Meter points table and its fold, Compare and the downloads show the partner, and Ops see the pair in the admin Meter points table. Gordon confirms how the feed supplies the pair. Pattern: foundation.related-mpans.",
           "project": "Astral",
           "kind": "ux",
-          "added": "2026-10-16"
+          "added": "2026-10-16",
+          "doneOn": "2026-10-20"
         },
         {
           "id": "tma-gap-h7",

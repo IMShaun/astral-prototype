@@ -527,3 +527,38 @@ patterns:
     last_reviewed: "2026-10-06"
     decision_refs:
       - UXDR-2026-10-06-viewport-targets
+  - id: foundation.related-mpans
+    name: Related MPANs
+    level: foundation
+    user_goal: See that an import and an export MPAN are one supply, and open the other one from the list
+    objects: [meter-point, table, file]
+    actions: [scan, open, download]
+    used_in: [Admin, Portfolio, Meter view, Downloads]
+    entry_points:
+      - Admin company Meters
+      - Portfolio Meter points fold and Compare meter points list, when a meter point exports
+      - Site profile Meters table
+      - Downloads with Include meter IDs on
+    structure: A Direction flow pill, In or Out, then Related MPAN as a link with the partner's pill. Without a partner, muted words say why. Pointing at or tabbing to a row lights its partner's row
+    components: [astral-flow-pill, astral-related-ref, astral-related-link, is-pair-lit]
+    states: [paired, none, not-recorded, does-not-apply]
+    permissions: all
+    content_terms: [Direction, Related MPAN, MPAN type, No related MPAN, Not recorded, Does not apply, In, Out, Import, Export]
+    variants: [table-cell, meter-view-sentence, file-column]
+    exceptions:
+      - Lists where no meter point exports leave out Direction and Related MPAN
+      - The Site profile summary card keeps its four settings rows, as the Meters table below shows the pair
+      - Files keep TMA's stored words, Import and Export
+    accessibility: The link is named by direction and MPAN, such as Open outgoing MPAN 1600001234568. The highlight follows focus as well as the pointer. The pill has text.
+    implementation_refs:
+      - prototype.js PROTO_RELATED_METERS
+      - prototype.js protoRelatedCell
+      - prototype.js protoPairLight
+      - styles.css .astral-related-ref
+    evidence:
+      - TMA gap H6 on 2026-10-20, related import and export MPANs, approved as planned by the user.
+      - User correction on 2026-10-20. The Site profile summary card had too much going on, so the pair came out of it.
+    maturity: emerging
+    health: healthy
+    last_reviewed: "2026-10-20"
+    decision_refs: []

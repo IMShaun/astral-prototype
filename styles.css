@@ -5530,7 +5530,6 @@ button.astral-catch {
   background: #fff;
   /* The pane body takes 6px of this gap back as focus ring room, so the spacing stays the same. */
   padding-bottom: calc(var(--space-stack-tight) - 6px);
-  padding-inline-end: var(--scrollbar-size);
 }
 
 .astral-pane-body {
@@ -5539,7 +5538,6 @@ button.astral-catch {
   min-height: 0;
   overflow: auto;
   overflow-x: clip;
-  padding-inline-end: var(--scrollbar-size);
   /* Room for focus rings on controls flush with the top or left edge. */
   padding-block-start: 6px;
   padding-inline-start: 6px;
@@ -5588,8 +5586,27 @@ button.astral-catch {
   scrollbar-gutter: stable;
 }
 
+/* The gutter a thin scrollbar takes. Scroll areas give it back by reaching into the right padding around them,
+   so content sits the same distance from the right edge as from the left. */
+.astral-pane-body,
+.astral-stage-body,
+.astral-list > .astral-tree,
+.astral-notice-list {
+  margin-inline-end: calc(-1 * var(--scrollbar-gutter));
+}
+
+/* A centred scroll column keeps a gutter on both sides so it stays centred. */
+.astral-auth-page {
+  scrollbar-gutter: stable both-edges;
+}
+
+.astral-stage {
+  padding-inline-end: calc(24px - var(--scrollbar-gutter));
+}
+
 #astral-fs {
   --scrollbar-size: 12px;
+  --scrollbar-gutter: 10px;
   --scrollbar-thumb: #737373;
 }
 
@@ -5987,6 +6004,8 @@ button.astral-catch {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* The list inside scrolls, not the sheet, so the sheet keeps no scrollbar gutter. */
+  scrollbar-gutter: auto;
 }
 
 .astral-stage-body > .astral-reports-sheet > .astral-report-grid,
@@ -5998,6 +6017,7 @@ button.astral-catch {
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
+  margin-inline-end: calc(-1 * var(--scrollbar-gutter));
   align-content: start;
 }
 
@@ -6701,7 +6721,7 @@ button.astral-state {
 .astral-meter-list-head,
 .astral-meter-row-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 6rem 11rem 9rem 12rem;
+  grid-template-columns: minmax(13rem, 1fr) 4.5rem 12.5rem minmax(5.5rem, 11rem) minmax(5.5rem, 9rem) minmax(5.5rem, 12rem);
   gap: 8px;
   align-items: center;
   width: 100%;
@@ -6992,22 +7012,14 @@ button.astral-state {
 
 .astral-meter-overview {
   display: grid;
-  grid-template-columns: 9rem minmax(0, 1fr) auto;
+  grid-template-columns: 11rem minmax(0, 1fr) auto;
   gap: 16px;
   align-items: start;
 }
 
-.astral-meter-overview .astral-meter-map {
-  width: 9rem;
-  align-self: stretch;
-  display: flex;
-  flex-direction: column;
-}
-
+/* A fixed 4:5 map sets one section height for the site and one-meter views. */
 .astral-meter-overview .astral-meter-map-view {
-  flex: 1;
-  aspect-ratio: auto;
-  min-height: 9rem;
+  aspect-ratio: 4 / 5;
 }
 
 .astral-meter-overview .astral-ghost {
@@ -8424,9 +8436,11 @@ button.astral-value-pill.astral-tip-host {
   align-content: start;
   gap: 16px;
   padding: 16px 24px;
+  padding-inline-end: calc(24px - var(--scrollbar-gutter));
 }
 
 .astral-modal-body:has(.astral-compare-find) {
+  padding-inline-end: 24px;
   overflow: visible;
   align-content: stretch;
   grid-template-rows: auto minmax(0, 1fr);
@@ -9000,7 +9014,7 @@ button.astral-value-pill.astral-tip-host {
 }
 
 .astral-query-pin.is-thread > .astral-query-thread {
-  padding: 8px 12px 12px;
+  padding: 8px calc(12px - var(--scrollbar-gutter)) 12px 12px;
   min-height: 0;
   overflow: auto;
 }
@@ -11095,6 +11109,44 @@ button.astral-value-pill.astral-tip-host {
   background: var(--color-background-subtle);
 }
 
+/* The related MPAN's row lights with the row the user points at or tabs to. */
+.astral-table tbody tr.is-pair-lit,
+.astral-meter-list .astral-meter-row-head.is-pair-lit {
+  background: var(--color-background-hover);
+  box-shadow: inset 3px 0 0 var(--color-brand-extra-2);
+}
+
+/* A related MPAN keeps all 13 digits, with its In or Out pill. It reads as a link because it opens the other meter point. */
+.astral-related-ref {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.astral-related-link {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-brand-extra-2);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.astral-related-link:hover {
+  text-decoration-thickness: 2px;
+}
+
+.astral-related-link:focus-visible {
+  outline: 2px solid var(--color-focus-contrast);
+  outline-offset: 2px;
+}
+
 .astral-people .astral-table {
   table-layout: fixed;
 }
@@ -11618,10 +11670,12 @@ tr.is-off .astral-person-mark {
   overflow: visible;
   position: relative;
   z-index: 3;
+  padding-inline-end: 24px;
 }
 
 /* Every menu in a has-menus modal floats to #astral-fs, so the body can scroll when the content is taller than the screen. */
 .astral-modal.has-menus .astral-modal-body {
+  padding-inline-end: calc(24px - var(--scrollbar-gutter));
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -13853,6 +13907,7 @@ tr.is-off .astral-person-mark {
   display: grid;
   gap: 4px;
   margin: 0;
+  margin-inline-end: calc(-1 * var(--scrollbar-gutter));
   padding: 0;
   list-style: none;
   min-height: 0;
@@ -15108,6 +15163,7 @@ button.astral-state:focus-visible,
   .astral-stage-body {
     overflow: visible;
     flex: none;
+    margin-inline-end: 0;
   }
 
   .astral-split {
@@ -15138,7 +15194,7 @@ button.astral-state:focus-visible,
   .astral-stage {
     width: 100%;
     padding-left: 12px;
-    padding-right: 12px;
+    padding-right: calc(12px - var(--scrollbar-gutter));
   }
 
   .astral-see-as {
@@ -16287,6 +16343,10 @@ body:not(.is-share) .desk-shell {
   min-height: 0;
   overflow-y: auto;
   gap: 2px;
+  --scrollbar-gutter: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: #737373 transparent;
+  margin-inline-end: calc(-1 * var(--scrollbar-gutter));
 }
 
 .desk-rail .side-link.astral-rail-link {

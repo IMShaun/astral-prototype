@@ -73,10 +73,10 @@
   const st = (s) => `<span class="st ${CLS[s]}">${STATUS[s]}</span>`;
   const pri = (n) => (n ? `<span class="pri">${n}</span>` : "");
   const OURS = {
-    C1: ["yes"], C2: ["yes"], C3: ["out"], C4: ["out"], C5: ["yes"], C6: ["partly", 5],
-    H1: ["yes"], H3: ["partly", 6], H4: ["yes"], H6: ["partly", 1], H7: ["todo", 3], H8: ["todo", 4], H9: ["todo", 2],
-    M1: ["todo", 7], M2: ["partly", 8], M3: ["partly", 11], M4: ["yes"], M5: ["yes"], M6: ["partly", 12], M7: ["yes"], M8: ["partly", 14], M9: ["partly", 9], M10: ["yes"], M11: ["todo", 10], M12: ["partly", 13],
-    L1: ["yes"], L2: ["todo", 15], L3: ["todo", 16], L4: ["yes"],
+    C1: ["yes"], C2: ["yes"], C3: ["out"], C4: ["out"], C5: ["yes"], C6: ["partly", 4],
+    H1: ["yes"], H3: ["partly", 5], H4: ["yes"], H6: ["yes"], H7: ["todo", 2], H8: ["todo", 3], H9: ["todo", 1],
+    M1: ["todo", 6], M2: ["partly", 7], M3: ["partly", 10], M4: ["yes"], M5: ["yes"], M6: ["partly", 11], M7: ["yes"], M8: ["partly", 13], M9: ["partly", 8], M10: ["yes"], M11: ["todo", 9], M12: ["partly", 12],
+    L1: ["yes"], L2: ["todo", 14], L3: ["todo", 15], L4: ["yes"],
   };
   const ours = (id) => [st(OURS[id][0]), pri(OURS[id][1])];
 
@@ -96,7 +96,7 @@
         <div><b>6</b>Not worth rebuilding</div>
       </div>` },
     H("Parity with TMA at 20 October"),
-    P("The aim: a TMA customer, and IMSERV Ops in TMA's admin console, can do everything they do today in Astral, or do it better. Shaun added two columns to Clive's register to test that. Parity asks whether they can do it in the prototype today. Next is the order the prototype work runs in. Of the 29 gaps, 11 are yes, 9 are partly, 7 are not yet and 2 are not a user task."),
+    P("The aim: a TMA customer, and IMSERV Ops in TMA's admin console, can do everything they do today in Astral, or do it better. Shaun added two columns to Clive's register to test that. Parity asks whether they can do it in the prototype today. Next is the order the prototype work runs in. Of the 29 gaps, 12 are yes, 8 are partly, 7 are not yet and 2 are not a user task."),
     { t: "html", html: `<div class="key">
       <span>${st("yes")}They can do it in the prototype, or better</span>
       <span>${st("partly")}They can do some of it</span>
@@ -105,22 +105,21 @@
       <span>${pri(1)}Order of work</span>
     </div>` },
     T(["Next", "Work", "Parity", "What is missing"], [
-      [pri(1), "H6: related import and export MPANs and the MPAN type", st("partly"), "The meter view pairs import and export; site attributes do not"],
-      [pri(2), "H9: when the data was last updated", st("todo"), "TMA cuts data three times a day; customers cannot see how fresh Astral's data is"],
-      [pri(3), "H7: sign in without an email address", st("todo"), "Sign-in needs an email; about 308 TMA users have none"],
-      [pri(4), "H8: Ops end or remove a meter point on a company", st("todo"), "Ops can add meter points but not end or remove them"],
-      [pri(5), "C6: customers pull their files from IMSERV's server", st("partly"), "Reports push to the customer's SFTP server; TMA also offers pull"],
-      [pri(6), "H3: group and sub group access", st("partly"), "The access map is in the Library; waits on Gordon for V1 and many-to-many"],
-      [pri(7), "M1: profile table per channel, with the summary block", st("todo"), "No 48-period table with max demand kVA and load factor"],
-      [pri(8), "M2: Compare Data in three modes, with summary statistics", st("partly"), "One comparison mode; Shaun confirms modes 2 and 3"],
-      [pri(9), "M9: Ops correct meter point details when the feed is wrong", st("partly"), "Ops can add meter points but not edit them"],
-      [pri(10), "M11: placeholder meter until MOP details arrive", st("todo"), "No placeholder meter"],
-      [pri(11), "M3: queries IMSERV raised on each meter point", st("partly"), "Customers see their own queries, not ones IMSERV raised"],
-      [pri(12), "M6: Ops flow-load log and flow reports", st("partly"), "Servicing shows meter health; no flow-load log"],
-      [pri(13), "M12: sub-meters", st("partly"), "Reports by meter class is marked as coming soon"],
-      [pri(14), "M8: ROC and LEC, DUoS and TUoS", st("partly"), "Tariffs are on each site; the rest waits on the second session with Jac"],
-      [pri(15), "L2: notices panel", st("todo"), "No notices for all customers"],
-      [pri(16), "L3: Features and Help pages", st("todo"), "No help screens"],
+      [pri(1), "H9: when the data was last updated", st("todo"), "TMA cuts data three times a day; customers cannot see how fresh Astral's data is"],
+      [pri(2), "H7: sign in without an email address", st("todo"), "Sign-in needs an email; about 308 TMA users have none"],
+      [pri(3), "H8: Ops end or remove a meter point on a company", st("todo"), "Ops can add meter points but not end or remove them"],
+      [pri(4), "C6: customers pull their files from IMSERV's server", st("partly"), "Reports push to the customer's SFTP server; TMA also offers pull"],
+      [pri(5), "H3: group and sub group access", st("partly"), "The access map is in the Library; waits on Gordon for V1 and many-to-many"],
+      [pri(6), "M1: profile table per channel, with the summary block", st("todo"), "No 48-period table with max demand kVA and load factor"],
+      [pri(7), "M2: Compare Data in three modes, with summary statistics", st("partly"), "One comparison mode; Shaun confirms modes 2 and 3"],
+      [pri(8), "M9: Ops correct meter point details when the feed is wrong", st("partly"), "Ops can add meter points but not edit them"],
+      [pri(9), "M11: placeholder meter until MOP details arrive", st("todo"), "No placeholder meter"],
+      [pri(10), "M3: queries IMSERV raised on each meter point", st("partly"), "Customers see their own queries, not ones IMSERV raised"],
+      [pri(11), "M6: Ops flow-load log and flow reports", st("partly"), "Servicing shows meter health; no flow-load log"],
+      [pri(12), "M12: sub-meters", st("partly"), "Reports by meter class is marked as coming soon"],
+      [pri(13), "M8: ROC and LEC, DUoS and TUoS", st("partly"), "Tariffs are on each site; the rest waits on the second session with Jac"],
+      [pri(14), "L2: notices panel", st("todo"), "No notices for all customers"],
+      [pri(15), "L3: Features and Help pages", st("todo"), "No help screens"],
     ], ["9mm", "", "18mm", ""]),
     P("The prototype only adds. Anything it already shows stays, including the Peak and off-peak values option that the drop list would not rebuild."),
 

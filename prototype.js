@@ -19964,18 +19964,37 @@ function protoCompanyLogRows(name, q = "", picked = []) {
 function protoCompanyMeterTableRows(rows) {
   return rows.map((meter) => {
     const open = meter.added ? "" : protoServiceOpenAttr(meter);
+    const found = meter.live ? protoMeter(meter.id) : null;
+    const live = found && found.id === meter.id ? found : null;
+    const pair = live ? protoMeterPairKey(live) : "";
     return protoServiceRow(
       [
         open ? `<button type="button" class="astral-row-link">${escapeHtml(meter.point)}</button>` : escapeHtml(meter.point),
         escapeHtml(meter.site),
         protoUtilityName(meter.kind),
+        protoCompanyMeterDirection(meter, live),
+        protoCompanyMeterRelated(meter, live),
         meter.added ? protoServicePill("Waiting for data") : protoStatePill(protoServiceStateWord(meter.status)),
         meter.added ? `<span class="astral-muted">None yet</span>` : escapeHtml(meter.last || ""),
       ],
       {},
-      open ? `class="is-link" ${open}` : ""
+      `${open ? `class="is-link" ${open}` : ""}${pair ? ` data-proto-pair="${escapeHtml(pair)}"` : ""}`
     );
   });
+}
+
+// A meter point just added has no data, so its direction and pair are not recorded yet. Other companies' meter points import only.
+// Gas and water only flow in, as the site tables show.
+function protoCompanyMeterDirection(meter, live) {
+  if (meter.added) return `<span class="astral-muted">${PROTO_RELATION_WORDS.unknown}</span>`;
+  return protoFlowPill(live ? protoMeterFlow(live) : "in");
+}
+
+function protoCompanyMeterRelated(meter, live) {
+  if (meter.kind !== "electricity") return `<span class="astral-muted">${PROTO_RELATION_WORDS.na}</span>`;
+  if (meter.added) return `<span class="astral-muted">${PROTO_RELATION_WORDS.unknown}</span>`;
+  if (!live) return `<span class="astral-muted">${PROTO_RELATION_WORDS.none}</span>`;
+  return protoRelatedCell(live, { openAttr: (partner) => protoServiceOpenAttr({ ...partner, live: true }) });
 }
 
 const PROTO_COMPANY_TICKET_FILTERS = [
@@ -20215,7 +20234,7 @@ function protoCompanyRecord(name) {
       ? `
         ${note ? `<p class="astral-banner" role="status">${escapeHtml(note)}</p>` : ""}
         ${protoTable(
-          ["Meter point", "Site", "Utility", "State", "Last actual"],
+          ["Meter point", "Site", "Utility", "Direction", "Related MPAN", "State", "Last actual"],
           protoCompanyMeterTableRows(meters.filter((meter) => protoCompanyMeterMatches(meter, q, picked))),
           {
             id: "company-meters",
@@ -26045,10 +26064,16 @@ function protoMeterInheritOverview(meter, site) {
   const own = new Set(protoMeterOwnParts(meter.id));
   const facts = protoMeterFacts(meter);
   const siteName = site?.name || facts.site || "the site";
+  // Hours and time of use read as the same pill as the site view: the preset, Custom, Incomplete or Missing, with the week on hover.
+  const one = { ...(site || {}), meters: [meter] };
+  const siteProfile = protoSiteProfile(meter.id);
+  // The sentence below says where settings come from, and the Meters table tags each one, so the rows have no tag.
   const row = (part, kind, value) => `
     <div>
       <dt>${protoProfileFactMark(kind)}${escapeHtml(PROTO_METER_PART_NAMES[part])}</dt>
-      <dd class="astral-meter-src-value"><span>${escapeHtml(value)}</span>${protoMeterSourceTag(protoSrcMode(protoMeterOverride(meter.id), part, true))}</dd>
+      <dd class="astral-meter-src-value">${
+        value == null ? protoMeterValuePills(one, part, siteProfile) : `<span>${escapeHtml(value)}</span>`
+      }</dd>
     </div>
   `;
   const lead = own.size
@@ -26061,16 +26086,13 @@ function protoMeterInheritOverview(meter, site) {
         <div class="astral-meter-summary">
           <dl class="astral-meter-meta">
             ${protoSiteAddressRow(meter)}
-            ${row("hours", "hours", facts.hours)}
-            ${row("tou", "tou", facts.tou)}
+            ${row("hours", "hours", null)}
+            ${row("tou", "tou", null)}
             ${row("rates", "rates", protoMeterRateSummary(meter))}
           </dl>
-          <p class="astral-muted">${escapeHtml(lead)}${
-            protoCanAct()
-              ? ` ${protoTextBtn("Open site settings", `data-proto-meter-settings="${escapeHtml(meter.id)}"`)}`
-              : ""
-          }</p>
+          <p class="astral-muted">${escapeHtml(lead)}</p>
         </div>
+        ${protoMeterSettingsBtn(meter)}
       </div>
     </div>
   `;
@@ -28147,6 +28169,7 @@ function protoMeterRow(meter) {
   const cells = `
         <span class="astral-meter-ref">${protoMeterMark(meter.commodity)}${ref}</span>
         <span class="astral-meter-channel">${protoFlowPill(protoFlowKind(channel) || "in")}</span>
+        <span class="astral-meter-related">${protoRelatedCell(meter)}</span>
         <span class="astral-meter-src-cell">${source}</span>
         <span class="astral-meter-read">${escapeHtml(meter.lastReading || "None")}</span>
         <span class="astral-meter-use">${protoMeterUseCell(meter)}</span>
@@ -28154,7 +28177,7 @@ function protoMeterRow(meter) {
   // A row opens the meter, with its channels and readings. Anyone who can see the site can read it.
   return `<article class="astral-meter-row"><div class="astral-meter-row-head" data-proto-meter-view-row="${escapeHtml(
     meter.id
-  )}">${cells}</div></article>`;
+  )}"${protoPairAttr(meter)}>${cells}</div></article>`;
 }
 
 function protoMeterList(meters) {
@@ -28167,7 +28190,8 @@ function protoMeterList(meters) {
       <h4 class="astral-meter-list-title">Meters <span>${rows.length}</span></h4>
       <div class="astral-meter-list-head">
         <span>Meter</span>
-        <span>Channel</span>
+        <span>Direction</span>
+        <span>Related MPAN</span>
         <span>Settings</span>
         <span>Last reading</span>
         <span>Use</span>
@@ -28230,15 +28254,80 @@ function protoMeterInstalls(meter) {
   ];
 }
 
-// An import MPAN and its export MPAN record on one meter, so the view shows them together. Import comes first.
+// TMA's related MPANs: an import MPAN and the export MPAN on the same supply. Each pair is listed once and works both ways.
+// A pair is only what is listed here. Two MPANs on one site are not a pair just because one exports.
+const PROTO_RELATED_METERS = [
+  ["nr-man-in", "nr-man-ex"],
+  ["nr-glasgow-central-in", "nr-glasgow-central-ex"],
+];
+
+const PROTO_RELATION_WORDS = {
+  none: "No related MPAN",
+  unknown: "Not recorded",
+  na: "Does not apply",
+};
+
+function protoMeterRelatedId(meter) {
+  const id = String(meter?.id || "");
+  const pair = id ? PROTO_RELATED_METERS.find((ids) => ids.includes(id)) : null;
+  return pair ? pair.find((item) => item !== id) : "";
+}
+
+// Paired, none (a confirmed single MPAN), or na (gas and water have no MPAN). Not recorded is for a meter point with no data yet.
+function protoMeterRelation(meter) {
+  if (!meter) return { state: "unknown" };
+  if (protoMeterKind(meter) !== "electricity") return { state: "na" };
+  const id = protoMeterRelatedId(meter);
+  const partner = id ? protoMeter(id) : null;
+  return partner && partner.id === id ? { state: "paired", partner } : { state: "none" };
+}
+
+function protoMeterFlow(meter) {
+  return meter?.direction === "Export" ? "out" : "in";
+}
+
+function protoMeterPairKey(meter) {
+  const other = protoMeterRelatedId(meter);
+  return other ? [meter.id, other].sort().join("|") : "";
+}
+
+function protoPairAttr(meter) {
+  const key = protoMeterPairKey(meter);
+  return key ? ` data-proto-pair="${escapeHtml(key)}"` : "";
+}
+
+// The related MPAN with its In or Out pill. It opens that meter point when the user can see its site, otherwise it is plain text.
+function protoRelatedCell(meter, { openAttr } = {}) {
+  const rel = protoMeterRelation(meter);
+  if (rel.state !== "paired") return `<span class="astral-muted">${escapeHtml(PROTO_RELATION_WORDS[rel.state])}</span>`;
+  const partner = rel.partner;
+  const ref = protoMeterRef(partner);
+  const flow = protoMeterFlow(partner);
+  const attr = openAttr ? openAttr(partner) : protoSiteByMeter(partner.id) ? `data-proto-meter-view="${escapeHtml(partner.id)}"` : "";
+  const name = attr
+    ? `<button type="button" class="astral-related-link" ${attr} aria-label="${escapeHtml(
+        `Open ${flow === "out" ? "outgoing" : "incoming"} MPAN ${ref}`
+      )}">${escapeHtml(ref)}</button>`
+    : `<span>${escapeHtml(ref)}</span>`;
+  return `<span class="astral-related-ref">${name}${protoFlowPill(flow)}</span>`;
+}
+
+// For a file: Import or Export as stored, and the related MPAN or why there is none.
+function protoMeterTypeText(meter) {
+  if (!meter) return PROTO_RELATION_WORDS.unknown;
+  if (protoMeterKind(meter) !== "electricity") return PROTO_RELATION_WORDS.na;
+  return meter.direction === "Export" ? "Export" : "Import";
+}
+
+function protoRelatedText(meter) {
+  const rel = protoMeterRelation(meter);
+  return rel.state === "paired" ? protoMeterRef(rel.partner) : PROTO_RELATION_WORDS[rel.state];
+}
+
+// An import MPAN and its related export MPAN record on one meter, so the view shows them together. Import comes first.
 function protoMeterSupply(meter) {
   if (protoMeterKind(meter) !== "electricity") return [meter];
-  const pair = (protoSiteByMeter(meter.id)?.meters || []).find(
-    (item) =>
-      item.id !== meter.id &&
-      protoMeterKind(item) === "electricity" &&
-      (item.direction === "Export") !== (meter.direction === "Export")
-  );
+  const pair = protoMeterRelation(meter).partner;
   return pair ? [meter, pair].sort((a, b) => (a.direction === "Export") - (b.direction === "Export")) : [meter];
 }
 
@@ -28689,6 +28778,7 @@ function protoMeterViewPage(meter) {
         <p class="astral-meter-view-facts">
           <span class="astral-meter-ref">${protoIconMark(protoMeterKind(lead), "astral-meter-mark")}<span>${escapeHtml(protoMeterUtility(lead))}</span></span>
           <span>${escapeHtml(`Last reading ${lead.lastReading || "None"}`)}</span>
+          ${protoMeterViewRelation(lead, supply)}
         </p>
         ${protoTabs(tabs, active, "data-proto-meter-tab", protoListWords(tabs.map((tab) => tab.name)))}
     `,
@@ -28699,6 +28789,14 @@ function protoMeterViewPage(meter) {
         }>${panels[tab.id]()}</div>`
     ).join("")}</div>`
   );
+}
+
+// Both MPANs of a pair are already in the title, so the view says they are related rather than linking to itself.
+function protoMeterViewRelation(lead, supply) {
+  if (protoMeterKind(lead) !== "electricity") return "";
+  return `<span>${escapeHtml(
+    supply.length > 1 ? "The incoming and outgoing MPANs are related." : PROTO_RELATION_WORDS.none
+  )}</span>`;
 }
 
 const PROTO_METER_TABS = [
@@ -28749,15 +28847,15 @@ function protoPickMeterTab(id) {
   protoSyncTableHeads();
 }
 
-// Under the graph on a site: the meter points, each opening its own meter view.
-function protoMeterPointRow(meter, second) {
+// Under the graph on a site: the meter points, each opening its own meter view. Extra cells sit after the meter point.
+function protoMeterPointRow(meter, extra) {
   const words = [
     ...new Set(
       (protoData()?.alerts || []).filter((item) => item.meterId === meter.id).map((item) => protoMeterAlertWord(item.kind))
     ),
   ];
   return `
-    <tr class="is-link" data-proto-meter-view="${escapeHtml(meter.id)}">
+    <tr class="is-link" data-proto-meter-view="${escapeHtml(meter.id)}"${protoPairAttr(meter)}>
       <td><span class="astral-meter-ref">${protoMeterMark(meter.commodity)}<button type="button" class="astral-row-link">${escapeHtml(
         protoMeterRef(meter)
       )}</button>${
@@ -28765,15 +28863,15 @@ function protoMeterPointRow(meter, second) {
           ? protoTag("Billed", "Worked out from the meters on the MPAN below. It is the number used for billing.", "is-quiet")
           : ""
       }</span></td>
-      ${second == null ? "" : `<td>${second}</td>`}
+      ${(extra || []).map((cell) => `<td>${cell}</td>`).join("")}
       <td>${protoMeterChannels([meter]).filter((channel) => channel.used).length}</td>
       <td>${protoStateCells(words, protoStatus(meter.status))}</td>
-    </tr>${meter.complex ? protoComplexPointRow(meter, second) : ""}
+    </tr>${meter.complex ? protoComplexPointRow(meter, extra) : ""}
   `;
 }
 
 // Sits under the billed MPAN and opens its meter view on Billed and actual.
-function protoComplexPointRow(meter, second) {
+function protoComplexPointRow(meter, extra) {
   return `
     <tr class="is-link is-sub" data-proto-meter-view="${escapeHtml(meter.id)}" data-proto-meter-view-tab="billed">
       <td><span class="astral-meter-ref astral-meter-sub-ref">${protoMeterMark(meter.commodity)}<button type="button" class="astral-row-link">${escapeHtml(
@@ -28783,7 +28881,7 @@ function protoComplexPointRow(meter, second) {
         "What the meters recorded. It is not added to your totals.",
         "is-quiet"
       )}</span></td>
-      ${second == null ? "" : `<td>${second}</td>`}
+      ${(extra || []).map((cell) => `<td>${cell}</td>`).join("")}
       <td>${protoMeterChannels([meter]).filter((channel) => channel.used).length}</td>
       <td>${protoStateCells([], protoStatus(meter.status))}</td>
     </tr>
@@ -28793,13 +28891,13 @@ function protoComplexPointRow(meter, second) {
 function protoSiteMeterFold(site) {
   const meters = protoProfileListMeters(site);
   if (!meters.length) return "";
-  // Direction only tells the user something when the site also exports.
+  // Direction and Related MPAN only tell the user something when the site also exports.
   const exports = meters.some((meter) => meter.direction === "Export");
   return protoPaneListTable(
-    [protoBelowSiteHeading(1), ...(exports ? ["Direction"] : []), "Channels", "State"],
+    [protoBelowSiteHeading(1), ...(exports ? ["Direction", "Related MPAN"] : []), "Channels", "State"],
     meters
       .map((meter) =>
-        protoMeterPointRow(meter, exports ? protoFlowPill(meter.direction === "Export" ? "out" : "in") : null)
+        protoMeterPointRow(meter, exports ? [protoFlowPill(protoMeterFlow(meter)), protoRelatedCell(meter)] : null)
       )
       .join(""),
     protoBelowSiteHeading(2)
@@ -31040,6 +31138,8 @@ function protoCompareDetail() {
           viewSites.some((site) => protoGroupForSite(site)?.id === group.id)
         )
       : [];
+  // As on a site, Direction and Related MPAN show only when a meter point here exports.
+  const compareExports = bundle.level === "meter" && meters.some((meter) => meter.direction === "Export");
   const rows =
     bundle.level === "group"
       ? viewGroups
@@ -31057,7 +31157,12 @@ function protoCompareDetail() {
           .join("")
       : bundle.level === "meter"
         ? meters
-            .map((meter) => protoMeterPointRow(meter, escapeHtml(protoSiteByMeter(meter.id)?.name || "")))
+            .map((meter) =>
+              protoMeterPointRow(meter, [
+                escapeHtml(protoSiteByMeter(meter.id)?.name || ""),
+                ...(compareExports ? [protoFlowPill(protoMeterFlow(meter)), protoRelatedCell(meter)] : []),
+              ])
+            )
             .join("")
         : profileSites
             .map((site) => {
@@ -31087,6 +31192,7 @@ function protoCompareDetail() {
         [
           bundle.level === "group" ? "Group" : bundle.level === "meter" ? protoBelowSiteHeading(1) : "Site",
           bundle.level === "group" ? "Sites" : bundle.level === "meter" ? "Site" : protoBelowSiteHeading(2),
+          ...(bundle.level === "meter" && compareExports ? ["Direction", "Related MPAN"] : []),
           ...(bundle.level === "meter" ? ["Channels"] : []),
           "State",
         ],
@@ -37880,8 +37986,15 @@ function protoSkelStart(scope) {
   }, ms);
 }
 
+// A sub-tab already opened has its data, so going back to it on the same site, group or meter shows it straight away.
+// Moving to another site, group or meter still loads in.
+const protoSkelLoaded = new Set();
+const protoSkelEntity = (pane) => pane.split("|").filter((_, i) => i < 3 || i === 7).join("|");
+
 function protoSkelWatch(before) {
   const after = protoSkelKeys();
+  protoSkelLoaded.add(before.pane);
+  const back = protoSkelEntity(before.pane) === protoSkelEntity(after.pane) && protoSkelLoaded.has(after.pane);
   if (before.screen !== after.screen) protoSkelStart("screen");
   else if (before.pane !== after.pane && !back) protoSkelStart("pane");
   else if (before.pane !== after.pane && protoSkel?.scope === "pane") {
@@ -38096,15 +38209,8 @@ function protoLoadCheck() {
   if (records < PROTO_LOAD_MIN_RECORDS || protoGraphLimitShown()) return;
   if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
   const all = store.prototypeScope === "group" && protoIsAllGroup(store.prototypeGroup);
-// A sub-tab already opened has its data, so going back to it on the same site, group or meter shows it straight away.
-// Moving to another site, group or meter still loads in.
-const protoSkelLoaded = new Set();
-const protoSkelEntity = (pane) => pane.split("|").filter((_, i) => i < 3 || i === 7).join("|");
-
   const ms = all ? PROTO_LOAD_ALL_MS : Math.round(Math.min(5200, Math.max(1800, 1500 + Math.sqrt(records) * 3.2)));
   protoLoad = { key, records, start: performance.now(), ms, tip: Math.floor(Math.random() * PROTO_LOAD_TIPS.length) };
-  protoSkelLoaded.add(before.pane);
-  const back = protoSkelEntity(before.pane) === protoSkelEntity(after.pane) && protoSkelLoaded.has(after.pane);
   protoLoadTipAt = protoLoad.start;
   requestAnimationFrame(protoLoadTick);
 }
@@ -39208,7 +39314,7 @@ function protoSourceRows(fileId, spec) {
       if (complete) row.push(cell.missing.size ? "Incomplete" : "Complete", cell.estimated.size, cell.missing.size);
       if (ids) {
         const span = protoDataBucketDays(bucket, opts.interval);
-        row.push(source, protoDataSerials(installs, span.from, span.to), stream);
+        row.push(source, protoDataSerials(installs, span.from, span.to), stream, protoMeterTypeText(meter), protoRelatedText(meter));
       }
       rows.push(row);
     });
@@ -39217,7 +39323,8 @@ function protoSourceRows(fileId, spec) {
   return [headers, ...rows];
 }
 
-const PROTO_DATA_ID_HEADS = ["Source ID", "Meter serial", "Stream"];
+// MPAN type and Related MPAN keep TMA's stored words, Import and Export, as Meter quantities does.
+const PROTO_DATA_ID_HEADS = ["Source ID", "Meter serial", "Stream", "MPAN type", "Related MPAN"];
 const PROTO_DATA_COMPLETE_HEADS = ["Completeness", "Estimated half-hours", "Missing half-hours"];
 const PROTO_DATA_SITE_HEADS = ["Address", "Town", "Postcode"];
 
@@ -39245,7 +39352,13 @@ function protoRegisterRows(meters, from, to, spec) {
       ];
       if (spec.ids) {
         const day = protoIso(read.day);
-        row.push(source, protoDataSerials(installs, day, day), source ? `${source}-CUM` : "");
+        row.push(
+          source,
+          protoDataSerials(installs, day, day),
+          source ? `${source}-CUM` : "",
+          protoMeterTypeText(meter),
+          protoRelatedText(meter)
+        );
       }
       rows.push(row);
     });
@@ -39966,6 +40079,26 @@ function protoSubStep(event, list, items) {
   const next = event.key === "ArrowDown" ? (at + 1) % all.length : (at - 1 + all.length) % all.length;
   all[next].focus({ preventScroll: false });
 }
+
+// Pointing at or tabbing to a meter point lights its related MPAN's row in the same list, so the pair shows at a glance.
+function protoPairLight(el) {
+  const row = el instanceof Element ? el.closest("[data-proto-pair]") : null;
+  const key = row?.dataset.protoPair || "";
+  document.querySelectorAll(".is-pair-lit").forEach((item) => {
+    if (!key || item.dataset.protoPair !== key) item.classList.remove("is-pair-lit");
+  });
+  if (!key) return;
+  const scope = row.closest("table, .astral-meter-list") || document;
+  scope.querySelectorAll("[data-proto-pair]").forEach((item) => {
+    if (item !== row && item.dataset.protoPair === key) item.classList.add("is-pair-lit");
+  });
+}
+
+document.addEventListener("pointerover", (event) => protoPairLight(event.target));
+document.addEventListener("focusin", (event) => protoPairLight(event.target));
+document.addEventListener("focusout", (event) => {
+  if (!event.relatedTarget) protoPairLight(null);
+});
 
 document.addEventListener("pointerover", (event) => {
   const el = event.target;
