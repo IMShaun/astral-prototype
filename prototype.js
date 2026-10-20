@@ -37883,7 +37883,12 @@ function protoSkelStart(scope) {
 function protoSkelWatch(before) {
   const after = protoSkelKeys();
   if (before.screen !== after.screen) protoSkelStart("screen");
-  else if (before.pane !== after.pane) protoSkelStart("pane");
+  else if (before.pane !== after.pane && !back) protoSkelStart("pane");
+  else if (before.pane !== after.pane && protoSkel?.scope === "pane") {
+    window.clearTimeout(protoSkelTimer);
+    protoSkel = null;
+  }
+  protoSkelLoaded.add(after.pane);
 }
 
 function protoSkelRegions(app, scope) {
@@ -38091,8 +38096,15 @@ function protoLoadCheck() {
   if (records < PROTO_LOAD_MIN_RECORDS || protoGraphLimitShown()) return;
   if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
   const all = store.prototypeScope === "group" && protoIsAllGroup(store.prototypeGroup);
+// A sub-tab already opened has its data, so going back to it on the same site, group or meter shows it straight away.
+// Moving to another site, group or meter still loads in.
+const protoSkelLoaded = new Set();
+const protoSkelEntity = (pane) => pane.split("|").filter((_, i) => i < 3 || i === 7).join("|");
+
   const ms = all ? PROTO_LOAD_ALL_MS : Math.round(Math.min(5200, Math.max(1800, 1500 + Math.sqrt(records) * 3.2)));
   protoLoad = { key, records, start: performance.now(), ms, tip: Math.floor(Math.random() * PROTO_LOAD_TIPS.length) };
+  protoSkelLoaded.add(before.pane);
+  const back = protoSkelEntity(before.pane) === protoSkelEntity(after.pane) && protoSkelLoaded.has(after.pane);
   protoLoadTipAt = protoLoad.start;
   requestAnimationFrame(protoLoadTick);
 }
