@@ -38,6 +38,16 @@
   .rate.critical { background: var(--black); color: var(--white); }
   .rate.high { background: var(--cyan); border-color: var(--cyan); }
   .rate.low { border-color: var(--grey-b); color: var(--grey-c); }
+  .st { font-size: 5.8pt; font-weight: 600; white-space: nowrap; }
+  .st::before { content: ""; display: inline-block; width: 1.8mm; height: 1.8mm; border-radius: 50%; border: 0.25mm solid var(--black); margin-right: 1mm; vertical-align: -0.2mm; box-sizing: border-box; }
+  .st.done::before { background: var(--black); }
+  .st.partly::before { background: linear-gradient(90deg, var(--black) 50%, transparent 50%); }
+  .st.working::before { background: var(--cyan); border-color: var(--cyan); }
+  .st.out { color: var(--grey-c); font-weight: 400; }
+  .st.out::before { border-color: var(--grey-b); }
+  .pri { display: inline-block; width: 3.8mm; height: 3.8mm; border-radius: 50%; background: var(--cyan); font-size: 5.8pt; font-weight: 600; line-height: 3.8mm; text-align: center; }
+  .key { display: flex; flex-wrap: wrap; gap: 1.2mm 4mm; font-size: 6.6pt; margin-bottom: 3mm; }
+  .key span.st, .key span.pri { margin-right: 1mm; }
   .note { background: var(--grey-a); border-left: 0.6mm solid var(--cyan); padding: 2.4mm 3mm; margin-bottom: 3mm; }
   .flow .note p { margin: 0; }
   .folio::after { content: "16 Oct 2026 · " counter(pg, decimal-leading-zero); }
@@ -58,6 +68,17 @@
   const L = (items) => ({ t: "ul", items });
   const T = (head, rows, widths) => ({ t: "table", head, rows, widths });
   const rate = (r) => `<span class="rate ${r.toLowerCase()}">${r}</span>`;
+  // Prototype status, kept by Shaun. Clive's register content is unchanged; these columns are added.
+  const STATUS = { done: "Done", partly: "Partly done", working: "Working on", todo: "To do", out: "Outside team", unbuilt: "Not built", remove: "To remove", kept: "Kept for now" };
+  const st = (s) => `<span class="st ${s === "remove" ? "todo" : s === "unbuilt" || s === "kept" ? "out" : s}">${STATUS[s]}</span>`;
+  const pri = (n) => (n ? `<span class="pri">${n}</span>` : "");
+  const OURS = {
+    C1: ["done"], C2: ["done"], C3: ["out"], C4: ["out"], C5: ["done"], C6: ["out"],
+    H1: ["done"], H3: ["working", 5], H4: ["done"], H6: ["partly", 2], H7: ["out"], H8: ["out"], H9: ["out"],
+    M1: ["todo", 3], M2: ["todo", 4], M3: ["out"], M4: ["out"], M5: ["out"], M6: ["out"], M7: ["out"], M8: ["out"], M9: ["out"], M10: ["out"], M11: ["out"], M12: ["out"],
+    L1: ["done"], L2: ["todo", 7], L3: ["todo", 8], L4: ["done"],
+  };
+  const ours = (id) => [st(OURS[id][0]), pri(OURS[id][1])];
 
   const FLOW = [
     { t: "html", html: `
@@ -74,6 +95,27 @@
         <div><b>1</b>Already covered</div>
         <div><b>6</b>Not worth rebuilding</div>
       </div>` },
+    H("Prototype status at 20 October"),
+    P("Shaun added the Status and Next columns to Clive's register. Status says where the prototype stands on each gap. Next is the order the prototype work runs in. Of the 29 gaps, 7 are done in the prototype, 2 are under way, 4 are to do and 16 sit outside the prototype team, with owners named in the register."),
+    { t: "html", html: `<div class="key">
+      <span>${st("done")}Shown in the prototype</span>
+      <span>${st("partly")}Some of it is shown</span>
+      <span>${st("working")}Under way, waiting on a decision</span>
+      <span>${st("todo")}Prototype work not started</span>
+      <span>${st("out")}Nothing to build in the prototype</span>
+      <span>${pri(1)}Order of work</span>
+    </div>` },
+    T(["Next", "Work", "Status", "Why"], [
+      [pri(1), "Remove the Peak and off-peak option from Export and the Data extract report", st("todo"), "The drop list says not to rebuild the TOU download option"],
+      [pri(2), "H6: show related import and export MPANs and the MPAN type in site attributes", st("partly"), "The meter view already pairs import and export; site attributes do not"],
+      [pri(3), "M1: profile table per channel, with the summary block", st("todo"), "The next gap with Shaun as owner"],
+      [pri(4), "M2: Compare Data in three modes, with summary statistics", st("todo"), "Shaun confirms modes 2 and 3 first"],
+      [pri(5), "H3: finish group access", st("working"), "The access map is in the Library; waits on Gordon for V1 and many-to-many"],
+      [pri(6), "Check the DC/DA report type in Reports", st("todo"), "No DC/DA report was shown in TMA; remove it unless one exists"],
+      [pri(7), "L2: notices panel", st("todo"), "Low; a banner on the help framework"],
+      [pri(8), "L3: Features and Help pages", st("todo"), "Low; no help screens in the prototype yet"],
+    ], ["9mm", "", "18mm", ""]),
+
     H("Bottom line"),
     P("V1 as scoped replaces TMA's screens but not its data, feeds or complex-site handling, so on today's evidence it does not replace TMA."),
     L([
@@ -106,16 +148,16 @@
     H("Gap register"),
     P("Six gaps block switch-off on 31 Dec. Three are build (C1, C2, C5) and three are dependencies outside the Astral team (C3, C4, C6). Coverage today quotes requirements register v6 (row ID, version) and the V1 scope sheet (5 Oct status)."),
     S("Critical: these block switch-off"),
-    T(["ID", "Gap", "Coverage today", "What closes it (owner)"], [
+    T(["ID", "Gap", "Coverage today", "What closes it (owner)", "Status", "Next"], [
       ["C1", "Channel-level data model: MSID, channel, MQID (AI, AE, RI, RE) mapped from source rather than by channel position, effective-dated channels with a closed state, many meters per MPAN. Channel numbers vary by meter operator (1, 2, 8, 9 seen)", "V1 row \"Meter / channel level data\", Planned. J-R19 still V4 Open, \"awaiting scope + data-model check\". E2E plan, 7 Sep: \"need to agree import route. Needs Data Engineer\"", "Commit the model and import route as V1; re-version J-R19 on the Challenges tab (Gordon, Anna)"],
       ["C2", "Register reads (D10): loaded by hand once a month today; customers view and export them; export customers need a monthly export total to claim FIT, Scottish Water for Ofgem reclaim", "ST-04 (V1) covers viewing register reads; a register readings output file reached UAT on 14 Oct. Nothing covers D10 ingestion or monthly export totals; SCW-1 export view is a V1.1 candidate only", "Add D10 ingestion and a monthly export total per export MPAN to V1 (Anna, data team)"],
       ["C3", "Source feed: channel-level data, D10 reads and secondary-dial MPANs arriving automatically; depends on change of agent", "No requirement row. The TMA workbook lists it only as dependencies (\"Secondary Dial to be set up\", \"Update the master CoA plan\")", "Change-of-agent date per cohort and feed confirmed (Lorraine, Lisa)"],
       ["C4", "History before access ends. IMSERV systems lack channel-level history for these MPANs, and TMA Group is for sale", "Generic only: ST-13 historic load; \"Access to historical data\", To scope. TMA workbook question \"Data Extract from TMA for continuity of data? How long, ...\" unanswered", "Extract plan and retention period agreed (Anna, Tricia)"],
       ["C5", "Complex sites, shared SVAs, pseudo MPANs. The settlement MPAN (meter \"COMPLEX\") carries a calculated value; a 99-prefixed pseudo MPAN carries the raw meters; the link lives only in a spreadsheet; calculated and raw totals differ. The TMA workbook holds 121 99-prefixed MPANs, mostly Welsh Water, FTP and Mercia", "None. ST-R6 and J-R12 concern DataVision dummy MPAN labels. TMA workbook, pot 12: \"Risk as very complex... 4 weeks effort by Ian Hall\"", "Model the settlement and pseudo pair; calculated values arrive from upstream, never recomputed; the linking spreadsheet becomes migration data (Gordon, Lisa)"],
       ["C6", "TMA FTP feeds: 55 customers (17 include meter serial, 2 not consolidated by MPAN); pull to Serafile and push to customer servers; a charged service", "V1 SFTP row exists, but epic AST-E-01 (US-04) lists as out of scope \"TMA schedules (Doug's separate migration project)\" and covers push only", "Confirm Doug's project scope, owner and date, or bring TMA feeds into AST-E-01 (Anna)"],
-    ], ["8mm", "", "", "40mm"]),
+    ].map((r) => [...r, ...ours(r[0])]), ["8mm", "", "", "34mm", "17mm", "7mm"]),
     S("High, medium and low"),
-    T(["ID", "Gap", "Coverage today", "Rating", "What closes it (owner)"], [
+    T(["ID", "Gap", "Coverage today", "Rating", "What closes it (owner)", "Status", "Next"], [
       ["H1", "Data Download options: MQs, kWh or kW, actuals only, A/E flags on or off, consolidate by MPAN, aggregate by group, MSID, site details, interval, cumulative or TOU; search across 845 MPANs; runs as a background job", "\"Data download / export\" Partial; LCC-03, ST-02, VMO2-R2, ST-R1, VR-03 (V1) are generic; the option set is unspecified", "High", "Parity spec from Jac's option list; golden extracts as acceptance tests (Anna, Jac)"],
       ["H3", "Organisation, Group, Sub Group access with group-level feature rights; one MPAN in many groups (12,803 of 13,658 MPANs sit in more than one, up to 11)", "JV-R1, ST-R5, SW-04, VR-04 (V1); SCW-11/12 V1.1 candidates. \"Group Functionality\" is MVP+ in the tracker but V1 in the scope sheet", "High", "Settle the version conflict as V1; confirm many-to-many (Gordon)"],
       ["H4", "Generation and consumption reports, the main reasons customers log in", "Generation widget Built; GS-R8 and ST-11 (V1) cover import and export data; no named reports", "High", "Add both as V1 report rows (Anna)"],
@@ -139,7 +181,7 @@
       ["L2", "Notices panel", "Not itemized", "Low", "Banner on the help framework"],
       ["L3", "Features and Help pages", "Help screens Planning", "Low", "Covered"],
       ["L4", "Simulate User View (broken in TMA today)", "Login as a user Planned", "Low", "Covered"],
-    ].map((r) => [r[0], r[1], r[2], rate(r[3]), r[4]]), ["8mm", "", "", "14mm", "38mm"]),
+    ].map((r) => [r[0], r[1], r[2], rate(r[3]), r[4], ...ours(r[0])]), ["8mm", "", "", "13mm", "30mm", "17mm", "7mm"]),
     { t: "note", text: "Already covered: missing and estimated data. WS-27, ST-14 and JC-R1 (V1), the data quality flags row (Planning) and story 4070 cover it. Jac says it is the main reason customers raise queries (N/A for missing, blue for estimated, ND for no data), so it must not slip." },
 
     H("V1.1 is carrying TMA parity"),
@@ -171,14 +213,14 @@
 
     H("Drop list: do not rebuild"),
     P("Six TMA features should not come into Astral on the evidence so far. Each still needs one line in customer comms or an Ops owner. Usage data does not exist (Jac cannot see what customers access), so this rests on query history and judgement."),
-    T(["Feature", "Evidence", "Action"], [
-      ["Bill Checker", "Jac: never used, never had a question about it; turned on only on request", "Drop. Scottish Water validate bills from exported data, which H1 covers"],
-      ["Water and gas commodities", "Jac: \"wishful thinking\", irrelevant", "Confirm before dropping: the TMA workbook holds gas MPRNs, which contradicts Jac"],
-      ["TOU data download option", "Jac: not many use it; the estate is mostly half-hourly", "Drop the option; keep TOU registers inside D10 export (C2)"],
-      ["Billing-marker groups (for example, \"A. DC/DA Customer Invoicing via CDAM\")", "Used to tell the billing team what not to bill; Lorraine: business process, not portal", "Ops moves the marker to the billing system or Salesforce before switch-off"],
-      ["Manual upload screens (PRN/MTD, flow, site setup, appoint/assign, tariff)", "Most loading is automated; manual is the workaround", "Replace with the automated feed (C3); keep one admin exception route (M9)"],
-      ["MDR Scheduler", "The dialler's desktop tool, shown alongside the portal", "Out of Astral scope; stays with data collection"],
-    ], ["44mm", "", ""]),
+    T(["Feature", "Evidence", "Action", "Status", "Next"], [
+      ["Bill Checker", "Jac: never used, never had a question about it; turned on only on request", "Drop. Scottish Water validate bills from exported data, which H1 covers", st("unbuilt"), ""],
+      ["Water and gas commodities", "Jac: \"wishful thinking\", irrelevant", "Confirm before dropping: the TMA workbook holds gas MPRNs, which contradicts Jac", st("kept"), ""],
+      ["TOU data download option", "Jac: not many use it; the estate is mostly half-hourly", "Drop the option; keep TOU registers inside D10 export (C2)", st("remove"), pri(1)],
+      ["Billing-marker groups (for example, \"A. DC/DA Customer Invoicing via CDAM\")", "Used to tell the billing team what not to bill; Lorraine: business process, not portal", "Ops moves the marker to the billing system or Salesforce before switch-off", st("unbuilt"), ""],
+      ["Manual upload screens (PRN/MTD, flow, site setup, appoint/assign, tariff)", "Most loading is automated; manual is the workaround", "Replace with the automated feed (C3); keep one admin exception route (M9)", st("unbuilt"), ""],
+      ["MDR Scheduler", "The dialler's desktop tool, shown alongside the portal", "Out of Astral scope; stays with data collection", st("unbuilt"), ""],
+    ], ["38mm", "", "", "17mm", "7mm"]),
 
     H("Conflicts and open questions"),
     P("Nine facts disagree across sources. Each needs one answer before the ELT sees the TMA wave again."),
@@ -283,14 +325,19 @@
       }
       if (b.t === "table") {
         let table = el(tableHead(b));
-        place(table, lastHead);
+        const keep = lastHead;
+        place(table, keep);
         for (const r of b.rows) {
           const tr = el(`<table><tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr></table>`).querySelector("tr");
           table.tBodies[0].appendChild(tr);
           if (fits()) continue;
           table.tBodies[0].removeChild(tr);
-          if (!table.tBodies[0].rows.length) flow.removeChild(table);
+          const empty = !table.tBodies[0].rows.length;
+          if (empty) flow.removeChild(table);
+          const moved = empty && keep && flow.lastElementChild === keep ? keep : null;
+          if (moved) flow.removeChild(moved);
           newPage();
+          if (moved) flow.appendChild(moved);
           table = el(tableHead(b));
           flow.appendChild(table);
           table.tBodies[0].appendChild(tr);
