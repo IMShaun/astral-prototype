@@ -7522,8 +7522,8 @@ button.astral-state {
   border: 1px solid var(--color-border-control);
   border-radius: 999px;
   background: #fff;
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-medium);
   line-height: 1.2;
 }
 
@@ -7564,8 +7564,8 @@ button.astral-value-pill:focus-visible {
 button.astral-value-pill {
   appearance: none;
   font: inherit;
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-medium);
   color: inherit;
 }
 
