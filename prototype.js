@@ -4597,7 +4597,7 @@ function protoWeekendSwitch() {
   );
 }
 
-// Shading with a dotted pattern, a bar along the top and Sat or Sun under the axis, so it never relies on colour.
+// Shading with a dotted pattern and a bar along the top, so it never relies on colour.
 function protoWeekendLayer(count, pad, w, h, spanOf) {
   const out = { back: "", axis: "", flags: [] };
   if (!count || !protoWeekendOn()) return out;
@@ -4623,24 +4623,7 @@ function protoWeekendLayer(count, pad, w, h, spanOf) {
       ).toFixed(1)}" /><rect class="astral-weekend-top" data-m="wkt|${n}" x="${x0.toFixed(1)}" y="${pad.t - 5}" width="${width}" height="3" rx="1.5" />`;
     })
     .join("");
-  const colW = (() => {
-    const [a, b] = spanOf(0);
-    return b - a;
-  })();
-  const labels =
-    colW >= 26
-      ? days
-          .map((day, i) => {
-            if (!out.flags[i]) return "";
-            const [a, b] = spanOf(i);
-            return `<text class="astral-weekend-day" data-m="wkd|${i}" x="${((a + b) / 2).toFixed(1)}" y="${bottom + 13}" text-anchor="middle">${
-              day.getDay() === 6 ? "Sat" : "Sun"
-            }</text>`;
-          })
-          .join("")
-      : "";
   out.back = `<g class="astral-weekend" aria-hidden="true"><defs><pattern id="astral-weekend-dots" width="7" height="7" patternUnits="userSpaceOnUse"><rect width="7" height="7" fill="#f3f3f6" /><circle cx="3.5" cy="3.5" r="1.1" fill="#c4c4cc" /></pattern></defs>${bands}</g>`;
-  out.axis = labels ? `<g class="astral-weekend-days" aria-hidden="true">${labels}</g>` : "";
   return out;
 }
 

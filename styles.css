@@ -9855,12 +9855,6 @@ button.astral-value-pill.astral-tip-host {
   opacity: 0.55;
 }
 
-.astral-chart .astral-weekend-day {
-  fill: var(--color-text-primary);
-  font-size: var(--font-size-12);
-  font-weight: var(--font-weight-medium);
-}
-
 .astral-weekend-mark {
   display: inline-block;
   flex: none;
