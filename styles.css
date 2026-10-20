@@ -4359,6 +4359,13 @@ button.astral-avatar {
   margin: 0;
 }
 
+/* Card and modal titles. :where keeps it below any classed title. */
+:where(.astral-card, .astral-modal) h3 {
+  font-size: var(--font-size-18);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--font-line-snug);
+}
+
 .astral-page-head {
   flex: none;
   position: relative;
@@ -6494,8 +6501,8 @@ button.astral-catch {
   margin-inline-start: 4px;
   min-height: 24px;
   padding: 0;
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-medium);
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -6517,8 +6524,8 @@ button.astral-catch {
   color: #000;
   background: #fff;
   font: inherit;
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-medium);
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -6595,8 +6602,8 @@ button.astral-flow-pill {
   border: 1px solid var(--color-border-control);
   border-radius: 999px;
   background: #fff;
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-medium);
   line-height: 1;
   width: max-content;
 }
@@ -6645,8 +6652,8 @@ button.astral-flow-pill {
   background: var(--color-background-subtle);
   color: #000;
   font: inherit;
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-semibold);
   line-height: 1.2;
 }
 
@@ -9392,8 +9399,8 @@ button.astral-value-pill.astral-tip-host {
   justify-self: start;
   min-height: 24px;
   padding: 0;
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-medium);
   line-height: 1.2;
 }
 
@@ -10486,8 +10493,8 @@ button.astral-value-pill.astral-tip-host {
   border-radius: 999px;
   background: #fff;
   color: #000;
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-medium);
 }
 
 .astral-zone-more:hover {
@@ -11332,8 +11339,8 @@ button.astral-value-pill.astral-tip-host {
   border-radius: var(--radius-button);
   background: var(--color-background-subtle);
   color: #000;
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-semibold);
   white-space: nowrap;
   flex: none;
 }
@@ -15006,8 +15013,8 @@ tbody tr:has(.astral-people-more [aria-expanded="true"]) {
   gap: 6px;
   margin: 0;
   color: var(--color-text-secondary);
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-semibold);
 }
 
 .astral-type-mark {
