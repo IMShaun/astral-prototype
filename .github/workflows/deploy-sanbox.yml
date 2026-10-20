@@ -1,0 +1,24 @@
+# Sandbox is the stakeholder snapshot. It only changes when a sandbox-* tag is pushed:
+#   git tag -a sandbox-2026-10-20 -m "Steerco walk" && git push origin sandbox-2026-10-20
+# To roll back, run this workflow by hand and pick an older sandbox-* tag under "Use workflow from".
+name: Deploy sandbox
+
+on:
+  push:
+    tags: ['sandbox-*']
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-sandbox
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    if: startsWith(github.ref, 'refs/tags/sandbox-')
+    uses: ./.github/workflows/deploy-app.yml
+    with:
+      environment: sandbox
