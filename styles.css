@@ -5731,6 +5731,9 @@ button.astral-catch {
 
 .astral-detail-head h3 {
   margin: 0;
+  font-size: var(--font-size-18);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--font-line-snug);
 }
 
 .astral-detail-title {
